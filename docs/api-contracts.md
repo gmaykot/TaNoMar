@@ -42,13 +42,13 @@ O contrato de métrica é uma união `{ state: "available", value }` ou `{ state
 
 ## Comunidade, moderação e notificações
 
-- `GET /community/reports?spotId=`: relatos ativos em locais públicos. Tipos: `condicao` (12h) e `perigo` (24h). O DTO inclui `isMine`.
-- `POST /community/reports`: cria relato em local oficial ou compartilhado aprovado. Quem favoritou o local e o dono do local (exceto o autor) recebem aviso no inbox.
+- `GET /community/reports?spotId=`: relatos ativos em locais públicos. Tipos: `condicao` (12h) e `perigo` (24h). O DTO inclui `authorName`, `createdAt` e `isMine`.
+- `POST /community/reports`: cria relato em local oficial ou compartilhado aprovado. A mesma pessoa não envia o mesmo tipo e comentário no mesmo local no mesmo dia civil (`America/Sao_Paulo`); a API responde `409` (`duplicate_report`). Contas ativas recebem aviso no inbox com o nome de quem relatou; o autor recebe a confirmação de envio.
 - `DELETE /community/reports/{id}`: o autor apaga o próprio relato e os votos ligados.
 - `POST /community/reports/{id}/confirm` e `/contest`: um voto por usuário, só no plano Premium. Free vê e cria relatos; o autor não vota no próprio. Sem Premium a API responde `400` (`plan_required`).
 - `GET /admin/fishing-spots/pending`, `POST /admin/fishing-spots/{id}/approve` e `/reject`: só Admin. Recusar devolve o ponto para `private` e notifica o dono.
 - `GET /admin/users`, `PUT /admin/users/{id}/plan` e `PUT /admin/users/{id}/active`: só Admin. Lista contas, troca o plano (`free` ou `premium`) e bloqueia ou libera o acesso. A conta do bootstrap não muda de plano nem é bloqueada; o admin não bloqueia a si mesmo nem o último admin ativo. Bloquear revoga os refresh tokens.
-- `GET /notifications`, `POST /notifications/{id}/read`, `DELETE /notifications/{id}`: caixa do usuário, itens ativos por 48h. A API cria avisos para: dono na aprovação/rejeição de local; alvo na troca de plano ou liberação de conta; quem favoritou o local e o dono (se não for o autor) em relato novo.
+- `GET /notifications`, `POST /notifications/{id}/read`, `DELETE /notifications/{id}`: caixa do usuário, itens ativos por 48h. A API cria avisos para: dono na aprovação/rejeição de local; alvo na troca de plano ou liberação de conta; contas ativas em relato novo (o autor recebe confirmação). O sino da web também lista os relatos ativos (`GET /community/reports`) para confirmar ou contestar.
 - `GET /notifications/unread`: `{ unread }` para o pontinho do sino, sem baixar a lista.
 - `GET /notifications/stream`: SSE autenticado (`Authorization` Bearer). Primeiro evento e pings seguintes usam `{ unread }`. Heartbeat em comentário. O access token é validado na abertura da conexão.
 - `GET /notifications/push-public-key`: `{ publicKey }` VAPID. Sem chaves configuradas responde `404`.

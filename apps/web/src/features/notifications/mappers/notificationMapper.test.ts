@@ -11,7 +11,7 @@ import {
 const valid = {
   id: '11111111-1111-1111-1111-111111111111',
   title: 'Novo relato',
-  body: 'Alguém relatou condição em Campeche.',
+  body: 'Ana relatou condição em Campeche.',
   createdAt: '2026-09-05T12:00:00Z',
   readAt: null,
 };

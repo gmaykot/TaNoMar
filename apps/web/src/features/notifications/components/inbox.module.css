@@ -14,8 +14,10 @@
   display: grid;
   width: min(22rem, calc(100vw - 2rem));
   max-width: calc(100vw - 2rem);
+  max-height: min(28rem, calc(100vh - 6rem));
   gap: var(--space-2);
   padding: var(--space-3);
+  overflow: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
@@ -53,6 +55,12 @@
   font-size: var(--font-size-xs);
 }
 
+.when {
+  color: var(--color-sea-700);
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+}
+
 .empty {
   margin: 0;
   padding: var(--space-4);
@@ -60,7 +68,15 @@
   font-size: var(--font-size-sm);
 }
 
-.item button {
+.meta {
+  color: var(--color-sea-700);
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.actions button {
   min-height: 2.75rem;
   margin-right: var(--space-2);
   padding: 0;
@@ -70,4 +86,25 @@
   font-size: var(--font-size-xs);
   font-weight: 750;
   cursor: pointer;
+}
+
+.votes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.link {
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-ocean-700);
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+}
+
+.danger {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
 }

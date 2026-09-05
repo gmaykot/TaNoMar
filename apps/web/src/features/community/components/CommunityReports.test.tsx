@@ -32,6 +32,7 @@ describe('CommunityReports', () => {
       spotName: 'Campeche',
       type: 'condicao',
       comment: 'Deu peixe',
+      authorName: 'Ana',
       createdAt: '2026-09-05T12:00:00Z',
       expiresAt: '2026-09-06T00:00:00Z',
       confirmations: 0,
@@ -45,6 +46,9 @@ describe('CommunityReports', () => {
     await user.click(await screen.findByRole('button', { name: 'Relatar Deu peixe' }));
 
     expect(createReport).toHaveBeenCalledWith('campeche', 'condicao', 'Deu peixe');
+    expect(
+      await screen.findByText('Relato enviado. Os outros pescadores receberam um aviso no sino.'),
+    ).toBeInTheDocument();
   });
 
   it('permite apagar o próprio relato', async () => {
@@ -56,6 +60,7 @@ describe('CommunityReports', () => {
         spotName: 'Campeche',
         type: 'condicao',
         comment: 'Deu peixe',
+        authorName: 'Ana',
         createdAt: '2026-09-05T12:00:00Z',
         expiresAt: '2026-09-06T00:00:00Z',
         confirmations: 0,
@@ -82,6 +87,7 @@ describe('CommunityReports', () => {
         spotName: 'Campeche',
         type: 'condicao',
         comment: 'Mar bom',
+        authorName: 'João',
         createdAt: '2026-09-05T12:00:00Z',
         expiresAt: '2026-09-06T00:00:00Z',
         confirmations: 1,
@@ -111,6 +117,7 @@ describe('CommunityReports', () => {
         spotName: 'Campeche',
         type: 'condicao',
         comment: 'Mar bom',
+        authorName: 'João',
         createdAt: '2026-09-05T12:00:00Z',
         expiresAt: '2026-09-06T00:00:00Z',
         confirmations: 1,
@@ -124,5 +131,34 @@ describe('CommunityReports', () => {
 
     expect(await screen.findByRole('button', { name: 'Confirmar' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Contestar' })).toBeEnabled();
+    expect(screen.getByText(/João/)).toBeInTheDocument();
+    expect(screen.getByText(/05\/09/)).toBeInTheDocument();
+  });
+
+  it('bloqueia o mesmo atalho no mesmo local no mesmo dia', async () => {
+    getReports.mockResolvedValue([
+      {
+        id: '22222222-2222-2222-2222-222222222222',
+        spotId: 'campeche',
+        spotName: 'Campeche',
+        type: 'condicao',
+        comment: 'Deu peixe',
+        authorName: 'Ana',
+        createdAt: new Date().toISOString(),
+        expiresAt: '2026-09-06T00:00:00Z',
+        confirmations: 0,
+        contested: 0,
+        myVote: null,
+        isMine: true,
+      },
+    ]);
+
+    renderWithProviders(<CommunityReports spotId="campeche" canReport />);
+
+    expect(
+      await screen.findByRole('button', { name: 'Você já relatou Deu peixe hoje neste local' }),
+    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Relatar Mar bom' })).toBeEnabled();
+    expect(screen.getByText(/Você/)).toBeInTheDocument();
   });
 });

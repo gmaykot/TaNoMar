@@ -13,6 +13,7 @@ import {
   deleteReport,
   getReports,
 } from '../services/communityService';
+import { formatDateTime, isSameCalendarDay } from '@/shared/utils/formatDateTime';
 import type { ReportType } from '../types/community';
 import { reportShortcuts, shortcutForComment } from '../utils/reportShortcuts';
 import styles from './community.module.css';
@@ -21,6 +22,10 @@ const typeLabel: Record<ReportType, string> = {
   condicao: 'Condição',
   perigo: 'Perigo',
 };
+
+function reportKey(type: ReportType, comment?: string | null) {
+  return `${type}:${comment?.trim() ?? ''}`;
+}
 
 const shortcutIcons: Record<(typeof reportShortcuts)[number]['id'], LucideIcon> = {
   'deu-peixe': Fish,
@@ -39,6 +44,7 @@ export function CommunityReports({ spotId, canReport, canVote = false }: Communi
   const queryClient = useQueryClient();
   const [type, setType] = useState<ReportType>('condicao');
   const [comment, setComment] = useState('');
+  const [sentMessage, setSentMessage] = useState<string | null>(null);
   const reports = useQuery({
     queryKey: ['community-reports', spotId],
     queryFn: () => getReports(spotId),
@@ -52,9 +58,14 @@ export function CommunityReports({ spotId, canReport, canVote = false }: Communi
       reportType: ReportType;
       reportComment?: string;
     }) => createReport(spotId, reportType, reportComment),
+    onMutate: () => {
+      setSentMessage(null);
+    },
     onSuccess: async () => {
       setComment('');
-      await queryClient.invalidateQueries({ queryKey: ['community-reports', spotId] });
+      setSentMessage('Relato enviado. Os outros pescadores receberam um aviso no sino.');
+      await queryClient.invalidateQueries({ queryKey: ['community-reports'] });
+      await queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 
@@ -62,17 +73,23 @@ export function CommunityReports({ spotId, canReport, canVote = false }: Communi
     mutationFn: ({ id, kind }: { id: string; kind: 'confirm' | 'contest' }) =>
       kind === 'confirm' ? confirmReport(id) : contestReport(id),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['community-reports', spotId] });
+      await queryClient.invalidateQueries({ queryKey: ['community-reports'] });
     },
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => deleteReport(id),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['community-reports', spotId] });
+      await queryClient.invalidateQueries({ queryKey: ['community-reports'] });
     },
   });
 
+  const usedToday = new Set(
+    (reports.data ?? [])
+      .filter((item) => item.isMine && isSameCalendarDay(item.createdAt))
+      .map((item) => reportKey(item.type, item.comment)),
+  );
+  const customUsed = usedToday.has(reportKey(type, comment));
   const createError =
     create.error instanceof ApiError
       ? create.error.message
@@ -103,12 +120,13 @@ export function CommunityReports({ spotId, canReport, canVote = false }: Communi
           <div>
             <span className={styles.meta}>Atalhos</span>
             <p className={styles.hint}>
-              Um toque envia o relato. Quem favoritou este local recebe um aviso no sino.
+              Um toque envia o relato. Os outros pescadores recebem um aviso no sino.
             </p>
           </div>
           <div className={styles.shortcuts} role="group" aria-label="Atalhos de relato">
             {reportShortcuts.map((shortcut) => {
               const Icon = shortcutIcons[shortcut.id];
+              const alreadySent = usedToday.has(reportKey(shortcut.type, shortcut.comment));
               return (
                 <button
                   key={shortcut.id}
@@ -120,8 +138,12 @@ export function CommunityReports({ spotId, canReport, canVote = false }: Communi
                       reportComment: shortcut.comment,
                     })
                   }
-                  disabled={create.isPending}
-                  aria-label={`Relatar ${shortcut.label}`}
+                  disabled={create.isPending || alreadySent}
+                  aria-label={
+                    alreadySent
+                      ? `Você já relatou ${shortcut.label} hoje neste local`
+                      : `Relatar ${shortcut.label}`
+                  }
                 >
                   <Icon size={18} aria-hidden="true" />
                   <strong>{shortcut.label}</strong>
@@ -161,6 +183,12 @@ export function CommunityReports({ spotId, canReport, canVote = false }: Communi
             </label>
           </div>
           {createError ? <p>{createError}</p> : null}
+          {sentMessage ? (
+            <p className={styles.success} role="status">
+              {sentMessage}
+            </p>
+          ) : null}
+          {customUsed ? <p>Você já enviou este relato hoje neste local.</p> : null}
           <Button
             type="button"
             onClick={() =>
@@ -169,7 +197,7 @@ export function CommunityReports({ spotId, canReport, canVote = false }: Communi
                 reportComment: comment.trim() || undefined,
               })
             }
-            disabled={create.isPending}
+            disabled={create.isPending || customUsed}
           >
             Enviar relato
           </Button>
@@ -203,7 +231,10 @@ export function CommunityReports({ spotId, canReport, canVote = false }: Communi
                     {report.confirmations} confirmaram · {report.contested} contestaram
                   </span>
                 </header>
-                {report.isMine ? <span className={styles.meta}>Seu relato</span> : null}
+                <span className={styles.author}>
+                  {report.isMine ? 'Você' : report.authorName} ·{' '}
+                  <time dateTime={report.createdAt}>{formatDateTime(report.createdAt)}</time>
+                </span>
                 {report.comment && report.comment !== shortcut?.label ? (
                   <p>{report.comment}</p>
                 ) : null}

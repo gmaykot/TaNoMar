@@ -460,8 +460,10 @@ api.MapGet("/community/reports", async (string? spotId, ClaimsPrincipal principa
         query = query.Where(item => item.spot.Slug == spotId);
     var rows = await query.OrderByDescending(item => item.report.CreatedAt).ToListAsync(cancellationToken);
     var reportIds = rows.Select(item => item.report.Id).ToList();
+    var authorIds = rows.Select(item => item.report.UserId).Distinct().ToList();
     var myVotes = await db.CommunityReportVotes.AsNoTracking().Where(vote => vote.UserId == user.Id && reportIds.Contains(vote.ReportId)).ToListAsync(cancellationToken);
-    return Results.Ok(rows.Select(item => ReportDto(item.report, item.spot, myVotes.FirstOrDefault(vote => vote.ReportId == item.report.Id)?.Kind, item.report.UserId == user.Id)).ToList());
+    var authors = await db.Users.AsNoTracking().Where(item => authorIds.Contains(item.Id)).ToDictionaryAsync(item => item.Id, item => item.Name, cancellationToken);
+    return Results.Ok(rows.Select(item => ReportDto(item.report, item.spot, myVotes.FirstOrDefault(vote => vote.ReportId == item.report.Id)?.Kind, item.report.UserId == user.Id, AuthorName(authors.GetValueOrDefault(item.report.UserId)))).ToList());
 }).RequireAuthorization();
 api.MapPost("/community/reports", async (CommunityReportRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, NotificationRealtimeHub hub, WebPushQueue push, CancellationToken cancellationToken) =>
 {
@@ -472,19 +474,32 @@ api.MapPost("/community/reports", async (CommunityReportRequest request, ClaimsP
     if (spot is null) return Results.NotFound();
     if (!SpotRules.IsCommunityVisible(spot)) return Results.Forbid();
     var type = request.Type.Trim().ToLowerInvariant();
-    var report = new CommunityReport { UserId = user.Id, FishingSpotId = spot.Id, Type = type, Comment = request.Comment?.Trim(), ExpiresAt = DateTimeOffset.UtcNow.AddHours(type == "perigo" ? 24 : 12) };
+    var comment = SpotRules.NormalizeReportComment(request.Comment);
+    var (dayStart, dayEnd) = SpotRules.SaoPauloDayUtcRange(DateTimeOffset.UtcNow);
+    var alreadyReported = await db.CommunityReports.AnyAsync(item =>
+        item.UserId == user.Id
+        && item.FishingSpotId == spot.Id
+        && item.Type == type
+        && item.Comment == comment
+        && item.CreatedAt >= dayStart
+        && item.CreatedAt < dayEnd, cancellationToken);
+    if (alreadyReported)
+        return Results.Conflict(new { code = "duplicate_report", detail = "Você já enviou este relato hoje neste local." });
+    var report = new CommunityReport { UserId = user.Id, FishingSpotId = spot.Id, Type = type, Comment = comment, ExpiresAt = DateTimeOffset.UtcNow.AddHours(type == "perigo" ? 24 : 12) };
     db.CommunityReports.Add(report);
-    var recipientIds = await db.FavoriteSpots.Where(item => item.FishingSpotId == spot.Id && item.UserId != user.Id).Select(item => item.UserId).Distinct().ToListAsync(cancellationToken);
-    if (spot.OwnerUserId is Guid ownerId && ownerId != user.Id && !recipientIds.Contains(ownerId))
-        recipientIds.Add(ownerId);
+    var recipientIds = await db.Users.Where(item => item.IsActive && item.Id != user.Id).Select(item => item.Id).ToListAsync(cancellationToken);
     const string title = "Novo relato";
-    var body = $"Alguém relatou {LabelForReportType(type)} em {spot.Name}.";
+    var body = $"{user.Name} relatou {LabelForReportType(type)} em {spot.Name}.";
     foreach (var recipientId in recipientIds)
         AddNotification(db, recipientId, title, body);
+    const string authorTitle = "Relato enviado";
+    var authorBody = $"Seu relato de {LabelForReportType(type)} em {spot.Name} foi publicado.";
+    AddNotification(db, user.Id, authorTitle, authorBody);
     await db.SaveChangesAsync(cancellationToken);
     foreach (var recipientId in recipientIds)
         DispatchCreated(hub, push, recipientId, title, body);
-    return Results.Created($"/api/v1/community/reports/{report.Id}", ReportDto(report, spot, null, true));
+    DispatchCreated(hub, push, user.Id, authorTitle, authorBody);
+    return Results.Created($"/api/v1/community/reports/{report.Id}", ReportDto(report, spot, null, true, AuthorName(user.Name)));
 }).RequireAuthorization().RequireRateLimiting("community");
 api.MapPost("/community/reports/{id:guid}/confirm", (Guid id, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) => VoteReportAsync(id, "confirm", principal, db, cancellationToken)).RequireAuthorization().RequireRateLimiting("community");
 api.MapPost("/community/reports/{id:guid}/contest", (Guid id, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) => VoteReportAsync(id, "contest", principal, db, cancellationToken)).RequireAuthorization().RequireRateLimiting("community");
@@ -731,13 +746,14 @@ static object SpotDtoProjection(FishingSpot spot, User user, bool favorite = fal
     isApproved = spot.IsApproved,
     isOwner = SpotRules.Owns(spot, user)
 };
-static object ReportDto(CommunityReport report, FishingSpot spot, string? myVote, bool isMine) => new
+static object ReportDto(CommunityReport report, FishingSpot spot, string? myVote, bool isMine, string authorName) => new
 {
     id = report.Id,
     spotId = spot.Slug,
     spotName = spot.Name,
     type = report.Type,
     comment = report.Comment,
+    authorName,
     createdAt = report.CreatedAt,
     expiresAt = report.ExpiresAt,
     confirmations = report.Confirmations,
@@ -745,6 +761,8 @@ static object ReportDto(CommunityReport report, FishingSpot spot, string? myVote
     myVote,
     isMine
 };
+static string AuthorName(string? name) =>
+    string.IsNullOrWhiteSpace(name) ? "Pescador" : name.Trim();
 static string LabelForReportType(string type) => type == "perigo" ? "perigo" : "condição";
 static void AddNotification(TaNoMarDbContext db, Guid userId, string title, string body) =>
     db.Notifications.Add(new Notification { UserId = userId, Title = title, Body = body });

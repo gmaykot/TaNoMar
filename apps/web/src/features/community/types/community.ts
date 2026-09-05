@@ -7,6 +7,7 @@ export interface CommunityReport {
   spotName: string;
   type: ReportType;
   comment: string | null;
+  authorName: string;
   createdAt: string;
   expiresAt: string;
   confirmations: number;

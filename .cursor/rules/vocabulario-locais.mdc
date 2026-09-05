@@ -1,0 +1,40 @@
+---
+description: Vocabulário de apresentação — local, não pesqueiro nem praia
+alwaysApply: true
+---
+
+# Vocabulário: local
+
+Na interface, erros visíveis e documentação de produto, o ponto de pesca se chama **local** (plural **locais**).
+
+## Use
+
+- Navegação, títulos, atalhos: Locais, Meus locais, Novo local
+- Formulários: Nome do local, Adicionar local, Editar local
+- Filtros e vazios: locais pessoais, local encontrado, nenhum local
+- Admin e API visível: local compartilhado, local pessoal
+
+```text
+✅ Meus locais
+✅ Cadastre um local pessoal.
+✅ Já existe um local com esse nome ou muito próximo.
+```
+
+## Não use para a entidade
+
+- pesqueiro / pesqueiros
+- praia / praias (como nome do ponto)
+
+```text
+❌ Meus pesqueiros
+❌ Nome do pesqueiro
+❌ Praias oficiais
+```
+
+## Exceções
+
+- Perfil costeiro na UI: Praia aberta, Praia semiaberta, Águas protegidas
+- Contratos e IDs: `fishing-spots`, `type: praia`, `praia_aberta`, `praia_semi_aberta`, `praia_protegida`
+- Rotas públicas: `/locais`
+
+Detalhe em `docs/frontend-guidelines.md`.

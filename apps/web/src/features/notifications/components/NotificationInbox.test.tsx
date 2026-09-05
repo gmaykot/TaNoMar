@@ -12,12 +12,29 @@ const inbox = vi.hoisted(() => ({
     createdAt: string;
     readAt: string | null;
   }>,
+  reports: [] as Array<{
+    id: string;
+    spotId: string;
+    spotName: string;
+    type: 'condicao' | 'perigo';
+    comment: string | null;
+    authorName: string;
+    createdAt: string;
+    expiresAt: string;
+    confirmations: number;
+    contested: number;
+    myVote: 'confirm' | 'contest' | null;
+    isMine: boolean;
+  }>,
+  canVote: true,
   unread: false,
   listPending: false,
   listError: false,
   refetchList: vi.fn(),
   markRead: vi.fn(),
   remove: vi.fn(),
+  voteReport: vi.fn(),
+  votePending: false,
 }));
 
 vi.mock('../hooks/useNotificationInbox', () => ({
@@ -27,12 +44,16 @@ vi.mock('../hooks/useNotificationInbox', () => ({
 describe('NotificationInbox', () => {
   beforeEach(() => {
     inbox.items = [];
+    inbox.reports = [];
+    inbox.canVote = true;
     inbox.unread = false;
     inbox.listPending = false;
     inbox.listError = false;
+    inbox.votePending = false;
     inbox.refetchList.mockReset();
     inbox.markRead.mockReset();
     inbox.remove.mockReset();
+    inbox.voteReport.mockReset();
   });
 
   it('mostra o pontinho sem abrir o painel quando há não lida', () => {
@@ -72,7 +93,7 @@ describe('NotificationInbox', () => {
       {
         id: '11111111-1111-1111-1111-111111111111',
         title: 'Novo relato',
-        body: 'Alguém relatou condição em Campeche.',
+        body: 'Ana relatou condição em Campeche.',
         createdAt: '2026-09-05T12:00:00Z',
         readAt: null,
       },
@@ -82,9 +103,48 @@ describe('NotificationInbox', () => {
 
     await user.click(screen.getByRole('button', { name: 'Notificações' }));
     expect(await screen.findByText('Novo relato')).toBeInTheDocument();
-    expect(screen.getByText('Alguém relatou condição em Campeche.')).toBeInTheDocument();
+    expect(screen.getByText('Ana relatou condição em Campeche.')).toBeInTheDocument();
+    expect(screen.getByText(/05\/09/)).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Notificações' }).querySelector('span'),
     ).not.toBeNull();
+  });
+
+  it('mostra relato ativo para confirmar no sino', async () => {
+    const user = userEvent.setup();
+    inbox.unread = true;
+    inbox.reports = [
+      {
+        id: '22222222-2222-2222-2222-222222222222',
+        spotId: 'campeche',
+        spotName: 'Campeche',
+        type: 'condicao',
+        comment: 'Mar bom para pescar',
+        authorName: 'Pedro',
+        createdAt: '2026-09-05T12:00:00Z',
+        expiresAt: '2026-09-06T00:00:00Z',
+        confirmations: 0,
+        contested: 0,
+        myVote: null,
+        isMine: false,
+      },
+    ];
+    inbox.refetchList.mockResolvedValue(undefined);
+    renderWithProviders(<NotificationInbox />);
+
+    await user.click(screen.getByRole('button', { name: 'Notificações' }));
+    expect(await screen.findByText('Mar bom')).toBeInTheDocument();
+    expect(screen.getByText(/Pedro/)).toBeInTheDocument();
+    expect(screen.getByText(/05\/09/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ver local' })).toHaveAttribute(
+      'href',
+      '/locais/campeche',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Confirmar' }));
+    expect(inbox.voteReport).toHaveBeenCalledWith({
+      id: '22222222-2222-2222-2222-222222222222',
+      kind: 'confirm',
+    });
   });
 });

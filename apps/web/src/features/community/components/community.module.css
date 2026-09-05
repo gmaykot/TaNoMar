@@ -52,10 +52,23 @@
   text-transform: uppercase;
 }
 
+.author {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
 .hint {
   margin: var(--space-1) 0 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
+}
+
+.success {
+  margin: 0;
+  color: var(--color-success);
+  font-size: var(--font-size-sm);
+  font-weight: 650;
 }
 
 .shortcuts {
@@ -89,7 +102,7 @@
 
 .shortcut:disabled {
   opacity: 0.65;
-  cursor: wait;
+  cursor: not-allowed;
 }
 
 .shortcut strong {

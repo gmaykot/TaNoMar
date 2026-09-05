@@ -23,4 +23,18 @@ internal static class SpotRules
 
     public static bool IsValidReportType(string type) =>
         ReportTypes.Contains(type, StringComparer.OrdinalIgnoreCase);
+
+    public static string? NormalizeReportComment(string? comment)
+    {
+        var trimmed = comment?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? null : trimmed;
+    }
+
+    public static (DateTimeOffset StartUtc, DateTimeOffset EndUtc) SaoPauloDayUtcRange(DateTimeOffset utcNow)
+    {
+        var zone = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+        var local = TimeZoneInfo.ConvertTime(utcNow, zone);
+        var startLocal = new DateTimeOffset(local.Year, local.Month, local.Day, 0, 0, 0, local.Offset);
+        return (startLocal.ToUniversalTime(), startLocal.AddDays(1).ToUniversalTime());
+    }
 }

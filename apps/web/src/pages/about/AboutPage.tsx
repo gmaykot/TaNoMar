@@ -82,8 +82,9 @@ export function AboutPage() {
         <p>
           Relatos de condição duram 12 horas. Relatos de perigo duram 24 horas. Qualquer pescador no
           app vê e relata — com um toque (deu peixe, mar bom, mar ruim ou perigo) ou escrevendo o
-          que viu. Confirmar ou contestar é Premium. Quem favoritou o local recebe um aviso na caixa
-          do sino. O autor pode apagar o próprio relato.
+          que viu. Cada pessoa só envia o mesmo relato uma vez por dia no mesmo local. Confirmar ou
+          contestar é Premium. Os relatos ativos aparecem no sino com quem relatou e quando. O autor
+          pode apagar o próprio relato.
         </p>
       </Card>
       <Card as="section" className={aboutStyles.notice}>

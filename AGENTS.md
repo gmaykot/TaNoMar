@@ -15,6 +15,7 @@ TáNoMar ajuda pescadores a decidir onde e quando pescar. O repositório contém
 - Regras e cálculo de pesca pertencem à API; o frontend nunca recalcula a nota.
 - Tokens e componentes globais ficam em `apps/web/src/design-system`.
 - Contratos e identificadores de runtime estão em `docs/api-contracts.md`.
+- Na interface, o ponto de pesca se chama **local** (plural **locais**). Não use “pesqueiro” nem “praia” para nomear a entidade. Ver `docs/frontend-guidelines.md`.
 
 ## Antes de alterar uma feature
 

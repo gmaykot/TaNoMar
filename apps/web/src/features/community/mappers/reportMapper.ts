@@ -34,12 +34,13 @@ export function parseReport(value: unknown): CommunityReport {
   const spotId = readString(value.spotId);
   const spotName = readString(value.spotName);
   const type = readString(value.type);
+  const authorName = readString(value.authorName);
   const createdAt = readString(value.createdAt);
   const expiresAt = readString(value.expiresAt);
   const confirmations = readNumber(value.confirmations);
   const contested = readNumber(value.contested);
   const isMine = readBoolean(value.isMine);
-  if (!id || !spotId || !spotName || !type || !createdAt || !expiresAt) {
+  if (!id || !spotId || !spotName || !type || !authorName || !createdAt || !expiresAt) {
     throw new ContractError('Relato incompleto.');
   }
   if (confirmations === null || contested === null) {
@@ -54,6 +55,7 @@ export function parseReport(value: unknown): CommunityReport {
     spotName,
     type: parseType(type),
     comment: readString(value.comment),
+    authorName,
     createdAt,
     expiresAt,
     confirmations,

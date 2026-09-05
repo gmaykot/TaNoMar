@@ -9,6 +9,7 @@ describe('reportMapper', () => {
       spotName: 'Campeche',
       type: 'perigo',
       comment: 'Corrente forte',
+      authorName: 'Ana',
       createdAt: '2026-09-05T12:00:00Z',
       expiresAt: '2026-09-06T12:00:00Z',
       confirmations: 2,
@@ -18,6 +19,7 @@ describe('reportMapper', () => {
     });
     expect(report).toMatchObject({
       type: 'perigo',
+      authorName: 'Ana',
       myVote: 'confirm',
       confirmations: 2,
       isMine: false,
