@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Button } from '@/design-system/components/Button';
 import type { FishingLocation } from '@/features/fishing/types/fishing';
+import { islandWideRegion, resolveRegion } from '../regions';
 import type { PersonalSpotInput } from '../services/locationsService';
+import { RegionPicker } from './RegionPicker';
 import styles from './spotForm.module.css';
 
 const profiles: Array<{ value: FishingLocation['profile']; label: string }> = [
@@ -30,7 +32,7 @@ export function SpotForm({
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [city, setCity] = useState(initial?.city ?? 'Florianópolis');
-  const [region, setRegion] = useState(initial?.region ?? 'Meu mapa');
+  const [region, setRegion] = useState(resolveRegion(initial?.region ?? islandWideRegion));
   const [latitude, setLatitude] = useState(String(initial?.latitude ?? ''));
   const [longitude, setLongitude] = useState(String(initial?.longitude ?? ''));
   const [orientation, setOrientation] = useState(String(initial?.seaOrientationDegrees ?? '90'));
@@ -69,7 +71,7 @@ export function SpotForm({
           description: description.trim() || undefined,
           city: city.trim(),
           state: initial?.state ?? 'SC',
-          region: region.trim() || 'Meu mapa',
+          region: resolveRegion(region),
           latitude: lat,
           longitude: lon,
           seaOrientationDegrees: Number.isFinite(seaOrientationDegrees) ? seaOrientationDegrees : 0,
@@ -86,16 +88,15 @@ export function SpotForm({
         <span>Descrição</span>
         <textarea value={description} onChange={(event) => setDescription(event.target.value)} />
       </label>
-      <div className={styles.row}>
-        <label className={styles.field}>
-          <span>Cidade</span>
-          <input value={city} onChange={(event) => setCity(event.target.value)} />
-        </label>
-        <label className={styles.field}>
-          <span>Região</span>
-          <input value={region} onChange={(event) => setRegion(event.target.value)} />
-        </label>
-      </div>
+      <label className={styles.field}>
+        <span>Cidade</span>
+        <input value={city} onChange={(event) => setCity(event.target.value)} />
+      </label>
+      <RegionPicker
+        value={region}
+        hint="Toque no pedaço da ilha onde fica o pesqueiro."
+        onChange={setRegion}
+      />
       <div className={styles.row}>
         <label className={styles.field}>
           <span>Latitude</span>

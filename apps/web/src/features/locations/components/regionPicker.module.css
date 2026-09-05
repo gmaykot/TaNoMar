@@ -1,0 +1,169 @@
+.picker {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.stage {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.picker > span {
+  color: var(--color-ocean-700);
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+}
+
+.hint {
+  margin: -0.35rem 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.map {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 18% 22%, rgb(255 255 255 / 35%), transparent 7rem),
+    radial-gradient(
+      circle at 82% 78%,
+      color-mix(in srgb, var(--color-sea-500) 28%, transparent),
+      transparent 8rem
+    ),
+    linear-gradient(165deg, var(--color-sea-200), var(--color-ocean-700));
+  box-shadow: var(--shadow-sm);
+}
+
+.map svg {
+  display: block;
+  width: min(100%, 11.5rem);
+  height: auto;
+  margin: 0 auto;
+}
+
+.water {
+  fill: transparent;
+}
+
+.zone {
+  fill: color-mix(in srgb, var(--color-sand-100) 82%, white);
+}
+
+.norte {
+  fill: color-mix(in srgb, var(--color-sand-200) 70%, var(--color-sea-100));
+}
+
+.leste {
+  fill: color-mix(in srgb, var(--color-sea-100) 55%, var(--color-sand-100));
+}
+
+.oeste {
+  fill: color-mix(in srgb, var(--color-sand-500) 45%, var(--color-sand-100));
+}
+
+.sul {
+  fill: color-mix(in srgb, var(--color-sea-200) 40%, var(--color-sand-100));
+}
+
+.zoneActive {
+  fill: var(--color-ocean-950);
+}
+
+.outline {
+  fill: none;
+  stroke: rgb(255 255 255 / 55%);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.label {
+  fill: var(--color-ocean-700);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.labelActive {
+  fill: white;
+}
+
+.hotspots {
+  position: absolute;
+  inset: 8% 22%;
+}
+
+.hotspot {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.hotspotNorte {
+  top: 0;
+  right: 12%;
+  left: 18%;
+  height: 28%;
+}
+
+.hotspotLeste {
+  top: 28%;
+  right: 0;
+  width: 52%;
+  height: 38%;
+}
+
+.hotspotOeste {
+  top: 28%;
+  left: 0;
+  width: 48%;
+  height: 38%;
+}
+
+.hotspotSul {
+  right: 16%;
+  bottom: 0;
+  left: 10%;
+  height: 34%;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-ocean-700);
+  background: var(--color-surface);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chipActive {
+  color: white;
+  background: var(--color-ocean-950);
+}
+
+@media (min-width: 48rem) {
+  .stage {
+    grid-template-columns: 11.5rem minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .chips {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

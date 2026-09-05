@@ -1,4 +1,5 @@
 .inbox {
+  position: relative;
   display: flex;
 }
 

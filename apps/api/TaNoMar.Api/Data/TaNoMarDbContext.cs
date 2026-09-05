@@ -29,7 +29,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
         modelBuilder.Entity<FishingForecastSnapshot>().Property(item => item.PayloadJson).HasColumnType("jsonb");
 
         modelBuilder.Entity<Plan>().HasData(
-            new Plan { Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0001"), Code = "free", Name = "Free", MaxForecastDays = 3, MaxFavorites = 3, MaxPersonalSpots = 0, MaxAlerts = 0 },
+            new Plan { Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0001"), Code = "free", Name = "Free", MaxForecastDays = 3, MaxFavorites = 0, MaxPersonalSpots = 0, MaxAlerts = 0 },
             new Plan { Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0002"), Code = "premium", Name = "Premium", MaxForecastDays = 8, MaxFavorites = 20, MaxPersonalSpots = 10, MaxAlerts = 10 });
 
     }

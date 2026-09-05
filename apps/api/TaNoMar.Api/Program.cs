@@ -350,16 +350,22 @@ api.MapPut("/me/favorites", async (FavoriteRequest request, ClaimsPrincipal prin
     return Results.NoContent();
 }).RequireAuthorization();
 
-api.MapGet("/forecasts/ranking", async (ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, CancellationToken cancellationToken) =>
+api.MapGet("/forecasts/ranking", async (string? emphasis, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
+    if (!FishingRankingEmphasis.TryParse(emphasis, out var parsedEmphasis))
+        return Results.BadRequest(new { detail = "Ênfase inválida. Use wind, wind-more, rain, rain-more, waves ou waves-less." });
     var plan = await db.Plans.SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
+    var premium = plan.Code == "premium";
+    if (FishingRankingEmphasis.RequiresPremium(parsedEmphasis) && !premium)
+        return Results.BadRequest(new { code = "plan_required", detail = "Reordenar o ranking exige o plano Premium.", requiredPlan = "Premium" });
     var days = new List<object>();
     for (var day = 0; day < plan.MaxForecastDays; day++)
     {
         var forecast = await fishing.GetAsync(day, cancellationToken);
-        days.Add(ForecastDayDto(forecast, plan.Code == "premium"));
+        var ordered = forecast with { Ranking = FishingRankingEmphasis.Order(forecast.Ranking, parsedEmphasis) };
+        days.Add(ForecastDayDto(ordered, premium));
     }
     return Results.Ok(new { generatedAt = DateTimeOffset.UtcNow, availableFrom = DateOnly.FromDateTime(DateTime.UtcNow), availableTo = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(plan.MaxForecastDays - 1)), days });
 }).RequireAuthorization();
@@ -433,9 +439,11 @@ api.MapPost("/community/reports", async (CommunityReportRequest request, ClaimsP
     var type = request.Type.Trim().ToLowerInvariant();
     var report = new CommunityReport { UserId = user.Id, FishingSpotId = spot.Id, Type = type, Comment = request.Comment?.Trim(), ExpiresAt = DateTimeOffset.UtcNow.AddHours(type == "perigo" ? 24 : 12) };
     db.CommunityReports.Add(report);
-    var favoriteUserIds = await db.FavoriteSpots.Where(item => item.FishingSpotId == spot.Id && item.UserId != user.Id).Select(item => item.UserId).Distinct().ToListAsync(cancellationToken);
-    foreach (var favoriteUserId in favoriteUserIds)
-        AddNotification(db, favoriteUserId, "Novo relato", $"Alguém relatou {LabelForReportType(type)} em {spot.Name}.");
+    var recipientIds = await db.FavoriteSpots.Where(item => item.FishingSpotId == spot.Id && item.UserId != user.Id).Select(item => item.UserId).Distinct().ToListAsync(cancellationToken);
+    if (spot.OwnerUserId is Guid ownerId && ownerId != user.Id && !recipientIds.Contains(ownerId))
+        recipientIds.Add(ownerId);
+    foreach (var recipientId in recipientIds)
+        AddNotification(db, recipientId, "Novo relato", $"Alguém relatou {LabelForReportType(type)} em {spot.Name}.");
     await db.SaveChangesAsync(cancellationToken);
     return Results.Created($"/api/v1/community/reports/{report.Id}", ReportDto(report, spot, null, true));
 }).RequireAuthorization().RequireRateLimiting("community");
@@ -618,6 +626,8 @@ static async Task<IResult> VoteReportAsync(Guid id, string kind, ClaimsPrincipal
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
+    if (!string.Equals(user.PlanCode, "premium", StringComparison.Ordinal))
+        return Results.BadRequest(new { code = "plan_required", detail = "Confirmar ou contestar um relato exige o plano Premium.", requiredPlan = "Premium" });
     var report = await db.CommunityReports.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
     if (report is null || report.ExpiresAt <= DateTimeOffset.UtcNow) return Results.NotFound();
     var spot = await db.FishingSpots.SingleOrDefaultAsync(item => item.Id == report.FishingSpotId, cancellationToken);

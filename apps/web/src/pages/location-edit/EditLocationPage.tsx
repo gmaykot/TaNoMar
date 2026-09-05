@@ -37,7 +37,7 @@ export function EditLocationPage() {
       <PageHeader
         eyebrow="Seu mapa"
         title="Editar pesqueiro."
-        description="Ajuste coordenadas, perfil costeiro ou a visibilidade."
+        description="Coordenadas, perfil costeiro e visibilidade."
       />
       <SpotForm
         initial={location}

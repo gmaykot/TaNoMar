@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Fish, Waves, Wind } from 'lucide-react';
+import { AlertTriangle, Fish, Lock, Waves, Wind } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
@@ -32,9 +32,10 @@ const shortcutIcons: Record<(typeof reportShortcuts)[number]['id'], LucideIcon> 
 interface CommunityReportsProps {
   spotId: string;
   canReport: boolean;
+  canVote?: boolean;
 }
 
-export function CommunityReports({ spotId, canReport }: CommunityReportsProps) {
+export function CommunityReports({ spotId, canReport, canVote = false }: CommunityReportsProps) {
   const queryClient = useQueryClient();
   const [type, setType] = useState<ReportType>('condicao');
   const [comment, setComment] = useState('');
@@ -219,7 +220,7 @@ export function CommunityReports({ spotId, canReport }: CommunityReportsProps) {
                       Apagar
                     </Button>
                   </div>
-                ) : (
+                ) : canVote ? (
                   <div className={styles.votes}>
                     <Button
                       type="button"
@@ -235,6 +236,17 @@ export function CommunityReports({ spotId, canReport }: CommunityReportsProps) {
                       onClick={() => vote.mutate({ id: report.id, kind: 'contest' })}
                       disabled={vote.isPending}
                     >
+                      Contestar
+                    </Button>
+                  </div>
+                ) : (
+                  <div className={styles.votes}>
+                    <Button type="button" locked aria-label="Confirmar bloqueado no plano atual">
+                      <Lock size={16} aria-hidden="true" />
+                      Confirmar
+                    </Button>
+                    <Button type="button" locked aria-label="Contestar bloqueado no plano atual">
+                      <Lock size={16} aria-hidden="true" />
                       Contestar
                     </Button>
                   </div>

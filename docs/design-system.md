@@ -31,4 +31,4 @@ Sora e Caveat são servidas localmente. Caveat não entra em botões, formulári
 
 ## Marca
 
-Logos e ícones oficiais em `apps/web/public/brand` e `apps/web/public/icons` vêm do brand kit raster. `TaNoMarLogo` usa os PNG horizontais (login e desktop) e o compacto (barra estreita). O símbolo serve a espaços quadrados; ícones de navegação continuam semânticos (Lucide), não o símbolo da marca.
+Logos e ícones oficiais em `apps/web/public/brand` e `apps/web/public/icons` vêm do brand kit raster. Os ícones PWA 180/192/512/1024 são gerados a partir de `app-icon-master`. `TaNoMarLogo` usa os PNG horizontais (login e desktop) e o compacto (barra estreita). O símbolo serve a espaços quadrados; ícones de navegação continuam semânticos (Lucide), não o símbolo da marca.

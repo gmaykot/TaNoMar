@@ -18,6 +18,9 @@ export interface FishingMetric {
   locked?: boolean;
 }
 
+export type ForecastRankingEmphasis =
+  'wind' | 'wind-more' | 'rain' | 'rain-more' | 'waves' | 'waves-less';
+
 export interface ForecastRankingItem {
   locationId: string;
   locationName: string;

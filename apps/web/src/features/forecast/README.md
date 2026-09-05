@@ -2,7 +2,7 @@
 
 A feature apresenta a decisão produzida pelo backend. Ela não calcula nota nem classificação.
 
-- `services`: chamam `/forecasts/ranking`, `/fishing-spots/{id}/forecast` e `/fishing-spots/{id}/marine`.
+- `services`: chamam `/forecasts/ranking`, `/fishing-spots/{id}/forecast` e `/fishing-spots/{id}/marine`. O ranking aceita `emphasis` opcional (`wind`, `wind-more`, `rain`, `rain-more`, `waves`, `waves-less`); a API reordena e a nota continua a mesma. A ênfase é exclusiva do plano Premium.
 - `hooks`: integração de services com TanStack Query.
 - `components`: seleção de data, carrossel do dia na home, destaque, métricas do ar e o detalhe expansível de mar e maré.
 - Na home, data e previsão ficam no mesmo carrossel: um gesto troca o dia inteiro, sem recalcular a nota no cliente.

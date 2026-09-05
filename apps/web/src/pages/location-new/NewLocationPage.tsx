@@ -39,7 +39,7 @@ export function NewLocationPage() {
       <PageHeader
         eyebrow="Seu mapa"
         title="Adicionar pesqueiro."
-        description="Guarde um ponto privado ou envie para a comunidade aprovar."
+        description="Privado ou compartilhado com a comunidade."
       />
       <SpotForm
         submitLabel="Salvar local"

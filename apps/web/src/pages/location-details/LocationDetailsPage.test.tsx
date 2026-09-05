@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Route, Routes } from 'react-router-dom';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -56,6 +56,36 @@ vi.mock('@/features/community/services/communityService', () => ({
   deleteReport: vi.fn(),
 }));
 
+const authState = vi.hoisted(() => ({
+  maxFavorites: 20,
+}));
+
+vi.mock('@/features/auth/hooks/useAuth', () => ({
+  useAuth: () => ({
+    status: 'authenticated',
+    user: {
+      id: 'user-1',
+      name: 'Ana',
+      email: 'ana@example.com',
+      pictureUrl: null,
+      role: 'User',
+      plan: {
+        code: authState.maxFavorites > 0 ? 'premium' : 'free',
+        name: authState.maxFavorites > 0 ? 'Premium' : 'Free',
+      },
+      entitlements: {
+        maxForecastDays: 8,
+        maxFavorites: authState.maxFavorites,
+        maxPersonalSpots: authState.maxFavorites > 0 ? 10 : 0,
+        maxAlerts: 10,
+      },
+      preferences: { region: 'Florianópolis', windUnit: 'kmh', forecastNotifications: true },
+    },
+    loginWithGoogle: vi.fn(),
+    logout: vi.fn(),
+  }),
+}));
+
 vi.mock('@/features/locations/services/locationsService', () => ({
   getLocations: () => Promise.resolve(locationsFixture),
   setFavorite: () => Promise.resolve(),
@@ -68,6 +98,10 @@ vi.mock('@/features/locations/services/locationsService', () => ({
 }));
 
 describe('LocationDetailsPage', () => {
+  beforeEach(() => {
+    authState.maxFavorites = 20;
+  });
+
   it('mostra estado amigável para local inexistente', async () => {
     renderWithProviders(
       <Routes>
@@ -95,5 +129,20 @@ describe('LocationDetailsPage', () => {
     expect(await screen.findByText('Enchente')).toBeInTheDocument();
     expect(screen.getByText('Ondas')).toBeInTheDocument();
     expect(screen.getByLabelText('Maré')).toBeInTheDocument();
+  });
+
+  it('bloqueia favoritar no plano Free com cadeado Premium', async () => {
+    authState.maxFavorites = 0;
+    renderWithProviders(
+      <Routes>
+        <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
+      </Routes>,
+      ['/locais/pantano_do_sul'],
+    );
+    const favorite = await screen.findByRole('button', {
+      name: 'Favoritar bloqueado no plano atual',
+    });
+    expect(favorite).toBeDisabled();
+    expect(favorite).toHaveTextContent('Premium');
   });
 });

@@ -13,7 +13,18 @@
   place-items: center;
   border-radius: var(--radius-md);
   color: var(--color-ocean-950);
+}
+
+.iconAberta {
   background: linear-gradient(145deg, var(--color-sea-200), var(--color-sea-500));
+}
+
+.iconSemi {
+  background: linear-gradient(145deg, var(--color-sea-100), var(--color-sea-500));
+}
+
+.iconProtegida {
+  background: linear-gradient(145deg, var(--color-sand-200), var(--color-sea-200));
 }
 
 .content {

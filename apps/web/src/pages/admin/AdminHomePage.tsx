@@ -11,7 +11,7 @@ export function AdminHomePage() {
       <PageHeader
         eyebrow="Administração"
         title="Quem entra e o que a comunidade publica."
-        description="Modere pesqueiros compartilhados e libere ou bloqueie contas."
+        description="Pesqueiros compartilhados e contas."
       />
       <section className={adminStyles.shortcuts} aria-label="Áreas administrativas">
         <Link className={adminStyles.shortcut} to={routes.adminSpots}>

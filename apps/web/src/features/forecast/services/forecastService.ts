@@ -10,11 +10,14 @@ import {
   parseMarineDetails,
   parseRankingForecast,
 } from '@/features/fishing/mappers/wireGuards';
-import type { LocationForecast } from '@/features/fishing/types/fishing';
+import type { ForecastRankingEmphasis, LocationForecast } from '@/features/fishing/types/fishing';
 import { getLocations } from '@/features/locations/services/locationsService';
 
-export async function getForecast() {
-  return mapForecast(parseRankingForecast(await apiRequest('/forecasts/ranking')));
+export async function getForecast(emphasis?: ForecastRankingEmphasis) {
+  const path = emphasis
+    ? `/forecasts/ranking?emphasis=${encodeURIComponent(emphasis)}`
+    : '/forecasts/ranking';
+  return mapForecast(parseRankingForecast(await apiRequest(path)));
 }
 
 export async function getLocationForecast(locationId: string): Promise<LocationForecast | null> {

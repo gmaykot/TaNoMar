@@ -9,7 +9,8 @@ import {
   User,
   WifiOff,
 } from 'lucide-react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { useLayoutEffect } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { usePwaLifecycle } from '@/app/hooks/usePwaLifecycle';
 import { Button } from '@/design-system/components/Button';
 import { TaNoMarLogo } from '@/design-system/brand/TaNoMarLogo';
@@ -38,9 +39,19 @@ const mobileNavigation: NavItem[] = [
   { to: routes.account, label: 'Conta', icon: User },
 ];
 
+function scrollToPageTop() {
+  window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+}
+
 export function AppShell() {
+  const { pathname } = useLocation();
   const pwa = usePwaLifecycle();
   const auth = useAuth();
+
+  useLayoutEffect(() => {
+    scrollToPageTop();
+  }, [pathname]);
+
   const desktopItems = isAdmin(auth.user)
     ? [...navigation, { to: routes.admin, label: 'Admin', icon: Shield }]
     : navigation;
@@ -113,6 +124,7 @@ export function AppShell() {
               key={to}
               to={to}
               end={end}
+              onClick={scrollToPageTop}
               className={({ isActive }) => (isActive ? styles.active : '')}
             >
               <Icon size={21} aria-hidden="true" />

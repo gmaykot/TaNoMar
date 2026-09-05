@@ -1,33 +1,40 @@
-import { ArrowUpRight, Heart, MapPin, Waves } from 'lucide-react';
+import { Anchor, ArrowUpRight, Heart, Lock, MapPin, Sailboat, Waves } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/design-system/components/Card';
 import { IconButton } from '@/design-system/components/IconButton';
 import type { FishingLocation } from '@/features/fishing/types/fishing';
 import styles from './locations.module.css';
 
-const profileLabel = {
-  praia_aberta: 'Praia aberta',
-  praia_semi_aberta: 'Praia semiaberta',
-  praia_protegida: 'Águas protegidas',
+const profileVisual = {
+  praia_aberta: { label: 'Praia aberta', icon: Waves, className: styles.iconAberta },
+  praia_semi_aberta: { label: 'Praia semiaberta', icon: Sailboat, className: styles.iconSemi },
+  praia_protegida: { label: 'Águas protegidas', icon: Anchor, className: styles.iconProtegida },
 };
 
 function visibilityLabel(location: FishingLocation) {
   if (location.visibility === 'private') return 'Privado';
   if (location.visibility === 'shared' && !location.isApproved) return 'Pendente';
   if (location.visibility === 'shared') return 'Comunidade';
-  return profileLabel[location.profile];
+  return profileVisual[location.profile].label;
 }
 
 interface LocationCardProps {
   location: FishingLocation;
   onToggleFavorite?: () => void;
+  favoriteLocked?: boolean;
 }
 
-export function LocationCard({ location, onToggleFavorite }: LocationCardProps) {
+export function LocationCard({
+  location,
+  onToggleFavorite,
+  favoriteLocked = false,
+}: LocationCardProps) {
+  const profile = profileVisual[location.profile];
+  const ProfileIcon = profile.icon;
   return (
     <Card as="article" className={styles.card}>
-      <div className={styles.icon} aria-hidden="true">
-        <Waves size={24} />
+      <div className={`${styles.icon} ${profile.className}`} role="img" aria-label={profile.label}>
+        <ProfileIcon size={24} aria-hidden="true" />
       </div>
       <div className={styles.content}>
         <span>{visibilityLabel(location)}</span>
@@ -38,15 +45,32 @@ export function LocationCard({ location, onToggleFavorite }: LocationCardProps) 
       </div>
       {onToggleFavorite ? (
         <IconButton
-          label={location.isFavorite ? 'Remover dos favoritos' : 'Favoritar'}
+          label={
+            favoriteLocked && !location.isFavorite
+              ? 'Favoritar bloqueado no plano atual'
+              : location.isFavorite
+                ? 'Remover dos favoritos'
+                : 'Favoritar'
+          }
+          locked={favoriteLocked && !location.isFavorite}
           onClick={onToggleFavorite}
-          className={location.isFavorite ? styles.favoriteOn : styles.favorite}
+          className={
+            favoriteLocked && !location.isFavorite
+              ? styles.favorite
+              : location.isFavorite
+                ? styles.favoriteOn
+                : styles.favorite
+          }
         >
-          <Heart
-            size={18}
-            fill={location.isFavorite ? 'currentColor' : 'none'}
-            aria-hidden="true"
-          />
+          {favoriteLocked && !location.isFavorite ? (
+            <Lock size={18} aria-hidden="true" />
+          ) : (
+            <Heart
+              size={18}
+              fill={location.isFavorite ? 'currentColor' : 'none'}
+              aria-hidden="true"
+            />
+          )}
         </IconButton>
       ) : null}
       <Link to={`/locais/${location.id}`} aria-label={`Ver previsão de ${location.name}`}>

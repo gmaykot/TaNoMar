@@ -19,7 +19,7 @@ export function ScoreIndicator({ score, classification, size = 'large' }: ScoreI
       aria-label={`Nota ${score.toFixed(1)} de 10, ${classificationLabel[classification]}`}
     >
       <div className={styles.scoreInner}>
-        <FishSymbol aria-hidden="true" size={size === 'large' ? 18 : 14} />
+        <FishSymbol className={styles.scoreMark} aria-hidden="true" />
         <strong>{score.toFixed(1)}</strong>
         <small>/10</small>
       </div>

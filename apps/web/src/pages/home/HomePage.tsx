@@ -45,7 +45,7 @@ export function HomePage() {
       <PageHeader
         eyebrow="Decisão de pesca"
         title="Onde vale pescar hoje?"
-        description="Comparamos vento, ondas, chuva e temperatura para mostrar o melhor momento."
+        description="Vento, ondas, chuva e temperatura no melhor momento."
       />
       <DayCarousel days={days} selectedDate={activeDate} onSelect={setSelectedDate}>
         {(day) =>

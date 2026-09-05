@@ -1,4 +1,4 @@
-import { MapPinned } from 'lucide-react';
+import { Lock, MapPinned } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/design-system/components/Button';
@@ -15,9 +15,9 @@ import styles from '@/pages/shared/pages.module.css';
 
 type Filter = 'all' | 'mine' | 'favorites';
 
-function parseFilter(value: string | null): Filter {
-  if (value === 'meus') return 'mine';
-  if (value === 'favoritos') return 'favorites';
+function parseFilter(value: string | null, canCreate: boolean, canFavorite: boolean): Filter {
+  if (value === 'meus' && canCreate) return 'mine';
+  if (value === 'favoritos' && canFavorite) return 'favorites';
   return 'all';
 }
 
@@ -28,8 +28,9 @@ export function LocationsPage() {
   const locations = useLocations();
   const mutations = useLocationMutations();
   const [search, setSearch] = useState('');
-  const filter = parseFilter(searchParams.get('filtro'));
   const canCreate = (auth.user?.entitlements.maxPersonalSpots ?? 0) > 0;
+  const canFavorite = (auth.user?.entitlements.maxFavorites ?? 0) > 0;
+  const filter = parseFilter(searchParams.get('filtro'), canCreate, canFavorite);
 
   function setFilter(next: Filter) {
     setSearchParams(
@@ -77,15 +78,7 @@ export function LocationsPage() {
       <PageHeader
         eyebrow="Seu próximo destino"
         title="Encontre um lugar para pescar."
-        description="Busque pelos pontos monitorados, favoritos e pesqueiros pessoais."
-        actions={
-          <Button
-            type="button"
-            onClick={() => navigate(canCreate ? routes.locationNew : routes.account)}
-          >
-            {canCreate ? 'Novo local' : 'Plano Premium'}
-          </Button>
-        }
+        description="Oficiais, favoritos e pesqueiros pessoais."
       />
       <SearchField
         label="Buscar locais"
@@ -93,21 +86,24 @@ export function LocationsPage() {
         value={search}
         onChange={setSearch}
       />
-      <div className={styles.filters}>
+      <div className={styles.filters} role="group" aria-label="Filtrar locais">
         {(
           [
-            ['all', 'Todos'],
-            ['mine', 'Meus locais'],
-            ['favorites', 'Favoritos'],
+            ['all', 'Todos', false],
+            ['mine', 'Meus locais', !canCreate],
+            ['favorites', 'Favoritos', !canFavorite],
           ] as const
-        ).map(([id, label]) => (
+        ).map(([id, label, locked]) => (
           <button
             key={id}
             type="button"
             className={`${styles.filter} ${filter === id ? styles.filterActive : ''}`}
             aria-pressed={filter === id}
-            onClick={() => setFilter(id)}
+            aria-label={locked ? `${label}, disponível no Premium` : undefined}
+            disabled={locked}
+            onClick={locked ? undefined : () => setFilter(id)}
           >
+            {locked ? <Lock size={14} aria-hidden="true" /> : null}
             {label}
           </button>
         ))}
@@ -116,15 +112,25 @@ export function LocationsPage() {
       <div className={styles.resultCount}>
         {filtered.length} {filtered.length === 1 ? 'local encontrado' : 'locais encontrados'}
       </div>
+      {filter === 'mine' ? (
+        <Button type="button" onClick={() => navigate(routes.locationNew)}>
+          Novo local
+        </Button>
+      ) : null}
       {filtered.length ? (
         <div className={styles.locationGrid}>
           {filtered.map((location) => (
             <LocationCard
               key={location.id}
               location={location}
-              onToggleFavorite={() =>
-                mutations.favorite.mutate({ spotId: location.id, isFavorite: !location.isFavorite })
-              }
+              favoriteLocked={!canFavorite}
+              onToggleFavorite={() => {
+                if (!canFavorite && !location.isFavorite) return;
+                mutations.favorite.mutate({
+                  spotId: location.id,
+                  isFavorite: !location.isFavorite,
+                });
+              }}
             />
           ))}
         </div>

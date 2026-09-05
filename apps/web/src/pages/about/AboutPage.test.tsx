@@ -12,6 +12,9 @@ describe('AboutPage', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Clima e mar/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Nota de pesca/ })).toBeInTheDocument();
+    expect(screen.getByText(/média das 3 melhores horas entre 5h e 20h/)).toBeInTheDocument();
+    expect(screen.getByText(/8,5 ou mais — Excelente/)).toBeInTheDocument();
+    expect(screen.getByText(/não entram na nota/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Locais/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Comunidade/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Aviso/ })).toBeInTheDocument();

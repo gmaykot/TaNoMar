@@ -279,7 +279,7 @@ namespace TaNoMar.Api.Data.Migrations
                             Id = new Guid("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0001"),
                             Code = "free",
                             MaxAlerts = 0,
-                            MaxFavorites = 3,
+                            MaxFavorites = 0,
                             MaxForecastDays = 3,
                             MaxPersonalSpots = 0,
                             Name = "Free"

@@ -63,7 +63,7 @@ export function AdminSpotsPage() {
       <PageHeader
         eyebrow="Moderação"
         title="Locais aguardando publicação."
-        description="Aprove para aparecer no mapa da comunidade ou recuse e o ponto volta a ser privado."
+        description="Aprove para o mapa ou recuse e o ponto volta a ser privado."
       />
       {pending.data.length === 0 ? (
         <FeedbackState title="Fila vazia" description="Nenhum pesqueiro compartilhado pendente." />

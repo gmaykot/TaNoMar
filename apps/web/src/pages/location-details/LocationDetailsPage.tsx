@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarDays, Heart, MapPin, Navigation, Pencil } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Heart, Lock, MapPin, Navigation, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Badge } from '@/design-system/components/Badge';
@@ -6,6 +6,7 @@ import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { ScoreIndicator } from '@/design-system/components/ScoreIndicator';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { CommunityReports } from '@/features/community/components/CommunityReports';
 import { DateSelector } from '@/features/forecast/components/DateSelector';
 import { MarineDetails, MarineDetailsToggle } from '@/features/forecast/components/MarineDetails';
@@ -17,8 +18,10 @@ import styles from '@/pages/shared/pages.module.css';
 
 export function LocationDetailsPage() {
   const { locationId = '' } = useParams();
+  const auth = useAuth();
   const locationForecast = useLocationForecast(locationId);
   const mutations = useLocationMutations();
+  const canFavorite = (auth.user?.entitlements.maxFavorites ?? 0) > 0;
   const [selectedDate, setSelectedDate] = useState('');
   const [marineOpen, setMarineOpen] = useState(false);
 
@@ -86,16 +89,32 @@ export function LocationDetailsPage() {
         <Button
           type="button"
           variant="secondary"
-          onClick={() =>
-            mutations.favorite.mutate({ spotId: location.id, isFavorite: !location.isFavorite })
+          locked={!canFavorite && !location.isFavorite}
+          aria-label={
+            !canFavorite && !location.isFavorite ? 'Favoritar bloqueado no plano atual' : undefined
           }
+          onClick={() => {
+            if (!canFavorite && !location.isFavorite) return;
+            mutations.favorite.mutate({
+              spotId: location.id,
+              isFavorite: !location.isFavorite,
+            });
+          }}
         >
-          <Heart
-            size={16}
-            fill={location.isFavorite ? 'currentColor' : 'none'}
-            aria-hidden="true"
-          />
-          {location.isFavorite ? 'Favorito' : 'Favoritar'}
+          {!canFavorite && !location.isFavorite ? (
+            <Lock size={16} aria-hidden="true" />
+          ) : (
+            <Heart
+              size={16}
+              fill={location.isFavorite ? 'currentColor' : 'none'}
+              aria-hidden="true"
+            />
+          )}
+          {!canFavorite && !location.isFavorite
+            ? 'Premium'
+            : location.isFavorite
+              ? 'Favorito'
+              : 'Favoritar'}
         </Button>
         {location.isOwner ? (
           <Link className={styles.backLink} to={routes.locationEdit(location.id)}>
@@ -142,6 +161,7 @@ export function LocationDetailsPage() {
           location.visibility === 'official' ||
           (location.visibility === 'shared' && location.isApproved)
         }
+        canVote={auth.user?.plan.code === 'premium'}
       />
     </div>
   );

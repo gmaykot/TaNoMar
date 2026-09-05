@@ -4,7 +4,7 @@ import styles from './pages.module.css';
 interface PageHeaderProps {
   eyebrow: string;
   title: string;
-  description: string;
+  description?: string;
   actions?: ReactNode;
 }
 
@@ -14,7 +14,7 @@ export function PageHeader({ eyebrow, title, description, actions }: PageHeaderP
       <div className={styles.pageHeaderCopy}>
         <span>{eyebrow}</span>
         <h1>{title}</h1>
-        <p>{description}</p>
+        {description ? <p>{description}</p> : null}
       </div>
       {actions ? <div className={styles.pageHeaderActions}>{actions}</div> : null}
     </header>

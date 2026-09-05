@@ -120,7 +120,7 @@ export function AdminUsersPage() {
       <PageHeader
         eyebrow="Administração"
         title="Quem pode pescar no app."
-        description="Troque o plano, libere uma conta ou bloqueie o acesso."
+        description="Plano, liberação e bloqueio de contas."
       />
       <SearchField
         label="Buscar usuários"

@@ -22,16 +22,39 @@
 }
 
 .profile span,
-.profile small,
 .info p {
   margin: 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
 }
 
-.profile small {
-  display: block;
-  margin-top: var(--space-2);
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+}
+
+.stats div {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-sand-100);
+}
+
+.stats dt {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.stats dd {
+  margin: 0;
+  color: var(--color-ocean-950);
+  font-size: var(--font-size-sm);
+  font-weight: 800;
 }
 
 .shortcuts {
@@ -81,6 +104,32 @@
   margin-top: 0.15rem;
   color: var(--color-text-muted);
   font-weight: 500;
+}
+
+.shortcutLocked {
+  cursor: not-allowed;
+  background: var(--color-warning-soft);
+  box-shadow: none;
+}
+
+.shortcutLocked span {
+  background: color-mix(in srgb, var(--color-warning-soft) 70%, white);
+}
+
+.choiceLocked {
+  cursor: not-allowed;
+  background: var(--color-warning-soft);
+}
+
+.lockedLink {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-ocean-950);
+  font-size: var(--font-size-sm);
+  font-weight: 750;
 }
 
 .note {

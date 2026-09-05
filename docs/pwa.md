@@ -2,7 +2,9 @@
 
 ## Manifest
 
-O manifest define nome TáNoMar, idioma pt-BR, modo `standalone`, orientação portrait, cores da marca e ícones `any`/`maskable`.
+O manifest define nome TáNoMar, idioma pt-BR, modo `standalone`, orientação portrait, cores da marca e ícones `any`/`maskable` (192, 512 e 1024). O 1024 vem do `app-icon-master` do brand kit; os demais tamanhos públicos são reamostrados desse master.
+
+O splash nativo do Android usa o ícone do manifesto sobre `background_color` (`#F3E9D7`). No iOS, `index.html` declara `apple-touch-startup-image` por tamanho de tela; sem isso o sistema amplia o `apple-touch-icon` de 180px e a marca fica pixelada. As imagens em `apps/web/public/splash` não entram no precache do service worker.
 
 ## Cache
 

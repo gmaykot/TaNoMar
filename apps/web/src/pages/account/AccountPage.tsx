@@ -1,24 +1,79 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Heart, MapPinned, Plus, Shield, Users, Waves } from 'lucide-react';
+import { Bell, BookOpen, Heart, Lock, MapPinned, Plus, Shield, Users, Waves } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { isAdmin } from '@/features/auth/types/auth';
 import { updatePreferences } from '@/features/auth/services/preferencesService';
+import { RegionPicker } from '@/features/locations/components/RegionPicker';
+import { useLocations } from '@/features/locations/hooks/useLocations';
+import { parseRegions, serializeRegions } from '@/features/locations/regions';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import formStyles from '@/features/locations/components/spotForm.module.css';
 import { routes } from '@/shared/constants/routes';
 import accountStyles from './account.module.css';
 import styles from '@/pages/shared/pages.module.css';
 
+function AccountShortcut({
+  to,
+  icon: Icon,
+  title,
+  description,
+  locked = false,
+}: {
+  to?: string;
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  locked?: boolean;
+}) {
+  const body = (
+    <>
+      <span>
+        {locked ? <Lock size={18} aria-hidden="true" /> : <Icon size={18} aria-hidden="true" />}
+      </span>
+      <div>
+        <strong>{title}</strong>
+        <small>{locked ? 'Premium' : description}</small>
+      </div>
+    </>
+  );
+
+  if (locked || !to) {
+    return (
+      <div
+        className={`${accountStyles.shortcut} ${accountStyles.shortcutLocked}`}
+        aria-disabled="true"
+        aria-label={`${title} bloqueado no plano atual`}
+      >
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <Link className={accountStyles.shortcut} to={to}>
+      {body}
+    </Link>
+  );
+}
+
 export function AccountPage() {
   const auth = useAuth();
   const queryClient = useQueryClient();
+  const locations = useLocations();
   const user = auth.user;
   const canCreate = (user?.entitlements.maxPersonalSpots ?? 0) > 0;
-  const [region, setRegion] = useState(user?.preferences.region ?? 'Florianópolis');
+  const canFavorite = (user?.entitlements.maxFavorites ?? 0) > 0;
+  const ownedCount = locations.data?.filter((item) => item.isOwner).length ?? 0;
+  const favoriteCount = locations.data?.filter((item) => item.isFavorite).length ?? 0;
+  const canNotify = (user?.entitlements.maxAlerts ?? 0) > 0;
+  const [regions, setRegions] = useState(() =>
+    parseRegions(user?.preferences.region ?? 'Florianópolis'),
+  );
   const [windUnit, setWindUnit] = useState(user?.preferences.windUnit ?? 'kmh');
   const [forecastNotifications, setForecastNotifications] = useState(
     user?.preferences.forecastNotifications ?? true,
@@ -31,63 +86,64 @@ export function AccountPage() {
       <PageHeader
         eyebrow="Conta"
         title="Sua área."
-        description="Gerencie pesqueiros, preferências e a sessão nesta página."
+        description="Pesqueiros, preferências e sessão."
       />
       <Card className={accountStyles.profile}>
         <strong>{user?.name}</strong>
         <span>{user?.email}</span>
-        <small>
-          Plano {user?.plan.name ?? ''}. Pesqueiros pessoais:{' '}
-          {user?.entitlements.maxPersonalSpots ?? 0}. Favoritos:{' '}
-          {user?.entitlements.maxFavorites ?? 0}. Alertas de previsão ficam reservados no plano (
-          {user?.entitlements.maxAlerts ?? 0}), sem cadastro nesta versão.
-        </small>
+        <dl className={accountStyles.stats}>
+          <div>
+            <dt>Plano</dt>
+            <dd>{user?.plan.name ?? '—'}</dd>
+          </div>
+          <div>
+            <dt>Pesqueiros</dt>
+            <dd>{`${ownedCount} / ${user?.entitlements.maxPersonalSpots ?? 0}`}</dd>
+          </div>
+          <div>
+            <dt>Favoritos</dt>
+            <dd>{`${favoriteCount} / ${user?.entitlements.maxFavorites ?? 0}`}</dd>
+          </div>
+        </dl>
       </Card>
       <section className={accountStyles.shortcuts} aria-label="Atalhos da conta">
-        <Link className={accountStyles.shortcut} to={routes.locationsMine}>
-          <span>
-            <MapPinned size={18} aria-hidden="true" />
-          </span>
-          <div>
-            <strong>Meus pesqueiros</strong>
-            <small>Abra os locais que você cadastrou.</small>
-          </div>
-        </Link>
-        <Link className={accountStyles.shortcut} to={routes.locationsFavorites}>
-          <span>
-            <Heart size={18} aria-hidden="true" />
-          </span>
-          <div>
-            <strong>Favoritos</strong>
-            <small>Veja os pontos que você marcou.</small>
-          </div>
-        </Link>
+        <AccountShortcut
+          to={routes.locationsMine}
+          icon={MapPinned}
+          title="Meus pesqueiros"
+          description="Abra os locais que você cadastrou."
+          locked={!canCreate}
+        />
+        <AccountShortcut
+          to={routes.locationsFavorites}
+          icon={Heart}
+          title="Favoritos"
+          description="Veja os pontos que você marcou."
+          locked={!canFavorite}
+        />
+        {!canNotify ? (
+          <AccountShortcut
+            icon={Bell}
+            title="Notificações"
+            description="A caixa atual fica no sino do topo."
+            locked
+          />
+        ) : null}
         {canCreate ? (
-          <Link className={accountStyles.shortcut} to={routes.locationNew}>
-            <span>
-              <Plus size={18} aria-hidden="true" />
-            </span>
-            <div>
-              <strong>Novo local</strong>
-              <small>Cadastre um pesqueiro pessoal.</small>
-            </div>
-          </Link>
-        ) : (
-          <p className={accountStyles.note}>
-            Pesqueiros pessoais entram no plano Premium. Os favoritos e as praias oficiais continuam
-            disponíveis.
-          </p>
-        )}
+          <AccountShortcut
+            to={routes.locationNew}
+            icon={Plus}
+            title="Novo local"
+            description="Cadastre um pesqueiro pessoal."
+          />
+        ) : null}
         {isAdmin(user) ? (
-          <Link className={accountStyles.shortcut} to={routes.admin}>
-            <span>
-              <Shield size={18} aria-hidden="true" />
-            </span>
-            <div>
-              <strong>Administração</strong>
-              <small>Modere locais e gerencie planos das contas.</small>
-            </div>
-          </Link>
+          <AccountShortcut
+            to={routes.admin}
+            icon={Shield}
+            title="Administração"
+            description="Modere locais e gerencie planos das contas."
+          />
         ) : null}
       </section>
       <Card className={accountStyles.info}>
@@ -95,9 +151,8 @@ export function AccountPage() {
           <Users size={18} aria-hidden="true" /> Comunidade
         </h2>
         <p>
-          Relatos de condição e perigo ficam na página de cada local público ou compartilhado
-          aprovado. Quem favoritou o local recebe um aviso no sino do topo. Você pode apagar o
-          próprio relato.
+          Na página de cada local, pescadores relatam como está o mar. Qualquer um vê e publica;
+          confirmar ou discordar é Premium.
         </p>
         <Link className={styles.backLink} to={routes.locations}>
           Ver locais
@@ -111,12 +166,19 @@ export function AccountPage() {
           O perfil costeiro (praia aberta, semiaberta ou protegida) é definido ao criar ou editar um
           pesqueiro.
         </p>
-        <Link
-          className={styles.backLink}
-          to={canCreate ? routes.locationNew : routes.locationsMine}
-        >
-          {canCreate ? 'Novo pesqueiro' : 'Meus pesqueiros'}
-        </Link>
+        {canCreate ? (
+          <Link className={styles.backLink} to={routes.locationNew}>
+            Novo pesqueiro
+          </Link>
+        ) : (
+          <span
+            className={accountStyles.lockedLink}
+            aria-disabled="true"
+            aria-label="Novo pesqueiro bloqueado no plano atual"
+          >
+            <Lock size={16} aria-hidden="true" /> Premium
+          </span>
+        )}
       </Card>
       <Card className={accountStyles.info}>
         <h2>
@@ -135,7 +197,11 @@ export function AccountPage() {
             event.preventDefault();
             setPending(true);
             setError(null);
-            void updatePreferences({ region, windUnit, forecastNotifications })
+            void updatePreferences({
+              region: serializeRegions(regions),
+              windUnit,
+              forecastNotifications,
+            })
               .then(async () => {
                 await queryClient.invalidateQueries({ queryKey: ['me'] });
               })
@@ -143,10 +209,12 @@ export function AccountPage() {
               .finally(() => setPending(false));
           }}
         >
-          <label className={formStyles.field}>
-            <span>Região</span>
-            <input value={region} onChange={(event) => setRegion(event.target.value)} />
-          </label>
+          <RegionPicker
+            multiple
+            value={regions}
+            hint="Toque em um ou mais trechos da ilha que você acompanha."
+            onChange={setRegions}
+          />
           <label className={formStyles.field}>
             <span>Unidade de vento</span>
             <select value={windUnit} onChange={(event) => setWindUnit(event.target.value)}>
@@ -154,20 +222,34 @@ export function AccountPage() {
               <option value="kt">nós</option>
             </select>
           </label>
-          <label className={formStyles.choice}>
-            <input
-              type="checkbox"
-              checked={forecastNotifications}
-              onChange={(event) => setForecastNotifications(event.target.checked)}
-            />
-            <span>
-              Quero notificações de previsão
-              <small>
-                Quando os alertas existirem, usaremos esta preferência. A caixa atual fica no sino
-                do topo.
-              </small>
-            </span>
-          </label>
+          {canNotify ? (
+            <label className={formStyles.choice}>
+              <input
+                type="checkbox"
+                checked={forecastNotifications}
+                onChange={(event) => setForecastNotifications(event.target.checked)}
+              />
+              <span>
+                Quero notificações de previsão
+                <small>
+                  Quando os alertas existirem, usaremos esta preferência. A caixa atual fica no sino
+                  do topo.
+                </small>
+              </span>
+            </label>
+          ) : (
+            <div
+              className={`${formStyles.choice} ${accountStyles.choiceLocked}`}
+              aria-disabled="true"
+              aria-label="Notificações de previsão bloqueadas no plano atual"
+            >
+              <Lock size={16} aria-hidden="true" />
+              <span>
+                Notificações de previsão
+                <small>Premium</small>
+              </span>
+            </div>
+          )}
           {error ? <p className={formStyles.error}>{error}</p> : null}
           <Button type="submit" disabled={pending}>
             Salvar preferências
