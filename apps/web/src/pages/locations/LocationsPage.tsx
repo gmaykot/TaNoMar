@@ -78,7 +78,7 @@ export function LocationsPage() {
       <PageHeader
         eyebrow="Seu próximo destino"
         title="Encontre um lugar para pescar."
-        description="Oficiais, favoritos e pesqueiros pessoais."
+        description="Oficiais, favoritos e locais pessoais."
       />
       <SearchField
         label="Buscar locais"

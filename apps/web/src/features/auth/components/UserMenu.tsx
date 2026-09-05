@@ -78,7 +78,7 @@ export function UserMenu() {
             onClick={close}
           >
             <MapPinned size={17} aria-hidden="true" />
-            Meus pesqueiros
+            Meus locais
           </NavLink>
           <NavLink
             role="menuitem"

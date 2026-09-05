@@ -11,7 +11,7 @@ export function AdminHomePage() {
       <PageHeader
         eyebrow="Administração"
         title="Quem entra e o que a comunidade publica."
-        description="Pesqueiros compartilhados e contas."
+        description="Locais compartilhados e contas."
       />
       <section className={adminStyles.shortcuts} aria-label="Áreas administrativas">
         <Link className={adminStyles.shortcut} to={routes.adminSpots}>
@@ -20,7 +20,7 @@ export function AdminHomePage() {
           </span>
           <div>
             <strong>Moderação</strong>
-            <small>Aprove ou recuse pesqueiros compartilhados.</small>
+            <small>Aprove ou recuse locais compartilhados.</small>
           </div>
         </Link>
         <Link className={adminStyles.shortcut} to={routes.adminUsers}>

@@ -34,7 +34,7 @@ Namespaces, assembly, projeto, DbContext, seeder, options e usuário interno do 
 - `DELETE /fishing-spots/{id}`: dono remove o local e os relatos/favoritos ligados.
 - `PUT /me/favorites`: favoritos sujeitos ao limite do plano. Free não tem cota (`maxFavorites = 0`); Premium tem 20.
 - `GET /forecasts/ranking`: dias permitidos pelo plano e ranking por dia (só oficiais). Query opcional `emphasis=wind|wind-more|rain|rain-more|waves|waves-less` reordena pela métrica na melhor janela, sem recalcular a nota. Ausente ou vazio mantém a ordem por nota. `wind` e `rain` ordenam do menor para o maior; `waves` do maior para o menor. Os sufixos `-more` e `-less` invertem essa direção. Valor inválido responde `400`. Qualquer `emphasis` no plano Free responde `400` (`plan_required`).
-- `GET /fishing-spots/{id}/forecast`: dias de previsão do local visível, inclusive pesqueiro pessoal do dono.
+- `GET /fishing-spots/{id}/forecast`: dias de previsão do local visível, inclusive local pessoal do dono.
 - `GET /fishing-spots/{id}/marine?date=`: série horária de ondas, período, swell, água e maré do dia. Free recebe `locked`; Premium recebe a série. A maré é derivada de `sea_level_height_msl` da Open-Meteo (mínimos/máximos locais e inclinação da curva). Pode vir `unavailable` se a série não vier. O ranking não inclui essa série.
 - `GET /public/offline-forecast`: previsão pública do dia, com `Cache-Control` público.
 
@@ -43,12 +43,16 @@ O contrato de métrica é uma união `{ state: "available", value }` ou `{ state
 ## Comunidade, moderação e notificações
 
 - `GET /community/reports?spotId=`: relatos ativos em locais públicos. Tipos: `condicao` (12h) e `perigo` (24h). O DTO inclui `isMine`.
-- `POST /community/reports`: cria relato em local oficial ou compartilhado aprovado. Quem favoritou o local e o dono do pesqueiro (exceto o autor) recebem aviso no inbox.
+- `POST /community/reports`: cria relato em local oficial ou compartilhado aprovado. Quem favoritou o local e o dono do local (exceto o autor) recebem aviso no inbox.
 - `DELETE /community/reports/{id}`: o autor apaga o próprio relato e os votos ligados.
 - `POST /community/reports/{id}/confirm` e `/contest`: um voto por usuário, só no plano Premium. Free vê e cria relatos; o autor não vota no próprio. Sem Premium a API responde `400` (`plan_required`).
 - `GET /admin/fishing-spots/pending`, `POST /admin/fishing-spots/{id}/approve` e `/reject`: só Admin. Recusar devolve o ponto para `private` e notifica o dono.
 - `GET /admin/users`, `PUT /admin/users/{id}/plan` e `PUT /admin/users/{id}/active`: só Admin. Lista contas, troca o plano (`free` ou `premium`) e bloqueia ou libera o acesso. A conta do bootstrap não muda de plano nem é bloqueada; o admin não bloqueia a si mesmo nem o último admin ativo. Bloquear revoga os refresh tokens.
 - `GET /notifications`, `POST /notifications/{id}/read`, `DELETE /notifications/{id}`: caixa do usuário, itens ativos por 48h. A API cria avisos para: dono na aprovação/rejeição de local; alvo na troca de plano ou liberação de conta; quem favoritou o local e o dono (se não for o autor) em relato novo.
+- `GET /notifications/unread`: `{ unread }` para o pontinho do sino, sem baixar a lista.
+- `GET /notifications/stream`: SSE autenticado (`Authorization` Bearer). Primeiro evento e pings seguintes usam `{ unread }`. Heartbeat em comentário. O access token é validado na abertura da conexão.
+- `GET /notifications/push-public-key`: `{ publicKey }` VAPID. Sem chaves configuradas responde `404`.
+- `PUT /notifications/push-subscription` e `DELETE /notifications/push-subscription`: `{ endpoint, p256dh, auth }` no PUT; `{ endpoint }` no DELETE. Um endpoint por aparelho; `410` no envio remove a linha.
 
 `MaxAlerts` permanece no plano como cota reservada; não há entidade nem endpoints de alerta de previsão nesta versão.
 

@@ -27,3 +27,5 @@ Prefira props explícitas, arquivos pequenos e HTML semântico. Não crie `Helpe
 ## Imports e nomes
 
 Use alias `@/` para imports entre domínios e imports relativos dentro da mesma pasta. Nomes devem expressar o domínio: `forecastService`, não `DataService`.
+
+Na interface, o ponto de pesca se chama **local** (plural **locais**): navegação, títulos, formulários, erros e atalhos. Não use “pesqueiro” nem “praia” para nomear essa entidade. “Praia aberta”, “praia semiaberta” e “águas protegidas” ficam só no perfil costeiro. Identificadores de contrato (`fishing-spots`, `praia_aberta`) não mudam.

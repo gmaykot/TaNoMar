@@ -81,7 +81,7 @@ export function SpotForm({
       }}
     >
       <label className={styles.field}>
-        <span>Nome do pesqueiro</span>
+        <span>Nome do local</span>
         <input value={name} onChange={(event) => setName(event.target.value)} required />
       </label>
       <label className={styles.field}>
@@ -94,7 +94,7 @@ export function SpotForm({
       </label>
       <RegionPicker
         value={region}
-        hint="Toque no pedaço da ilha onde fica o pesqueiro."
+        hint="Toque no pedaço da ilha onde fica o local."
         onChange={setRegion}
       />
       <div className={styles.row}>

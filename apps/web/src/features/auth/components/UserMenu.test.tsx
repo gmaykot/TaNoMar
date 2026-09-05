@@ -39,7 +39,7 @@ describe('UserMenu', () => {
     await user.click(screen.getByRole('button', { name: 'Abrir menu da conta de Ana' }));
     expect(screen.getByRole('menu', { name: 'Menu da conta' })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'Conta' })).toHaveAttribute('href', '/conta');
-    expect(screen.getByRole('menuitem', { name: 'Meus pesqueiros' })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: 'Meus locais' })).toHaveAttribute(
       'href',
       '/locais?filtro=meus',
     );

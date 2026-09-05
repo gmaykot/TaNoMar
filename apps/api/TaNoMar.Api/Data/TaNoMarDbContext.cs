@@ -11,6 +11,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
     public DbSet<CommunityReport> CommunityReports => Set<CommunityReport>();
     public DbSet<CommunityReportVote> CommunityReportVotes => Set<CommunityReportVote>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<DevicePushSubscription> PushSubscriptions => Set<DevicePushSubscription>();
     public DbSet<UserPreference> UserPreferences => Set<UserPreference>();
     public DbSet<FavoriteSpot> FavoriteSpots => Set<FavoriteSpot>();
     public DbSet<FishingForecastSnapshot> FishingForecastSnapshots => Set<FishingForecastSnapshot>();
@@ -24,6 +25,8 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
         modelBuilder.Entity<RefreshToken>().HasIndex(token => token.TokenHash).IsUnique();
         modelBuilder.Entity<UserPreference>().HasIndex(item => item.UserId).IsUnique();
         modelBuilder.Entity<FavoriteSpot>().HasIndex(item => new { item.UserId, item.FishingSpotId }).IsUnique();
+        modelBuilder.Entity<DevicePushSubscription>().HasIndex(item => item.Endpoint).IsUnique();
+        modelBuilder.Entity<DevicePushSubscription>().HasIndex(item => item.UserId);
         modelBuilder.Entity<CommunityReportVote>().HasIndex(vote => new { vote.ReportId, vote.UserId }).IsUnique();
         modelBuilder.Entity<FishingForecastSnapshot>().HasIndex(item => new { item.LocationId, item.Date }).IsUnique();
         modelBuilder.Entity<FishingForecastSnapshot>().Property(item => item.PayloadJson).HasColumnType("jsonb");
@@ -123,6 +126,16 @@ public sealed class Notification
     public DateTimeOffset? ReadAt { get; set; }
     public DateTimeOffset? RemovedAt { get; set; }
     public DateTimeOffset ExpiresAt { get; set; } = DateTimeOffset.UtcNow.AddHours(48);
+}
+
+public sealed class DevicePushSubscription
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid UserId { get; set; }
+    public string Endpoint { get; set; } = string.Empty;
+    public string P256dh { get; set; } = string.Empty;
+    public string Auth { get; set; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
 public sealed class UserPreference

@@ -65,6 +65,9 @@ Alterações no frontend exigem **rebuild da imagem inteira** (web + API). Isso 
 | `Fishing__WarmupEnabled` | `Fishing:WarmupEnabled` | Worker que aquece previsão (padrão `true`) |
 | `Fishing__WarmupIntervalHours` | `Fishing:WarmupIntervalHours` | Intervalo entre ciclos do worker (padrão `3`) |
 | `TANOMAR_PORT` | compose `ports` | Porta do host no Coolify (padrão `8082`). A API continua em `8080` dentro do container. |
+| `VAPID_PUBLIC_KEY` | `TaNoMar__VapidPublicKey` | Chave pública Web Push. Sem ela o toggle de aparelho some; inbox e SSE seguem. |
+| `VAPID_PRIVATE_KEY` | `TaNoMar__VapidPrivateKey` | Chave privada Web Push. Gere o par com `npx web-push generate-vapid-keys`. |
+| `VAPID_SUBJECT` | `TaNoMar__VapidSubject` | Contato VAPID (`mailto:` ou URL HTTPS). |
 
 > A seção de configuração da API é `TaNoMar` e o prefixo de ambiente é `TaNoMar__`. Detalhes em [api-contracts.md](api-contracts.md#identificadores-de-runtime).
 

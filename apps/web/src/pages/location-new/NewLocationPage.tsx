@@ -21,9 +21,9 @@ export function NewLocationPage() {
           <ArrowLeft size={18} aria-hidden="true" /> Voltar aos locais
         </Link>
         <div className={formStyles.paywall}>
-          <strong>Pesqueiros pessoais são Premium</strong>
+          <strong>Locais pessoais são Premium</strong>
           <p>
-            No plano gratuito você consulta o mapa TáNoMar. O Premium libera até 10 pesqueiros
+            No plano gratuito você consulta o mapa TáNoMar. O Premium libera até 10 locais
             privados ou para a comunidade.
           </p>
         </div>
@@ -38,7 +38,7 @@ export function NewLocationPage() {
       </Link>
       <PageHeader
         eyebrow="Seu mapa"
-        title="Adicionar pesqueiro."
+        title="Adicionar local."
         description="Privado ou compartilhado com a comunidade."
       />
       <SpotForm

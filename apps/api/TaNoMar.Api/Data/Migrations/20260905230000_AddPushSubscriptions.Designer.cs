@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TaNoMar.Api.Data;
@@ -11,9 +12,11 @@ using TaNoMar.Api.Data;
 namespace TaNoMar.Api.Data.Migrations
 {
     [DbContext(typeof(TaNoMarDbContext))]
-    partial class TaNoMarDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260905230000_AddPushSubscriptions")]
+    partial class AddPushSubscriptions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

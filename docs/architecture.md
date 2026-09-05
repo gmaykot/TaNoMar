@@ -34,6 +34,7 @@ Os services chamam `/api/v1`, validam DTOs de wire e mapeiam para os tipos da UI
 - `Fishing`: Open-Meteo, cache em memória com snapshot no PostgreSQL, previsão e fórmula da nota. A consulta segue memória → `FishingForecastSnapshots` (mesmo TTL de `Fishing:CacheHours`) → Open-Meteo. Snapshot com horas é reutilizado mesmo sem maré: a Open-Meteo costuma devolver `sea_level_height_msl` nulo nesta costa, e isso não invalida o cache. A maré, quando existe, sai da mesma série: a API detecta mínimos/máximos locais (preamar/baixa-mar) e a inclinação da curva (enchente/vazante). O `FishingForecastWarmupWorker` aquece oficiais e compartilhados aprovados (dias 0–7) para gravar cache e snapshot fora do request.
 - `Models`: contratos existentes.
 - `Options`: configuração da aplicação.
+- `Notifications`: hub SSE em memória e worker de Web Push (VAPID). Sem fila externa; um container.
 - `Program.cs`: DI, middleware, worker de aquecimento e endpoints Minimal API sob `/api/v1`.
 
 Namespaces, assembly e tipos técnicos usam `TaNoMar.Api`. Identificadores de runtime estáveis (seção `TaNoMar`, cookie, caminhos persistentes) estão catalogados em `docs/api-contracts.md`.

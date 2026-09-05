@@ -11,6 +11,7 @@ import { updatePreferences } from '@/features/auth/services/preferencesService';
 import { RegionPicker } from '@/features/locations/components/RegionPicker';
 import { useLocations } from '@/features/locations/hooks/useLocations';
 import { parseRegions, serializeRegions } from '@/features/locations/regions';
+import { useDevicePush } from '@/features/notifications/hooks/useDevicePush';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import formStyles from '@/features/locations/components/spotForm.module.css';
 import { routes } from '@/shared/constants/routes';
@@ -80,14 +81,11 @@ export function AccountPage() {
   );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const devicePush = useDevicePush();
 
   return (
     <div className={styles.page}>
-      <PageHeader
-        eyebrow="Conta"
-        title="Sua área."
-        description="Pesqueiros, preferências e sessão."
-      />
+      <PageHeader eyebrow="Conta" title="Sua área." description="Locais, preferências e sessão." />
       <Card className={accountStyles.profile}>
         <strong>{user?.name}</strong>
         <span>{user?.email}</span>
@@ -97,7 +95,7 @@ export function AccountPage() {
             <dd>{user?.plan.name ?? '—'}</dd>
           </div>
           <div>
-            <dt>Pesqueiros</dt>
+            <dt>Locais</dt>
             <dd>{`${ownedCount} / ${user?.entitlements.maxPersonalSpots ?? 0}`}</dd>
           </div>
           <div>
@@ -110,7 +108,7 @@ export function AccountPage() {
         <AccountShortcut
           to={routes.locationsMine}
           icon={MapPinned}
-          title="Meus pesqueiros"
+          title="Meus locais"
           description="Abra os locais que você cadastrou."
           locked={!canCreate}
         />
@@ -134,7 +132,7 @@ export function AccountPage() {
             to={routes.locationNew}
             icon={Plus}
             title="Novo local"
-            description="Cadastre um pesqueiro pessoal."
+            description="Cadastre um local pessoal."
           />
         ) : null}
         {isAdmin(user) ? (
@@ -160,21 +158,21 @@ export function AccountPage() {
       </Card>
       <Card className={accountStyles.info}>
         <h2>
-          <Waves size={18} aria-hidden="true" /> Praias
+          <Waves size={18} aria-hidden="true" /> Perfil costeiro
         </h2>
         <p>
           O perfil costeiro (praia aberta, semiaberta ou protegida) é definido ao criar ou editar um
-          pesqueiro.
+          local.
         </p>
         {canCreate ? (
           <Link className={styles.backLink} to={routes.locationNew}>
-            Novo pesqueiro
+            Cadastrar local
           </Link>
         ) : (
           <span
             className={accountStyles.lockedLink}
             aria-disabled="true"
-            aria-label="Novo pesqueiro bloqueado no plano atual"
+            aria-label="Cadastrar local bloqueado no plano atual"
           >
             <Lock size={16} aria-hidden="true" /> Premium
           </span>
@@ -256,6 +254,35 @@ export function AccountPage() {
           </Button>
         </form>
       </Card>
+      {devicePush.loading || devicePush.configured ? (
+        <Card className={accountStyles.formCard}>
+          <h2>Avisos no aparelho</h2>
+          {devicePush.iosNeedsInstall ? (
+            <p className={accountStyles.note}>
+              No iPhone, instale o TáNoMar na Tela de Início para receber avisos com o app fechado.
+            </p>
+          ) : null}
+          {devicePush.available ? (
+            <label className={formStyles.choice}>
+              <input
+                type="checkbox"
+                checked={devicePush.enabled}
+                disabled={devicePush.pending}
+                onChange={(event) => void devicePush.toggle(event.target.checked)}
+              />
+              <span>
+                Receber avisos com o app fechado
+                <small>O sino do topo continua para quando você estiver usando o app.</small>
+              </span>
+            </label>
+          ) : !devicePush.iosNeedsInstall && !devicePush.loading ? (
+            <p className={accountStyles.note}>
+              Este navegador não permite avisos com o app fechado.
+            </p>
+          ) : null}
+          {devicePush.error ? <p className={formStyles.error}>{devicePush.error}</p> : null}
+        </Card>
+      ) : null}
       <Button variant="secondary" onClick={() => void auth.logout()}>
         Sair
       </Button>

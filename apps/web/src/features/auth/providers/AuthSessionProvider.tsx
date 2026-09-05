@@ -9,6 +9,7 @@ import {
 } from '../services/authService';
 import { AuthSessionContext } from '../session/authSessionContext';
 import type { AuthStatus } from '../types/auth';
+import { disableDevicePush } from '@/features/notifications/services/devicePushService';
 import { setOnSessionLost } from '@/shared/api/session';
 
 export function AuthSessionProvider({ children }: { children: ReactNode }) {
@@ -53,6 +54,11 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
         await queryClient.invalidateQueries({ queryKey: ['me'] });
       },
       logout: async () => {
+        try {
+          await disableDevicePush();
+        } catch {
+          /* o logout segue mesmo se o aparelho não desinscrever */
+        }
         await logoutSession();
         clearGoogleSignInSession();
         setStatus('anonymous');

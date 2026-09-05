@@ -66,7 +66,7 @@ export function AdminSpotsPage() {
         description="Aprove para o mapa ou recuse e o ponto volta a ser privado."
       />
       {pending.data.length === 0 ? (
-        <FeedbackState title="Fila vazia" description="Nenhum pesqueiro compartilhado pendente." />
+        <FeedbackState title="Fila vazia" description="Nenhum local compartilhado pendente." />
       ) : (
         <div className={styles.locationGrid}>
           {pending.data.map((location) => (

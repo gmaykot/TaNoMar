@@ -13,6 +13,9 @@ services:
       TaNoMar__JwtKey: ${JWT_KEY:?Defina JWT_KEY}
       TaNoMar__BootstrapAdminEmail: ${BOOTSTRAP_ADMIN_EMAIL:-}
       TaNoMar__BootstrapAdminGoogleSubject: ${BOOTSTRAP_ADMIN_GOOGLE_SUBJECT:-}
+      TaNoMar__VapidPublicKey: ${VAPID_PUBLIC_KEY:-}
+      TaNoMar__VapidPrivateKey: ${VAPID_PRIVATE_KEY:-}
+      TaNoMar__VapidSubject: ${VAPID_SUBJECT:-}
     ports:
       - "${TANOMAR_BIND_ADDRESS:-127.0.0.1}:${TANOMAR_PORT:-8082}:8080"
     volumes:

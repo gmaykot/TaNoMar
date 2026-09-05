@@ -5,3 +5,11 @@ export interface AppNotification {
   createdAt: string;
   readAt: string | null;
 }
+
+export interface NotificationUnread {
+  unread: boolean;
+}
+
+export interface PushPublicKey {
+  publicKey: string;
+}

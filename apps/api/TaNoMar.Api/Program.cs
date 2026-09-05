@@ -1,5 +1,8 @@
 using System.Security.Claims;
+using System.Text.Json;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Mvc;
 using Google.Apis.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +10,7 @@ using Microsoft.IdentityModel.Tokens;
 using TaNoMar.Api.Auth;
 using TaNoMar.Api.Data;
 using TaNoMar.Api.Fishing;
+using TaNoMar.Api.Notifications;
 using TaNoMar.Api.Options;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +21,12 @@ builder.Services.PostConfigure<TaNoMarOptions>(options =>
         options.BootstrapAdminEmail = builder.Configuration["BOOTSTRAP_ADMIN_EMAIL"] ?? string.Empty;
     if (string.IsNullOrWhiteSpace(options.BootstrapAdminGoogleSubject))
         options.BootstrapAdminGoogleSubject = builder.Configuration["BOOTSTRAP_ADMIN_GOOGLE_SUBJECT"] ?? string.Empty;
+    if (string.IsNullOrWhiteSpace(options.VapidPublicKey))
+        options.VapidPublicKey = builder.Configuration["VAPID_PUBLIC_KEY"] ?? string.Empty;
+    if (string.IsNullOrWhiteSpace(options.VapidPrivateKey))
+        options.VapidPrivateKey = builder.Configuration["VAPID_PRIVATE_KEY"] ?? string.Empty;
+    if (string.IsNullOrWhiteSpace(options.VapidSubject))
+        options.VapidSubject = builder.Configuration["VAPID_SUBJECT"] ?? string.Empty;
 });
 builder.Services.Configure<FishingOptions>(builder.Configuration.GetSection(FishingOptions.SectionName));
 builder.Services.AddDbContext<TaNoMarDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
@@ -30,6 +40,10 @@ builder.Services.AddHttpClient<OpenMeteoClient>(client =>
 });
 builder.Services.AddTransient<FishingForecastService>();
 builder.Services.AddHostedService<FishingForecastWarmupWorker>();
+builder.Services.AddSingleton<NotificationRealtimeHub>();
+builder.Services.AddSingleton<WebPushQueue>();
+builder.Services.AddHttpClient<Lib.Net.Http.WebPush.PushServiceClient>();
+builder.Services.AddHostedService<WebPushDispatchWorker>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
 {
     var taNoMar = builder.Configuration.GetSection(TaNoMarOptions.SectionName).Get<TaNoMarOptions>() ?? new();
@@ -164,11 +178,11 @@ api.MapPost("/fishing-spots", async (PersonalSpotRequest request, ClaimsPrincipa
     if (user is null) return Results.Unauthorized();
     var plan = await db.Plans.SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
     var currentCount = await db.FishingSpots.CountAsync(spot => spot.OwnerUserId == user.Id, cancellationToken);
-    if (currentCount >= plan.MaxPersonalSpots) return Results.Conflict(new { code = "plan_limit", detail = "Seu plano não permite mais pesqueiros pessoais." });
+    if (currentCount >= plan.MaxPersonalSpots) return Results.Conflict(new { code = "plan_limit", detail = "Seu plano não permite mais locais pessoais." });
     if (request.Latitude is null || request.Longitude is null || string.IsNullOrWhiteSpace(request.Name)) return Results.BadRequest(new { detail = "Nome e coordenadas são obrigatórios." });
     var existingSpots = await db.FishingSpots.AsNoTracking().ToListAsync(cancellationToken);
     if (IsDuplicateSpot(existingSpots, request.Name.Trim(), request.Latitude.Value, request.Longitude.Value))
-        return Results.Conflict(new { code = "duplicate_spot", detail = "Já existe um pesqueiro com esse nome ou muito próximo." });
+        return Results.Conflict(new { code = "duplicate_spot", detail = "Já existe um local com esse nome ou muito próximo." });
     var shared = request.Shared;
     var spot = new FishingSpot
     {
@@ -202,7 +216,7 @@ api.MapPut("/fishing-spots/{id}", async (string id, PersonalSpotRequest request,
     if (request.Latitude is null || request.Longitude is null || string.IsNullOrWhiteSpace(request.Name)) return Results.BadRequest(new { detail = "Nome e coordenadas são obrigatórios." });
     var others = await db.FishingSpots.AsNoTracking().Where(item => item.Id != spot.Id).ToListAsync(cancellationToken);
     if (IsDuplicateSpot(others, request.Name.Trim(), request.Latitude.Value, request.Longitude.Value))
-        return Results.Conflict(new { code = "duplicate_spot", detail = "Já existe um pesqueiro com esse nome ou muito próximo." });
+        return Results.Conflict(new { code = "duplicate_spot", detail = "Já existe um local com esse nome ou muito próximo." });
     ApplyPersonalSpot(spot, request);
     await db.SaveChangesAsync(cancellationToken);
     var favorite = await db.FavoriteSpots.AnyAsync(item => item.UserId == user.Id && item.FishingSpotId == spot.Id, cancellationToken);
@@ -233,20 +247,25 @@ api.MapGet("/admin/fishing-spots/pending", async (ClaimsPrincipal principal, TaN
     return Results.Ok(spots.Select(spot => SpotDtoProjection(spot, actor!, false)).ToList());
 }).RequireAuthorization();
 
-api.MapPost("/admin/fishing-spots/{id}/approve", async (string id, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+api.MapPost("/admin/fishing-spots/{id}/approve", async (string id, ClaimsPrincipal principal, TaNoMarDbContext db, NotificationRealtimeHub hub, WebPushQueue push, CancellationToken cancellationToken) =>
 {
     var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
     if (failure is not null) return failure;
     var spot = await db.FishingSpots.SingleOrDefaultAsync(item => item.Slug == id && item.Visibility == "shared", cancellationToken);
     if (spot is null) return Results.NotFound();
     spot.IsApproved = true;
-    if (spot.OwnerUserId is Guid ownerId)
-        AddNotification(db, ownerId, "Local publicado", $"“{spot.Name}” agora aparece para a comunidade.");
+    Guid? ownerId = spot.OwnerUserId;
+    const string title = "Local publicado";
+    var body = $"“{spot.Name}” agora aparece para a comunidade.";
+    if (ownerId is Guid recipientId)
+        AddNotification(db, recipientId, title, body);
     await db.SaveChangesAsync(cancellationToken);
+    if (ownerId is Guid notifiedId)
+        DispatchCreated(hub, push, notifiedId, title, body);
     return Results.NoContent();
 }).RequireAuthorization();
 
-api.MapPost("/admin/fishing-spots/{id}/reject", async (string id, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+api.MapPost("/admin/fishing-spots/{id}/reject", async (string id, ClaimsPrincipal principal, TaNoMarDbContext db, NotificationRealtimeHub hub, WebPushQueue push, CancellationToken cancellationToken) =>
 {
     var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
     if (failure is not null) return failure;
@@ -254,9 +273,14 @@ api.MapPost("/admin/fishing-spots/{id}/reject", async (string id, ClaimsPrincipa
     if (spot is null) return Results.NotFound();
     spot.Visibility = "private";
     spot.IsApproved = true;
-    if (spot.OwnerUserId is Guid ownerId)
-        AddNotification(db, ownerId, "Local não publicado", $"“{spot.Name}” permanece só no seu mapa.");
+    Guid? ownerId = spot.OwnerUserId;
+    const string title = "Local não publicado";
+    var body = $"“{spot.Name}” permanece só no seu mapa.";
+    if (ownerId is Guid recipientId)
+        AddNotification(db, recipientId, title, body);
     await db.SaveChangesAsync(cancellationToken);
+    if (ownerId is Guid notifiedId)
+        DispatchCreated(hub, push, notifiedId, title, body);
     return Results.NoContent();
 }).RequireAuthorization();
 
@@ -270,7 +294,7 @@ api.MapGet("/admin/users", async (ClaimsPrincipal principal, TaNoMarDbContext db
     return Results.Ok(users.Select(item => AdminUserDto(item, ResolvePlan(plans, item.PlanCode), actor!, options.Value, activeAdmins)).ToList());
 }).RequireAuthorization();
 
-api.MapPut("/admin/users/{id:guid}/plan", async (Guid id, AdminPlanRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
+api.MapPut("/admin/users/{id:guid}/plan", async (Guid id, AdminPlanRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, NotificationRealtimeHub hub, WebPushQueue push, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
 {
     var (actor, failure) = await AdminActorAsync(principal, db, cancellationToken);
     if (failure is not null) return failure;
@@ -284,14 +308,17 @@ api.MapPut("/admin/users/{id:guid}/plan", async (Guid id, AdminPlanRequest reque
     if (!string.Equals(target.PlanCode, plan.Code, StringComparison.Ordinal))
     {
         target.PlanCode = plan.Code;
-        AddNotification(db, target.Id, "Plano atualizado", $"Seu plano agora é {plan.Name}.");
+        const string title = "Plano atualizado";
+        var body = $"Seu plano agora é {plan.Name}.";
+        AddNotification(db, target.Id, title, body);
         await db.SaveChangesAsync(cancellationToken);
+        DispatchCreated(hub, push, target.Id, title, body);
     }
     var activeAdmins = await db.Users.CountAsync(item => item.IsActive && item.Role == "Admin", cancellationToken);
     return Results.Ok(AdminUserDto(target, plan, actor!, options.Value, activeAdmins));
 }).RequireAuthorization();
 
-api.MapPut("/admin/users/{id:guid}/active", async (Guid id, AdminActiveRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
+api.MapPut("/admin/users/{id:guid}/active", async (Guid id, AdminActiveRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, NotificationRealtimeHub hub, WebPushQueue push, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
 {
     var (actor, failure) = await AdminActorAsync(principal, db, cancellationToken);
     if (failure is not null) return failure;
@@ -305,6 +332,8 @@ api.MapPut("/admin/users/{id:guid}/active", async (Guid id, AdminActiveRequest r
     if (target.IsActive != request.IsActive)
     {
         target.IsActive = request.IsActive;
+        string? title = null;
+        string? body = null;
         if (!request.IsActive)
         {
             var tokens = await db.RefreshTokens.Where(item => item.UserId == target.Id && item.RevokedAt == null).ToListAsync(cancellationToken);
@@ -312,8 +341,14 @@ api.MapPut("/admin/users/{id:guid}/active", async (Guid id, AdminActiveRequest r
             foreach (var token in tokens) token.RevokedAt = now;
         }
         else
-            AddNotification(db, target.Id, "Conta liberada", "Sua conta voltou a ficar ativa no TáNoMar.");
+        {
+            title = "Conta liberada";
+            body = "Sua conta voltou a ficar ativa no TáNoMar.";
+            AddNotification(db, target.Id, title, body);
+        }
         await db.SaveChangesAsync(cancellationToken);
+        if (title is not null && body is not null)
+            DispatchCreated(hub, push, target.Id, title, body);
     }
     var plan = await db.Plans.SingleAsync(item => item.Code == target.PlanCode, cancellationToken);
     var activeAdmins = await db.Users.CountAsync(item => item.IsActive && item.Role == "Admin", cancellationToken);
@@ -428,7 +463,7 @@ api.MapGet("/community/reports", async (string? spotId, ClaimsPrincipal principa
     var myVotes = await db.CommunityReportVotes.AsNoTracking().Where(vote => vote.UserId == user.Id && reportIds.Contains(vote.ReportId)).ToListAsync(cancellationToken);
     return Results.Ok(rows.Select(item => ReportDto(item.report, item.spot, myVotes.FirstOrDefault(vote => vote.ReportId == item.report.Id)?.Kind, item.report.UserId == user.Id)).ToList());
 }).RequireAuthorization();
-api.MapPost("/community/reports", async (CommunityReportRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+api.MapPost("/community/reports", async (CommunityReportRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, NotificationRealtimeHub hub, WebPushQueue push, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
@@ -442,9 +477,13 @@ api.MapPost("/community/reports", async (CommunityReportRequest request, ClaimsP
     var recipientIds = await db.FavoriteSpots.Where(item => item.FishingSpotId == spot.Id && item.UserId != user.Id).Select(item => item.UserId).Distinct().ToListAsync(cancellationToken);
     if (spot.OwnerUserId is Guid ownerId && ownerId != user.Id && !recipientIds.Contains(ownerId))
         recipientIds.Add(ownerId);
+    const string title = "Novo relato";
+    var body = $"Alguém relatou {LabelForReportType(type)} em {spot.Name}.";
     foreach (var recipientId in recipientIds)
-        AddNotification(db, recipientId, "Novo relato", $"Alguém relatou {LabelForReportType(type)} em {spot.Name}.");
+        AddNotification(db, recipientId, title, body);
     await db.SaveChangesAsync(cancellationToken);
+    foreach (var recipientId in recipientIds)
+        DispatchCreated(hub, push, recipientId, title, body);
     return Results.Created($"/api/v1/community/reports/{report.Id}", ReportDto(report, spot, null, true));
 }).RequireAuthorization().RequireRateLimiting("community");
 api.MapPost("/community/reports/{id:guid}/confirm", (Guid id, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) => VoteReportAsync(id, "confirm", principal, db, cancellationToken)).RequireAuthorization().RequireRateLimiting("community");
@@ -467,8 +506,124 @@ api.MapGet("/notifications", async (ClaimsPrincipal principal, TaNoMarDbContext 
     if (user is null) return Results.Unauthorized();
     return Results.Ok(await db.Notifications.AsNoTracking().Where(item => item.UserId == user.Id && item.RemovedAt == null && item.ExpiresAt > DateTimeOffset.UtcNow).OrderByDescending(item => item.CreatedAt).Select(item => new { id = item.Id, title = item.Title, body = item.Body, createdAt = item.CreatedAt, readAt = item.ReadAt }).ToListAsync(cancellationToken));
 }).RequireAuthorization();
-api.MapPost("/notifications/{id:guid}/read", async (Guid id, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) => { var user = await CurrentUserAsync(principal, db, cancellationToken); if (user is null) return Results.Unauthorized(); var item = await db.Notifications.SingleOrDefaultAsync(notification => notification.Id == id && notification.UserId == user.Id, cancellationToken); if (item is null) return Results.NotFound(); item.ReadAt = DateTimeOffset.UtcNow; await db.SaveChangesAsync(cancellationToken); return Results.NoContent(); }).RequireAuthorization();
-api.MapDelete("/notifications/{id:guid}", async (Guid id, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) => { var user = await CurrentUserAsync(principal, db, cancellationToken); if (user is null) return Results.Unauthorized(); var item = await db.Notifications.SingleOrDefaultAsync(notification => notification.Id == id && notification.UserId == user.Id, cancellationToken); if (item is null) return Results.NotFound(); item.RemovedAt = DateTimeOffset.UtcNow; await db.SaveChangesAsync(cancellationToken); return Results.NoContent(); }).RequireAuthorization();
+api.MapGet("/notifications/unread", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    return Results.Ok(new { unread = await HasUnreadAsync(db, user.Id, cancellationToken) });
+}).RequireAuthorization();
+api.MapGet("/notifications/stream", async (ClaimsPrincipal principal, TaNoMarDbContext db, NotificationRealtimeHub hub, HttpContext context, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    context.Response.Headers.ContentType = "text/event-stream";
+    context.Response.Headers.CacheControl = "no-store";
+    context.Response.Headers["X-Accel-Buffering"] = "no";
+    context.Features.Get<IHttpResponseBodyFeature>()?.DisableBuffering();
+    var gate = new SemaphoreSlim(1, 1);
+    await WriteSseEvent(context, gate, new { unread = await HasUnreadAsync(db, user.Id, cancellationToken) }, cancellationToken);
+    using var heartbeat = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+    var keepAlive = Task.Run(async () =>
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(20));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(heartbeat.Token))
+            {
+                await gate.WaitAsync(heartbeat.Token);
+                try
+                {
+                    await context.Response.WriteAsync(": keepalive\n\n", heartbeat.Token);
+                    await context.Response.Body.FlushAsync(heartbeat.Token);
+                }
+                finally
+                {
+                    gate.Release();
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }, heartbeat.Token);
+    try
+    {
+        await foreach (var ping in hub.Subscribe(user.Id, cancellationToken))
+            await WriteSseEvent(context, gate, new { unread = ping.Unread }, cancellationToken);
+    }
+    finally
+    {
+        heartbeat.Cancel();
+        await keepAlive;
+    }
+    return Results.Empty;
+}).RequireAuthorization();
+api.MapGet("/notifications/push-public-key", (Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options) =>
+{
+    if (!options.Value.HasVapid) return Results.NotFound();
+    return Results.Ok(new { publicKey = options.Value.VapidPublicKey });
+}).RequireAuthorization();
+api.MapPut("/notifications/push-subscription", async (PushSubscriptionRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    if (string.IsNullOrWhiteSpace(request.Endpoint) || string.IsNullOrWhiteSpace(request.P256dh) || string.IsNullOrWhiteSpace(request.Auth))
+        return Results.BadRequest(new { detail = "Subscription incompleta." });
+    var item = await db.PushSubscriptions.SingleOrDefaultAsync(subscription => subscription.Endpoint == request.Endpoint, cancellationToken);
+    if (item is null)
+    {
+        db.PushSubscriptions.Add(new DevicePushSubscription
+        {
+            UserId = user.Id,
+            Endpoint = request.Endpoint.Trim(),
+            P256dh = request.P256dh.Trim(),
+            Auth = request.Auth.Trim()
+        });
+    }
+    else
+    {
+        item.UserId = user.Id;
+        item.P256dh = request.P256dh.Trim();
+        item.Auth = request.Auth.Trim();
+    }
+    await db.SaveChangesAsync(cancellationToken);
+    return Results.NoContent();
+}).RequireAuthorization();
+api.MapDelete("/notifications/push-subscription", async ([FromBody] PushSubscriptionRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    if (string.IsNullOrWhiteSpace(request.Endpoint)) return Results.BadRequest(new { detail = "Endpoint ausente." });
+    var item = await db.PushSubscriptions.SingleOrDefaultAsync(subscription => subscription.Endpoint == request.Endpoint && subscription.UserId == user.Id, cancellationToken);
+    if (item is not null)
+    {
+        db.PushSubscriptions.Remove(item);
+        await db.SaveChangesAsync(cancellationToken);
+    }
+    return Results.NoContent();
+}).RequireAuthorization();
+api.MapPost("/notifications/{id:guid}/read", async (Guid id, ClaimsPrincipal principal, TaNoMarDbContext db, NotificationRealtimeHub hub, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    var item = await db.Notifications.SingleOrDefaultAsync(notification => notification.Id == id && notification.UserId == user.Id, cancellationToken);
+    if (item is null) return Results.NotFound();
+    item.ReadAt = DateTimeOffset.UtcNow;
+    await db.SaveChangesAsync(cancellationToken);
+    hub.Publish(user.Id, await HasUnreadAsync(db, user.Id, cancellationToken));
+    return Results.NoContent();
+}).RequireAuthorization();
+api.MapDelete("/notifications/{id:guid}", async (Guid id, ClaimsPrincipal principal, TaNoMarDbContext db, NotificationRealtimeHub hub, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    var item = await db.Notifications.SingleOrDefaultAsync(notification => notification.Id == id && notification.UserId == user.Id, cancellationToken);
+    if (item is null) return Results.NotFound();
+    item.RemovedAt = DateTimeOffset.UtcNow;
+    await db.SaveChangesAsync(cancellationToken);
+    hub.Publish(user.Id, await HasUnreadAsync(db, user.Id, cancellationToken));
+    return Results.NoContent();
+}).RequireAuthorization();
 
 api.MapGet("/public/offline-forecast", async (FishingForecastService fishing, HttpContext context, CancellationToken cancellationToken) =>
 {
@@ -593,6 +748,26 @@ static object ReportDto(CommunityReport report, FishingSpot spot, string? myVote
 static string LabelForReportType(string type) => type == "perigo" ? "perigo" : "condição";
 static void AddNotification(TaNoMarDbContext db, Guid userId, string title, string body) =>
     db.Notifications.Add(new Notification { UserId = userId, Title = title, Body = body });
+static void DispatchCreated(NotificationRealtimeHub hub, WebPushQueue push, Guid userId, string title, string body)
+{
+    hub.Publish(userId, true);
+    push.Enqueue(userId, title, body);
+}
+static Task<bool> HasUnreadAsync(TaNoMarDbContext db, Guid userId, CancellationToken cancellationToken) =>
+    db.Notifications.AsNoTracking().AnyAsync(item => item.UserId == userId && item.RemovedAt == null && item.ExpiresAt > DateTimeOffset.UtcNow && item.ReadAt == null, cancellationToken);
+static async Task WriteSseEvent(HttpContext context, SemaphoreSlim gate, object payload, CancellationToken cancellationToken)
+{
+    await gate.WaitAsync(cancellationToken);
+    try
+    {
+        await context.Response.WriteAsync($"data: {JsonSerializer.Serialize(payload)}\n\n", cancellationToken);
+        await context.Response.Body.FlushAsync(cancellationToken);
+    }
+    finally
+    {
+        gate.Release();
+    }
+}
 static bool IsDuplicateSpot(IEnumerable<FishingSpot> spots, string name, double latitude, double longitude) =>
     spots.Any(spot => spot.Name.Equals(name, StringComparison.OrdinalIgnoreCase)
         || (spot.Latitude != null && spot.Longitude != null && DistanceMeters(spot.Latitude.Value, spot.Longitude.Value, latitude, longitude) <= 200));
@@ -750,5 +925,6 @@ record PreferencesRequest(string? Region, string? WindUnit, bool? ForecastNotifi
 record FavoriteRequest(string SpotId, bool IsFavorite);
 record PersonalSpotRequest(string Name, double? Latitude, double? Longitude, string? Description, string? City, string? State, string? Region, bool Shared, double? SeaOrientationDegrees, string? Profile);
 record CommunityReportRequest(string SpotId, string Type, string? Comment);
+record PushSubscriptionRequest(string? Endpoint, string? P256dh, string? Auth);
 record AdminPlanRequest(string PlanCode);
 record AdminActiveRequest(bool IsActive);

@@ -10,6 +10,8 @@ O splash nativo do Android usa o ícone do manifesto sobre `background_color` (`
 
 O service worker precacheia apenas o app shell e ativos estáticos produzidos pelo build. O fallback de navegação exclui `/api/`.
 
+O service worker (`apps/web/src/sw.ts`, `injectManifest`) também trata `push` e `notificationclick`. Se houver uma janela visível, o toast do sistema não aparece — o sino já recebeu o SSE. Sem janela visível, mostra o aviso e o clique abre `/`.
+
 Não existe runtime cache de API nesta etapa:
 
 - endpoints autenticados permanecem sempre fora do service worker;

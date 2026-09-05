@@ -23,6 +23,6 @@ describe('AboutPage', () => {
     expect(attribution).toHaveAttribute('href', 'https://open-meteo.com/');
     expect(attribution).toHaveAttribute('target', '_blank');
 
-    expect(screen.getByText(/não substitui o que você vê na praia/)).toBeInTheDocument();
+    expect(screen.getByText(/não substitui o que você vê no local/)).toBeInTheDocument();
   });
 });

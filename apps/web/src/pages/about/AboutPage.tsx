@@ -43,7 +43,7 @@ export function AboutPage() {
           <li>Vento — 25%. Vento fraco a moderado ajuda; acima de 30 km/h a nota cai forte.</li>
           <li>
             Direção do vento — 25%. Vento de terra (offshore) vale mais. Vento do mar (onshore)
-            empurra a nota para baixo, usando a orientação da praia.
+            empurra a nota para baixo, usando a orientação do local.
           </li>
           <li>
             Altura da onda — 20%. O que é “bom” muda com o perfil: praia protegida prefere onda
@@ -71,8 +71,8 @@ export function AboutPage() {
           <MapPinned size={18} aria-hidden="true" /> Locais
         </h2>
         <ul>
-          <li>Praias oficiais são cadastradas pelo TáNoMar.</li>
-          <li>Pesqueiros pessoais e compartilhados vêm dos próprios pescadores.</li>
+          <li>Locais oficiais são cadastrados pelo TáNoMar.</li>
+          <li>Locais pessoais e compartilhados vêm dos próprios pescadores.</li>
         </ul>
       </Card>
       <Card as="section" className={aboutStyles.source}>
@@ -91,8 +91,8 @@ export function AboutPage() {
           <AlertTriangle size={18} aria-hidden="true" /> Aviso
         </h2>
         <p>
-          A previsão pode mudar. Olhe o mar no local antes de entrar — o TáNoMar não substitui o que
-          você vê na praia.
+          A previsão pode mudar. Olhe o mar antes de entrar — o TáNoMar não substitui o que você vê
+          no local.
         </p>
       </Card>
     </div>

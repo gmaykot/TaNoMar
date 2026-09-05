@@ -102,6 +102,8 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:5000',
         changeOrigin: true,
+        timeout: 0,
+        proxyTimeout: 0,
       },
     },
   },
@@ -110,9 +112,17 @@ export default defineConfig({
     nipIoHint(),
     react(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'prompt',
       devOptions: {
         enabled: true,
+        type: 'module',
+      },
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        globIgnores: ['**/splash/**'],
       },
       manifest: {
         id: '/',
@@ -138,13 +148,6 @@ export default defineConfig({
             purpose: 'maskable',
           },
         ],
-      },
-      workbox: {
-        navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//],
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        globIgnores: ['**/splash/**'],
-        cleanupOutdatedCaches: true,
       },
     }),
   ],

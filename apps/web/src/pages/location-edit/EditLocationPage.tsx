@@ -24,7 +24,7 @@ export function EditLocationPage() {
     return (
       <FeedbackState
         title="Local indisponível"
-        description="Só o dono pode editar este pesqueiro."
+        description="Só o dono pode editar este local."
       />
     );
   }
@@ -36,7 +36,7 @@ export function EditLocationPage() {
       </Link>
       <PageHeader
         eyebrow="Seu mapa"
-        title="Editar pesqueiro."
+        title="Editar local."
         description="Coordenadas, perfil costeiro e visibilidade."
       />
       <SpotForm
