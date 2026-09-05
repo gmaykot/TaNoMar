@@ -45,7 +45,7 @@ Alterações no frontend exigem **rebuild da imagem inteira** (web + API). Isso 
 2. Defina o caminho do compose: `docker-compose.yml` (raiz).
 3. Configure as variáveis de ambiente (ver tabela abaixo).
 4. Ative persistência do volume `tanomar-data` se quiser preservar o log de auditoria (mapeado para `/var/lib/tanomar`).
-5. Configure domínio e HTTPS no proxy do Coolify (porta interna **8080**).
+5. Configure domínio e HTTPS no proxy do Coolify (porta interna do container **8080**). A porta publicada no host padrão é **8082** (`TANOMAR_PORT`), para não colidir com outro serviço na 8080.
 
 ### Variáveis obrigatórias
 
@@ -64,6 +64,7 @@ Alterações no frontend exigem **rebuild da imagem inteira** (web + API). Isso 
 | `BOOTSTRAP_ADMIN_GOOGLE_SUBJECT` | `TaNoMar__BootstrapAdminGoogleSubject` | Claim `sub` do Google do admin inicial — não é o e-mail |
 | `Fishing__WarmupEnabled` | `Fishing:WarmupEnabled` | Worker que aquece previsão (padrão `true`) |
 | `Fishing__WarmupIntervalHours` | `Fishing:WarmupIntervalHours` | Intervalo entre ciclos do worker (padrão `3`) |
+| `TANOMAR_PORT` | compose `ports` | Porta do host no Coolify (padrão `8082`). A API continua em `8080` dentro do container. |
 
 > A seção de configuração da API é `TaNoMar` e o prefixo de ambiente é `TaNoMar__`. Detalhes em [api-contracts.md](api-contracts.md#identificadores-de-runtime).
 
@@ -94,7 +95,7 @@ docker compose build
 docker compose up
 ```
 
-Acesse `http://127.0.0.1:8080` (porta padrão do compose).
+Acesse `http://127.0.0.1:8082` (porta padrão publicada no host). O healthcheck e o proxy do Coolify usam a porta interna `8080`.
 
 Build direto da imagem (sem compose):
 
@@ -111,7 +112,7 @@ docker build -f apps/api/TaNoMar.Api/Dockerfile -t tanomar \
 | API | `dotnet run` | `dotnet TaNoMar.Api.dll` |
 | Docker | Não usado | `docker-compose.yml` |
 | PostgreSQL | Externo (env var) | Externo (env var) |
-| Porta | 5173 (web) + 5000/8080 (API) | 8080 (tudo junto) |
+| Porta | 5173 (web) + 5000/8080 (API) | host `8082` → container `8080` |
 
 ## Troubleshooting
 
