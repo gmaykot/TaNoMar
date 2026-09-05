@@ -56,6 +56,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
         maxPersonalSpots: authState.maxPersonalSpots,
         maxAlerts: authState.maxAlerts,
       },
+      features: { showPartners: false },
       preferences: { region: 'Florianópolis', windUnit: 'kmh', forecastNotifications: true },
     },
     loginWithGoogle: vi.fn(),

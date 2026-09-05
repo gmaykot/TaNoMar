@@ -16,7 +16,7 @@ internal sealed class OpenMeteoClient(HttpClient httpClient)
             location,
             timezone,
             forecastDays,
-            "wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,precipitation_probability,temperature_2m,sea_level_height_msl",
+            "wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,precipitation_probability,temperature_2m,pressure_msl",
             cancellationToken,
             ("wind_speed_unit", "kmh"),
             ("precipitation_unit", "mm"));
@@ -37,7 +37,7 @@ internal sealed class OpenMeteoClient(HttpClient httpClient)
             location,
             timezone,
             forecastDays,
-            "wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature",
+            "wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature,sea_level_height_msl",
             cancellationToken);
 
     private async Task<OpenMeteoResponse> GetAsync(
@@ -97,6 +97,9 @@ internal sealed class OpenMeteoHourly
 
     [JsonPropertyName("temperature_2m")]
     public List<double?> Temperature { get; init; } = [];
+
+    [JsonPropertyName("pressure_msl")]
+    public List<double?> PressureMsl { get; init; } = [];
 
     [JsonPropertyName("sea_level_height_msl")]
     public List<double?> SeaLevelHeightMsl { get; init; } = [];

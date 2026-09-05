@@ -5,6 +5,8 @@ import { RequireAuth } from '@/app/router/RequireAuth';
 import { AboutPage } from '@/pages/about/AboutPage';
 import { AccountPage } from '@/pages/account/AccountPage';
 import { AdminHomePage } from '@/pages/admin/AdminHomePage';
+import { AdminPartnerFormPage } from '@/pages/admin/AdminPartnerFormPage';
+import { AdminPartnersPage } from '@/pages/admin/AdminPartnersPage';
 import { AdminSpotsPage } from '@/pages/admin/AdminSpotsPage';
 import { AdminUsersPage } from '@/pages/admin/AdminUsersPage';
 import { HomePage } from '@/pages/home/HomePage';
@@ -13,6 +15,8 @@ import { LocationDetailsPage } from '@/pages/location-details/LocationDetailsPag
 import { NewLocationPage } from '@/pages/location-new/NewLocationPage';
 import { LocationsPage } from '@/pages/locations/LocationsPage';
 import { LoginPage } from '@/pages/login/LoginPage';
+import { PartnerDetailsPage } from '@/pages/partners/PartnerDetailsPage';
+import { PartnersPage } from '@/pages/partners/PartnersPage';
 import { RankingPage } from '@/pages/ranking/RankingPage';
 import { routes } from '@/shared/constants/routes';
 
@@ -30,10 +34,15 @@ export function AppRouter() {
           <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
           <Route path={routes.account} element={<AccountPage />} />
           <Route path={routes.about} element={<AboutPage />} />
+          <Route path={routes.partners} element={<PartnersPage />} />
+          <Route path="/parceiros/:partnerSlug" element={<PartnerDetailsPage />} />
           <Route element={<RequireAdmin />}>
             <Route path={routes.admin} element={<AdminHomePage />} />
             <Route path={routes.adminSpots} element={<AdminSpotsPage />} />
             <Route path={routes.adminUsers} element={<AdminUsersPage />} />
+            <Route path={routes.adminPartners} element={<AdminPartnersPage />} />
+            <Route path={routes.adminPartnerNew} element={<AdminPartnerFormPage />} />
+            <Route path="/admin/parceiros/:partnerSlug" element={<AdminPartnerFormPage />} />
           </Route>
         </Route>
       </Route>

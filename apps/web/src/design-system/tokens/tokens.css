@@ -61,4 +61,5 @@
   --transition-base: 240ms ease;
   --z-navigation: 20;
   --z-banner: 30;
+  --z-sheet: 40;
 }

@@ -73,7 +73,7 @@ export interface MarinePoint {
 }
 
 export interface MarineSeries {
-  key: 'waves' | 'wave-period' | 'swell' | 'water-temperature';
+  key: 'waves' | 'wave-period' | 'swell' | 'water-temperature' | 'atmospheric-pressure';
   label: string;
   current: string;
   range: string;
@@ -94,6 +94,7 @@ export interface MarineTide {
   current: string;
   phase: string;
   nextExtreme: string;
+  attribution?: string;
   extremes: MarineTideExtreme[];
   points: MarinePoint[];
   locked?: boolean;

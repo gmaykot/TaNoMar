@@ -17,8 +17,10 @@ export function AboutPage() {
           <CloudSun size={18} aria-hidden="true" /> Clima e mar
         </h2>
         <p>
-          Vento, chuva, temperatura do ar, ondas, swell e temperatura da água vêm do Open-Meteo, que
-          combina previsão do tempo, o modelo GFS e dados marinhos.
+          Vento, chuva, temperatura do ar, pressão atmosférica, ondas, swell e temperatura da água
+          vêm do Open-Meteo, que combina previsão do tempo, o modelo GFS e dados marinhos. A tábua
+          de maré usa o porto oficial mais próximo, com dados publicados pela Marinha e lidos pela
+          Tábua de Maré API. Não serve para navegação.
         </p>
         <a
           className={aboutStyles.attribution}
@@ -81,10 +83,10 @@ export function AboutPage() {
         </h2>
         <p>
           Relatos de condição duram 12 horas. Relatos de perigo duram 24 horas. Qualquer pescador no
-          app vê e relata — com um toque (deu peixe, mar bom, mar ruim ou perigo) ou escrevendo o
-          que viu. Cada pessoa só envia o mesmo relato uma vez por dia no mesmo local. Confirmar ou
-          contestar é Premium. Os relatos ativos aparecem no sino com quem relatou e quando. O autor
-          pode apagar o próprio relato.
+          app vê e relata — com um atalho (deu peixe, mar bom, mar ruim ou perigo) ou escrevendo o
+          que viu. O envio e a exclusão pedem confirmação. Cada pessoa só envia o mesmo relato uma
+          vez por dia no mesmo local. Confirmar ou contestar é Premium. Os relatos ativos aparecem
+          no sino com quem relatou e quando. O autor pode apagar o próprio relato.
         </p>
       </Card>
       <Card as="section" className={aboutStyles.notice}>

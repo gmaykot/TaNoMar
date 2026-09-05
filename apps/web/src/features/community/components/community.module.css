@@ -105,6 +105,11 @@
   cursor: not-allowed;
 }
 
+.shortcutSelected {
+  border-color: var(--color-ocean-900);
+  box-shadow: var(--shadow-sm);
+}
+
 .shortcut strong {
   font-size: var(--font-size-sm);
 }

@@ -16,12 +16,19 @@ import {
 import { formatDateTime, isSameCalendarDay } from '@/shared/utils/formatDateTime';
 import type { ReportType } from '../types/community';
 import { reportShortcuts, shortcutForComment } from '../utils/reportShortcuts';
+import { ReportConfirmDrawer } from './ReportConfirmDrawer';
 import styles from './community.module.css';
 
 const typeLabel: Record<ReportType, string> = {
   condicao: 'Condição',
   perigo: 'Perigo',
 };
+
+interface PendingCreate {
+  reportType: ReportType;
+  reportComment?: string;
+  label: string;
+}
 
 function reportKey(type: ReportType, comment?: string | null) {
   return `${type}:${comment?.trim() ?? ''}`;
@@ -45,6 +52,8 @@ export function CommunityReports({ spotId, canReport, canVote = false }: Communi
   const [type, setType] = useState<ReportType>('condicao');
   const [comment, setComment] = useState('');
   const [sentMessage, setSentMessage] = useState<string | null>(null);
+  const [pendingCreate, setPendingCreate] = useState<PendingCreate | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const reports = useQuery({
     queryKey: ['community-reports', spotId],
     queryFn: () => getReports(spotId),
@@ -63,6 +72,7 @@ export function CommunityReports({ spotId, canReport, canVote = false }: Communi
     },
     onSuccess: async () => {
       setComment('');
+      setPendingCreate(null);
       setSentMessage('Relato enviado. Os outros pescadores receberam um aviso no sino.');
       await queryClient.invalidateQueries({ queryKey: ['community-reports'] });
       await queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -80,9 +90,26 @@ export function CommunityReports({ spotId, canReport, canVote = false }: Communi
   const remove = useMutation({
     mutationFn: (id: string) => deleteReport(id),
     onSuccess: async () => {
+      setPendingDeleteId(null);
       await queryClient.invalidateQueries({ queryKey: ['community-reports'] });
     },
   });
+
+  function requestCreate(next: PendingCreate) {
+    setSentMessage(null);
+    setPendingDeleteId(null);
+    setPendingCreate(next);
+  }
+
+  function requestDelete(id: string) {
+    setPendingCreate(null);
+    setPendingDeleteId(id);
+  }
+
+  const pendingDelete = reports.data?.find((item) => item.id === pendingDeleteId);
+  const pendingDeleteLabel = pendingDelete
+    ? (shortcutForComment(pendingDelete.comment)?.label ?? typeLabel[pendingDelete.type])
+    : null;
 
   const usedToday = new Set(
     (reports.data ?? [])
@@ -120,25 +147,30 @@ export function CommunityReports({ spotId, canReport, canVote = false }: Communi
           <div>
             <span className={styles.meta}>Atalhos</span>
             <p className={styles.hint}>
-              Um toque envia o relato. Os outros pescadores recebem um aviso no sino.
+              Escolha o relato e confirme o envio. Os outros pescadores recebem um aviso no sino.
             </p>
           </div>
           <div className={styles.shortcuts} role="group" aria-label="Atalhos de relato">
             {reportShortcuts.map((shortcut) => {
               const Icon = shortcutIcons[shortcut.id];
               const alreadySent = usedToday.has(reportKey(shortcut.type, shortcut.comment));
+              const selected =
+                pendingCreate?.reportType === shortcut.type &&
+                pendingCreate.reportComment === shortcut.comment;
               return (
                 <button
                   key={shortcut.id}
                   type="button"
-                  className={`${styles.shortcut} ${styles[shortcut.tone]}`}
+                  className={`${styles.shortcut} ${styles[shortcut.tone]} ${selected ? styles.shortcutSelected : ''}`}
                   onClick={() =>
-                    create.mutate({
+                    requestCreate({
                       reportType: shortcut.type,
                       reportComment: shortcut.comment,
+                      label: shortcut.label,
                     })
                   }
                   disabled={create.isPending || alreadySent}
+                  aria-pressed={selected}
                   aria-label={
                     alreadySent
                       ? `Você já relatou ${shortcut.label} hoje neste local`
@@ -192,9 +224,10 @@ export function CommunityReports({ spotId, canReport, canVote = false }: Communi
           <Button
             type="button"
             onClick={() =>
-              create.mutate({
+              requestCreate({
                 reportType: type,
                 reportComment: comment.trim() || undefined,
+                label: comment.trim() || typeLabel[type],
               })
             }
             disabled={create.isPending || customUsed}
@@ -245,7 +278,7 @@ export function CommunityReports({ spotId, canReport, canVote = false }: Communi
                     <Button
                       type="button"
                       variant="quiet"
-                      onClick={() => remove.mutate(report.id)}
+                      onClick={() => requestDelete(report.id)}
                       disabled={remove.isPending}
                     >
                       Apagar
@@ -292,6 +325,35 @@ export function CommunityReports({ spotId, canReport, canVote = false }: Communi
           description="Seja o primeiro a contar como está o local."
         />
       )}
+      {pendingCreate ? (
+        <ReportConfirmDrawer
+          title="Enviar relato"
+          description={`Enviar “${pendingCreate.label}” neste local? Os outros pescadores receberão um aviso no sino.`}
+          confirmLabel="Confirmar envio"
+          busy={create.isPending}
+          onCancel={() => {
+            if (!create.isPending) setPendingCreate(null);
+          }}
+          onConfirm={() =>
+            create.mutate({
+              reportType: pendingCreate.reportType,
+              reportComment: pendingCreate.reportComment,
+            })
+          }
+        />
+      ) : null}
+      {pendingDelete && pendingDeleteLabel ? (
+        <ReportConfirmDrawer
+          title="Apagar relato"
+          description={`Apagar “${pendingDeleteLabel}”? Ele some para toda a comunidade.`}
+          confirmLabel="Confirmar exclusão"
+          busy={remove.isPending}
+          onCancel={() => {
+            if (!remove.isPending) setPendingDeleteId(null);
+          }}
+          onConfirm={() => remove.mutate(pendingDelete.id)}
+        />
+      ) : null}
     </section>
   );
 }

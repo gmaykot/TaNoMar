@@ -9,6 +9,7 @@ internal sealed class FishingForecastService
     private readonly FishingOptions _options;
     private readonly FishingForecastCache _cache;
     private readonly OpenMeteoClient _openMeteo;
+    private readonly TabuaMareClient _tabuaMare;
     private readonly TaNoMarDbContext _db;
     private readonly TimeZoneInfo _timeZone;
 
@@ -16,11 +17,13 @@ internal sealed class FishingForecastService
         IOptions<FishingOptions> options,
         FishingForecastCache cache,
         OpenMeteoClient openMeteo,
+        TabuaMareClient tabuaMare,
         TaNoMarDbContext db)
     {
         _options = options.Value;
         _cache = cache;
         _openMeteo = openMeteo;
+        _tabuaMare = tabuaMare;
         _db = db;
         _timeZone = TimeZoneInfo.FindSystemTimeZoneById(_options.TimeZone);
     }
@@ -85,11 +88,17 @@ internal sealed class FishingForecastService
     {
         var day = date.DayNumber - Today().DayNumber;
         if (day is < 0 or > 7) return null;
-        return await _cache.GetOrCreateAsync(
+        var forecast = await _cache.GetOrCreateAsync(
             location,
             date,
             token => AnalyzeAsync(location, date, day, token),
             cancellationToken);
+        if (HasTide(forecast)) return forecast;
+
+        var withTide = await WithTideAsync(location, date, forecast, cancellationToken);
+        if (HasTide(withTide))
+            await _cache.PutAsync(location.Id, date, withTide, cancellationToken);
+        return withTide;
     }
 
     public async Task<ForecastWarmupResult> WarmPublicSpotsAsync(CancellationToken cancellationToken)
@@ -140,14 +149,26 @@ internal sealed class FishingForecastService
         DateOnly today,
         CancellationToken cancellationToken)
     {
-        var missing = 0;
+        var missingHours = 0;
         for (var day = 0; day <= 7; day++)
         {
-            if (!await _cache.HasFreshAsync(location.Id, today.AddDays(day), cancellationToken))
-                missing++;
+            var date = today.AddDays(day);
+            var existing = await _cache.TryGetFreshAsync(location.Id, date, cancellationToken);
+            if (existing is null)
+            {
+                missingHours++;
+                continue;
+            }
+
+            if (!HasTide(existing))
+            {
+                var withTide = await WithTideAsync(location, date, existing, cancellationToken);
+                if (HasTide(withTide))
+                    await _cache.PutAsync(location.Id, date, withTide, cancellationToken);
+            }
         }
 
-        if (missing == 0)
+        if (missingHours == 0)
             return false;
 
         var weather = await _openMeteo.GetWeatherAsync(location, _options.TimeZone, 8, cancellationToken);
@@ -157,7 +178,10 @@ internal sealed class FishingForecastService
         for (var day = 0; day <= 7; day++)
         {
             var date = today.AddDays(day);
-            await _cache.PutAsync(location.Id, date, BuildForecast(location, date, weather, gfsRain, marine), cancellationToken);
+            if (await _cache.HasFreshAsync(location.Id, date, cancellationToken))
+                continue;
+            var forecast = await WithTideAsync(location, date, BuildForecast(location, date, weather, gfsRain, marine), cancellationToken);
+            await _cache.PutAsync(location.Id, date, forecast, cancellationToken);
         }
 
         return true;
@@ -173,8 +197,28 @@ internal sealed class FishingForecastService
         var weather = await _openMeteo.GetWeatherAsync(location, _options.TimeZone, forecastDays, cancellationToken);
         var gfsRain = await _openMeteo.GetGfsRainAsync(location, _options.TimeZone, forecastDays, cancellationToken);
         var marine = await _openMeteo.GetMarineAsync(location, _options.TimeZone, forecastDays, cancellationToken);
-        return BuildForecast(location, targetDate, weather, gfsRain, marine);
+        return await WithTideAsync(location, targetDate, BuildForecast(location, targetDate, weather, gfsRain, marine), cancellationToken);
     }
+
+    private async Task<FishingLocationForecast> WithTideAsync(
+        FishingLocation location,
+        DateOnly date,
+        FishingLocationForecast forecast,
+        CancellationToken cancellationToken)
+    {
+        if (HasTide(forecast)) return forecast;
+        var day = await _tabuaMare.GetDayAsync(location.Latitude, location.Longitude, date, cancellationToken);
+        if (day is null) return forecast;
+        return forecast with
+        {
+            TidePoints = day.Points.Select(point => new FishingTidePoint(point.Time, point.Height)).ToList(),
+            TideExtremes = day.Extremes.Select(item => new FishingTideExtreme(item.Time, item.Type, item.HeightMeters)).ToList(),
+            TideAttribution = day.Attribution
+        };
+    }
+
+    private static bool HasTide(FishingLocationForecast forecast)
+        => forecast.TideExtremes is { Count: > 0 } || forecast.TidePoints is { Count: > 0 };
 
     private static FishingLocationForecast BuildForecast(
         FishingLocation location,
@@ -214,7 +258,8 @@ internal sealed class FishingForecastService
             var swellPeriod = ValueAt(marine.Hourly.SwellPeriod, marineIndex);
             var airTemperature = ValueAt(weather.Hourly.Temperature, index);
             var waterTemperature = ValueAt(marine.Hourly.WaterTemperature, marineIndex);
-            var seaLevel = ValueAtOrNull(weather.Hourly.SeaLevelHeightMsl, index);
+            var seaLevel = ValueAtOrNull(marine.Hourly.SeaLevelHeightMsl, marineIndex);
+            var pressure = ValueAt(weather.Hourly.PressureMsl, index);
 
             var score = FishingScoreCalculator.Calculate(
                 speed,
@@ -246,7 +291,8 @@ internal sealed class FishingForecastService
                 Round(swellPeriod, 1),
                 CompassDirection(waveDirection),
                 CompassDirection(swellDirection),
-                seaLevel is null ? null : Round(seaLevel.Value, 2)));
+                seaLevel is null ? null : Round(seaLevel.Value, 2),
+                Round(pressure, 0)));
         }
 
         var bestHours = rows

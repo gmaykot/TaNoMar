@@ -15,6 +15,8 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
     public DbSet<UserPreference> UserPreferences => Set<UserPreference>();
     public DbSet<FavoriteSpot> FavoriteSpots => Set<FavoriteSpot>();
     public DbSet<FishingForecastSnapshot> FishingForecastSnapshots => Set<FishingForecastSnapshot>();
+    public DbSet<Partner> Partners => Set<Partner>();
+    public DbSet<PartnerOffer> PartnerOffers => Set<PartnerOffer>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,6 +32,8 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
         modelBuilder.Entity<CommunityReportVote>().HasIndex(vote => new { vote.ReportId, vote.UserId }).IsUnique();
         modelBuilder.Entity<FishingForecastSnapshot>().HasIndex(item => new { item.LocationId, item.Date }).IsUnique();
         modelBuilder.Entity<FishingForecastSnapshot>().Property(item => item.PayloadJson).HasColumnType("jsonb");
+        modelBuilder.Entity<Partner>().HasIndex(item => item.Slug).IsUnique();
+        modelBuilder.Entity<PartnerOffer>().HasIndex(item => item.PartnerId);
 
         modelBuilder.Entity<Plan>().HasData(
             new Plan { Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0001"), Code = "free", Name = "Free", MaxForecastDays = 3, MaxFavorites = 0, MaxPersonalSpots = 0, MaxAlerts = 0 },
@@ -163,4 +167,36 @@ public sealed class FishingForecastSnapshot
     public string PayloadJson { get; set; } = "{}";
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset ExpiresAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class Partner
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Slug { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Category { get; set; } = "loja";
+    public string? Tagline { get; set; }
+    public string? About { get; set; }
+    public string City { get; set; } = string.Empty;
+    public string? WhatsApp { get; set; }
+    public string? Instagram { get; set; }
+    public string? Website { get; set; }
+    public string? MapsUrl { get; set; }
+    public string? CoverImageUrl { get; set; }
+    public bool IsPublished { get; set; }
+    public bool IsFeatured { get; set; }
+    public int SortOrder { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class PartnerOffer
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid PartnerId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? PriceLabel { get; set; }
+    public DateTimeOffset? EndsAt { get; set; }
+    public int SortOrder { get; set; }
 }

@@ -166,6 +166,15 @@ describe('forecastMapper', () => {
           ],
         }),
         waterTemperature: locked(),
+        atmosphericPressure: available({
+          current: '1018 hPa',
+          range: '1016–1020 hPa',
+          detail: 'estável',
+          points: [
+            { time: '05:00', value: 1018 },
+            { time: '06:00', value: 1018 },
+          ],
+        }),
         tide: { state: 'unavailable' },
       }),
     );
@@ -175,6 +184,41 @@ describe('forecastMapper', () => {
       direction: 'Leste',
     });
     expect(marine.series[3]).toMatchObject({ locked: true, current: 'Premium' });
+    expect(marine.series[4]).toMatchObject({ label: 'Pressão', current: '1018 hPa', detail: 'estável' });
     expect(marine.tide.unavailable).toBe(true);
+  });
+
+  it('preserva a atribuição da tábua de maré', () => {
+    const marine = mapMarineDetails(
+      parseMarineDetails({
+        spotId: 'campeche',
+        date: '2026-09-05',
+        waves: locked(),
+        wavePeriod: locked(),
+        swell: locked(),
+        waterTemperature: locked(),
+        atmosphericPressure: locked(),
+        tide: available({
+          current: '0.64 m',
+          phase: 'Enchente',
+          nextExtreme: 'Preamar 13:34 · 1.13 m',
+          attribution: 'Tábua de Florianópolis. Fonte: Marinha (Tábua de Maré API).',
+          extremes: [
+            { type: 'baixa-mar', time: '04:40', height: '0.46 m' },
+            { type: 'preamar', time: '13:34', height: '1.13 m' },
+          ],
+          points: [
+            { time: '04:40', value: 0.46 },
+            { time: '13:34', value: 1.13 },
+          ],
+        }),
+      }),
+    );
+    expect(marine.tide).toMatchObject({
+      current: '0.64 m',
+      phase: 'Enchente',
+      attribution: 'Tábua de Florianópolis. Fonte: Marinha (Tábua de Maré API).',
+    });
+    expect(marine.tide.extremes).toHaveLength(2);
   });
 });

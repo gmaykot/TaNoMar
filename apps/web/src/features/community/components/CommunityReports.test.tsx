@@ -45,6 +45,10 @@ describe('CommunityReports', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Relatar Deu peixe' }));
 
+    expect(createReport).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Enviar relato' })).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'Confirmar envio' }));
+
     expect(createReport).toHaveBeenCalledWith('campeche', 'condicao', 'Deu peixe');
     expect(
       await screen.findByText('Relato enviado. Os outros pescadores receberam um aviso no sino.'),
@@ -75,8 +79,12 @@ describe('CommunityReports', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Apagar' }));
 
-    expect(deleteReport).toHaveBeenCalledWith('22222222-2222-2222-2222-222222222222');
+    expect(deleteReport).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Apagar relato' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Confirmar' })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'Confirmar exclusão' }));
+
+    expect(deleteReport).toHaveBeenCalledWith('22222222-2222-2222-2222-222222222222');
   });
 
   it('bloqueia confirmar e contestar no plano Free com cadeado Premium', async () => {
@@ -160,5 +168,62 @@ describe('CommunityReports', () => {
     ).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Relatar Mar bom' })).toBeEnabled();
     expect(screen.getByText(/Você/)).toBeInTheDocument();
+  });
+
+  it('cancela o envio sem publicar o relato', async () => {
+    const user = userEvent.setup();
+    getReports.mockResolvedValue([]);
+
+    renderWithProviders(<CommunityReports spotId="campeche" canReport />);
+
+    await user.click(await screen.findByRole('button', { name: 'Relatar Mar ruim' }));
+    expect(screen.getByRole('dialog', { name: 'Enviar relato' })).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'Cancelar' }));
+
+    expect(createReport).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Confirmar envio' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Enviar relato' })).toBeInTheDocument();
+  });
+
+  it('cancela a exclusão sem apagar o relato', async () => {
+    const user = userEvent.setup();
+    getReports.mockResolvedValue([
+      {
+        id: '22222222-2222-2222-2222-222222222222',
+        spotId: 'campeche',
+        spotName: 'Campeche',
+        type: 'condicao',
+        comment: 'Deu peixe',
+        authorName: 'Ana',
+        createdAt: '2026-09-05T12:00:00Z',
+        expiresAt: '2026-09-06T00:00:00Z',
+        confirmations: 0,
+        contested: 0,
+        myVote: null,
+        isMine: true,
+      },
+    ]);
+
+    renderWithProviders(<CommunityReports spotId="campeche" canReport />);
+
+    await user.click(await screen.findByRole('button', { name: 'Apagar' }));
+    await user.click(await screen.findByRole('button', { name: 'Cancelar' }));
+
+    expect(deleteReport).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Confirmar exclusão' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Apagar' })).toBeInTheDocument();
+  });
+
+  it('fecha a gaveta ao tocar fora', async () => {
+    const user = userEvent.setup();
+    getReports.mockResolvedValue([]);
+
+    renderWithProviders(<CommunityReports spotId="campeche" canReport />);
+
+    await user.click(await screen.findByRole('button', { name: 'Relatar Deu peixe' }));
+    await user.click(screen.getByRole('button', { name: 'Fechar confirmação' }));
+
+    expect(createReport).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog', { name: 'Enviar relato' })).not.toBeInTheDocument();
   });
 });

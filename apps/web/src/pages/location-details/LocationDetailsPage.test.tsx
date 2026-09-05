@@ -23,6 +23,17 @@ vi.mock('@/features/forecast/services/forecastService', () => ({
           { time: '12:00', value: 0.7 },
         ],
       },
+      {
+        key: 'atmospheric-pressure',
+        label: 'Pressão',
+        current: '1018 hPa',
+        range: '1016–1020 hPa',
+        detail: 'estável',
+        points: [
+          { time: '05:00', value: 1016 },
+          { time: '12:00', value: 1018 },
+        ],
+      },
     ],
     tide: {
       current: '0.85 m',
@@ -79,6 +90,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
         maxPersonalSpots: authState.maxFavorites > 0 ? 10 : 0,
         maxAlerts: 10,
       },
+      features: { showPartners: false },
       preferences: { region: 'Florianópolis', windUnit: 'kmh', forecastNotifications: true },
     },
     loginWithGoogle: vi.fn(),
@@ -126,8 +138,11 @@ describe('LocationDetailsPage', () => {
     expect(screen.queryByLabelText('Maré')).not.toBeInTheDocument();
 
     await user.click(screen.getByText('Mar e maré'));
-    expect(await screen.findByText('Enchente')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Mar' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Maré e pressão' })).toBeInTheDocument();
+    expect(screen.getByText('Enchente')).toBeInTheDocument();
     expect(screen.getByText('Ondas')).toBeInTheDocument();
+    expect(screen.getByText('Pressão')).toBeInTheDocument();
     expect(screen.getByLabelText('Maré')).toBeInTheDocument();
   });
 

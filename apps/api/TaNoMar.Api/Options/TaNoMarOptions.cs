@@ -16,6 +16,7 @@ public sealed class TaNoMarOptions
     public string VapidPublicKey { get; set; } = string.Empty;
     public string VapidPrivateKey { get; set; } = string.Empty;
     public string VapidSubject { get; set; } = string.Empty;
+    public bool ShowPartners { get; set; }
 
     public bool HasVapid =>
         !string.IsNullOrWhiteSpace(VapidPublicKey)

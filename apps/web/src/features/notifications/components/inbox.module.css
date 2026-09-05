@@ -1,5 +1,4 @@
 .inbox {
-  position: relative;
   display: flex;
 }
 
@@ -37,8 +36,10 @@
 
 .item {
   display: grid;
+  min-width: 0;
   gap: var(--space-1);
   padding: var(--space-3);
+  overflow-wrap: anywhere;
   border-radius: var(--radius-md);
   background: var(--color-sand-100);
   text-align: left;

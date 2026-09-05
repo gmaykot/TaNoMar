@@ -43,6 +43,23 @@ internal sealed class FishingForecastCache
         return true;
     }
 
+    public async Task<FishingLocationForecast?> TryGetFreshAsync(
+        string locationId,
+        DateOnly date,
+        CancellationToken cancellationToken)
+    {
+        var key = MemoryKey(locationId, date);
+        if (TryGetMemory(key, out var cached) && IsFresh(cached))
+            return cached;
+
+        cached = await TryReadSnapshotAsync(locationId, date, cancellationToken);
+        if (cached is null || !IsFresh(cached))
+            return null;
+
+        SetMemory(key, cached);
+        return cached;
+    }
+
     public async Task PutAsync(
         string locationId,
         DateOnly date,

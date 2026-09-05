@@ -4,8 +4,9 @@ import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { UserMenu } from './UserMenu';
 
-const { logout } = vi.hoisted(() => ({
+const { logout, authState } = vi.hoisted(() => ({
   logout: vi.fn(),
+  authState: { showPartners: false },
 }));
 
 vi.mock('../hooks/useAuth', () => ({
@@ -24,6 +25,7 @@ vi.mock('../hooks/useAuth', () => ({
         maxPersonalSpots: 10,
         maxAlerts: 10,
       },
+      features: { showPartners: authState.showPartners },
       preferences: { region: 'Florianópolis', windUnit: 'kmh', forecastNotifications: true },
     },
     loginWithGoogle: vi.fn(),
@@ -33,6 +35,7 @@ vi.mock('../hooks/useAuth', () => ({
 
 describe('UserMenu', () => {
   it('abre o menu, leva para a conta e chama logout', async () => {
+    authState.showPartners = false;
     const user = userEvent.setup();
     renderWithProviders(<UserMenu />);
 
@@ -44,9 +47,21 @@ describe('UserMenu', () => {
       '/locais?filtro=meus',
     );
     expect(screen.getByRole('menuitem', { name: 'Sobre' })).toHaveAttribute('href', '/sobre');
+    expect(screen.queryByRole('menuitem', { name: 'Parceiros' })).not.toBeInTheDocument();
     expect(screen.queryByRole('menuitem', { name: 'Moderação' })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('menuitem', { name: 'Sair' }));
     expect(logout).toHaveBeenCalledTimes(1);
+  });
+
+  it('mostra Parceiros quando a flag está ligada', async () => {
+    authState.showPartners = true;
+    const user = userEvent.setup();
+    renderWithProviders(<UserMenu />);
+    await user.click(screen.getByRole('button', { name: 'Abrir menu da conta de Ana' }));
+    expect(screen.getByRole('menuitem', { name: 'Parceiros' })).toHaveAttribute(
+      'href',
+      '/parceiros',
+    );
   });
 });

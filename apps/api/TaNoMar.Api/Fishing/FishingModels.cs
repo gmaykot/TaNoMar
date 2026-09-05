@@ -10,6 +10,8 @@ public sealed class FishingOptions
     public int WarmupIntervalHours { get; set; } = 3;
     public int WarmupStartupDelaySeconds { get; set; } = 10;
     public List<FishingLocation> Locations { get; set; } = [];
+    public string TabuaMareBaseUrl { get; set; } = "https://tabuamare.api.br/api/v2";
+    public string TabuaMareApiKey { get; set; } = string.Empty;
 }
 
 public sealed class FishingLocation
@@ -35,7 +37,14 @@ public sealed record FishingLocationForecast(
     double Score,
     IReadOnlyList<FishingHourForecast> BestHours,
     FishingHourForecast? BestHour,
-    IReadOnlyList<FishingHourForecast> Hours);
+    IReadOnlyList<FishingHourForecast> Hours,
+    IReadOnlyList<FishingTidePoint>? TidePoints = null,
+    IReadOnlyList<FishingTideExtreme>? TideExtremes = null,
+    string? TideAttribution = null);
+
+public sealed record FishingTidePoint(string Time, double Height);
+
+public sealed record FishingTideExtreme(string Time, string Type, double HeightMeters);
 
 public sealed record FishingHourForecast(
     string Time,
@@ -55,7 +64,8 @@ public sealed record FishingHourForecast(
     double SwellPeriodSeconds,
     string WaveDirection,
     string SwellDirection,
-    double? SeaLevelHeightMsl);
+    double? SeaLevelHeightMsl,
+    double PressureHpa);
 
 public sealed record FishingForecastError(string Location, string Error);
 

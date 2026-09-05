@@ -10,7 +10,12 @@ export const routes = {
   locationEdit: (locationId: string) => `/locais/${locationId}/editar`,
   account: '/conta',
   about: '/sobre',
+  partners: '/parceiros',
+  partnerDetails: (slug: string) => `/parceiros/${slug}`,
   admin: '/admin',
   adminSpots: '/admin/locais',
   adminUsers: '/admin/usuarios',
+  adminPartners: '/admin/parceiros',
+  adminPartnerNew: '/admin/parceiros/novo',
+  adminPartnerEdit: (slug: string) => `/admin/parceiros/${slug}`,
 } as const;

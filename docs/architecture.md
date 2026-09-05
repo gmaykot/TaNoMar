@@ -31,7 +31,7 @@ Os services chamam `/api/v1`, validam DTOs de wire e mapeiam para os tipos da UI
 
 - `Auth`: emissão e validação de tokens.
 - `Data`: DbContext, entidades, seed, auditoria, regras de visibilidade e migrations.
-- `Fishing`: Open-Meteo, cache em memória com snapshot no PostgreSQL, previsão e fórmula da nota. A consulta segue memória → `FishingForecastSnapshots` (mesmo TTL de `Fishing:CacheHours`) → Open-Meteo. Snapshot com horas é reutilizado mesmo sem maré: a Open-Meteo costuma devolver `sea_level_height_msl` nulo nesta costa, e isso não invalida o cache. A maré, quando existe, sai da mesma série: a API detecta mínimos/máximos locais (preamar/baixa-mar) e a inclinação da curva (enchente/vazante). O `FishingForecastWarmupWorker` aquece oficiais e compartilhados aprovados (dias 0–7) para gravar cache e snapshot fora do request.
+- `Fishing`: Open-Meteo, Tábua de Maré API, cache em memória com snapshot no PostgreSQL, previsão e fórmula da nota. A consulta segue memória → `FishingForecastSnapshots` (mesmo TTL de `Fishing:CacheHours`) → Open-Meteo. Snapshot com horas é reutilizado mesmo sem tábua: isso não invalida o cache nem dispara re-fetch da Open-Meteo. A pressão (`pressure_msl`) entra na mesma série e no warmup; não entra na nota. A tábua (porto mais próximo, mês em cache) entra no snapshot quando a API comunitária responde; senão o marine cai no nível modelado da Open-Meteo, que costuma vir nulo nesta costa. O `FishingForecastWarmupWorker` aquece oficiais e compartilhados aprovados (dias 0–7) e aproveita o cache mensal da tábua para não estourar o limite da API pública.
 - `Models`: contratos existentes.
 - `Options`: configuração da aplicação.
 - `Notifications`: hub SSE em memória e worker de Web Push (VAPID). Sem fila externa; um container.

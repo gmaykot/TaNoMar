@@ -29,11 +29,23 @@ builder.Services.PostConfigure<TaNoMarOptions>(options =>
         options.VapidSubject = builder.Configuration["VAPID_SUBJECT"] ?? string.Empty;
 });
 builder.Services.Configure<FishingOptions>(builder.Configuration.GetSection(FishingOptions.SectionName));
+builder.Services.PostConfigure<FishingOptions>(options =>
+{
+    if (string.IsNullOrWhiteSpace(options.TabuaMareApiKey))
+        options.TabuaMareApiKey = builder.Configuration["TABUA_MARE_API_KEY"] ?? string.Empty;
+    if (string.IsNullOrWhiteSpace(options.TabuaMareBaseUrl))
+        options.TabuaMareBaseUrl = builder.Configuration["TABUA_MARE_BASE_URL"] ?? "https://tabuamare.api.br/api/v2";
+});
 builder.Services.AddDbContext<TaNoMarDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 builder.Services.AddScoped<AuthTokenService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<FishingForecastCache>();
 builder.Services.AddHttpClient<OpenMeteoClient>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(20);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("tanomar/2.0");
+});
+builder.Services.AddHttpClient<TabuaMareClient>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(20);
     client.DefaultRequestHeaders.UserAgent.ParseAdd("tanomar/2.0");
@@ -160,7 +172,7 @@ api.MapGet("/me", async (ClaimsPrincipal principal, TaNoMarDbContext db, Microso
     if (user is null) return Results.Unauthorized();
     if (ApplyBootstrapAdmin(user, user.Email, user.GoogleSubject, options.Value))
         await db.SaveChangesAsync(cancellationToken);
-    return Results.Ok(await UserDtoAsync(user, db, cancellationToken));
+    return Results.Ok(await UserDtoAsync(user, db, options.Value, cancellationToken));
 }).RequireAuthorization();
 
 api.MapGet("/fishing-spots", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
@@ -355,6 +367,93 @@ api.MapPut("/admin/users/{id:guid}/active", async (Guid id, AdminActiveRequest r
     return Results.Ok(AdminUserDto(target, plan, actor, options.Value, activeAdmins));
 }).RequireAuthorization();
 
+api.MapGet("/partners", async (ClaimsPrincipal principal, TaNoMarDbContext db, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    if (!options.Value.ShowPartners)
+        return Results.NotFound(new { code = "feature_disabled", detail = "Parceiros não estão disponíveis." });
+    var now = DateTimeOffset.UtcNow;
+    var partners = await db.Partners.AsNoTracking()
+        .Where(item => item.IsPublished)
+        .OrderByDescending(item => item.IsFeatured)
+        .ThenBy(item => item.SortOrder)
+        .ThenBy(item => item.Name)
+        .ToListAsync(cancellationToken);
+    var offers = await PartnerOffersByIdsAsync(db, partners.Select(item => item.Id), cancellationToken);
+    return Results.Ok(partners.Select(item => PartnerDto(item, PartnerRules.VisibleOffers(offers.Where(offer => offer.PartnerId == item.Id), now))).ToList());
+}).RequireAuthorization();
+
+api.MapGet("/partners/{slug}", async (string slug, ClaimsPrincipal principal, TaNoMarDbContext db, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    if (!options.Value.ShowPartners)
+        return Results.NotFound(new { code = "feature_disabled", detail = "Parceiros não estão disponíveis." });
+    var partner = await db.Partners.AsNoTracking().SingleOrDefaultAsync(item => item.Slug == slug && item.IsPublished, cancellationToken);
+    if (partner is null) return Results.NotFound();
+    var offers = await db.PartnerOffers.AsNoTracking().Where(item => item.PartnerId == partner.Id).ToListAsync(cancellationToken);
+    return Results.Ok(PartnerDto(partner, PartnerRules.VisibleOffers(offers, DateTimeOffset.UtcNow)));
+}).RequireAuthorization();
+
+api.MapGet("/admin/partners", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
+    if (failure is not null) return failure;
+    var partners = await db.Partners.AsNoTracking()
+        .OrderByDescending(item => item.IsFeatured)
+        .ThenBy(item => item.SortOrder)
+        .ThenBy(item => item.Name)
+        .ToListAsync(cancellationToken);
+    var offers = await PartnerOffersByIdsAsync(db, partners.Select(item => item.Id), cancellationToken);
+    return Results.Ok(partners.Select(item => AdminPartnerDto(item, offers.Where(offer => offer.PartnerId == item.Id).OrderBy(offer => offer.SortOrder).ThenBy(offer => offer.Title))).ToList());
+}).RequireAuthorization();
+
+api.MapPost("/admin/partners", async (PartnerRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
+    if (failure is not null) return failure;
+    var invalid = ValidatePartner(request);
+    if (invalid is not null) return invalid;
+    var usedSlugs = await db.Partners.AsNoTracking().Select(item => item.Slug).ToListAsync(cancellationToken);
+    var partner = new Partner();
+    ApplyPartner(partner, request, UniquePartnerSlug(request, usedSlugs));
+    db.Partners.Add(partner);
+    ReplacePartnerOffers(db, partner.Id, request.Offers);
+    await db.SaveChangesAsync(cancellationToken);
+    var offers = await db.PartnerOffers.AsNoTracking().Where(item => item.PartnerId == partner.Id).ToListAsync(cancellationToken);
+    return Results.Created($"/api/v1/admin/partners/{partner.Slug}", AdminPartnerDto(partner, offers.OrderBy(item => item.SortOrder).ThenBy(item => item.Title)));
+}).RequireAuthorization();
+
+api.MapPut("/admin/partners/{slug}", async (string slug, PartnerRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
+    if (failure is not null) return failure;
+    var invalid = ValidatePartner(request);
+    if (invalid is not null) return invalid;
+    var partner = await db.Partners.SingleOrDefaultAsync(item => item.Slug == slug, cancellationToken);
+    if (partner is null) return Results.NotFound();
+    var usedSlugs = await db.Partners.AsNoTracking().Where(item => item.Id != partner.Id).Select(item => item.Slug).ToListAsync(cancellationToken);
+    ApplyPartner(partner, request, UniquePartnerSlug(request, usedSlugs, partner.Slug));
+    db.PartnerOffers.RemoveRange(db.PartnerOffers.Where(item => item.PartnerId == partner.Id));
+    ReplacePartnerOffers(db, partner.Id, request.Offers);
+    await db.SaveChangesAsync(cancellationToken);
+    var offers = await db.PartnerOffers.AsNoTracking().Where(item => item.PartnerId == partner.Id).ToListAsync(cancellationToken);
+    return Results.Ok(AdminPartnerDto(partner, offers.OrderBy(item => item.SortOrder).ThenBy(item => item.Title)));
+}).RequireAuthorization();
+
+api.MapDelete("/admin/partners/{slug}", async (string slug, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
+    if (failure is not null) return failure;
+    var partner = await db.Partners.SingleOrDefaultAsync(item => item.Slug == slug, cancellationToken);
+    if (partner is null) return Results.NotFound();
+    db.PartnerOffers.RemoveRange(db.PartnerOffers.Where(item => item.PartnerId == partner.Id));
+    db.Partners.Remove(partner);
+    await db.SaveChangesAsync(cancellationToken);
+    return Results.NoContent();
+}).RequireAuthorization();
+
 api.MapPut("/me/preferences", async (PreferencesRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
@@ -445,7 +544,7 @@ api.MapGet("/fishing-spots/{id}/marine", async (string id, DateOnly? date, Claim
     };
     var forecast = await fishing.GetLocationDayAsync(location, targetDate, cancellationToken);
     if (forecast is null) return Results.NotFound();
-    return Results.Ok(MarineDto(spot.Slug, targetDate, forecast, fishing.Today()));
+    return Results.Ok(MarineDto(spot.Slug, targetDate, forecast, TideFromForecast(forecast, targetDate, fishing.Today())));
 }).RequireAuthorization();
 
 api.MapGet("/community/reports", async (string? spotId, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
@@ -705,7 +804,7 @@ static bool MatchesBootstrapAdmin(string? email, string? googleSubject, TaNoMarO
     || (!string.IsNullOrWhiteSpace(options.BootstrapAdminEmail) && string.Equals(email, options.BootstrapAdminEmail, StringComparison.OrdinalIgnoreCase));
 static void SetRefreshCookie(HttpContext context, string value, bool development) => context.Response.Cookies.Append(TaNoMarOptions.RefreshCookieName, value, new CookieOptions { HttpOnly = true, Secure = !development, SameSite = SameSiteMode.Lax, MaxAge = TimeSpan.FromDays(30), Path = "/api/v1/auth" });
 static async Task<User?> CurrentUserAsync(ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) { var id = principal.FindFirstValue(ClaimTypes.NameIdentifier); return Guid.TryParse(id, out var userId) ? await db.Users.SingleOrDefaultAsync(user => user.Id == userId, cancellationToken) : null; }
-static async Task<object> UserDtoAsync(User user, TaNoMarDbContext db, CancellationToken cancellationToken)
+static async Task<object> UserDtoAsync(User user, TaNoMarDbContext db, TaNoMarOptions options, CancellationToken cancellationToken)
 {
     var plan = await db.Plans.SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
     var preferences = await db.UserPreferences.AsNoTracking().SingleOrDefaultAsync(item => item.UserId == user.Id, cancellationToken);
@@ -718,6 +817,7 @@ static async Task<object> UserDtoAsync(User user, TaNoMarDbContext db, Cancellat
         role = user.Role,
         plan = new { code = plan.Code, name = plan.Name },
         entitlements = new { maxForecastDays = plan.MaxForecastDays, maxFavorites = plan.MaxFavorites, maxPersonalSpots = plan.MaxPersonalSpots, maxAlerts = plan.MaxAlerts },
+        features = new { showPartners = options.ShowPartners },
         preferences = new
         {
             region = preferences?.Region ?? "Florianópolis",
@@ -847,9 +947,9 @@ static object ForecastDayDto(FishingForecast forecast, bool premium) => new { da
 static object MarineLockedDto(string spotId, DateOnly date)
 {
     object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = "Premium" };
-    return new { spotId, date, waves = Locked(), wavePeriod = Locked(), swell = Locked(), waterTemperature = Locked(), tide = Locked() };
+    return new { spotId, date, waves = Locked(), wavePeriod = Locked(), swell = Locked(), waterTemperature = Locked(), atmosphericPressure = Locked(), tide = Locked() };
 }
-static object MarineDto(string spotId, DateOnly date, FishingLocationForecast forecast, DateOnly today)
+static object MarineDto(string spotId, DateOnly date, FishingLocationForecast forecast, object tide)
 {
     var hours = forecast.Hours ?? [];
     var reference = forecast.BestHour ?? hours.FirstOrDefault();
@@ -861,7 +961,8 @@ static object MarineDto(string spotId, DateOnly date, FishingLocationForecast fo
         wavePeriod = MarineSeries(hours, reference, hour => hour.WavePeriodSeconds, "s", 1),
         swell = MarineSeries(hours, reference, hour => hour.SwellMeters, "m", 2, hour => hour.SwellDirection, hour => $"{hour.SwellPeriodSeconds:0.#} s"),
         waterTemperature = MarineSeries(hours, reference, hour => hour.WaterTemperatureC, "°C", 1),
-        tide = TideMetric(hours, date, today)
+        atmosphericPressure = MarineSeries(hours, reference, hour => hour.PressureHpa, "hPa", 0, detail: _ => PressureTrend(hours, reference)),
+        tide
     };
 }
 static object MarineSeries(
@@ -887,36 +988,80 @@ static object MarineSeries(
         points = hours.Select(hour => new { time = hour.Time, value = Math.Round(selector(hour), digits, MidpointRounding.ToEven) }).ToList()
     });
 }
-static object TideMetric(IReadOnlyList<FishingHourForecast> hours, DateOnly date, DateOnly today)
+static object TideFromForecast(FishingLocationForecast forecast, DateOnly date, DateOnly today)
 {
+    var tablePoints = (forecast.TidePoints ?? [])
+        .Select(point => (point.Time, point.Height))
+        .ToList();
+    var tableExtremes = (forecast.TideExtremes ?? [])
+        .Select(item => new TideExtremePoint(item.Time, item.Type, item.HeightMeters))
+        .ToList();
+    if (tablePoints.Count > 0 || tableExtremes.Count > 0)
+        return TideTable(tablePoints, tableExtremes, date, today, forecast.TideAttribution);
+
+    var hours = forecast.Hours ?? [];
     var points = hours
         .Where(hour => hour.SeaLevelHeightMsl.HasValue)
         .Select(hour => (hour.Time, Height: hour.SeaLevelHeightMsl!.Value))
         .ToList();
     if (points.Count < 3) return new { state = "unavailable" };
+    return TideTable(
+        points,
+        TideCurve.Extremes(hours),
+        date,
+        today,
+        "Nível do mar modelado (Open-Meteo). Não é tábua oficial.");
+}
+
+static string? PressureTrend(IReadOnlyList<FishingHourForecast> hours, FishingHourForecast? reference)
+{
+    if (hours.Count < 2 || reference is null) return null;
+    var previous = hours.LastOrDefault(hour => string.CompareOrdinal(hour.Time, reference.Time) < 0) ?? hours[0];
+    var delta = reference.PressureHpa - previous.PressureHpa;
+    if (delta > 1) return "em aumento";
+    if (delta < -1) return "em queda";
+    return "estável";
+}
+
+static object TideTable(
+    IReadOnlyList<(string Time, double Height)> points,
+    IReadOnlyList<TideExtremePoint> extremes,
+    DateOnly date,
+    DateOnly today,
+    string? attribution)
+{
+    if (points.Count == 0 && extremes.Count == 0) return new { state = "unavailable" };
     var zone = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
     var now = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, zone).DateTime;
-    var referenceTime = date == today ? $"{now.Hour:00}:00" : "12:00";
+    var referenceTime = date == today ? $"{now.Hour:00}:{now.Minute:00}" : "12:00";
     var current = points.LastOrDefault(item => string.CompareOrdinal(item.Time, referenceTime) <= 0);
-    if (current.Time is null) current = points[0];
-    var nextHeight = points.FirstOrDefault(item => string.CompareOrdinal(item.Time, current.Time) > 0);
+    if (current.Time is null && points.Count > 0) current = points[0];
+    var nextHeight = points.FirstOrDefault(item => current.Time is not null && string.CompareOrdinal(item.Time, current.Time) > 0);
     var phase = nextHeight.Time is null
         ? "n/d"
         : nextHeight.Height >= current.Height ? "Enchente" : "Vazante";
-    var extremes = TideCurve.Extremes(hours);
+    if (nextHeight.Time is null && extremes.Count > 0)
+    {
+        var upcoming = extremes.FirstOrDefault(item => string.CompareOrdinal(item.Time, referenceTime) > 0)
+            ?? extremes[0];
+        phase = upcoming.Type == "preamar" ? "Enchente" : "Vazante";
+    }
     var nextExtreme = extremes.FirstOrDefault(item => string.CompareOrdinal(item.Time, referenceTime) > 0)
         ?? extremes.FirstOrDefault();
     var nextLabel = nextExtreme is null
         ? "n/d"
         : $"{(nextExtreme.Type == "preamar" ? "Preamar" : "Baixa-mar")} {nextExtreme.Time} · {nextExtreme.HeightMeters:0.00} m";
+    var currentHeight = current.Time is null ? nextExtreme?.HeightMeters : current.Height;
+    if (currentHeight is null) return new { state = "unavailable" };
     return new
     {
         state = "available",
         value = new
         {
-            current = $"{current.Height:0.00} m",
+            current = $"{currentHeight.Value:0.00} m",
             phase,
             nextExtreme = nextLabel,
+            attribution,
             extremes = extremes.Select(item => new { type = item.Type, time = item.Time, height = $"{item.HeightMeters:0.00} m" }).ToList(),
             points = points.Select(item => new { time = item.Time, value = Math.Round(item.Height, 2, MidpointRounding.ToEven) }).ToList()
         }
@@ -938,6 +1083,130 @@ static double DistanceMeters(double lat1, double lon1, double lat2, double lon2)
     return 6371000 * 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
 }
 
+static Task<List<PartnerOffer>> PartnerOffersByIdsAsync(TaNoMarDbContext db, IEnumerable<Guid> partnerIds, CancellationToken cancellationToken)
+{
+    var ids = partnerIds.ToList();
+    return db.PartnerOffers.AsNoTracking().Where(item => ids.Contains(item.PartnerId)).ToListAsync(cancellationToken);
+}
+
+static object PartnerDto(Partner partner, IEnumerable<PartnerOffer> offers) => new
+{
+    id = partner.Slug,
+    slug = partner.Slug,
+    name = partner.Name,
+    category = partner.Category,
+    tagline = partner.Tagline,
+    about = partner.About,
+    city = partner.City,
+    whatsApp = partner.WhatsApp,
+    instagram = partner.Instagram,
+    website = partner.Website,
+    mapsUrl = partner.MapsUrl,
+    coverImageUrl = partner.CoverImageUrl,
+    isFeatured = partner.IsFeatured,
+    offers = offers.Select(OfferDto).ToList()
+};
+
+static object AdminPartnerDto(Partner partner, IEnumerable<PartnerOffer> offers) => new
+{
+    id = partner.Slug,
+    slug = partner.Slug,
+    name = partner.Name,
+    category = partner.Category,
+    tagline = partner.Tagline,
+    about = partner.About,
+    city = partner.City,
+    whatsApp = partner.WhatsApp,
+    instagram = partner.Instagram,
+    website = partner.Website,
+    mapsUrl = partner.MapsUrl,
+    coverImageUrl = partner.CoverImageUrl,
+    isPublished = partner.IsPublished,
+    isFeatured = partner.IsFeatured,
+    sortOrder = partner.SortOrder,
+    createdAt = partner.CreatedAt,
+    updatedAt = partner.UpdatedAt,
+    offers = offers.Select(OfferDto).ToList()
+};
+
+static object OfferDto(PartnerOffer offer) => new
+{
+    title = offer.Title,
+    description = offer.Description,
+    priceLabel = offer.PriceLabel,
+    endsAt = offer.EndsAt
+};
+
+static IResult? ValidatePartner(PartnerRequest request)
+{
+    if (string.IsNullOrWhiteSpace(request.Name))
+        return Results.BadRequest(new { code = "invalid_partner", detail = "Informe o nome do parceiro." });
+    if (!PartnerRules.IsCategory(request.Category?.Trim().ToLowerInvariant()))
+        return Results.BadRequest(new { code = "invalid_category", detail = "Use loja, guia, hospedagem ou outro." });
+    var whatsApp = PartnerRules.DigitsOrNull(request.WhatsApp);
+    var instagram = PartnerRules.TrimToNull(request.Instagram);
+    var website = PartnerRules.TrimToNull(request.Website);
+    var mapsUrl = PartnerRules.TrimToNull(request.MapsUrl);
+    if (request.IsPublished && !PartnerRules.HasContact(whatsApp, instagram, website, mapsUrl))
+        return Results.BadRequest(new { code = "missing_contact", detail = "Para publicar, informe WhatsApp, Instagram, site ou Maps." });
+    if (request.Offers?.Any(offer => string.IsNullOrWhiteSpace(offer.Title)) == true)
+        return Results.BadRequest(new { code = "invalid_offer", detail = "Cada oferta precisa de um título." });
+    return null;
+}
+
+static string UniquePartnerSlug(PartnerRequest request, IReadOnlyCollection<string> used, string? current = null)
+{
+    var requested = PartnerRules.TrimToNull(request.Slug);
+    var seed = requested is null ? PartnerRules.Slugify(request.Name) : PartnerRules.Slugify(requested);
+    if (current is not null && seed == current) return current;
+    var slug = seed;
+    var index = 2;
+    while (used.Contains(slug, StringComparer.OrdinalIgnoreCase))
+    {
+        slug = $"{seed}-{index}";
+        index++;
+    }
+    return slug;
+}
+
+static void ApplyPartner(Partner partner, PartnerRequest request, string slug)
+{
+    partner.Slug = slug;
+    partner.Name = request.Name.Trim();
+    partner.Category = request.Category.Trim().ToLowerInvariant();
+    partner.Tagline = PartnerRules.TrimToNull(request.Tagline);
+    partner.About = PartnerRules.TrimToNull(request.About);
+    partner.City = PartnerRules.TrimToNull(request.City) ?? "";
+    partner.WhatsApp = PartnerRules.DigitsOrNull(request.WhatsApp);
+    partner.Instagram = PartnerRules.TrimToNull(request.Instagram)?.TrimStart('@');
+    partner.Website = PartnerRules.TrimToNull(request.Website);
+    partner.MapsUrl = PartnerRules.TrimToNull(request.MapsUrl);
+    partner.CoverImageUrl = PartnerRules.TrimToNull(request.CoverImageUrl);
+    partner.IsPublished = request.IsPublished;
+    partner.IsFeatured = request.IsFeatured;
+    partner.SortOrder = request.SortOrder;
+    partner.UpdatedAt = DateTimeOffset.UtcNow;
+}
+
+static void ReplacePartnerOffers(TaNoMarDbContext db, Guid partnerId, PartnerOfferRequest[]? offers)
+{
+    if (offers is null) return;
+    var order = 0;
+    foreach (var offer in offers)
+    {
+        db.PartnerOffers.Add(new PartnerOffer
+        {
+            PartnerId = partnerId,
+            Title = offer.Title.Trim(),
+            Description = PartnerRules.TrimToNull(offer.Description),
+            PriceLabel = PartnerRules.TrimToNull(offer.PriceLabel),
+            EndsAt = offer.EndsAt,
+            SortOrder = offer.SortOrder ?? order
+        });
+        order++;
+    }
+}
+
 record GoogleLoginRequest(string Credential);
 record PreferencesRequest(string? Region, string? WindUnit, bool? ForecastNotifications);
 record FavoriteRequest(string SpotId, bool IsFavorite);
@@ -946,3 +1215,5 @@ record CommunityReportRequest(string SpotId, string Type, string? Comment);
 record PushSubscriptionRequest(string? Endpoint, string? P256dh, string? Auth);
 record AdminPlanRequest(string PlanCode);
 record AdminActiveRequest(bool IsActive);
+record PartnerOfferRequest(string Title, string? Description, string? PriceLabel, DateTimeOffset? EndsAt, int? SortOrder);
+record PartnerRequest(string? Slug, string Name, string Category, string? Tagline, string? About, string? City, string? WhatsApp, string? Instagram, string? Website, string? MapsUrl, string? CoverImageUrl, bool IsPublished, bool IsFeatured, int SortOrder, PartnerOfferRequest[]? Offers);

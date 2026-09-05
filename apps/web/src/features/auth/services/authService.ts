@@ -43,6 +43,8 @@ export function parseAuthUser(payload: unknown): AuthUser {
       ? preferencesRecord.forecastNotifications
       : true
     : true;
+  const featuresRecord = isRecord(payload.features) ? payload.features : null;
+  const showPartners = featuresRecord?.showPartners === true;
   if (
     !id ||
     !name ||
@@ -68,6 +70,7 @@ export function parseAuthUser(payload: unknown): AuthUser {
     role,
     plan: { code: planCode, name: planName },
     entitlements: { maxForecastDays, maxFavorites, maxPersonalSpots, maxAlerts },
+    features: { showPartners },
     preferences: { region, windUnit, forecastNotifications },
   };
 }

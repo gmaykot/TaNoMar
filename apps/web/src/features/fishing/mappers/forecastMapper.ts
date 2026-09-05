@@ -220,6 +220,7 @@ function mapTide(metric: WireOptionalMetric<WireTideValue>): MarineTide {
     current: metric.value.current,
     phase: metric.value.phase,
     nextExtreme: metric.value.nextExtreme,
+    attribution: metric.value.attribution ?? undefined,
     extremes: metric.value.extremes.map((item) => ({
       type: item.type === 'preamar' ? 'preamar' : 'baixa-mar',
       time: item.time,
@@ -238,6 +239,7 @@ export function mapMarineDetails(wire: WireMarineDetails): MarineDetails {
       mapMarineSeries('wave-period', 'Período', wire.wavePeriod),
       mapMarineSeries('swell', 'Swell', wire.swell),
       mapMarineSeries('water-temperature', 'Água', wire.waterTemperature),
+      mapMarineSeries('atmospheric-pressure', 'Pressão', wire.atmosphericPressure),
     ],
     tide: mapTide(wire.tide),
   };

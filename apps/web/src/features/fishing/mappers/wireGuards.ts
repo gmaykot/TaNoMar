@@ -191,6 +191,7 @@ function parseTideValue(value: unknown): WireTideValue | null {
   const phase = readString(value.phase);
   const nextExtreme = readString(value.nextExtreme);
   if (!current || !phase || !nextExtreme) return null;
+  const attribution = readString(value.attribution);
   const extremes = value.extremes.map((item) => {
     if (!isRecord(item)) return null;
     const type = readString(item.type);
@@ -205,6 +206,7 @@ function parseTideValue(value: unknown): WireTideValue | null {
     current,
     phase,
     nextExtreme,
+    attribution,
     extremes: extremes as WireTideValue['extremes'],
     points: points as WireMarinePoint[],
   };
@@ -234,6 +236,11 @@ export function parseMarineDetails(value: unknown): WireMarineDetails {
       value.waterTemperature,
       parseMarineSeriesValue,
       'waterTemperature',
+    ),
+    atmosphericPressure: parseMetric(
+      value.atmosphericPressure,
+      parseMarineSeriesValue,
+      'atmosphericPressure',
     ),
     tide: parseOptionalMetric(value.tide, parseTideValue, 'tide'),
   };

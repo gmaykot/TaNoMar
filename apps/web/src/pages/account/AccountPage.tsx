@@ -1,12 +1,23 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Bell, BookOpen, Heart, Lock, MapPinned, Plus, Shield, Users, Waves } from 'lucide-react';
+import {
+  Bell,
+  BookOpen,
+  Handshake,
+  Heart,
+  Lock,
+  MapPinned,
+  Plus,
+  Shield,
+  Users,
+  Waves,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { isAdmin } from '@/features/auth/types/auth';
+import { isAdmin, showsPartners } from '@/features/auth/types/auth';
 import { updatePreferences } from '@/features/auth/services/preferencesService';
 import { RegionPicker } from '@/features/locations/components/RegionPicker';
 import { useLocations } from '@/features/locations/hooks/useLocations';
@@ -133,6 +144,14 @@ export function AccountPage() {
             icon={Plus}
             title="Novo local"
             description="Cadastre um local pessoal."
+          />
+        ) : null}
+        {showsPartners(user) ? (
+          <AccountShortcut
+            to={routes.partners}
+            icon={Handshake}
+            title="Parceiros"
+            description="Lojas e guias da ilha."
           />
         ) : null}
         {isAdmin(user) ? (

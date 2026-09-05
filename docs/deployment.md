@@ -68,6 +68,8 @@ Alterações no frontend exigem **rebuild da imagem inteira** (web + API). Isso 
 | `VAPID_PUBLIC_KEY` | `TaNoMar__VapidPublicKey` | Chave pública Web Push. Sem ela o toggle de aparelho some; inbox e SSE seguem. |
 | `VAPID_PRIVATE_KEY` | `TaNoMar__VapidPrivateKey` | Chave privada Web Push. Gere o par com `npx web-push generate-vapid-keys`. |
 | `VAPID_SUBJECT` | `TaNoMar__VapidSubject` | Contato VAPID (`mailto:` ou URL HTTPS). |
+| `TaNoMar__ShowPartners` | `TaNoMar:ShowPartners` | Liga a vitrine pública de parceiros (`false` por padrão). O admin continua cadastrando com a flag desligada. |
+| `TABUA_MARE_API_KEY` | `Fishing:TabuaMareApiKey` | Chave opcional da Tábua de Maré API. Sem ela vale o limite anônimo (16 req/min). |
 
 > A seção de configuração da API é `TaNoMar` e o prefixo de ambiente é `TaNoMar__`. Detalhes em [api-contracts.md](api-contracts.md#identificadores-de-runtime).
 
@@ -75,7 +77,7 @@ Alterações no frontend exigem **rebuild da imagem inteira** (web + API). Isso 
 
 O volume `tanomar-data` monta em `/var/lib/tanomar` e guarda o log de auditoria (`/var/lib/tanomar/audit.jsonl`). Sem o volume, a auditoria some a cada redeploy.
 
-O cache de previsão fica em memória no processo da API. Cada entrada também é gravada como snapshot no PostgreSQL (`FishingForecastSnapshots`), com o mesmo TTL de `Fishing:CacheHours`. A maré sai da mesma série (nível do mar da Open-Meteo) quando o valor existe; série nula não descarta o snapshot. O worker interno `FishingForecastWarmupWorker` preenche cache e snapshot na subida e a cada `Fishing:WarmupIntervalHours` (oficiais e compartilhados aprovados, dias 0–7). Após um restart, a API rehidrata pela tabela antes de chamar a Open-Meteo. Desligue o worker com `Fishing__WarmupEnabled=false`.
+O cache de previsão fica em memória no processo da API. Cada entrada também é gravada como snapshot no PostgreSQL (`FishingForecastSnapshots`), com o mesmo TTL de `Fishing:CacheHours`. Pressão e, quando existir, tábua de maré entram nesse snapshot; tábua ausente não o descarta. A tábua mensal do porto ainda é cacheada em memória para caber no limite da Tábua de Maré API. O worker interno `FishingForecastWarmupWorker` preenche cache e snapshot na subida e a cada `Fishing:WarmupIntervalHours` (oficiais e compartilhados aprovados, dias 0–7). Após um restart, a API rehidrata pela tabela antes de chamar a Open-Meteo. Desligue o worker com `Fishing__WarmupEnabled=false`.
 
 ## Healthcheck
 

@@ -1,0 +1,173 @@
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 3.25rem;
+  height: 3.25rem;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  color: var(--color-ocean-950);
+  background: linear-gradient(145deg, var(--color-sea-200), var(--color-sea-500));
+}
+
+.icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.content {
+  min-width: 0;
+  flex: 1;
+}
+
+.content span {
+  color: var(--color-sea-700);
+  font-size: 0.65rem;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.content h2 {
+  margin: 0.2rem 0;
+  color: var(--color-ocean-950);
+  font-size: var(--font-size-lg);
+  letter-spacing: -0.035em;
+}
+
+.content p {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.card > a {
+  display: grid;
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--color-ocean-950);
+  background: var(--color-sand-200);
+}
+
+.featured {
+  color: var(--color-coral-700);
+}
+
+.hero {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.hero h2,
+.notice h2,
+.contact a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.hero h2,
+.notice h2 {
+  margin: 0 0 var(--space-2);
+  color: var(--color-ocean-950);
+  font-size: var(--font-size-lg);
+  letter-spacing: -0.03em;
+}
+
+.hero p,
+.notice p,
+.offer p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.offers {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.offer {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.offer strong {
+  color: var(--color-ocean-950);
+}
+
+.offer small {
+  color: var(--color-sea-700);
+  font-weight: 750;
+}
+
+.contact {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.contact a {
+  min-height: 2.75rem;
+  color: var(--color-ocean-700);
+  font-size: var(--font-size-sm);
+  font-weight: 750;
+}
+
+.notice {
+  padding: var(--space-5);
+  border-color: transparent;
+  color: var(--color-ocean-700);
+  background: var(--color-warning-soft);
+}
+
+.notice p {
+  font-weight: 600;
+}
+
+.adminCard {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.adminMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.adminActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.offerRow {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}

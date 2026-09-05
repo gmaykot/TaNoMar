@@ -41,6 +41,7 @@ export interface WireTideValue {
   current: string;
   phase: string;
   nextExtreme: string;
+  attribution?: string | null;
   extremes: WireTideExtreme[];
   points: WireMarinePoint[];
 }
@@ -52,6 +53,7 @@ export interface WireMarineDetails {
   wavePeriod: WireMetric<WireMarineSeries>;
   swell: WireMetric<WireMarineSeries>;
   waterTemperature: WireMetric<WireMarineSeries>;
+  atmosphericPressure: WireMetric<WireMarineSeries>;
   tide: WireOptionalMetric<WireTideValue>;
 }
 
