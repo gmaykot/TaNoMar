@@ -1,0 +1,64 @@
+:root {
+  --color-ocean-950: #063b4c;
+  --color-ocean-900: #0a5166;
+  --color-ocean-700: #1a6f82;
+  --color-ocean-100: #d5e8ec;
+  --color-sea-700: #1b7a74;
+  --color-sea-500: #42c5ba;
+  --color-sea-200: #b5ebe6;
+  --color-sea-100: #e6f8f6;
+  --color-coral-700: #e55a32;
+  --color-coral-500: #ff7448;
+  --color-coral-100: #ffe6dc;
+  --color-sand-500: #e4d6c0;
+  --color-sand-200: #ede3d1;
+  --color-sand-100: #f3e9d7;
+  --color-surface: #f8fbfa;
+  --color-text: #063b4c;
+  --color-text-muted: #59717a;
+  --color-success: #19836d;
+  --color-success-soft: #e2f5ee;
+  --color-warning: #a96816;
+  --color-warning-soft: #fff0ce;
+  --color-danger: #b83d3d;
+  --color-danger-soft: #fde6e2;
+  --color-border: rgb(6 59 76 / 12%);
+  --gradient-sea: linear-gradient(135deg, #42c5ba 0%, #68e2da 100%);
+
+  --font-family: 'Sora Variable', 'Sora', ui-sans-serif, system-ui, sans-serif;
+  --font-accent: 'Caveat', cursive;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.5rem;
+  --font-size-2xl: clamp(1.7rem, 5.6vw, 3.15rem);
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  --radius-sm: 0.75rem;
+  --radius-md: 1.25rem;
+  --radius-lg: 1.75rem;
+  --radius-xl: 2rem;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 8px 24px rgb(6 59 76 / 7%);
+  --shadow-md: 0 12px 30px rgb(6 59 76 / 12%);
+  --shadow-coral: 0 14px 30px rgb(255 116 72 / 30%);
+
+  --breakpoint-tablet: 48rem;
+  --breakpoint-desktop: 64rem;
+  --transition-fast: 150ms ease;
+  --transition-base: 240ms ease;
+  --z-navigation: 20;
+  --z-banner: 30;
+}

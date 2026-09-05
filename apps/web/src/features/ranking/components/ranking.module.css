@@ -1,0 +1,118 @@
+.list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.item {
+  padding: var(--space-4);
+}
+
+.summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.position {
+  flex: 0 0 auto;
+  color: var(--color-sea-700);
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+}
+
+.info {
+  min-width: 0;
+  flex: 1;
+}
+
+.info h3 {
+  margin: var(--space-2) 0 var(--space-1);
+  color: var(--color-ocean-950);
+  font-size: var(--font-size-lg);
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+}
+
+.info p {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.details {
+  margin-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.details summary {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  color: var(--color-ocean-700);
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+  cursor: pointer;
+  list-style: none;
+}
+
+.details[open] summary svg {
+  transform: rotate(180deg);
+}
+
+.details :global(.components_metric__placeholder) {
+  color: inherit;
+}
+
+.details > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.details > div > div {
+  border-color: var(--color-border);
+  color: var(--color-text);
+  background: var(--color-sand-100);
+}
+
+.details > div > div span,
+.details > div > div small {
+  color: var(--color-text-muted);
+}
+
+.details > div > div strong {
+  color: var(--color-ocean-950);
+}
+
+.locationLink {
+  display: flex;
+  width: fit-content;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  color: var(--color-ocean-700);
+  font-size: var(--font-size-sm);
+  font-weight: 750;
+}
+
+@media (min-width: 48rem) {
+  .item {
+    padding: var(--space-5) var(--space-6);
+  }
+
+  .details > div {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 64rem) {
+  .list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

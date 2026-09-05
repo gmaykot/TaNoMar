@@ -1,0 +1,29 @@
+services:
+  tanomar:
+    build:
+      context: .
+      dockerfile: apps/api/TaNoMar.Api/Dockerfile
+      args:
+        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?Defina GOOGLE_CLIENT_ID}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Default: ${ConnectionStrings__Default:?Defina ConnectionStrings__Default}
+      TaNoMar__GoogleClientId: ${GOOGLE_CLIENT_ID:?Defina GOOGLE_CLIENT_ID}
+      TaNoMar__JwtKey: ${JWT_KEY:?Defina JWT_KEY}
+      TaNoMar__BootstrapAdminEmail: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      TaNoMar__BootstrapAdminGoogleSubject: ${BOOTSTRAP_ADMIN_GOOGLE_SUBJECT:-}
+    ports:
+      - "${TANOMAR_BIND_ADDRESS:-127.0.0.1}:${TANOMAR_PORT:-8080}:8080"
+    volumes:
+      - tanomar-data:/var/lib/tanomar
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:8080/api/health > /dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+volumes:
+  tanomar-data:

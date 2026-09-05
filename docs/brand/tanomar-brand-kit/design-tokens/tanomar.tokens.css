@@ -1,0 +1,16 @@
+:root {
+  --tnm-color-ocean: #063b4c;
+  --tnm-color-sea: #42c5ba;
+  --tnm-color-action: #ff7448;
+  --tnm-color-sand: #f3e9d7;
+  --tnm-color-foam: #f8fbfa;
+  --tnm-color-muted: #59717a;
+  --tnm-gradient-sea: linear-gradient(135deg, #42c5ba 0%, #68e2da 100%);
+  --tnm-font-ui: "Sora", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --tnm-font-accent: "Caveat", cursive;
+  --tnm-radius-sm: 12px;
+  --tnm-radius-md: 20px;
+  --tnm-radius-lg: 28px;
+  --tnm-shadow-card: 0 12px 30px rgb(6 59 76 / 12%);
+}
+

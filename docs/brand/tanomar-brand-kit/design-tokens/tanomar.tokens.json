@@ -1,0 +1,15 @@
+{
+  "brand": "TaNoMar",
+  "colors": {
+    "ocean": "#063B4C",
+    "sea": "#42C5BA",
+    "action": "#FF7448",
+    "sand": "#F3E9D7",
+    "foam": "#F8FBFA",
+    "muted": "#59717A"
+  },
+  "fonts": { "ui": "Sora", "accent": "Caveat" },
+  "radius": { "sm": 12, "md": 20, "lg": 28 },
+  "assetsBasePath": "/assets/brand/tanomar"
+}
+

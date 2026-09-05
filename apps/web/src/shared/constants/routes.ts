@@ -1,0 +1,16 @@
+export const routes = {
+  home: '/',
+  login: '/entrar',
+  ranking: '/ranking',
+  locations: '/locais',
+  locationsMine: '/locais?filtro=meus',
+  locationsFavorites: '/locais?filtro=favoritos',
+  locationNew: '/locais/novo',
+  locationDetails: (locationId: string) => `/locais/${locationId}`,
+  locationEdit: (locationId: string) => `/locais/${locationId}/editar`,
+  account: '/conta',
+  about: '/sobre',
+  admin: '/admin',
+  adminSpots: '/admin/locais',
+  adminUsers: '/admin/usuarios',
+} as const;

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://cdn.statically.io/gh/nguyenngoclongdev/cdn/main/schema/v11/terminal-keeper.json",
+  "theme": "tribe",
+  "active": "default",
+  "noClear": true,
+  "activateOnStartup": false,
+  "keepExistingTerminals": false,
+  "sessions": {
+    "default": [
+      [
+        {
+          "name": "web",
+          "commands": [
+            "if (Test-Path .env) { Get-Content .env | ForEach-Object { $line = $_.Trim(); if ($line -and -not $line.StartsWith('#')) { $i = $line.IndexOf('='); if ($i -gt 0) { Set-Item -Path ('Env:' + $line.Substring(0, $i).Trim()) -Value $line.Substring($i + 1).Trim() } } } }",
+            "if ($env:GOOGLE_CLIENT_ID) { $env:VITE_GOOGLE_CLIENT_ID = $env:GOOGLE_CLIENT_ID }",
+            "npm --prefix apps/web run dev -- --host"
+          ],
+          "joinOperator": ";",
+          "autoExecuteCommands": true,
+          "icon": "play",
+          "color": "terminal.ansiGreen",
+          "focus": true
+        },
+        {
+          "name": "api",
+          "commands": [
+            "if (Test-Path .env) { Get-Content .env | ForEach-Object { $line = $_.Trim(); if ($line -and -not $line.StartsWith('#')) { $i = $line.IndexOf('='); if ($i -gt 0) { Set-Item -Path ('Env:' + $line.Substring(0, $i).Trim()) -Value $line.Substring($i + 1).Trim() } } } }",
+            "if ($env:GOOGLE_CLIENT_ID) { $env:TaNoMar__GoogleClientId = $env:GOOGLE_CLIENT_ID }",
+            "if ($env:JWT_KEY) { $env:TaNoMar__JwtKey = $env:JWT_KEY }",
+            "if ($env:BOOTSTRAP_ADMIN_EMAIL) { $env:TaNoMar__BootstrapAdminEmail = $env:BOOTSTRAP_ADMIN_EMAIL }",
+            "if ($env:BOOTSTRAP_ADMIN_GOOGLE_SUBJECT) { $env:TaNoMar__BootstrapAdminGoogleSubject = $env:BOOTSTRAP_ADMIN_GOOGLE_SUBJECT }",
+            "dotnet run --project apps/api/TaNoMar.Api/TaNoMar.Api.csproj"
+          ],
+          "env": {
+            "ASPNETCORE_ENVIRONMENT": "Development",
+            "ASPNETCORE_URLS": "http://127.0.0.1:5000"
+          },
+          "joinOperator": ";",
+          "autoExecuteCommands": true,
+          "icon": "server-process",
+          "color": "terminal.ansiYellow"
+        }
+      ]
+    ],
+    "setup": [
+      {
+        "name": "install",
+        "commands": [
+          "npm --prefix apps/web install",
+          "dotnet restore apps/api/TaNoMar.Api/TaNoMar.Api.csproj"
+        ],
+        "joinOperator": ";",
+        "autoExecuteCommands": true,
+        "icon": "package",
+        "color": "terminal.ansiBlue"
+      }
+    ],
+    "check": [
+      {
+        "name": "check",
+        "commands": [
+          "dotnet build apps/api/TaNoMar.Api/TaNoMar.Api.csproj",
+          "npm --prefix apps/web run check"
+        ],
+        "joinOperator": ";",
+        "autoExecuteCommands": true,
+        "icon": "check",
+        "color": "terminal.ansiYellow"
+      }
+    ]
+  }
+}

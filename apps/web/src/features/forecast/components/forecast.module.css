@@ -1,0 +1,407 @@
+.dateSelector {
+  display: flex;
+  max-width: 100%;
+  gap: var(--space-2);
+  padding: var(--space-1);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.dateSelector::-webkit-scrollbar {
+  display: none;
+}
+
+.dateSelector button {
+  min-width: 6.5rem;
+  min-height: 3.6rem;
+  padding: 0.55rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-surface) 75%, transparent);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.dateSelector strong,
+.dateSelector span {
+  display: block;
+}
+
+.dateSelector strong {
+  color: var(--color-ocean-950);
+  font-size: var(--font-size-sm);
+}
+
+.dateSelector span {
+  margin-top: 0.1rem;
+  font-size: 0.66rem;
+}
+
+.dateSelector .dateSelected {
+  border-color: var(--color-ocean-950);
+  color: rgb(255 255 255 / 65%);
+  background: var(--color-ocean-950);
+  box-shadow: var(--shadow-sm);
+}
+
+.dateSelector .dateSelected strong {
+  color: white;
+}
+
+.dateCarousel {
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 11%;
+  touch-action: pan-x;
+  cursor: grab;
+}
+
+.dateCarousel button {
+  flex: 0 0 min(12.5rem, 78%);
+  scroll-snap-align: center;
+}
+
+.dayCarousel {
+  display: flex;
+  max-width: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.dayCarousel::-webkit-scrollbar {
+  display: none;
+}
+
+.daySlide {
+  display: grid;
+  flex: 0 0 100%;
+  min-width: 100%;
+  align-content: start;
+  gap: var(--space-5);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.dayRail {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dayRail::before {
+  position: absolute;
+  inset-inline: 8%;
+  top: 50%;
+  height: 0.16rem;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-sea-500) 46%, var(--color-ocean-100));
+  content: '';
+}
+
+.dayRail button,
+.dayRailSpacer {
+  position: relative;
+  min-width: 0;
+  min-height: 2.75rem;
+}
+
+.dayRail button {
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-surface) 88%, var(--color-sand-100));
+  text-align: center;
+  cursor: pointer;
+}
+
+.dayRail button:first-of-type:not(.dateSelected) {
+  justify-self: start;
+}
+
+.dayRail button:last-of-type:not(.dateSelected) {
+  justify-self: end;
+}
+
+.dayRail .dateSelected {
+  min-width: min(12.5rem, 58%);
+  min-height: 3.6rem;
+  padding: 0.55rem 1rem;
+  border-color: var(--color-ocean-950);
+  color: rgb(255 255 255 / 65%);
+  background: var(--color-ocean-950);
+  box-shadow: var(--shadow-sm);
+}
+
+.dayRail strong,
+.dayRail span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dayRail strong {
+  color: var(--color-ocean-950);
+  font-size: var(--font-size-xs);
+}
+
+.dayRail span {
+  margin-top: 0.1rem;
+  font-size: 0.62rem;
+}
+
+.dayRail .dateSelected strong {
+  color: white;
+  font-size: var(--font-size-sm);
+}
+
+.hero {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-6);
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  color: white;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--color-ocean-950) 92%, transparent),
+      color-mix(in srgb, var(--color-ocean-900) 98%, transparent)
+    ),
+    var(--color-ocean-950);
+  box-shadow: var(--shadow-md);
+  isolation: isolate;
+}
+
+.hero::after {
+  position: absolute;
+  right: -9rem;
+  bottom: -9rem;
+  width: 20rem;
+  height: 20rem;
+  border: 3rem solid color-mix(in srgb, var(--color-sea-500) 9%, transparent);
+  border-radius: 50%;
+  content: '';
+  z-index: -1;
+}
+
+.heroGlow {
+  position: absolute;
+  top: -6rem;
+  right: -5rem;
+  width: 17rem;
+  height: 17rem;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-coral-500) 34%, transparent),
+    transparent 68%
+  );
+  z-index: -1;
+}
+
+.heroTopline,
+.heroLabel,
+.window,
+.heroLink {
+  display: flex;
+  align-items: center;
+}
+
+.heroTopline {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.heroLabel {
+  gap: var(--space-2);
+  color: var(--color-sea-200);
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.heroMain {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  margin: var(--space-8) 0 var(--space-6);
+}
+
+.heroMain > div {
+  min-width: 0;
+}
+
+.heroEyebrow {
+  margin: 0 0 var(--space-2);
+  color: rgb(255 255 255 / 56%);
+  font-size: var(--font-size-xs);
+}
+
+.hero h2 {
+  margin: 0;
+  color: white;
+  font-size: clamp(1.8rem, 8vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.055em;
+  overflow-wrap: anywhere;
+}
+
+.window {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  color: rgb(255 255 255 / 65%);
+  font-size: var(--font-size-sm);
+}
+
+.window strong {
+  color: white;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.heroLink {
+  width: fit-content;
+  min-height: 2.75rem;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+  color: var(--color-sea-200);
+  font-size: var(--font-size-sm);
+  font-weight: 750;
+}
+
+@media (min-width: 48rem) {
+  .hero {
+    padding: var(--space-8);
+  }
+
+  .metricGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 27rem) {
+  .heroMain {
+    align-items: flex-start;
+  }
+
+  .hero h2 {
+    font-size: 1.65rem;
+  }
+}
+
+.marineDetails {
+  margin-top: var(--space-5);
+  border-top: 1px solid rgb(255 255 255 / 12%);
+}
+
+.marineDetails summary {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  color: var(--color-sea-200);
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+  cursor: pointer;
+  list-style: none;
+}
+
+.marineDetails summary::-webkit-details-marker {
+  display: none;
+}
+
+.marineDetails[open] summary svg {
+  transform: rotate(180deg);
+}
+
+.marine {
+  display: grid;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+}
+
+.marineGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.marineCard {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: var(--radius-md);
+  color: white;
+  background: rgb(255 255 255 / 9%);
+}
+
+.marineCard header {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.marineCard header span,
+.marineCard header small,
+.marineCard p,
+.marineCard li span {
+  color: rgb(255 255 255 / 62%);
+  font-size: var(--font-size-xs);
+}
+
+.marineCard header strong,
+.marineCard li strong {
+  color: white;
+  font-size: var(--font-size-sm);
+}
+
+.marineCard ul {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.marineCard li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.marineCard header span,
+.tideCard header span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.marineLocked {
+  opacity: 0.78;
+}
+
+@media (min-width: 48rem) {
+  .marineGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

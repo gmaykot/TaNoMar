@@ -1,0 +1,12 @@
+.git
+.cursor
+.vscode
+docs
+**/node_modules
+**/dist
+**/bin
+**/obj
+**/coverage
+**/.env
+**/.env.*
+!**/.env.example

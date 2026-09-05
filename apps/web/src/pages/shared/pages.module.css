@@ -1,0 +1,303 @@
+.page {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-5);
+}
+
+.pageHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-4);
+}
+
+.pageHeaderCopy {
+  min-width: 0;
+}
+
+.pageHeaderActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pageHeader span,
+.sectionHeader span {
+  color: var(--color-sea-700);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.pageHeader h1 {
+  max-width: 50rem;
+  margin: var(--space-2) 0;
+  color: var(--color-ocean-950);
+  font-size: var(--font-size-2xl);
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
+}
+
+.pageHeader p {
+  max-width: 42rem;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+}
+
+.section {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.sectionHeader,
+.sectionHeader a {
+  display: flex;
+  align-items: center;
+}
+
+.sectionHeader {
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.sectionHeader h2 {
+  margin: var(--space-1) 0 0;
+  color: var(--color-ocean-950);
+  font-size: var(--font-size-xl);
+  letter-spacing: -0.045em;
+}
+
+.sectionHeader a {
+  min-height: 2.75rem;
+  gap: var(--space-1);
+  color: var(--color-ocean-700);
+  font-size: var(--font-size-sm);
+  font-weight: 750;
+}
+
+.exploreCard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  color: white;
+  background: linear-gradient(110deg, var(--color-sea-700), var(--color-sea-500));
+  box-shadow: var(--shadow-md);
+}
+
+.exploreCard > span {
+  display: grid;
+  flex: 0 0 auto;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--color-ocean-950);
+  background: rgb(255 255 255 / 70%);
+}
+
+.exploreCard div {
+  min-width: 0;
+  flex: 1;
+}
+
+.exploreCard strong,
+.exploreCard small {
+  display: block;
+}
+
+.exploreCard small {
+  margin-top: var(--space-1);
+  color: rgb(255 255 255 / 70%);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.filter {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-ocean-700);
+  background: var(--color-surface);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.resultCount {
+  color: var(--color-ocean-950);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.filterActive {
+  color: white;
+  background: var(--color-ocean-950);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.locationGrid {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.backLink {
+  display: flex;
+  width: fit-content;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-ocean-700);
+  font-size: var(--font-size-sm);
+  font-weight: 750;
+}
+
+.locationHero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(
+      circle at 85% 20%,
+      color-mix(in srgb, var(--color-sea-500) 28%, transparent),
+      transparent 13rem
+    ),
+    var(--color-ocean-950);
+}
+
+.locationIntro span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-sea-200);
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+}
+
+.locationIntro h1 {
+  margin: var(--space-3) 0 var(--space-2);
+  color: white;
+  font-size: clamp(2rem, 8vw, 3.5rem);
+  line-height: 1;
+  letter-spacing: -0.06em;
+}
+
+.locationIntro p {
+  margin: 0;
+  color: rgb(255 255 255 / 60%);
+  font-size: var(--font-size-sm);
+}
+
+.coordinateMark {
+  display: grid;
+  flex: 0 0 auto;
+  width: 4rem;
+  height: 4rem;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 25%);
+  border-radius: 50%;
+  color: var(--color-coral-500);
+  background: rgb(255 255 255 / 8%);
+}
+
+.detailCard {
+  padding: var(--space-5);
+  background: var(--color-ocean-950);
+}
+
+.detailSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.detailEyebrow {
+  color: var(--color-sea-200);
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.detailSummary h2 {
+  margin: var(--space-2) 0 var(--space-3);
+  color: white;
+  font-size: clamp(1.6rem, 7vw, 2.5rem);
+  letter-spacing: -0.05em;
+}
+
+.bestHours {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  color: rgb(255 255 255 / 65%);
+  background: rgb(255 255 255 / 7%);
+  font-size: var(--font-size-xs);
+}
+
+.bestHours svg {
+  color: var(--color-sea-500);
+}
+
+.bestHours strong {
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-pill);
+  color: white;
+  background: rgb(255 255 255 / 10%);
+}
+
+@media (min-width: 48rem) {
+  .page {
+    gap: var(--space-8);
+  }
+
+  .pageHeader {
+    flex-direction: row;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-6);
+    padding: var(--space-2) 0;
+  }
+
+  .pageHeader p {
+    font-size: var(--font-size-md);
+  }
+
+  .locationGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .locationHero,
+  .detailCard {
+    padding: var(--space-8);
+  }
+}

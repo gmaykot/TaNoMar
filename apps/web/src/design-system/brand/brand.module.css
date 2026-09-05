@@ -1,0 +1,43 @@
+.logo {
+  display: inline-flex;
+  align-items: center;
+}
+
+.horizontal,
+.compact,
+.compactOnly,
+.horizontalOnly,
+.symbol {
+  width: auto;
+  max-width: min(100%, 18rem);
+  object-fit: contain;
+}
+
+.horizontal {
+  height: 3.25rem;
+}
+
+.compact,
+.compactOnly {
+  height: 2.88rem;
+}
+
+.symbol {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.horizontalOnly {
+  display: none;
+  height: 2.75rem;
+}
+
+@media (min-width: 48rem) {
+  .compactOnly {
+    display: none;
+  }
+
+  .horizontalOnly {
+    display: block;
+  }
+}
