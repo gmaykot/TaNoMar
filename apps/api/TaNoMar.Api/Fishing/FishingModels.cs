@@ -12,6 +12,7 @@ public sealed class FishingOptions
     public List<FishingLocation> Locations { get; set; } = [];
     public string TabuaMareBaseUrl { get; set; } = "https://tabuamare.api.br/api/v2";
     public string TabuaMareApiKey { get; set; } = string.Empty;
+    public string GeoapifyApiKey { get; set; } = string.Empty;
 }
 
 public sealed class FishingLocation

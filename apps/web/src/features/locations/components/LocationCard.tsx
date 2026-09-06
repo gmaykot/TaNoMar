@@ -1,4 +1,15 @@
-import { Anchor, ArrowUpRight, Heart, Lock, MapPin, Sailboat, Waves } from 'lucide-react';
+import {
+  Anchor,
+  ArrowUpRight,
+  Eye,
+  EyeOff,
+  Heart,
+  Lock,
+  MapPin,
+  Sailboat,
+  Star,
+  Waves,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/design-system/components/Card';
 import { IconButton } from '@/design-system/components/IconButton';
@@ -21,12 +32,14 @@ function visibilityLabel(location: FishingLocation) {
 interface LocationCardProps {
   location: FishingLocation;
   onToggleFavorite?: () => void;
+  onToggleEnabled?: () => void;
   favoriteLocked?: boolean;
 }
 
 export function LocationCard({
   location,
   onToggleFavorite,
+  onToggleEnabled,
   favoriteLocked = false,
 }: LocationCardProps) {
   const profile = profileVisual[location.profile];
@@ -43,37 +56,65 @@ export function LocationCard({
           <MapPin size={15} aria-hidden="true" /> {location.region}, {location.city}
         </p>
       </div>
-      {onToggleFavorite ? (
-        <IconButton
-          label={
-            favoriteLocked && !location.isFavorite
-              ? 'Favoritar bloqueado no plano atual'
-              : location.isFavorite
-                ? 'Remover dos favoritos'
-                : 'Favoritar'
-          }
-          locked={favoriteLocked && !location.isFavorite}
-          onClick={onToggleFavorite}
-          className={
-            favoriteLocked && !location.isFavorite
-              ? styles.favorite
-              : location.isFavorite
-                ? styles.favoriteOn
-                : styles.favorite
-          }
-        >
-          {favoriteLocked && !location.isFavorite ? (
-            <Lock size={18} aria-hidden="true" />
-          ) : (
-            <Heart
-              size={18}
-              fill={location.isFavorite ? 'currentColor' : 'none'}
-              aria-hidden="true"
-            />
-          )}
-        </IconButton>
+      {location.isOwner ? (
+        <span className={styles.ownerBadge}>
+          <Star size={11} fill="currentColor" aria-hidden="true" />
+          Meu local
+        </span>
       ) : null}
-      <Link to={`/locais/${location.id}`} aria-label={`Ver previsão de ${location.name}`}>
+      {onToggleEnabled || onToggleFavorite ? (
+        <div className={styles.actions}>
+          {onToggleEnabled ? (
+            <IconButton
+              label={location.isEnabled ? 'Remover das previsões' : 'Incluir nas previsões'}
+              aria-pressed={location.isEnabled}
+              onClick={onToggleEnabled}
+              className={location.isEnabled ? styles.enabledOn : styles.enabled}
+            >
+              {location.isEnabled ? (
+                <Eye size={18} aria-hidden="true" />
+              ) : (
+                <EyeOff size={18} aria-hidden="true" />
+              )}
+            </IconButton>
+          ) : null}
+          {onToggleFavorite ? (
+            <IconButton
+              label={
+                favoriteLocked && !location.isFavorite
+                  ? 'Favoritar bloqueado no plano atual'
+                  : location.isFavorite
+                    ? 'Remover dos favoritos'
+                    : 'Favoritar'
+              }
+              locked={favoriteLocked && !location.isFavorite}
+              onClick={onToggleFavorite}
+              className={
+                favoriteLocked && !location.isFavorite
+                  ? styles.favorite
+                  : location.isFavorite
+                    ? styles.favoriteOn
+                    : styles.favorite
+              }
+            >
+              {favoriteLocked && !location.isFavorite ? (
+                <Lock size={18} aria-hidden="true" />
+              ) : (
+                <Heart
+                  size={18}
+                  fill={location.isFavorite ? 'currentColor' : 'none'}
+                  aria-hidden="true"
+                />
+              )}
+            </IconButton>
+          ) : null}
+        </div>
+      ) : null}
+      <Link
+        className={styles.hit}
+        to={`/locais/${location.id}`}
+        aria-label={`Ver previsão de ${location.name}`}
+      >
         <ArrowUpRight size={20} aria-hidden="true" />
       </Link>
     </Card>

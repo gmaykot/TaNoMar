@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { SpotForm } from '@/features/locations/components/SpotForm';
 import { useLocationMutations } from '@/features/locations/hooks/useLocationMutations';
+import { useLocations } from '@/features/locations/hooks/useLocations';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { routes } from '@/shared/constants/routes';
 import formStyles from '@/features/locations/components/spotForm.module.css';
@@ -11,6 +12,7 @@ import styles from '@/pages/shared/pages.module.css';
 export function NewLocationPage() {
   const auth = useAuth();
   const navigate = useNavigate();
+  const locations = useLocations();
   const mutations = useLocationMutations();
   const maxSpots = auth.user?.entitlements.maxPersonalSpots ?? 0;
 
@@ -23,8 +25,8 @@ export function NewLocationPage() {
         <div className={formStyles.paywall}>
           <strong>Locais pessoais são Premium</strong>
           <p>
-            No plano gratuito você consulta o mapa TáNoMar. O Premium libera até 10 locais
-            privados ou para a comunidade.
+            No plano gratuito você consulta o mapa TáNoMar. O Premium libera até 10 locais privados
+            ou para a comunidade.
           </p>
         </div>
       </div>
@@ -42,6 +44,7 @@ export function NewLocationPage() {
         description="Privado ou compartilhado com a comunidade."
       />
       <SpotForm
+        existing={locations.data ?? []}
         submitLabel="Salvar local"
         pending={mutations.create.isPending}
         error={mutations.createError}

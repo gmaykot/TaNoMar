@@ -13,6 +13,12 @@ internal static class SpotRules
     public static bool IsCommunityVisible(FishingSpot spot) =>
         spot.Visibility == "official" || (spot.Visibility == "shared" && spot.IsApproved);
 
+    public static bool EnabledByDefault(FishingSpot spot) =>
+        IsCommunityVisible(spot) || spot.OwnerUserId is not null;
+
+    public static bool IsEnabledForUser(FishingSpot spot, IReadOnlyDictionary<Guid, bool> settings) =>
+        settings.TryGetValue(spot.Id, out var enabled) ? enabled : EnabledByDefault(spot);
+
     public static bool IsAdmin(User user) =>
         string.Equals(user.Role, "Admin", StringComparison.Ordinal);
 

@@ -1,4 +1,15 @@
-import { ArrowLeft, CalendarDays, Heart, Lock, MapPin, Navigation, Pencil } from 'lucide-react';
+import {
+  ArrowLeft,
+  CalendarDays,
+  Eye,
+  EyeOff,
+  Heart,
+  Lock,
+  MapPin,
+  Navigation,
+  Pencil,
+  Star,
+} from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Badge } from '@/design-system/components/Badge';
@@ -65,6 +76,12 @@ export function LocationDetailsPage() {
         <ArrowLeft size={18} aria-hidden="true" /> Voltar aos locais
       </Link>
       <section className={styles.locationHero}>
+        {location.isOwner ? (
+          <span className={styles.ownerBadge}>
+            <Star size={14} fill="currentColor" aria-hidden="true" />
+            Meu local
+          </span>
+        ) : null}
         <div className={styles.locationIntro}>
           <span>
             <MapPin size={16} aria-hidden="true" /> {location.region}
@@ -86,6 +103,24 @@ export function LocationDetailsPage() {
         </div>
       </section>
       <div className={styles.toolbar}>
+        <Button
+          type="button"
+          variant="secondary"
+          aria-pressed={location.isEnabled}
+          onClick={() => {
+            mutations.enabled.mutate({
+              spotId: location.id,
+              isEnabled: !location.isEnabled,
+            });
+          }}
+        >
+          {location.isEnabled ? (
+            <Eye size={16} aria-hidden="true" />
+          ) : (
+            <EyeOff size={16} aria-hidden="true" />
+          )}
+          {location.isEnabled ? 'Nas previsões' : 'Fora das previsões'}
+        </Button>
         <Button
           type="button"
           variant="secondary"
@@ -123,6 +158,7 @@ export function LocationDetailsPage() {
         ) : null}
       </div>
       {mutations.favoriteError ? <p>{mutations.favoriteError}</p> : null}
+      {mutations.enabledError ? <p>{mutations.enabledError}</p> : null}
       <DateSelector
         days={days.map((day) => ({ ...day, ranking: [day.forecast] }))}
         selectedDate={activeDate}

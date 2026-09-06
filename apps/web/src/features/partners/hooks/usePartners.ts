@@ -1,8 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
-import { getAdminPartners, getPartner, getPartners } from '../services/partnersService';
+import {
+  getAdminPartners,
+  getPartner,
+  getPartners,
+  getPlatformSettings,
+} from '../services/partnersService';
 
 export const partnersQueryKey = ['partners'] as const;
 export const adminPartnersQueryKey = ['admin-partners'] as const;
+export const platformSettingsQueryKey = ['admin-settings'] as const;
 
 export function usePartners(enabled = true) {
   return useQuery({
@@ -24,5 +30,12 @@ export function useAdminPartners() {
   return useQuery({
     queryKey: adminPartnersQueryKey,
     queryFn: getAdminPartners,
+  });
+}
+
+export function usePlatformSettings() {
+  return useQuery({
+    queryKey: platformSettingsQueryKey,
+    queryFn: getPlatformSettings,
   });
 }

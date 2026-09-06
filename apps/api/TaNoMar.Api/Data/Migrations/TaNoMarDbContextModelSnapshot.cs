@@ -119,6 +119,32 @@ namespace TaNoMar.Api.Data.Migrations
                     b.ToTable("PushSubscriptions");
                 });
 
+            modelBuilder.Entity("TaNoMar.Api.Data.EnabledSpot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FishingSpotId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "FishingSpotId")
+                        .IsUnique();
+
+                    b.ToTable("EnabledSpots");
+                });
+
             modelBuilder.Entity("TaNoMar.Api.Data.FavoriteSpot", b =>
                 {
                     b.Property<Guid>("Id")
@@ -425,6 +451,27 @@ namespace TaNoMar.Api.Data.Migrations
                             MaxForecastDays = 8,
                             MaxPersonalSpots = 10,
                             Name = "Premium"
+                        });
+                });
+
+            modelBuilder.Entity("TaNoMar.Api.Data.PlatformSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("ShowPartners")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PlatformSettings");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0010"),
+                            ShowPartners = false
                         });
                 });
 

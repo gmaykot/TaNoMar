@@ -287,6 +287,22 @@
   font-weight: 750;
 }
 
+.hero:has(.hit:focus-visible) {
+  outline: 3px solid var(--color-coral-500);
+  outline-offset: 3px;
+}
+
+.hit:focus-visible {
+  outline: none;
+}
+
+.hit::after {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  content: '';
+}
+
 @media (min-width: 48rem) {
   .hero {
     padding: var(--space-8);

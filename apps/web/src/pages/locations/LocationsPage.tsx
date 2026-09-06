@@ -13,11 +13,12 @@ import { routes } from '@/shared/constants/routes';
 import { normalizeText } from '@/shared/utils/normalizeText';
 import styles from '@/pages/shared/pages.module.css';
 
-type Filter = 'all' | 'mine' | 'favorites';
+type Filter = 'all' | 'mine' | 'favorites' | 'enabled';
 
 function parseFilter(value: string | null, canCreate: boolean, canFavorite: boolean): Filter {
   if (value === 'meus' && canCreate) return 'mine';
   if (value === 'favoritos' && canFavorite) return 'favorites';
+  if (value === 'previsoes') return 'enabled';
   return 'all';
 }
 
@@ -38,6 +39,7 @@ export function LocationsPage() {
         const params = new URLSearchParams(current);
         if (next === 'mine') params.set('filtro', 'meus');
         else if (next === 'favorites') params.set('filtro', 'favoritos');
+        else if (next === 'enabled') params.set('filtro', 'previsoes');
         else params.delete('filtro');
         return params;
       },
@@ -51,6 +53,7 @@ export function LocationsPage() {
     return locations.data.filter((location) => {
       if (filter === 'mine' && !location.isOwner) return false;
       if (filter === 'favorites' && !location.isFavorite) return false;
+      if (filter === 'enabled' && !location.isEnabled) return false;
       if (!term) return true;
       return normalizeText(`${location.name} ${location.city} ${location.region}`).includes(term);
     });
@@ -78,7 +81,7 @@ export function LocationsPage() {
       <PageHeader
         eyebrow="Seu próximo destino"
         title="Encontre um lugar para pescar."
-        description="Oficiais, favoritos e locais pessoais."
+        description="Oficiais, favoritos e locais habilitados para as previsões."
       />
       <SearchField
         label="Buscar locais"
@@ -90,6 +93,7 @@ export function LocationsPage() {
         {(
           [
             ['all', 'Todos', false],
+            ['enabled', 'Nas previsões', false],
             ['mine', 'Meus locais', !canCreate],
             ['favorites', 'Favoritos', !canFavorite],
           ] as const
@@ -109,6 +113,7 @@ export function LocationsPage() {
         ))}
       </div>
       {mutations.favoriteError ? <p>{mutations.favoriteError}</p> : null}
+      {mutations.enabledError ? <p>{mutations.enabledError}</p> : null}
       <div className={styles.resultCount}>
         {filtered.length} {filtered.length === 1 ? 'local encontrado' : 'locais encontrados'}
       </div>
@@ -124,6 +129,12 @@ export function LocationsPage() {
               key={location.id}
               location={location}
               favoriteLocked={!canFavorite}
+              onToggleEnabled={() => {
+                mutations.enabled.mutate({
+                  spotId: location.id,
+                  isEnabled: !location.isEnabled,
+                });
+              }}
               onToggleFavorite={() => {
                 if (!canFavorite && !location.isFavorite) return;
                 mutations.favorite.mutate({
@@ -137,7 +148,11 @@ export function LocationsPage() {
       ) : (
         <FeedbackState
           title="Nenhum local encontrado"
-          description="Tente buscar por outro nome ou região."
+          description={
+            filter === 'enabled'
+              ? 'Habilite um local para vê-lo nas previsões.'
+              : 'Tente buscar por outro nome ou região.'
+          }
         />
       )}
     </div>

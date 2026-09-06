@@ -69,6 +69,20 @@
   font-weight: 700;
 }
 
+.duplicate {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  color: var(--color-ocean-950);
+  background: var(--color-warning-soft);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.duplicate a {
+  color: var(--color-ocean-700);
+}
+
 .paywall {
   display: grid;
   gap: var(--space-3);

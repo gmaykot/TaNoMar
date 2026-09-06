@@ -38,7 +38,7 @@ export function RankingList({ items, limit, emphasisKey }: RankingListProps) {
               </span>
               <div className={styles.info}>
                 <Badge classification={item.classification} />
-                <Link to={`/locais/${item.locationId}`}>
+                <Link className={styles.hit} to={`/locais/${item.locationId}`}>
                   <h3>{item.locationName}</h3>
                 </Link>
                 <p>

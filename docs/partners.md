@@ -4,26 +4,26 @@ Vitrine de lojas, guias e serviços da ilha. O TáNoMar não vende nem intermedi
 
 ## Flag
 
-`TaNoMar:ShowPartners` (env `TaNoMar__ShowPartners`) controla a vitrine pública. Padrão `false`. Em Development o `appsettings.Development.json` liga a flag para o admin revisar a landing.
+A vitrine pública é ligada pelo admin em `/admin/parceiros` (`Mostrar vitrine de parceiros`). O valor fica em `PlatformSettings.ShowPartners`, padrão `false`.
 
-Com a flag desligada:
+Com a vitrine desligada:
 
 - `GET /me` devolve `features.showPartners: false`
 - `GET /partners` e `GET /partners/{slug}` respondem `404` (`feature_disabled`)
 - o menu e `/parceiros` somem para o pescador
 
-O CRUD em `/admin/parceiros` continua ativo.
+O CRUD em `/admin/parceiros` continua ativo. `GET/PUT /admin/settings` troca a flag sem redeploy.
 
 ## O que entra
 
 - Diretório em `/parceiros` e landing em `/parceiros/:slug`
 - Categorias: loja, guia (leva para pescar), hospedagem, outro
 - Ofertas com preço em texto e validade opcional
-- Destaque no diretório (`isFeatured`)
+- Destaque (`isFeatured`): Home, entre o ranking e “Explore todos os locais”, e no topo do diretório
 
 ## O que fica de fora
 
 - Login ou painel do parceiro
 - Carrinho, checkout ou Mercado Pago
-- Vínculo com local, Home ou Ranking
+- Vínculo com local ou Ranking
 - Upload de imagem no servidor (só URL)

@@ -166,6 +166,7 @@
 .locationGrid {
   display: grid;
   gap: var(--space-3);
+  overflow: visible;
 }
 
 .backLink {
@@ -180,6 +181,7 @@
 }
 
 .locationHero {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -211,6 +213,25 @@
   font-size: clamp(2rem, 8vw, 3.5rem);
   line-height: 1;
   letter-spacing: -0.06em;
+}
+
+.locationHero .ownerBadge {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-pill);
+  color: white;
+  background: color-mix(in srgb, var(--color-coral-500) 78%, transparent);
+  box-shadow: var(--shadow-sm);
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transform: rotate(6deg);
 }
 
 .locationIntro p {

@@ -22,10 +22,7 @@ export function EditLocationPage() {
   }
   if (!location || !location.isOwner) {
     return (
-      <FeedbackState
-        title="Local indisponível"
-        description="Só o dono pode editar este local."
-      />
+      <FeedbackState title="Local indisponível" description="Só o dono pode editar este local." />
     );
   }
 
@@ -41,6 +38,7 @@ export function EditLocationPage() {
       />
       <SpotForm
         initial={location}
+        existing={locations.data ?? []}
         submitLabel="Salvar alterações"
         pending={mutations.update.isPending || mutations.remove.isPending}
         error={mutations.updateError}

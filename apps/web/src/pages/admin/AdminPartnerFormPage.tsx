@@ -80,7 +80,7 @@ export function AdminPartnerFormPage() {
       <PageHeader
         eyebrow="Administração"
         title={isNew ? 'Novo parceiro' : `Editar ${editing?.name ?? 'parceiro'}`}
-        description="A landing só aparece na vitrine se estiver publicada e a flag ShowPartners estiver ligada."
+        description="A landing só aparece na vitrine se estiver publicada e a vitrine estiver ligada em Parceiros."
       />
       <form
         className={formStyles.form}
@@ -183,7 +183,7 @@ export function AdminPartnerFormPage() {
             checked={value.isFeatured}
             onChange={(event) => patch('isFeatured', event.target.checked)}
           />
-          <span>Destaque no diretório</span>
+          <span>Destaque na Home e no diretório</span>
         </label>
         <div>
           <p className={formStyles.field}>

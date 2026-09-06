@@ -57,6 +57,7 @@ export interface FishingLocation {
   longitude: number;
   seaOrientationDegrees: number;
   isFavorite: boolean;
+  isEnabled: boolean;
   isInRanking: boolean;
   isApproved: boolean;
   isOwner: boolean;

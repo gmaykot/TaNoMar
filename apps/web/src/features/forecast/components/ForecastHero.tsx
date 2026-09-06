@@ -32,7 +32,10 @@ export function ForecastHero({ forecast }: ForecastHeroProps) {
         <ScoreIndicator score={forecast.score} classification={forecast.classification} />
       </div>
       <MetricGrid metrics={forecast.metrics} limit={4} />
-      <Link className={styles.heroLink} to={`/locais/${forecast.locationId}`}>
+      <Link
+        className={`${styles.heroLink} ${styles.hit}`}
+        to={`/locais/${forecast.locationId}`}
+      >
         Ver previsão completa <ArrowRight size={18} aria-hidden="true" />
       </Link>
     </article>

@@ -13,6 +13,7 @@ const authState = vi.hoisted(() => ({
 vi.mock('@/features/locations/services/locationsService', () => ({
   getLocations: () => Promise.resolve(locationsFixture),
   setFavorite: () => Promise.resolve(),
+  setEnabled: () => Promise.resolve(),
   createLocation: vi.fn(),
   updateLocation: vi.fn(),
   deleteLocation: vi.fn(),
@@ -62,6 +63,15 @@ describe('LocationsPage', () => {
     expect(screen.getByRole('button', { name: 'Novo local' })).toBeEnabled();
   });
 
+  it('marca o local pessoal com o selo Meu local', async () => {
+    renderWithProviders(<LocationsPage />);
+
+    expect(await screen.findByRole('heading', { name: 'Molhe da Barra' })).toBeInTheDocument();
+    expect(screen.getByText('Meu local')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Campeche' })).toBeInTheDocument();
+    expect(screen.getAllByText('Meu local')).toHaveLength(1);
+  });
+
   it('bloqueia favoritar no plano Free com cadeado Premium', async () => {
     authState.maxPersonalSpots = 0;
     authState.maxFavorites = 0;
@@ -86,7 +96,7 @@ describe('LocationsPage', () => {
     renderWithProviders(<LocationsPage />);
 
     const search = await screen.findByRole('searchbox', { name: 'Buscar locais' });
-    expect(screen.getByText('11 locais encontrados')).toBeInTheDocument();
+    expect(screen.getByText('12 locais encontrados')).toBeInTheDocument();
     await user.type(search, 'acores');
     expect(screen.getByText('1 local encontrado')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Açores' })).toBeInTheDocument();
@@ -129,5 +139,29 @@ describe('LocationsPage', () => {
       'true',
     );
     expect(screen.queryByRole('heading', { name: 'Campeche' })).not.toBeInTheDocument();
+  });
+
+  it('filtra os locais habilitados para as previsões', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<LocationsPage />);
+    await screen.findByRole('heading', { name: 'Campeche' });
+    await user.click(screen.getByRole('button', { name: 'Nas previsões' }));
+    expect(screen.getByRole('button', { name: 'Nas previsões' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByRole('heading', { name: 'Campeche' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Remover das previsões' }).length).toBeGreaterThan(
+      0,
+    );
+  });
+
+  it('aplica o filtro de previsões pela URL', async () => {
+    renderWithProviders(<LocationsPage />, ['/locais?filtro=previsoes']);
+    expect(await screen.findByRole('heading', { name: 'Campeche' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Nas previsões' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 });

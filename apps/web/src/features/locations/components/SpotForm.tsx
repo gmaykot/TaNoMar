@@ -1,8 +1,13 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/design-system/components/Button';
 import type { FishingLocation } from '@/features/fishing/types/fishing';
+import { routes } from '@/shared/constants/routes';
 import { islandWideRegion, resolveRegion } from '../regions';
 import type { PersonalSpotInput } from '../services/locationsService';
+import { findSimilarLocation } from '../spotProximity';
+import type { PlaceSuggestion } from '../types/place';
+import { PlaceAutocomplete } from './PlaceAutocomplete';
 import { RegionPicker } from './RegionPicker';
 import styles from './spotForm.module.css';
 
@@ -14,6 +19,7 @@ const profiles: Array<{ value: FishingLocation['profile']; label: string }> = [
 
 interface SpotFormProps {
   initial?: FishingLocation;
+  existing?: FishingLocation[];
   submitLabel: string;
   pending: boolean;
   error: string | null;
@@ -23,6 +29,7 @@ interface SpotFormProps {
 
 export function SpotForm({
   initial,
+  existing = [],
   submitLabel,
   pending,
   error,
@@ -31,7 +38,9 @@ export function SpotForm({
 }: SpotFormProps) {
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
+  const [placeQuery, setPlaceQuery] = useState(initial?.city ?? 'Florianópolis');
   const [city, setCity] = useState(initial?.city ?? 'Florianópolis');
+  const [state, setState] = useState(initial?.state ?? 'SC');
   const [region, setRegion] = useState(resolveRegion(initial?.region ?? islandWideRegion));
   const [latitude, setLatitude] = useState(String(initial?.latitude ?? ''));
   const [longitude, setLongitude] = useState(String(initial?.longitude ?? ''));
@@ -41,6 +50,22 @@ export function SpotForm({
   );
   const [shared, setShared] = useState(initial?.visibility === 'shared');
   const [geoError, setGeoError] = useState<string | null>(null);
+  const latitudeValue = Number(latitude);
+  const longitudeValue = Number(longitude);
+  const similar = findSimilarLocation(existing, {
+    name,
+    latitude: Number.isFinite(latitudeValue) ? latitudeValue : null,
+    longitude: Number.isFinite(longitudeValue) ? longitudeValue : null,
+    excludeId: initial?.id,
+  });
+
+  function similarMessage(match: NonNullable<typeof similar>) {
+    if (match.reason === 'proximity') {
+      const meters = match.meters === null ? '' : ` (${Math.round(match.meters)} m)`;
+      return `Já existe um local muito próximo${meters}:`;
+    }
+    return 'Já existe um local com esse nome:';
+  }
 
   function useGps() {
     if (!navigator.geolocation) {
@@ -66,11 +91,21 @@ export function SpotForm({
         const lon = Number(longitude);
         const seaOrientationDegrees = Number(orientation);
         if (!name.trim() || !Number.isFinite(lat) || !Number.isFinite(lon)) return;
+        if (
+          findSimilarLocation(existing, {
+            name: name.trim(),
+            latitude: lat,
+            longitude: lon,
+            excludeId: initial?.id,
+          })
+        ) {
+          return;
+        }
         onSubmit({
           name: name.trim(),
           description: description.trim() || undefined,
           city: city.trim(),
-          state: initial?.state ?? 'SC',
+          state,
           region: resolveRegion(region),
           latitude: lat,
           longitude: lon,
@@ -88,10 +123,32 @@ export function SpotForm({
         <span>Descrição</span>
         <textarea value={description} onChange={(event) => setDescription(event.target.value)} />
       </label>
-      <label className={styles.field}>
-        <span>Cidade</span>
-        <input value={city} onChange={(event) => setCity(event.target.value)} />
-      </label>
+      <PlaceAutocomplete
+        value={placeQuery}
+        isRegistered={(place) =>
+          Boolean(
+            findSimilarLocation(existing, {
+              name: place.name,
+              latitude: place.latitude,
+              longitude: place.longitude,
+              excludeId: initial?.id,
+            }),
+          )
+        }
+        onChange={(value) => {
+          setPlaceQuery(value);
+          setCity(value);
+        }}
+        onSelect={(place: PlaceSuggestion) => {
+          setPlaceQuery(place.formatted);
+          setCity(place.city);
+          setState(place.state);
+          setLatitude(place.latitude.toFixed(5));
+          setLongitude(place.longitude.toFixed(5));
+          setGeoError(null);
+          if (!name.trim()) setName(place.name);
+        }}
+      />
       <RegionPicker
         value={region}
         hint="Toque no pedaço da ilha onde fica o local."
@@ -123,6 +180,12 @@ export function SpotForm({
         </Button>
       </div>
       {geoError ? <p className={styles.error}>{geoError}</p> : null}
+      {similar ? (
+        <p className={styles.duplicate} role="alert">
+          {similarMessage(similar)}{' '}
+          <Link to={routes.locationDetails(similar.location.id)}>{similar.location.name}</Link>
+        </p>
+      ) : null}
       <div className={styles.row}>
         <label className={styles.field}>
           <span>Orientação do mar (graus)</span>
@@ -159,7 +222,7 @@ export function SpotForm({
       </label>
       {error ? <p className={styles.error}>{error}</p> : null}
       <div className={styles.actions}>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending || Boolean(similar)}>
           {submitLabel}
         </Button>
         {onDelete ? (

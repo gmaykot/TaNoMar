@@ -28,12 +28,14 @@ Namespaces, assembly, projeto, DbContext, seeder, options e usuário interno do 
 
 ## Pesca e locais
 
-- `GET /fishing-spots`: locais oficiais, compartilhados aprovados e privados do usuário. O DTO inclui `profile`, `visibility`, `isApproved`, `isOwner`, `isFavorite`, `isInRanking` e `seaOrientationDegrees`.
-- `POST /fishing-spots`: local pessoal sujeito ao plano, duplicidade, perfil costeiro e visibilidade (`shared` pendente ou `private`).
-- `PUT /fishing-spots/{id}`: dono edita o local; compartilhar de novo volta para moderação.
-- `DELETE /fishing-spots/{id}`: dono remove o local e os relatos/favoritos ligados.
+- `GET /fishing-spots`: locais oficiais, compartilhados aprovados e privados do usuário. O DTO inclui `profile`, `visibility`, `isApproved`, `isOwner`, `isFavorite`, `isEnabled`, `isInRanking` e `seaOrientationDegrees`. Sem preferência do usuário, oficiais, compartilhados aprovados e locais pessoais do dono vêm `isEnabled = true`.
+- `POST /fishing-spots`: local pessoal sujeito ao plano, duplicidade (mesmo nome, ignorando maiúsculas, ou até 200 m), perfil costeiro e visibilidade (`shared` pendente ou `private`). O dono já recebe o local habilitado nas previsões; a API aquece o cache de previsão (nota e ranking) antes de responder.
+- `PUT /fishing-spots/{id}`: dono edita o local; a mesma regra de duplicidade vale contra os demais; compartilhar de novo volta para moderação.
+- `DELETE /fishing-spots/{id}`: dono remove o local e os relatos/favoritos/habilitações ligados.
+- `GET /places/autocomplete?q=`: busca autenticada de lugares via Geoapify no cadastro de locais. `q` exige 3–80 caracteres. Resposta `{ items: [{ name, formatted, city, state, category, latitude, longitude }] }`. Sem chave ou falha da Geoapify devolve `items` vazio. Rate limit por IP (20/min). Chave: `GEOAPIFY_API_KEY` / `Fishing:GeoapifyApiKey`.
 - `PUT /me/favorites`: favoritos sujeitos ao limite do plano. Free não tem cota (`maxFavorites = 0`); Premium tem 20.
-- `GET /forecasts/ranking`: dias permitidos pelo plano e ranking por dia (só oficiais). Query opcional `emphasis=wind|wind-more|rain|rain-more|waves|waves-less` reordena pela métrica na melhor janela, sem recalcular a nota. Ausente ou vazio mantém a ordem por nota. `wind` e `rain` ordenam do menor para o maior; `waves` do maior para o menor. Os sufixos `-more` e `-less` invertem essa direção. Valor inválido responde `400`. Qualquer `emphasis` no plano Free responde `400` (`plan_required`).
+- `PUT /me/enabled-spots`: habilita ou remove o local da lista de previsões do usuário. Sem limite de plano. `{ spotId, isEnabled }`. Ao habilitar, a API aquece o cache de previsão para o ranking.
+- `GET /forecasts/ranking`: dias permitidos pelo plano e ranking por dia, só com os locais que o usuário habilitou. Sem preferência, o padrão é o mesmo de `isEnabled`. Query opcional `emphasis=wind|wind-more|rain|rain-more|waves|waves-less` reordena pela métrica na melhor janela, sem recalcular a nota. Ausente ou vazio mantém a ordem por nota. `wind` e `rain` ordenam do menor para o maior; `waves` do maior para o menor. Os sufixos `-more` e `-less` invertem essa direção. Valor inválido responde `400`. Qualquer `emphasis` no plano Free responde `400` (`plan_required`).
 - `GET /fishing-spots/{id}/forecast`: dias de previsão do local visível, inclusive local pessoal do dono.
 - `GET /fishing-spots/{id}/marine?date=`: série horária de ondas, período, swell, água, pressão atmosférica e maré do dia. Free recebe `locked`; Premium recebe a série. A pressão vem de `pressure_msl` da Open-Meteo (hPa e tendência) e entra no snapshot da previsão. A tábua de maré vem do porto oficial mais próximo, via Tábua de Maré API (`tabuamare.api.br`), e também entra no snapshot (`tidePoints`, `tideExtremes`, `tideAttribution`). Se essa API falhar, o marine tenta o nível modelado `sea_level_height_msl` da Open-Meteo. Pode vir `unavailable`. O ranking não inclui essa série. A nota não usa pressão nem maré.
 - `GET /public/offline-forecast`: previsão pública do dia, com `Cache-Control` público.
@@ -48,8 +50,9 @@ O contrato de métrica é uma união `{ state: "available", value }` ou `{ state
 - `POST /community/reports/{id}/confirm` e `/contest`: um voto por usuário, só no plano Premium. Free vê e cria relatos; o autor não vota no próprio. Sem Premium a API responde `400` (`plan_required`).
 - `GET /admin/fishing-spots/pending`, `POST /admin/fishing-spots/{id}/approve` e `/reject`: só Admin. Recusar devolve o ponto para `private` e notifica o dono.
 - `GET /admin/users`, `PUT /admin/users/{id}/plan` e `PUT /admin/users/{id}/active`: só Admin. Lista contas, troca o plano (`free` ou `premium`) e bloqueia ou libera o acesso. A conta do bootstrap não muda de plano nem é bloqueada; o admin não bloqueia a si mesmo nem o último admin ativo. Bloquear revoga os refresh tokens.
-- `GET /me` inclui `features.showPartners`, ligado por `TaNoMar:ShowPartners` (env `TaNoMar__ShowPartners`, padrão `false`).
+- `GET /me` inclui `features.showPartners`, ligado pela configuração persistida em `PlatformSettings` (admin em `/admin/parceiros`, padrão `false`).
 - `GET /partners` e `GET /partners/{slug}`: vitrine autenticada. Só com a flag ligada; senão `404` (`feature_disabled`). Lista só publicados; ofertas com `endsAt` vencido somem.
+- `GET/PUT /admin/settings`: só Admin. Lê e grava `{ showPartners }`. Independente da vitrine pública.
 - `GET/POST /admin/partners`, `PUT/DELETE /admin/partners/{slug}`: só Admin, independente da flag. Categorias: `loja`, `guia`, `hospedagem`, `outro`. Publicar exige WhatsApp, Instagram, site ou Maps.
 - `GET /notifications`, `POST /notifications/{id}/read`, `DELETE /notifications/{id}`: caixa do usuário, itens ativos por 48h. A API cria avisos para: dono na aprovação/rejeição de local; alvo na troca de plano ou liberação de conta; contas ativas em relato novo (o autor recebe confirmação). O sino da web também lista os relatos ativos (`GET /community/reports`) para confirmar ou contestar.
 - `GET /notifications/unread`: `{ unread }` para o pontinho do sino, sem baixar a lista.

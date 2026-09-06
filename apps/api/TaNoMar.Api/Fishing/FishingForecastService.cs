@@ -28,7 +28,11 @@ internal sealed class FishingForecastService
         _timeZone = TimeZoneInfo.FindSystemTimeZoneById(_options.TimeZone);
     }
 
-    public async Task<FishingForecast> GetAsync(int day, CancellationToken cancellationToken, Guid? userId = null)
+    public async Task<FishingForecast> GetAsync(
+        int day,
+        CancellationToken cancellationToken,
+        Guid? userId = null,
+        IReadOnlySet<string>? onlySlugs = null)
     {
         if (day is < 0 or > 7)
             throw new ArgumentOutOfRangeException(nameof(day), "Fishing day must be between 0 and 7.");
@@ -38,8 +42,15 @@ internal sealed class FishingForecastService
         var results = new List<FishingLocationForecast>();
         var errors = new List<FishingForecastError>();
 
-        var locations = await _db.FishingSpots
-            .Where(spot => spot.Visibility == "official" || (spot.Visibility == "shared" && spot.IsApproved) || (userId.HasValue && spot.OwnerUserId == userId.Value))
+        if (onlySlugs is { Count: 0 })
+            return new FishingForecast(now, targetDate, results, errors);
+
+        var query = _db.FishingSpots
+            .Where(spot => spot.Visibility == "official" || (spot.Visibility == "shared" && spot.IsApproved) || (userId.HasValue && spot.OwnerUserId == userId.Value));
+        if (onlySlugs is not null)
+            query = query.Where(spot => onlySlugs.Contains(spot.Slug));
+
+        var locations = await query
             .Select(spot => new FishingLocation
             {
                 Id = spot.Slug,
@@ -143,6 +154,19 @@ internal sealed class FishingForecastService
 
         return new ForecastWarmupResult(locations.Count, refreshed, reused, failed);
     }
+
+    public Task<bool> WarmSpotAsync(FishingSpot spot, CancellationToken cancellationToken)
+        => WarmLocationAsync(ToFishingLocation(spot), Today(), cancellationToken);
+
+    public static FishingLocation ToFishingLocation(FishingSpot spot) => new()
+    {
+        Id = spot.Slug,
+        Name = spot.Name,
+        Latitude = spot.Latitude ?? 0,
+        Longitude = spot.Longitude ?? 0,
+        SeaOrientationDegrees = spot.SeaOrientationDegrees,
+        Profile = spot.Profile
+    };
 
     private async Task<bool> WarmLocationAsync(
         FishingLocation location,

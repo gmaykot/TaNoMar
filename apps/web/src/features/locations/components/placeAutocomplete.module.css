@@ -1,0 +1,147 @@
+.root {
+  position: relative;
+}
+
+.field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.field span {
+  color: var(--color-ocean-700);
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+}
+
+.field input {
+  min-height: 2.9rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.field input:focus-visible,
+.option:focus-visible {
+  outline: 2px solid var(--color-sea-500);
+  outline-offset: 2px;
+}
+
+.field small {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
+
+.panel {
+  position: absolute;
+  z-index: var(--z-sheet);
+  top: calc(100% + var(--space-1));
+  right: 0;
+  left: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+}
+
+.list {
+  display: grid;
+  max-height: 16rem;
+  margin: 0;
+  padding: var(--space-1);
+  overflow: auto;
+  list-style: none;
+}
+
+.status {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.option {
+  display: grid;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.option[aria-selected='true'],
+.option:hover {
+  background: var(--color-sea-100);
+}
+
+.option strong {
+  font-size: var(--font-size-sm);
+}
+
+.optionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.optionHead strong {
+  min-width: 0;
+}
+
+.optionMeta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.optionRegistered {
+  background: var(--color-warning-soft);
+}
+
+.optionRegistered[aria-selected='true'],
+.optionRegistered:hover {
+  background: color-mix(in srgb, var(--color-warning-soft) 72%, var(--color-sea-200));
+}
+
+.registeredMark {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 1.4rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-pill);
+  color: var(--color-warning);
+  background: var(--color-surface);
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.attribution {
+  margin: 0;
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.attribution a {
+  color: var(--color-ocean-700);
+  font-weight: 650;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .option,
+  .field input {
+    transition: none;
+  }
+}

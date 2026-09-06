@@ -5,6 +5,7 @@ import {
   parsePartner,
   parsePartnerList,
 } from '../mappers/partnerMapper';
+import { parsePlatformSettings } from '../mappers/platformSettingsMapper';
 import type { PartnerInput } from '../types/partner';
 
 function toPayload(input: PartnerInput) {
@@ -66,4 +67,17 @@ export async function updateAdminPartner(slug: string, input: PartnerInput) {
 
 export async function deleteAdminPartner(slug: string) {
   await apiRequest(`/admin/partners/${encodeURIComponent(slug)}`, { method: 'DELETE' });
+}
+
+export async function getPlatformSettings() {
+  return parsePlatformSettings(await apiRequest('/admin/settings'));
+}
+
+export async function setPlatformShowPartners(showPartners: boolean) {
+  return parsePlatformSettings(
+    await apiRequest('/admin/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ showPartners }),
+    }),
+  );
 }

@@ -61,7 +61,7 @@ Guia completo: **[docs/deployment.md](docs/deployment.md)**.
 
 - A web chama a API por `/api/v1`, com mappers de contrato e Google Sign-In.
 - A API vive em `apps/api/TaNoMar.Api`, com namespace e assembly `TaNoMar.Api`.
-- Comunidade, favoritos e locais pessoais têm API e telas: criar/editar local, favoritar, relatos, moderação admin, gestão de usuários e inbox de notificações (SSE no sino; Web Push opcional com o app fechado).
+- Comunidade, favoritos e locais pessoais têm API e telas: criar/editar local, favoritar, habilitar para as previsões, relatos, moderação admin, gestão de usuários e inbox de notificações (SSE no sino; Web Push opcional com o app fechado).
 - Alertas de previsão (`MaxAlerts`) continuam reservados no plano, sem cadastro nesta versão.
 
 Antes de alterar o projeto, leia [AGENTS.md](AGENTS.md) e [docs/architecture.md](docs/architecture.md).

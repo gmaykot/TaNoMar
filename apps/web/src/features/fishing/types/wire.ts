@@ -72,6 +72,7 @@ export interface WireSpot {
   longitude: number | null;
   seaOrientationDegrees: number;
   isFavorite: boolean;
+  isEnabled: boolean;
   isInRanking: boolean;
   isApproved: boolean;
   isOwner: boolean;

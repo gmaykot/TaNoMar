@@ -62,7 +62,7 @@ export function RankingPage() {
       <PageHeader
         eyebrow="Visão comparativa"
         title="Os melhores locais, em ordem."
-        description="Abra as condições de cada posição."
+        description="Só os locais que você habilitou, em ordem."
       />
       <DateSelector
         days={forecast.data.days}
@@ -70,12 +70,12 @@ export function RankingPage() {
         onSelect={setSelectedDate}
       />
       <RankingEmphasisFilters emphasis={emphasis} premium={premium} onChange={setEmphasis} />
-      {activeDay ? (
+      {activeDay?.ranking.length ? (
         <RankingList items={activeDay.ranking} emphasisKey={rankingEmphasisMetricKey(emphasis)} />
       ) : (
         <FeedbackState
-          title="Sem ranking"
-          description="Nenhuma previsão encontrada para esta data."
+          title="Nenhum local nas previsões"
+          description="Habilite locais na lista para compará-los aqui."
         />
       )}
     </div>

@@ -35,6 +35,8 @@ builder.Services.PostConfigure<FishingOptions>(options =>
         options.TabuaMareApiKey = builder.Configuration["TABUA_MARE_API_KEY"] ?? string.Empty;
     if (string.IsNullOrWhiteSpace(options.TabuaMareBaseUrl))
         options.TabuaMareBaseUrl = builder.Configuration["TABUA_MARE_BASE_URL"] ?? "https://tabuamare.api.br/api/v2";
+    if (string.IsNullOrWhiteSpace(options.GeoapifyApiKey))
+        options.GeoapifyApiKey = builder.Configuration["GEOAPIFY_API_KEY"] ?? string.Empty;
 });
 builder.Services.AddDbContext<TaNoMarDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 builder.Services.AddScoped<AuthTokenService>();
@@ -48,6 +50,11 @@ builder.Services.AddHttpClient<OpenMeteoClient>(client =>
 builder.Services.AddHttpClient<TabuaMareClient>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(20);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("tanomar/2.0");
+});
+builder.Services.AddHttpClient<GeoapifyClient>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
     client.DefaultRequestHeaders.UserAgent.ParseAdd("tanomar/2.0");
 });
 builder.Services.AddTransient<FishingForecastService>();
@@ -77,7 +84,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
 builder.Services.AddAuthorization();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddRateLimiter(options => options.AddPolicy("community", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "anonymous", _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 })));
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy("community", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "anonymous", _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    options.AddPolicy("places", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "anonymous", _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+});
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
@@ -172,7 +183,7 @@ api.MapGet("/me", async (ClaimsPrincipal principal, TaNoMarDbContext db, Microso
     if (user is null) return Results.Unauthorized();
     if (ApplyBootstrapAdmin(user, user.Email, user.GoogleSubject, options.Value))
         await db.SaveChangesAsync(cancellationToken);
-    return Results.Ok(await UserDtoAsync(user, db, options.Value, cancellationToken));
+    return Results.Ok(await UserDtoAsync(user, db, cancellationToken));
 }).RequireAuthorization();
 
 api.MapGet("/fishing-spots", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
@@ -180,11 +191,12 @@ api.MapGet("/fishing-spots", async (ClaimsPrincipal principal, TaNoMarDbContext 
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
     var favoriteIds = await db.FavoriteSpots.Where(item => item.UserId == user.Id).Select(item => item.FishingSpotId).ToListAsync(cancellationToken);
+    var enabledSettings = await EnabledSettingsAsync(db, user.Id, cancellationToken);
     var spots = await db.FishingSpots.AsNoTracking().Where(spot => spot.Visibility == "official" || (spot.Visibility == "shared" && spot.IsApproved) || spot.OwnerUserId == user.Id).OrderBy(spot => spot.Name).ToListAsync(cancellationToken);
-    return Results.Ok(spots.Select(spot => SpotDtoProjection(spot, user, favoriteIds.Contains(spot.Id))).ToList());
+    return Results.Ok(spots.Select(spot => SpotDtoProjection(spot, user, favoriteIds.Contains(spot.Id), SpotRules.IsEnabledForUser(spot, enabledSettings))).ToList());
 }).RequireAuthorization();
 
-api.MapPost("/fishing-spots", async (PersonalSpotRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+api.MapPost("/fishing-spots", async (PersonalSpotRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
@@ -214,8 +226,10 @@ api.MapPost("/fishing-spots", async (PersonalSpotRequest request, ClaimsPrincipa
         Profile = SpotRules.NormalizeProfile(request.Profile)
     };
     db.FishingSpots.Add(spot);
+    db.EnabledSpots.Add(new EnabledSpot { UserId = user.Id, FishingSpotId = spot.Id, IsEnabled = true });
     await db.SaveChangesAsync(cancellationToken);
-    return Results.Created($"/api/v1/fishing-spots/{spot.Slug}", SpotDtoProjection(spot, user, false));
+    await TryWarmSpotAsync(fishing, spot, cancellationToken);
+    return Results.Created($"/api/v1/fishing-spots/{spot.Slug}", SpotDtoProjection(spot, user, false, true));
 }).RequireAuthorization();
 
 api.MapPut("/fishing-spots/{id}", async (string id, PersonalSpotRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
@@ -232,7 +246,8 @@ api.MapPut("/fishing-spots/{id}", async (string id, PersonalSpotRequest request,
     ApplyPersonalSpot(spot, request);
     await db.SaveChangesAsync(cancellationToken);
     var favorite = await db.FavoriteSpots.AnyAsync(item => item.UserId == user.Id && item.FishingSpotId == spot.Id, cancellationToken);
-    return Results.Ok(SpotDtoProjection(spot, user, favorite));
+    var enabledSettings = await EnabledSettingsAsync(db, user.Id, cancellationToken);
+    return Results.Ok(SpotDtoProjection(spot, user, favorite, SpotRules.IsEnabledForUser(spot, enabledSettings)));
 }).RequireAuthorization();
 
 api.MapDelete("/fishing-spots/{id}", async (string id, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
@@ -246,10 +261,22 @@ api.MapDelete("/fishing-spots/{id}", async (string id, ClaimsPrincipal principal
     db.CommunityReportVotes.RemoveRange(db.CommunityReportVotes.Where(vote => reportIds.Contains(vote.ReportId)));
     db.CommunityReports.RemoveRange(db.CommunityReports.Where(report => report.FishingSpotId == spot.Id));
     db.FavoriteSpots.RemoveRange(db.FavoriteSpots.Where(item => item.FishingSpotId == spot.Id));
+    db.EnabledSpots.RemoveRange(db.EnabledSpots.Where(item => item.FishingSpotId == spot.Id));
     db.FishingSpots.Remove(spot);
     await db.SaveChangesAsync(cancellationToken);
     return Results.NoContent();
 }).RequireAuthorization();
+
+api.MapGet("/places/autocomplete", async (string? q, ClaimsPrincipal principal, TaNoMarDbContext db, GeoapifyClient geoapify, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    var text = q?.Trim() ?? string.Empty;
+    if (text.Length is < 3 or > 80)
+        return Results.BadRequest(new { detail = "Informe entre 3 e 80 caracteres para buscar um lugar." });
+    var items = await geoapify.AutocompleteAsync(text, cancellationToken);
+    return Results.Ok(new { items });
+}).RequireAuthorization().RequireRateLimiting("places");
 
 api.MapGet("/admin/fishing-spots/pending", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
 {
@@ -259,7 +286,7 @@ api.MapGet("/admin/fishing-spots/pending", async (ClaimsPrincipal principal, TaN
     return Results.Ok(spots.Select(spot => SpotDtoProjection(spot, actor!, false)).ToList());
 }).RequireAuthorization();
 
-api.MapPost("/admin/fishing-spots/{id}/approve", async (string id, ClaimsPrincipal principal, TaNoMarDbContext db, NotificationRealtimeHub hub, WebPushQueue push, CancellationToken cancellationToken) =>
+api.MapPost("/admin/fishing-spots/{id}/approve", async (string id, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, NotificationRealtimeHub hub, WebPushQueue push, CancellationToken cancellationToken) =>
 {
     var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
     if (failure is not null) return failure;
@@ -272,6 +299,7 @@ api.MapPost("/admin/fishing-spots/{id}/approve", async (string id, ClaimsPrincip
     if (ownerId is Guid recipientId)
         AddNotification(db, recipientId, title, body);
     await db.SaveChangesAsync(cancellationToken);
+    await TryWarmSpotAsync(fishing, spot, cancellationToken);
     if (ownerId is Guid notifiedId)
         DispatchCreated(hub, push, notifiedId, title, body);
     return Results.NoContent();
@@ -367,11 +395,11 @@ api.MapPut("/admin/users/{id:guid}/active", async (Guid id, AdminActiveRequest r
     return Results.Ok(AdminUserDto(target, plan, actor, options.Value, activeAdmins));
 }).RequireAuthorization();
 
-api.MapGet("/partners", async (ClaimsPrincipal principal, TaNoMarDbContext db, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
+api.MapGet("/partners", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
-    if (!options.Value.ShowPartners)
+    if (!await ShowPartnersEnabledAsync(db, cancellationToken))
         return Results.NotFound(new { code = "feature_disabled", detail = "Parceiros não estão disponíveis." });
     var now = DateTimeOffset.UtcNow;
     var partners = await db.Partners.AsNoTracking()
@@ -384,11 +412,11 @@ api.MapGet("/partners", async (ClaimsPrincipal principal, TaNoMarDbContext db, M
     return Results.Ok(partners.Select(item => PartnerDto(item, PartnerRules.VisibleOffers(offers.Where(offer => offer.PartnerId == item.Id), now))).ToList());
 }).RequireAuthorization();
 
-api.MapGet("/partners/{slug}", async (string slug, ClaimsPrincipal principal, TaNoMarDbContext db, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
+api.MapGet("/partners/{slug}", async (string slug, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
-    if (!options.Value.ShowPartners)
+    if (!await ShowPartnersEnabledAsync(db, cancellationToken))
         return Results.NotFound(new { code = "feature_disabled", detail = "Parceiros não estão disponíveis." });
     var partner = await db.Partners.AsNoTracking().SingleOrDefaultAsync(item => item.Slug == slug && item.IsPublished, cancellationToken);
     if (partner is null) return Results.NotFound();
@@ -454,6 +482,23 @@ api.MapDelete("/admin/partners/{slug}", async (string slug, ClaimsPrincipal prin
     return Results.NoContent();
 }).RequireAuthorization();
 
+api.MapGet("/admin/settings", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
+    if (failure is not null) return failure;
+    return Results.Ok(new { showPartners = await ShowPartnersEnabledAsync(db, cancellationToken) });
+}).RequireAuthorization();
+
+api.MapPut("/admin/settings", async (PlatformSettingsRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
+    if (failure is not null) return failure;
+    var settings = await db.PlatformSettings.SingleAsync(cancellationToken);
+    settings.ShowPartners = request.ShowPartners;
+    await db.SaveChangesAsync(cancellationToken);
+    return Results.Ok(new { showPartners = settings.ShowPartners });
+}).RequireAuthorization();
+
 api.MapPut("/me/preferences", async (PreferencesRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
@@ -484,6 +529,28 @@ api.MapPut("/me/favorites", async (FavoriteRequest request, ClaimsPrincipal prin
     return Results.NoContent();
 }).RequireAuthorization();
 
+api.MapPut("/me/enabled-spots", async (EnabledSpotRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    var spot = await db.FishingSpots.SingleOrDefaultAsync(item => item.Slug == request.SpotId, cancellationToken);
+    if (spot is null) return Results.NotFound();
+    if (!SpotRules.CanSee(spot, user) || (spot.Visibility == "shared" && !spot.IsApproved && !SpotRules.Owns(spot, user))) return Results.Forbid();
+    var setting = await db.EnabledSpots.SingleOrDefaultAsync(item => item.UserId == user.Id && item.FishingSpotId == spot.Id, cancellationToken);
+    if (setting is null)
+    {
+        db.EnabledSpots.Add(new EnabledSpot { UserId = user.Id, FishingSpotId = spot.Id, IsEnabled = request.IsEnabled });
+    }
+    else
+    {
+        setting.IsEnabled = request.IsEnabled;
+    }
+    await db.SaveChangesAsync(cancellationToken);
+    if (request.IsEnabled)
+        await TryWarmSpotAsync(fishing, spot, cancellationToken);
+    return Results.NoContent();
+}).RequireAuthorization();
+
 api.MapGet("/forecasts/ranking", async (string? emphasis, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
@@ -494,10 +561,15 @@ api.MapGet("/forecasts/ranking", async (string? emphasis, ClaimsPrincipal princi
     var premium = plan.Code == "premium";
     if (FishingRankingEmphasis.RequiresPremium(parsedEmphasis) && !premium)
         return Results.BadRequest(new { code = "plan_required", detail = "Reordenar o ranking exige o plano Premium.", requiredPlan = "Premium" });
+    var enabledSettings = await EnabledSettingsAsync(db, user.Id, cancellationToken);
+    var visibleSpots = await db.FishingSpots.AsNoTracking()
+        .Where(spot => spot.Visibility == "official" || (spot.Visibility == "shared" && spot.IsApproved) || spot.OwnerUserId == user.Id)
+        .ToListAsync(cancellationToken);
+    var enabledSlugs = visibleSpots.Where(spot => SpotRules.IsEnabledForUser(spot, enabledSettings)).Select(spot => spot.Slug).ToHashSet();
     var days = new List<object>();
     for (var day = 0; day < plan.MaxForecastDays; day++)
     {
-        var forecast = await fishing.GetAsync(day, cancellationToken);
+        var forecast = await fishing.GetAsync(day, cancellationToken, user.Id, enabledSlugs);
         var ordered = forecast with { Ranking = FishingRankingEmphasis.Order(forecast.Ranking, parsedEmphasis) };
         days.Add(ForecastDayDto(ordered, premium));
     }
@@ -804,7 +876,13 @@ static bool MatchesBootstrapAdmin(string? email, string? googleSubject, TaNoMarO
     || (!string.IsNullOrWhiteSpace(options.BootstrapAdminEmail) && string.Equals(email, options.BootstrapAdminEmail, StringComparison.OrdinalIgnoreCase));
 static void SetRefreshCookie(HttpContext context, string value, bool development) => context.Response.Cookies.Append(TaNoMarOptions.RefreshCookieName, value, new CookieOptions { HttpOnly = true, Secure = !development, SameSite = SameSiteMode.Lax, MaxAge = TimeSpan.FromDays(30), Path = "/api/v1/auth" });
 static async Task<User?> CurrentUserAsync(ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) { var id = principal.FindFirstValue(ClaimTypes.NameIdentifier); return Guid.TryParse(id, out var userId) ? await db.Users.SingleOrDefaultAsync(user => user.Id == userId, cancellationToken) : null; }
-static async Task<object> UserDtoAsync(User user, TaNoMarDbContext db, TaNoMarOptions options, CancellationToken cancellationToken)
+static async Task<bool> ShowPartnersEnabledAsync(TaNoMarDbContext db, CancellationToken cancellationToken)
+{
+    var settings = await db.PlatformSettings.AsNoTracking().SingleOrDefaultAsync(cancellationToken);
+    return settings?.ShowPartners == true;
+}
+
+static async Task<object> UserDtoAsync(User user, TaNoMarDbContext db, CancellationToken cancellationToken)
 {
     var plan = await db.Plans.SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
     var preferences = await db.UserPreferences.AsNoTracking().SingleOrDefaultAsync(item => item.UserId == user.Id, cancellationToken);
@@ -817,7 +895,7 @@ static async Task<object> UserDtoAsync(User user, TaNoMarDbContext db, TaNoMarOp
         role = user.Role,
         plan = new { code = plan.Code, name = plan.Name },
         entitlements = new { maxForecastDays = plan.MaxForecastDays, maxFavorites = plan.MaxFavorites, maxPersonalSpots = plan.MaxPersonalSpots, maxAlerts = plan.MaxAlerts },
-        features = new { showPartners = options.ShowPartners },
+        features = new { showPartners = await ShowPartnersEnabledAsync(db, cancellationToken) },
         preferences = new
         {
             region = preferences?.Region ?? "Florianópolis",
@@ -826,26 +904,50 @@ static async Task<object> UserDtoAsync(User user, TaNoMarDbContext db, TaNoMarOp
         }
     };
 }
-static object SpotDtoProjection(FishingSpot spot, User user, bool favorite = false) => new
+static Task<Dictionary<Guid, bool>> EnabledSettingsAsync(TaNoMarDbContext db, Guid userId, CancellationToken cancellationToken) =>
+    db.EnabledSpots.Where(item => item.UserId == userId).ToDictionaryAsync(item => item.FishingSpotId, item => item.IsEnabled, cancellationToken);
+
+static async Task TryWarmSpotAsync(FishingForecastService fishing, FishingSpot spot, CancellationToken cancellationToken)
 {
-    id = spot.Slug,
-    name = spot.Name,
-    slug = spot.Slug,
-    description = spot.Description,
-    city = spot.City,
-    state = spot.State,
-    region = spot.Region,
-    type = spot.Type,
-    visibility = spot.Visibility,
-    profile = spot.Profile,
-    latitude = spot.Latitude,
-    longitude = spot.Longitude,
-    seaOrientationDegrees = spot.SeaOrientationDegrees,
-    isFavorite = favorite,
-    isInRanking = spot.Visibility == "official",
-    isApproved = spot.IsApproved,
-    isOwner = SpotRules.Owns(spot, user)
-};
+    try
+    {
+        await fishing.WarmSpotAsync(spot, cancellationToken);
+    }
+    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+    {
+        throw;
+    }
+    catch
+    {
+        // O ranking calcula a nota na próxima consulta se o aquecimento falhar.
+    }
+}
+
+static object SpotDtoProjection(FishingSpot spot, User user, bool favorite = false, bool? enabled = null)
+{
+    var isEnabled = enabled ?? SpotRules.EnabledByDefault(spot);
+    return new
+    {
+        id = spot.Slug,
+        name = spot.Name,
+        slug = spot.Slug,
+        description = spot.Description,
+        city = spot.City,
+        state = spot.State,
+        region = spot.Region,
+        type = spot.Type,
+        visibility = spot.Visibility,
+        profile = spot.Profile,
+        latitude = spot.Latitude,
+        longitude = spot.Longitude,
+        seaOrientationDegrees = spot.SeaOrientationDegrees,
+        isFavorite = favorite,
+        isEnabled,
+        isInRanking = isEnabled,
+        isApproved = spot.IsApproved,
+        isOwner = SpotRules.Owns(spot, user)
+    };
+}
 static object ReportDto(CommunityReport report, FishingSpot spot, string? myVote, bool isMine, string authorName) => new
 {
     id = report.Id,
@@ -1210,6 +1312,7 @@ static void ReplacePartnerOffers(TaNoMarDbContext db, Guid partnerId, PartnerOff
 record GoogleLoginRequest(string Credential);
 record PreferencesRequest(string? Region, string? WindUnit, bool? ForecastNotifications);
 record FavoriteRequest(string SpotId, bool IsFavorite);
+record EnabledSpotRequest(string SpotId, bool IsEnabled);
 record PersonalSpotRequest(string Name, double? Latitude, double? Longitude, string? Description, string? City, string? State, string? Region, bool Shared, double? SeaOrientationDegrees, string? Profile);
 record CommunityReportRequest(string SpotId, string Type, string? Comment);
 record PushSubscriptionRequest(string? Endpoint, string? P256dh, string? Auth);
@@ -1217,3 +1320,4 @@ record AdminPlanRequest(string PlanCode);
 record AdminActiveRequest(bool IsActive);
 record PartnerOfferRequest(string Title, string? Description, string? PriceLabel, DateTimeOffset? EndsAt, int? SortOrder);
 record PartnerRequest(string? Slug, string Name, string Category, string? Tagline, string? About, string? City, string? WhatsApp, string? Instagram, string? Website, string? MapsUrl, string? CoverImageUrl, bool IsPublished, bool IsFeatured, int SortOrder, PartnerOfferRequest[]? Offers);
+record PlatformSettingsRequest(bool ShowPartners);

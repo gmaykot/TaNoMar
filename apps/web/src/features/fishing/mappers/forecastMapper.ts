@@ -170,6 +170,7 @@ export function mapLocation(spot: WireSpot): FishingLocation {
     longitude: spot.longitude ?? 0,
     seaOrientationDegrees: spot.seaOrientationDegrees,
     isFavorite: spot.isFavorite,
+    isEnabled: spot.isEnabled,
     isInRanking: spot.isInRanking,
     isApproved: spot.isApproved,
     isOwner: spot.isOwner,

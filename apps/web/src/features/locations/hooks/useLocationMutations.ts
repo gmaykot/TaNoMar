@@ -3,6 +3,7 @@ import { ApiError } from '@/shared/api/errors';
 import {
   createLocation,
   deleteLocation,
+  setEnabled,
   setFavorite,
   updateLocation,
   type PersonalSpotInput,
@@ -18,7 +19,11 @@ export function useLocationMutations() {
   const queryClient = useQueryClient();
 
   const invalidate = async () => {
-    await queryClient.invalidateQueries({ queryKey: locationsQueryKey });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: locationsQueryKey }),
+      queryClient.invalidateQueries({ queryKey: ['forecast'] }),
+      queryClient.invalidateQueries({ queryKey: ['location-forecast'] }),
+    ]);
   };
 
   const create = useMutation({
@@ -39,12 +44,18 @@ export function useLocationMutations() {
       setFavorite(spotId, isFavorite),
     onSuccess: invalidate,
   });
+  const enabled = useMutation({
+    mutationFn: ({ spotId, isEnabled }: { spotId: string; isEnabled: boolean }) =>
+      setEnabled(spotId, isEnabled),
+    onSuccess: invalidate,
+  });
 
   return {
     create,
     update,
     remove,
     favorite,
+    enabled,
     createError: create.isError
       ? mutationError(create.error, 'Não foi possível salvar o local.')
       : null,
@@ -53,6 +64,9 @@ export function useLocationMutations() {
       : null,
     favoriteError: favorite.isError
       ? mutationError(favorite.error, 'Não foi possível atualizar os favoritos.')
+      : null,
+    enabledError: enabled.isError
+      ? mutationError(enabled.error, 'Não foi possível atualizar o uso nas previsões.')
       : null,
   };
 }

@@ -14,9 +14,11 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
     public DbSet<DevicePushSubscription> PushSubscriptions => Set<DevicePushSubscription>();
     public DbSet<UserPreference> UserPreferences => Set<UserPreference>();
     public DbSet<FavoriteSpot> FavoriteSpots => Set<FavoriteSpot>();
+    public DbSet<EnabledSpot> EnabledSpots => Set<EnabledSpot>();
     public DbSet<FishingForecastSnapshot> FishingForecastSnapshots => Set<FishingForecastSnapshot>();
     public DbSet<Partner> Partners => Set<Partner>();
     public DbSet<PartnerOffer> PartnerOffers => Set<PartnerOffer>();
+    public DbSet<PlatformSettings> PlatformSettings => Set<PlatformSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -27,6 +29,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
         modelBuilder.Entity<RefreshToken>().HasIndex(token => token.TokenHash).IsUnique();
         modelBuilder.Entity<UserPreference>().HasIndex(item => item.UserId).IsUnique();
         modelBuilder.Entity<FavoriteSpot>().HasIndex(item => new { item.UserId, item.FishingSpotId }).IsUnique();
+        modelBuilder.Entity<EnabledSpot>().HasIndex(item => new { item.UserId, item.FishingSpotId }).IsUnique();
         modelBuilder.Entity<DevicePushSubscription>().HasIndex(item => item.Endpoint).IsUnique();
         modelBuilder.Entity<DevicePushSubscription>().HasIndex(item => item.UserId);
         modelBuilder.Entity<CommunityReportVote>().HasIndex(vote => new { vote.ReportId, vote.UserId }).IsUnique();
@@ -38,6 +41,8 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
         modelBuilder.Entity<Plan>().HasData(
             new Plan { Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0001"), Code = "free", Name = "Free", MaxForecastDays = 3, MaxFavorites = 0, MaxPersonalSpots = 0, MaxAlerts = 0 },
             new Plan { Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0002"), Code = "premium", Name = "Premium", MaxForecastDays = 8, MaxFavorites = 20, MaxPersonalSpots = 10, MaxAlerts = 10 });
+        modelBuilder.Entity<PlatformSettings>().HasData(
+            new PlatformSettings { Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0010"), ShowPartners = false });
 
     }
 }
@@ -159,6 +164,15 @@ public sealed class FavoriteSpot
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class EnabledSpot
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid UserId { get; set; }
+    public Guid FishingSpotId { get; set; }
+    public bool IsEnabled { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class FishingForecastSnapshot
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -199,4 +213,10 @@ public sealed class PartnerOffer
     public string? PriceLabel { get; set; }
     public DateTimeOffset? EndsAt { get; set; }
     public int SortOrder { get; set; }
+}
+
+public sealed class PlatformSettings
+{
+    public Guid Id { get; set; }
+    public bool ShowPartners { get; set; }
 }

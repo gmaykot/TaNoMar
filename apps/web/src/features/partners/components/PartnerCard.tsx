@@ -32,7 +32,11 @@ export function PartnerCard({ partner }: { partner: Partner }) {
           {partner.tagline ? ` · ${partner.tagline}` : ''}
         </p>
       </div>
-      <Link to={routes.partnerDetails(partner.slug)} aria-label={`Ver ${partner.name}`}>
+      <Link
+        className={styles.hit}
+        to={routes.partnerDetails(partner.slug)}
+        aria-label={`Ver ${partner.name}`}
+      >
         <ArrowUpRight size={20} aria-hidden="true" />
       </Link>
     </Card>

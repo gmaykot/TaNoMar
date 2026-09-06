@@ -149,7 +149,8 @@ export function parseSpot(value: unknown): WireSpot {
     longitude,
     seaOrientationDegrees: readNumber(value.seaOrientationDegrees) ?? 0,
     isFavorite: readBoolean(value.isFavorite) ?? false,
-    isInRanking: readBoolean(value.isInRanking) ?? false,
+    isEnabled: readBoolean(value.isEnabled) ?? readBoolean(value.isInRanking) ?? false,
+    isInRanking: readBoolean(value.isEnabled) ?? readBoolean(value.isInRanking) ?? false,
     isApproved: readBoolean(value.isApproved) ?? visibility !== 'shared',
     isOwner: readBoolean(value.isOwner) ?? false,
   };

@@ -5,6 +5,7 @@ export const routes = {
   locations: '/locais',
   locationsMine: '/locais?filtro=meus',
   locationsFavorites: '/locais?filtro=favoritos',
+  locationsEnabled: '/locais?filtro=previsoes',
   locationNew: '/locais/novo',
   locationDetails: (locationId: string) => `/locais/${locationId}`,
   locationEdit: (locationId: string) => `/locais/${locationId}/editar`,

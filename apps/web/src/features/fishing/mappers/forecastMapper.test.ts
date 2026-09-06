@@ -122,6 +122,7 @@ describe('forecastMapper', () => {
         longitude: -48.46908,
         seaOrientationDegrees: 110,
         isFavorite: false,
+        isEnabled: true,
         isInRanking: true,
         isApproved: true,
         isOwner: false,

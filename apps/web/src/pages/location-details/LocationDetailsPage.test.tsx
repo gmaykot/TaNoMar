@@ -101,6 +101,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
 vi.mock('@/features/locations/services/locationsService', () => ({
   getLocations: () => Promise.resolve(locationsFixture),
   setFavorite: () => Promise.resolve(),
+  setEnabled: () => Promise.resolve(),
   createLocation: vi.fn(),
   updateLocation: vi.fn(),
   deleteLocation: vi.fn(),
@@ -159,5 +160,35 @@ describe('LocationDetailsPage', () => {
     });
     expect(favorite).toBeDisabled();
     expect(favorite).toHaveTextContent('Premium');
+  });
+
+  it('mostra o selo Meu local quando o usuário é dono', async () => {
+    const location = locationsFixture.find((item) => item.id === 'pantano_do_sul');
+    if (!location) throw new Error('fixture pantano_do_sul ausente');
+    location.isOwner = true;
+
+    try {
+      renderWithProviders(
+        <Routes>
+          <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
+        </Routes>,
+        ['/locais/pantano_do_sul'],
+      );
+
+      expect(await screen.findByText('Meu local')).toBeInTheDocument();
+    } finally {
+      location.isOwner = false;
+    }
+  });
+
+  it('mostra o controle para usar o local nas previsões', async () => {
+    renderWithProviders(
+      <Routes>
+        <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
+      </Routes>,
+      ['/locais/pantano_do_sul'],
+    );
+    const enabled = await screen.findByRole('button', { name: 'Nas previsões' });
+    expect(enabled).toHaveAttribute('aria-pressed', 'true');
   });
 });

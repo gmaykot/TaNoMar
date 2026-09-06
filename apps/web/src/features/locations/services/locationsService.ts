@@ -56,6 +56,13 @@ export async function setFavorite(spotId: string, isFavorite: boolean) {
   });
 }
 
+export async function setEnabled(spotId: string, isEnabled: boolean) {
+  await apiRequest('/me/enabled-spots', {
+    method: 'PUT',
+    body: JSON.stringify({ spotId, isEnabled }),
+  });
+}
+
 export async function getPendingLocations(): Promise<FishingLocation[]> {
   return parseSpotList(await apiRequest('/admin/fishing-spots/pending')).map(mapLocation);
 }

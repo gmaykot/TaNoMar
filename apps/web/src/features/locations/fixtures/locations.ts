@@ -7,6 +7,7 @@ function official(
     | 'type'
     | 'visibility'
     | 'isFavorite'
+    | 'isEnabled'
     | 'isInRanking'
     | 'isApproved'
     | 'isOwner'
@@ -18,6 +19,7 @@ function official(
     type: 'praia',
     visibility: 'official',
     isFavorite: false,
+    isEnabled: true,
     isInRanking: true,
     isApproved: true,
     isOwner: false,
@@ -148,4 +150,23 @@ export const locationsFixture: FishingLocation[] = [
     longitude: -48.56266,
     seaOrientationDegrees: 270,
   }),
+  {
+    id: 'molhe-da-barra',
+    name: 'Molhe da Barra',
+    city: 'Florianópolis',
+    state: 'SC',
+    region: 'Leste da ilha',
+    description: null,
+    type: 'praia',
+    visibility: 'private',
+    profile: 'praia_semi_aberta',
+    latitude: -27.43,
+    longitude: -48.52,
+    seaOrientationDegrees: 90,
+    isFavorite: false,
+    isEnabled: true,
+    isInRanking: true,
+    isApproved: true,
+    isOwner: true,
+  },
 ];

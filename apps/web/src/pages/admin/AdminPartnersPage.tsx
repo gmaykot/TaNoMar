@@ -4,10 +4,19 @@ import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminPartnersQueryKey, useAdminPartners } from '@/features/partners/hooks/usePartners';
-import { deleteAdminPartner } from '@/features/partners/services/partnersService';
+import {
+  adminPartnersQueryKey,
+  platformSettingsQueryKey,
+  useAdminPartners,
+  usePlatformSettings,
+} from '@/features/partners/hooks/usePartners';
+import {
+  deleteAdminPartner,
+  setPlatformShowPartners,
+} from '@/features/partners/services/partnersService';
 import { partnerCategoryLabel } from '@/features/partners/types/partner';
 import partnerStyles from '@/features/partners/components/partners.module.css';
+import formStyles from '@/features/locations/components/spotForm.module.css';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { ApiError } from '@/shared/api/errors';
 import { routes } from '@/shared/constants/routes';
@@ -16,6 +25,7 @@ import styles from '@/pages/shared/pages.module.css';
 
 export function AdminPartnersPage() {
   const partners = useAdminPartners();
+  const settings = usePlatformSettings();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const remove = useMutation({
@@ -26,6 +36,20 @@ export function AdminPartnersPage() {
     },
     onError: (cause) => {
       setError(cause instanceof ApiError ? cause.message : 'Não foi possível remover o parceiro.');
+    },
+  });
+  const toggleVitrine = useMutation({
+    mutationFn: (showPartners: boolean) => setPlatformShowPartners(showPartners),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: platformSettingsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: ['me'] }),
+        queryClient.invalidateQueries({ queryKey: ['partners'] }),
+      ]);
+      setError(null);
+    },
+    onError: (cause) => {
+      setError(cause instanceof ApiError ? cause.message : 'Não foi possível atualizar a vitrine.');
     },
   });
 
@@ -59,8 +83,20 @@ export function AdminPartnersPage() {
       <PageHeader
         eyebrow="Administração"
         title="Parceiros da vitrine."
-        description="Cadastre, publique e destaque. A vitrine só aparece com ShowPartners ligado."
+        description="Cadastre, publique e destaque. Ligue a vitrine para o pescador ver o menu e /parceiros."
       />
+      <label className={formStyles.choice}>
+        <input
+          type="checkbox"
+          checked={settings.data?.showPartners === true}
+          disabled={settings.isPending || toggleVitrine.isPending}
+          onChange={(event) => toggleVitrine.mutate(event.target.checked)}
+        />
+        <span>
+          Mostrar vitrine de parceiros
+          <small>Quando ligado, pescadores autenticados veem o atalho e o diretório.</small>
+        </span>
+      </label>
       <div className={styles.pageHeaderActions}>
         <Link className={styles.backLink} to={routes.adminPartnerNew}>
           <Plus size={16} aria-hidden="true" /> Novo parceiro
