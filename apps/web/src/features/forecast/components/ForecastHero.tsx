@@ -10,9 +10,10 @@ import styles from './forecast.module.css';
 interface ForecastHeroProps {
   forecast: ForecastRankingItem;
   visibleMetricKeys?: FishingMetricKey[];
+  windUnit?: string;
 }
 
-export function ForecastHero({ forecast, visibleMetricKeys }: ForecastHeroProps) {
+export function ForecastHero({ forecast, visibleMetricKeys, windUnit }: ForecastHeroProps) {
   return (
     <article className={styles.hero}>
       {forecast.isOwner ? <OwnerBadge /> : null}
@@ -36,7 +37,12 @@ export function ForecastHero({ forecast, visibleMetricKeys }: ForecastHeroProps)
         </div>
         <ScoreIndicator score={forecast.score} classification={forecast.classification} />
       </div>
-      <MetricGrid metrics={forecast.metrics} keys={visibleMetricKeys} limit={4} />
+      <MetricGrid
+        metrics={forecast.metrics}
+        keys={visibleMetricKeys}
+        limit={4}
+        windUnit={windUnit}
+      />
       <Link className={`${styles.heroLink} ${styles.hit}`} to={`/locais/${forecast.locationId}`}>
         Ver previsão completa <ArrowRight size={18} aria-hidden="true" />
       </Link>

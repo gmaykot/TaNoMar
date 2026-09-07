@@ -12,6 +12,7 @@ import {
 import { useLayoutEffect } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { usePwaLifecycle } from '@/app/hooks/usePwaLifecycle';
+import { SaveConfirmation } from './SaveConfirmation';
 import { Button } from '@/design-system/components/Button';
 import { TaNoMarLogo } from '@/design-system/brand/TaNoMarLogo';
 import { UserMenu } from '@/features/auth/components/UserMenu';
@@ -58,6 +59,7 @@ export function AppShell() {
 
   return (
     <div className={styles.app}>
+      <SaveConfirmation />
       {!pwa.online && (
         <div className={styles.offline} role="status">
           <WifiOff size={15} aria-hidden="true" /> Você está offline. Conecte-se para atualizar a

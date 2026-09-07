@@ -1,6 +1,7 @@
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { showSaveConfirmation } from '@/app/layout/saveConfirmationEvents';
 import { Button } from '@/design-system/components/Button';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { LocationCard } from '@/features/locations/components/LocationCard';
@@ -28,11 +29,17 @@ export function AdminSpotsPage() {
 
   const approve = useMutation({
     mutationFn: approveLocation,
-    onSuccess: refresh,
+    onSuccess: async () => {
+      await refresh();
+      showSaveConfirmation('Aprovação do local salva.');
+    },
   });
   const reject = useMutation({
     mutationFn: rejectLocation,
-    onSuccess: refresh,
+    onSuccess: async () => {
+      await refresh();
+      showSaveConfirmation('Recusa do local salva.');
+    },
   });
 
   if (pending.isPending) {

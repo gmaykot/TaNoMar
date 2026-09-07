@@ -5,10 +5,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { locationsFixture } from '../fixtures/locations';
 import { useLocationMutations } from './useLocationMutations';
 
-const { createLocation } = vi.hoisted(() => ({
+const { createLocation, showSaveConfirmation } = vi.hoisted(() => ({
   createLocation: vi.fn(),
+  showSaveConfirmation: vi.fn(),
 }));
 
+vi.mock('@/app/layout/saveConfirmationEvents', () => ({ showSaveConfirmation }));
 vi.mock('../services/locationsService', () => ({
   createLocation,
   updateLocation: vi.fn(),
@@ -32,6 +34,7 @@ describe('useLocationMutations', () => {
   beforeEach(() => {
     createLocation.mockReset();
     createLocation.mockResolvedValue(locationsFixture[0]);
+    showSaveConfirmation.mockClear();
   });
 
   it('invalida locais e ranking depois de cadastrar um local', async () => {
@@ -51,5 +54,6 @@ describe('useLocationMutations', () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['locations'] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['forecast'] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['location-forecast'] });
+    expect(showSaveConfirmation).toHaveBeenCalledWith('Local salvo.');
   });
 });

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { showSaveConfirmation } from '@/app/layout/saveConfirmationEvents';
 import {
   Bell,
   BookOpen,
@@ -17,6 +18,7 @@ import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import type { AuthUser } from '@/features/auth/types/auth';
 import { isAdmin, showsPartners } from '@/features/auth/types/auth';
 import { updatePreferences } from '@/features/auth/services/preferencesService';
 import { fishingMetricKeys, type FishingMetricKey } from '@/features/fishing/types/fishing';
@@ -202,8 +204,12 @@ export function AccountPage() {
               forecastNotifications,
               ...(premium ? { visibleMetrics } : {}),
             })
-              .then(async () => {
-                await Promise.all([
+              .then(async (preferences) => {
+                queryClient.setQueryData<AuthUser>(['me'], (current) =>
+                  current ? { ...current, preferences } : current,
+                );
+                showSaveConfirmation('Preferências salvas.');
+                await Promise.allSettled([
                   queryClient.invalidateQueries({ queryKey: ['me'] }),
                   queryClient.invalidateQueries({ queryKey: ['locations'] }),
                   queryClient.invalidateQueries({ queryKey: ['forecast'] }),

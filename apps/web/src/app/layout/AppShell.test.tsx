@@ -4,6 +4,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { AppShell } from './AppShell';
+import { showSaveConfirmation } from './saveConfirmationEvents';
 
 vi.mock('@/app/hooks/usePwaLifecycle', () => ({
   usePwaLifecycle: () => ({
@@ -97,5 +98,13 @@ describe('AppShell', () => {
     await user.click(within(footerNav()).getByRole('link', { name: 'Ranking' }));
 
     expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'instant' });
+  });
+
+  it('mostra a confirmação global de salvamento', async () => {
+    renderShell(['/']);
+
+    showSaveConfirmation('Preferências salvas.');
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Preferências salvas.');
   });
 });

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { showSaveConfirmation } from '@/app/layout/saveConfirmationEvents';
 import { getPushPublicKey } from '../services/notificationService';
 import {
   canUseWebPush,
@@ -46,6 +47,9 @@ export function useDevicePush() {
         if (next) await enableDevicePush();
         else await disableDevicePush();
         await queryClient.invalidateQueries({ queryKey: pushSubscriptionQueryKey });
+        showSaveConfirmation(
+          next ? 'Avisos no aparelho ativados.' : 'Avisos no aparelho desativados.',
+        );
       } catch {
         setError(
           next

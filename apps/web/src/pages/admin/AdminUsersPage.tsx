@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ArrowLeft, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { showSaveConfirmation } from '@/app/layout/saveConfirmationEvents';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { SearchField } from '@/design-system/components/SearchField';
 import { AdminUserCard } from '@/features/admin-users/components/AdminUserCard';
@@ -63,6 +64,7 @@ export function AdminUsersPage() {
     },
     onSuccess: async (user) => {
       await refresh(user.id);
+      showSaveConfirmation('Plano da conta salvo.');
     },
     onError: (error, { id }) => {
       setErrorById((current) => ({
@@ -82,6 +84,7 @@ export function AdminUsersPage() {
     },
     onSuccess: async (user) => {
       await refresh(user.id);
+      showSaveConfirmation('Situação da conta salva.');
     },
     onError: (error, { id }) => {
       setErrorById((current) => ({

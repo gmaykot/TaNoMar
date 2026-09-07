@@ -76,6 +76,7 @@ export function RankingPage() {
           items={activeDay.ranking}
           emphasisKey={rankingEmphasisMetricKey(emphasis)}
           visibleMetricKeys={visibleMetricKeys}
+          windUnit={auth.user?.preferences.windUnit}
         />
       ) : (
         <FeedbackState

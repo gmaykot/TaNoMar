@@ -4,6 +4,7 @@ import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { showSaveConfirmation } from '@/app/layout/saveConfirmationEvents';
 import {
   adminPartnersQueryKey,
   platformSettingsQueryKey,
@@ -47,6 +48,7 @@ export function AdminPartnersPage() {
         queryClient.invalidateQueries({ queryKey: ['partners'] }),
       ]);
       setError(null);
+      showSaveConfirmation('Configuração da vitrine salva.');
     },
     onError: (cause) => {
       setError(cause instanceof ApiError ? cause.message : 'Não foi possível atualizar a vitrine.');

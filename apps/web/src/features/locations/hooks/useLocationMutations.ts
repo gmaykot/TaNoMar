@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { showSaveConfirmation } from '@/app/layout/saveConfirmationEvents';
 import { ApiError } from '@/shared/api/errors';
 import {
   createLocation,
@@ -28,12 +29,18 @@ export function useLocationMutations() {
 
   const create = useMutation({
     mutationFn: createLocation,
-    onSuccess: invalidate,
+    onSuccess: async () => {
+      showSaveConfirmation('Local salvo.');
+      await invalidate();
+    },
   });
   const update = useMutation({
     mutationFn: ({ id, input }: { id: string; input: PersonalSpotInput }) =>
       updateLocation(id, input),
-    onSuccess: invalidate,
+    onSuccess: async () => {
+      showSaveConfirmation('Alterações do local salvas.');
+      await invalidate();
+    },
   });
   const remove = useMutation({
     mutationFn: deleteLocation,
@@ -42,12 +49,18 @@ export function useLocationMutations() {
   const favorite = useMutation({
     mutationFn: ({ spotId, isFavorite }: { spotId: string; isFavorite: boolean }) =>
       setFavorite(spotId, isFavorite),
-    onSuccess: invalidate,
+    onSuccess: async () => {
+      showSaveConfirmation('Favoritos atualizados.');
+      await invalidate();
+    },
   });
   const enabled = useMutation({
     mutationFn: ({ spotId, isEnabled }: { spotId: string; isEnabled: boolean }) =>
       setEnabled(spotId, isEnabled),
-    onSuccess: invalidate,
+    onSuccess: async () => {
+      showSaveConfirmation('Preferência de previsão salva.');
+      await invalidate();
+    },
   });
 
   return {

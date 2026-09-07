@@ -62,7 +62,11 @@ export function HomePage() {
         {(day) =>
           day.ranking[0] ? (
             <>
-              <ForecastHero forecast={day.ranking[0]} visibleMetricKeys={visibleMetricKeys} />
+              <ForecastHero
+                forecast={day.ranking[0]}
+                visibleMetricKeys={visibleMetricKeys}
+                windUnit={auth.user?.preferences.windUnit}
+              />
               <section className={styles.section} aria-labelledby={`ranking-${day.date}`}>
                 <div className={styles.sectionHeader}>
                   <div>
@@ -77,6 +81,7 @@ export function HomePage() {
                   items={day.ranking.slice(1)}
                   limit={3}
                   visibleMetricKeys={visibleMetricKeys}
+                  windUnit={auth.user?.preferences.windUnit}
                 />
               </section>
             </>

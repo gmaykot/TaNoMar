@@ -1,6 +1,7 @@
 import { CloudRain, Droplets, Gauge, Thermometer, Waves, Wind } from 'lucide-react';
 import type { FishingMetric, FishingMetricKey } from '@/features/fishing/types/fishing';
 import { MetricTile } from '@/design-system/components/MetricTile';
+import { formatWindMetric } from '../utils/formatWindMetric';
 import styles from './forecast.module.css';
 
 const metricIcons = {
@@ -18,9 +19,10 @@ interface MetricGridProps {
   metrics: FishingMetric[];
   keys?: FishingMetricKey[];
   limit?: number;
+  windUnit?: string;
 }
 
-export function MetricGrid({ metrics, keys, limit }: MetricGridProps) {
+export function MetricGrid({ metrics, keys, limit, windUnit }: MetricGridProps) {
   const selected = keys
     ? keys.flatMap((key) => {
         const metric = metrics.find((item) => item.key === key);
@@ -36,7 +38,7 @@ export function MetricGrid({ metrics, keys, limit }: MetricGridProps) {
           key={metric.key}
           icon={metricIcons[metric.key]}
           label={metric.label}
-          value={metric.value}
+          value={formatWindMetric(metric, windUnit)}
           detail={metric.detail}
           locked={metric.locked}
         />

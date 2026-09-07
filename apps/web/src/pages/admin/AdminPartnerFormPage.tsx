@@ -2,6 +2,7 @@ import { ArrowLeft, MapPin } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { showSaveConfirmation } from '@/app/layout/saveConfirmationEvents';
 import { Button } from '@/design-system/components/Button';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { adminPartnersQueryKey, useAdminPartners } from '@/features/partners/hooks/usePartners';
@@ -51,6 +52,7 @@ export function AdminPartnerFormPage() {
       isNew ? createAdminPartner(input) : updateAdminPartner(partnerSlug, input),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: adminPartnersQueryKey });
+      showSaveConfirmation('Parceiro salvo.');
       navigate(routes.adminPartners);
     },
     onError: (cause) => {

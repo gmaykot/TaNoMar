@@ -20,6 +20,7 @@ Page → feature/design-system components → tokens CSS
 ```
 
 - `apps/web/src/app`: providers, rotas, shell e ciclo PWA.
+- O shell exibe a confirmação global disparada pelos fluxos que salvam cadastros e configurações.
 - `apps/web/src/design-system`: tokens, marca e componentes sem regra de pesca.
 - `apps/web/src/features`: domínio, hooks, services, mappers e componentes por feature.
 - `apps/web/src/pages`: composição e estado exclusivo da rota.

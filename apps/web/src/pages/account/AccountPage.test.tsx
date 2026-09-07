@@ -1,20 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { AccountPage } from './AccountPage';
 
-const { logout, togglePush, updatePreferences, authState } = vi.hoisted(() => ({
-  logout: vi.fn(),
-  togglePush: vi.fn(),
-  updatePreferences: vi.fn(() => Promise.resolve()),
-  authState: {
-    maxPersonalSpots: 10,
-    maxFavorites: 20,
-    maxAlerts: 10,
-  },
-}));
+const { logout, showSaveConfirmation, togglePush, updatePreferences, authState } = vi.hoisted(
+  () => ({
+    logout: vi.fn(),
+    showSaveConfirmation: vi.fn(),
+    togglePush: vi.fn(),
+    updatePreferences: vi.fn(() => Promise.resolve()),
+    authState: {
+      maxPersonalSpots: 10,
+      maxFavorites: 20,
+      maxAlerts: 10,
+    },
+  }),
+);
 
+vi.mock('@/app/layout/saveConfirmationEvents', () => ({ showSaveConfirmation }));
 vi.mock('@/features/auth/services/preferencesService', () => ({ updatePreferences }));
 
 vi.mock('@/features/notifications/hooks/useDevicePush', () => ({
@@ -74,6 +78,7 @@ describe('AccountPage', () => {
     authState.maxAlerts = 10;
     togglePush.mockReset();
     updatePreferences.mockClear();
+    showSaveConfirmation.mockClear();
   });
 
   it('mostra atalhos da área logada e chama logout', async () => {
@@ -128,13 +133,18 @@ describe('AccountPage', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Altura prevista das ondas.')).toBeInTheDocument();
     await user.click(screen.getByRole('checkbox', { name: 'Ondas' }));
+    await user.click(screen.getByRole('checkbox', { name: /Quero notificações de previsão/ }));
     await user.click(screen.getByRole('button', { name: 'Salvar preferências' }));
 
-    expect(updatePreferences).toHaveBeenCalledWith(
-      expect.objectContaining({
-        visibleMetrics: expect.not.arrayContaining(['waves']),
-      }),
-    );
+    await waitFor(() => {
+      expect(updatePreferences).toHaveBeenCalledWith(
+        expect.objectContaining({
+          forecastNotifications: false,
+          visibleMetrics: expect.not.arrayContaining(['waves']),
+        }),
+      );
+      expect(showSaveConfirmation).toHaveBeenCalledWith('Preferências salvas.');
+    });
   });
 
   it('bloqueia locais, favoritos e notificações no plano Free', () => {

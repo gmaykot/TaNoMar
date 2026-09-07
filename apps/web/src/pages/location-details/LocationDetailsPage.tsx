@@ -186,6 +186,7 @@ export function LocationDetailsPage() {
           keys={(['wind', 'gusts', 'rain', 'air-temperature'] as FishingMetricKey[]).filter(
             (key) => !visibleMetricKeys || visibleMetricKeys.includes(key),
           )}
+          windUnit={auth.user?.preferences.windUnit}
         />
         <MarineDetailsToggle open={marineOpen} onToggle={setMarineOpen}>
           {marineOpen ? <MarineDetails locationId={location.id} date={activeDate} /> : null}
