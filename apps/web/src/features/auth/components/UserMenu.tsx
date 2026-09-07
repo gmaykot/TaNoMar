@@ -1,8 +1,8 @@
-import { BookOpen, Handshake, Heart, LogOut, MapPinned, Settings, Shield } from 'lucide-react';
+import { BookOpen, LogOut, Settings, Shield } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { isAdmin, showsPartners } from '../types/auth';
+import { isAdmin } from '../types/auth';
 import { routes } from '@/shared/constants/routes';
 import styles from './userMenu.module.css';
 
@@ -71,35 +71,6 @@ export function UserMenu() {
             <Settings size={17} aria-hidden="true" />
             Conta
           </NavLink>
-          <NavLink
-            role="menuitem"
-            to={routes.locationsMine}
-            className={styles.item}
-            onClick={close}
-          >
-            <MapPinned size={17} aria-hidden="true" />
-            Meus locais
-          </NavLink>
-          <NavLink
-            role="menuitem"
-            to={routes.locationsFavorites}
-            className={styles.item}
-            onClick={close}
-          >
-            <Heart size={17} aria-hidden="true" />
-            Favoritos
-          </NavLink>
-          {showsPartners(user) ? (
-            <NavLink
-              role="menuitem"
-              to={routes.partners}
-              className={({ isActive }) => `${styles.item} ${isActive ? styles.active : ''}`}
-              onClick={close}
-            >
-              <Handshake size={17} aria-hidden="true" />
-              Parceiros
-            </NavLink>
-          ) : null}
           <NavLink
             role="menuitem"
             to={routes.about}
