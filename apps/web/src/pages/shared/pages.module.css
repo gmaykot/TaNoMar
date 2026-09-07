@@ -66,6 +66,55 @@
   font-size: var(--font-size-xs);
 }
 
+.premiumBanner {
+  display: flex;
+  min-height: 4.5rem;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  color: var(--color-ocean-950);
+  background: linear-gradient(110deg, var(--color-sea-100), var(--color-sand-100));
+  box-shadow: var(--shadow-sm);
+}
+
+.premiumBanner > span:first-child {
+  display: grid;
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--color-ocean-950);
+  background: var(--color-sea-200);
+}
+
+.premiumBanner div {
+  min-width: 0;
+  flex: 1;
+}
+
+.premiumBanner strong,
+.premiumBanner small {
+  display: block;
+}
+
+.premiumBanner strong {
+  font-size: var(--font-size-sm);
+}
+
+.premiumBanner small {
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
+}
+
+.premiumBanner > svg {
+  flex: 0 0 auto;
+  color: var(--color-sea-700);
+}
+
 .sectionHeader,
 .sectionHeader a {
   display: flex;

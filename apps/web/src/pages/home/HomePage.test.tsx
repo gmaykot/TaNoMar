@@ -6,7 +6,11 @@ import { renderWithProviders } from '@/test/renderWithProviders';
 import { HomePage } from './HomePage';
 
 const { authState } = vi.hoisted(() => ({
-  authState: { showPartners: false, visibleMetrics: undefined as string[] | undefined },
+  authState: {
+    planCode: 'premium' as 'free' | 'premium',
+    showPartners: false,
+    visibleMetrics: undefined as string[] | undefined,
+  },
 }));
 
 vi.mock('@/features/forecast/services/forecastService', () => ({
@@ -23,7 +27,10 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
       email: 'ana@example.com',
       pictureUrl: null,
       role: 'User',
-      plan: { code: 'premium', name: 'Premium' },
+      plan: {
+        code: authState.planCode,
+        name: authState.planCode === 'premium' ? 'Premium' : 'Free',
+      },
       entitlements: {
         maxForecastDays: 8,
         maxFavorites: 20,
@@ -89,8 +96,27 @@ vi.mock('@/features/partners/hooks/usePartners', () => ({
 
 describe('HomePage', () => {
   beforeEach(() => {
+    authState.planCode = 'premium';
     authState.showPartners = false;
     authState.visibleMetrics = undefined;
+  });
+
+  it('mostra o convite do Premium somente para o plano Free', async () => {
+    authState.planCode = 'free';
+    renderWithProviders(<HomePage />);
+
+    expect(
+      await screen.findByRole('link', { name: /Pesque com mais contexto no Premium/ }),
+    ).toHaveAttribute('href', '/premium');
+  });
+
+  it('não mostra o convite do Premium para quem já é Premium', async () => {
+    renderWithProviders(<HomePage />);
+
+    await screen.findByRole('heading', { name: 'Pântano do Sul' });
+    expect(
+      screen.queryByRole('link', { name: /Pesque com mais contexto no Premium/ }),
+    ).not.toBeInTheDocument();
   });
 
   it('troca a melhor escolha quando a data muda', async () => {

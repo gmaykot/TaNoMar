@@ -1,4 +1,4 @@
-import { ArrowRight, Compass, Download, MapPinned } from 'lucide-react';
+import { ArrowRight, Compass, Download, MapPinned, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
@@ -68,6 +68,18 @@ export function HomePage() {
         title="Onde vale pescar hoje?"
         description="Condições no melhor momento."
       />
+      {auth.user?.plan.code !== 'premium' ? (
+        <Link className={styles.premiumBanner} to={routes.premium}>
+          <span>
+            <Sparkles size={19} aria-hidden="true" />
+          </span>
+          <div>
+            <strong>Pesque com mais contexto no Premium</strong>
+            <small>Veja até 8 dias, detalhes do mar e alertas para seus locais.</small>
+          </div>
+          <ArrowRight size={19} aria-hidden="true" />
+        </Link>
+      ) : null}
       <DayCarousel days={days} selectedDate={activeDate} onSelect={setSelectedDate}>
         {(day) =>
           day.ranking[0] ? (
