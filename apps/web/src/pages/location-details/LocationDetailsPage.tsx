@@ -76,7 +76,7 @@ export function LocationDetailsPage() {
         <ArrowLeft size={18} aria-hidden="true" /> Voltar aos locais
       </Link>
       <section className={styles.locationHero}>
-        {location.isOwner ? <OwnerBadge inset /> : null}
+        {location.isOwner ? <OwnerBadge /> : null}
         <div className={styles.locationIntro}>
           <span>
             <MapPin size={16} aria-hidden="true" /> {location.region}

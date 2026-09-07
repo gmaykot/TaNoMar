@@ -186,8 +186,9 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-5);
+  margin-top: 0.45rem;
   padding: var(--space-6);
-  overflow: hidden;
+  overflow: visible;
   border-radius: var(--radius-xl);
   background:
     radial-gradient(
@@ -196,6 +197,10 @@
       transparent 13rem
     ),
     var(--color-ocean-950);
+}
+
+.locationHero:has([data-owner-badge]) .locationIntro {
+  padding-right: 6.5rem;
 }
 
 .locationIntro span {

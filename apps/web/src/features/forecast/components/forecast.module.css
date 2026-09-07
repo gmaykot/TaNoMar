@@ -81,6 +81,7 @@
   min-width: 100%;
   align-content: start;
   gap: var(--space-5);
+  padding-top: 0.55rem;
   scroll-snap-align: start;
   scroll-snap-stop: always;
 }
@@ -166,7 +167,7 @@
   min-width: 0;
   max-width: 100%;
   padding: var(--space-6);
-  overflow: hidden;
+  overflow: visible;
   border-radius: var(--radius-xl);
   color: white;
   background:
@@ -180,7 +181,15 @@
   isolation: isolate;
 }
 
-.hero::after {
+.heroDecor {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.heroDecor::after {
   position: absolute;
   right: -9rem;
   bottom: -9rem;
@@ -189,7 +198,6 @@
   border: 3rem solid color-mix(in srgb, var(--color-sea-500) 9%, transparent);
   border-radius: 50%;
   content: '';
-  z-index: -1;
 }
 
 .heroGlow {
@@ -204,7 +212,6 @@
     color-mix(in srgb, var(--color-coral-500) 34%, transparent),
     transparent 68%
   );
-  z-index: -1;
 }
 
 .heroTopline,
@@ -217,12 +224,13 @@
 
 .heroTopline {
   flex-wrap: wrap;
-  justify-content: space-between;
-  gap: var(--space-4);
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--space-3);
 }
 
 .hero:has([data-owner-badge]) .heroTopline {
-  padding-right: 5.5rem;
+  padding-right: 6.5rem;
 }
 
 .heroLabel {

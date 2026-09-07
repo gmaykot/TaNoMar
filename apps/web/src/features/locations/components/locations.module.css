@@ -59,8 +59,10 @@
   }
 }
 
-.ownerBadge,
-.ownerBadgeInset {
+.ownerBadge {
+  position: absolute;
+  top: -0.45rem;
+  right: -0.2rem;
   z-index: 2;
   display: inline-flex;
   align-items: center;
@@ -70,25 +72,11 @@
   color: white;
   background: color-mix(in srgb, var(--color-coral-500) 78%, transparent);
   box-shadow: var(--shadow-sm);
+  font-size: 0.62rem;
   font-weight: 750;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-}
-
-.ownerBadge {
-  position: absolute;
-  top: -0.45rem;
-  right: -0.2rem;
-  font-size: 0.62rem;
   transform: rotate(7deg);
-}
-
-.ownerBadgeInset {
-  position: absolute;
-  top: var(--space-4);
-  right: var(--space-4);
-  font-size: 0.7rem;
-  transform: rotate(6deg);
 }
 
 .content h2 {

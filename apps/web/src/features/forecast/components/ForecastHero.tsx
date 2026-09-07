@@ -14,8 +14,10 @@ interface ForecastHeroProps {
 export function ForecastHero({ forecast }: ForecastHeroProps) {
   return (
     <article className={styles.hero}>
-      {forecast.isOwner ? <OwnerBadge inset /> : null}
-      <div className={styles.heroGlow} aria-hidden="true" />
+      {forecast.isOwner ? <OwnerBadge /> : null}
+      <div className={styles.heroDecor} aria-hidden="true">
+        <div className={styles.heroGlow} />
+      </div>
       <div className={styles.heroTopline}>
         <span className={styles.heroLabel}>
           <MapPin size={16} aria-hidden="true" /> Melhor escolha agora
