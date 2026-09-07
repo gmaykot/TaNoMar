@@ -1,15 +1,19 @@
 import type { FormEvent } from 'react';
 import { useState } from 'react';
-import { ArrowLeft, BookOpen, Trash2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, CalendarCheck, Pencil, Save, Trash2, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import {
   readDiaryEntries,
+  readTripPlans,
   removeDiaryEntry,
+  removeTripPlan,
   saveDiaryEntry,
+  updateTripPlan,
   type DiaryEntry,
+  type TripPlan,
 } from '@/features/diary/diaryStorage';
 import { useLocations } from '@/features/locations/hooks/useLocations';
 import formStyles from '@/features/locations/components/spotForm.module.css';
@@ -21,6 +25,8 @@ import styles from '@/pages/shared/pages.module.css';
 export function DiaryPage() {
   const locations = useLocations();
   const [entries, setEntries] = useState<DiaryEntry[]>(() => readDiaryEntries());
+  const [plans, setPlans] = useState<TripPlan[]>(() => readTripPlans());
+  const [editingPlan, setEditingPlan] = useState<TripPlan | null>(null);
   const [spotId, setSpotId] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [species, setSpecies] = useState('');
@@ -47,6 +53,25 @@ export function DiaryPage() {
     setNotes('');
   }
 
+  function fillFromPlan(plan: TripPlan) {
+    setSpotId(plan.spotId);
+    setDate(plan.date);
+    if (plan.notes) setNotes(plan.notes);
+  }
+
+  function submitPlanEdit(event: FormEvent) {
+    event.preventDefault();
+    if (!editingPlan) return;
+    setPlans(
+      updateTripPlan(editingPlan.id, {
+        date: editingPlan.date,
+        time: editingPlan.time,
+        notes: editingPlan.notes,
+      }),
+    );
+    setEditingPlan(null);
+  }
+
   return (
     <div className={styles.page}>
       <Link className={styles.backLink} to={routes.account}>
@@ -57,6 +82,89 @@ export function DiaryPage() {
         title="Seu diário."
         description="Registre capturas e saídas sem captura neste aparelho."
       />
+      {plans.length ? (
+        <section className={accountStyles.accountSection} aria-labelledby="planned-trips">
+          <h2 id="planned-trips">Saídas planejadas</h2>
+          {plans.map((plan) => {
+            const isEditing = editingPlan?.id === plan.id;
+            return (
+              <Card as="article" key={plan.id} className={accountStyles.formCard}>
+                <div className={accountStyles.formHeader}>
+                  <h2>{plan.spotName}</h2>
+                  <p>{[plan.date, plan.time].filter(Boolean).join(' · ')}</p>
+                </div>
+                {isEditing && editingPlan ? (
+                  <form className={formStyles.form} onSubmit={submitPlanEdit}>
+                    <label className={formStyles.field}>
+                      <span>Data</span>
+                      <input
+                        type="date"
+                        value={editingPlan.date}
+                        onChange={(event) =>
+                          setEditingPlan({ ...editingPlan, date: event.target.value })
+                        }
+                        required
+                      />
+                    </label>
+                    <label className={formStyles.field}>
+                      <span>Horário</span>
+                      <input
+                        value={editingPlan.time}
+                        onChange={(event) =>
+                          setEditingPlan({ ...editingPlan, time: event.target.value })
+                        }
+                        placeholder="Ex.: 05:30–08:00"
+                      />
+                    </label>
+                    <label className={formStyles.field}>
+                      <span>Observações</span>
+                      <textarea
+                        value={editingPlan.notes}
+                        onChange={(event) =>
+                          setEditingPlan({ ...editingPlan, notes: event.target.value })
+                        }
+                        maxLength={500}
+                        placeholder="O que você quer lembrar antes de sair?"
+                      />
+                    </label>
+                    <div className={formStyles.actions}>
+                      <Button type="submit">
+                        <Save size={16} aria-hidden="true" /> Salvar planejamento
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => setEditingPlan(null)}
+                      >
+                        <X size={16} aria-hidden="true" /> Cancelar edição
+                      </Button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    {plan.notes ? <p>{plan.notes}</p> : null}
+                    <div className={formStyles.actions}>
+                      <Button type="button" variant="secondary" onClick={() => fillFromPlan(plan)}>
+                        <CalendarCheck size={16} aria-hidden="true" /> Registrar no diário
+                      </Button>
+                      <Button type="button" variant="quiet" onClick={() => setEditingPlan(plan)}>
+                        <Pencil size={16} aria-hidden="true" /> Editar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="quiet"
+                        onClick={() => setPlans(removeTripPlan(plan.id))}
+                      >
+                        <Trash2 size={16} aria-hidden="true" /> Cancelar saída
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </Card>
+            );
+          })}
+        </section>
+      ) : null}
       <Card className={accountStyles.formCard}>
         <form className={formStyles.form} onSubmit={submit}>
           <label className={formStyles.field}>

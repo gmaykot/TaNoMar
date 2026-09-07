@@ -113,6 +113,7 @@ vi.mock('@/features/locations/services/locationsService', () => ({
 describe('LocationDetailsPage', () => {
   beforeEach(() => {
     authState.maxFavorites = 20;
+    localStorage.clear();
   });
 
   it('mostra estado amigável para local inexistente', async () => {
@@ -190,5 +191,28 @@ describe('LocationDetailsPage', () => {
     );
     const enabled = await screen.findByRole('button', { name: 'Nas previsões' });
     expect(enabled).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('planeja a saída com a melhor janela do dia selecionado', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <Routes>
+        <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
+      </Routes>,
+      ['/locais/pantano_do_sul?data=2026-09-06'],
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'Planejar saída' }));
+
+    expect(screen.getByText('Saída planejada neste aparelho.')).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem('tanomar.trip-plan.v1') ?? '[]')).toEqual([
+      expect.objectContaining({
+        spotId: 'pantano_do_sul',
+        spotName: 'Pântano do Sul',
+        date: '2026-09-06',
+        time: '16:30–19:00',
+        notes: '',
+      }),
+    ]);
   });
 });

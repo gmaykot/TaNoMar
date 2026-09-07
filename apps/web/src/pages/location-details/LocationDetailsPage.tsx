@@ -56,7 +56,11 @@ export function LocationDetailsPage() {
       <FeedbackState
         title="Previsão indisponível"
         description="Não foi possível abrir este local."
-        action={<Button variant="secondary" onClick={() => void locationForecast.refetch()}>Tentar novamente</Button>}
+        action={
+          <Button variant="secondary" onClick={() => void locationForecast.refetch()}>
+            Tentar novamente
+          </Button>
+        }
       />
     );
   if (!locationForecast.data)
@@ -112,13 +116,19 @@ export function LocationDetailsPage() {
           type="button"
           variant="secondary"
           onClick={() => {
-            saveTripPlan({ spotId: location.id, spotName: location.name, date: activeDate });
+            saveTripPlan({
+              spotId: location.id,
+              spotName: location.name,
+              date: activeDate,
+              time: activeDay.forecast.bestWindow,
+              notes: '',
+            });
             setPlanned(true);
           }}
         >
           <CalendarPlus size={16} aria-hidden="true" /> Planejar saída
         </Button>
-        {planned ? <span role="status">Saída salva neste aparelho.</span> : null}
+        {planned ? <span role="status">Saída planejada neste aparelho.</span> : null}
         <Button
           type="button"
           variant="secondary"
