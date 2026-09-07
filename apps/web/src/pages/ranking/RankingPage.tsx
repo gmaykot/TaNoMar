@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { DateSelector } from '@/features/forecast/components/DateSelector';
+import { DayCarousel } from '@/features/forecast/components/DayCarousel';
 import { useForecast } from '@/features/forecast/hooks/useForecast';
 import { RankingEmphasisFilters } from '@/features/ranking/components/RankingEmphasisFilters';
 import { RankingList } from '@/features/ranking/components/RankingList';
@@ -57,7 +57,6 @@ export function RankingPage() {
     );
 
   const activeDate = selectedDate || forecast.data.days[0]?.date || '';
-  const activeDay = forecast.data.days.find((day) => day.date === activeDate);
   return (
     <div className={styles.page}>
       <PageHeader
@@ -65,25 +64,32 @@ export function RankingPage() {
         title="Os melhores locais, em ordem."
         description="Só os locais que você habilitou, em ordem."
       />
-      <DateSelector
-        days={forecast.data.days}
-        selectedDate={activeDate}
-        onSelect={setSelectedDate}
-      />
-      <RankingEmphasisFilters emphasis={emphasis} premium={premium} onChange={setEmphasis} />
-      {activeDay?.ranking.length ? (
-        <RankingList
-          items={activeDay.ranking}
-          emphasisKey={rankingEmphasisMetricKey(emphasis)}
-          visibleMetricKeys={visibleMetricKeys}
-          windUnit={auth.user?.preferences.windUnit}
-        />
-      ) : (
-        <FeedbackState
-          title="Nenhum local nas previsões"
-          description="Habilite locais na lista para compará-los aqui."
-        />
-      )}
+      <DayCarousel days={forecast.data.days} selectedDate={activeDate} onSelect={setSelectedDate}>
+        {(day) => (
+          <>
+            {day.date === activeDate ? (
+              <RankingEmphasisFilters
+                emphasis={emphasis}
+                premium={premium}
+                onChange={setEmphasis}
+              />
+            ) : null}
+            {day.ranking.length ? (
+              <RankingList
+                items={day.ranking}
+                emphasisKey={rankingEmphasisMetricKey(emphasis)}
+                visibleMetricKeys={visibleMetricKeys}
+                windUnit={auth.user?.preferences.windUnit}
+              />
+            ) : (
+              <FeedbackState
+                title="Nenhum local nas previsões"
+                description="Habilite locais na lista para compará-los aqui."
+              />
+            )}
+          </>
+        )}
+      </DayCarousel>
     </div>
   );
 }

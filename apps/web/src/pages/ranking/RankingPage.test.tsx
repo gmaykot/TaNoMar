@@ -101,6 +101,27 @@ describe('RankingPage', () => {
     expect(getForecast).toHaveBeenCalledWith('rain');
   });
 
+  it('troca o dia ao arrastar o carrossel', async () => {
+    renderWithProviders(<RankingPage />, ['/ranking']);
+    expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
+
+    const track = screen.getByLabelText('Previsão por dia');
+    const slides = [...track.querySelectorAll<HTMLElement>('[data-snap-key]')];
+    Object.defineProperty(track, 'clientWidth', { configurable: true, value: 320 });
+    Object.defineProperty(track, 'scrollLeft', { configurable: true, writable: true, value: 320 });
+    slides.forEach((slide, index) => {
+      Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 320 });
+      Object.defineProperty(slide, 'offsetWidth', { configurable: true, value: 320 });
+    });
+
+    track.dispatchEvent(new Event('scrollend'));
+    track.dispatchEvent(new Event('scroll'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Armação' })).toBeInTheDocument();
+    });
+  });
+
   it('marca o local pessoal com o selo Meu local', async () => {
     renderWithProviders(<RankingPage />, ['/ranking']);
 
