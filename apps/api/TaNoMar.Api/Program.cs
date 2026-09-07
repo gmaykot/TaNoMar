@@ -607,7 +607,7 @@ api.MapGet("/fishing-spots/{id}/forecast", async (string id, ClaimsPrincipal pri
     if (user is null) return Results.Unauthorized();
     var spot = await db.FishingSpots.AsNoTracking().SingleOrDefaultAsync(item => item.Slug == id && (item.Visibility == "official" || (item.Visibility == "shared" && item.IsApproved) || item.OwnerUserId == user.Id), cancellationToken);
     var preferredRegions = await PreferredRegionsAsync(db, user.Id, cancellationToken);
-    if (spot is null || !SpotRules.IsInPreferredRegion(spot, preferredRegions)) return Results.NotFound();
+    if (spot is null || (!SpotRules.Owns(spot, user) && !SpotRules.IsInPreferredRegion(spot, preferredRegions))) return Results.NotFound();
     var plan = await db.Plans.SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
     var result = new List<object>();
     for (var day = 0; day < plan.MaxForecastDays; day++)
