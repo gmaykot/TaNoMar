@@ -566,12 +566,13 @@ api.MapGet("/forecasts/ranking", async (string? emphasis, ClaimsPrincipal princi
         .Where(spot => spot.Visibility == "official" || (spot.Visibility == "shared" && spot.IsApproved) || spot.OwnerUserId == user.Id)
         .ToListAsync(cancellationToken);
     var enabledSlugs = visibleSpots.Where(spot => SpotRules.IsEnabledForUser(spot, enabledSettings)).Select(spot => spot.Slug).ToHashSet();
+    var ownerSlugs = await OwnerSpotSlugsAsync(db, user.Id, cancellationToken);
     var days = new List<object>();
     for (var day = 0; day < plan.MaxForecastDays; day++)
     {
         var forecast = await fishing.GetAsync(day, cancellationToken, user.Id, enabledSlugs);
         var ordered = forecast with { Ranking = FishingRankingEmphasis.Order(forecast.Ranking, parsedEmphasis) };
-        days.Add(ForecastDayDto(ordered, premium, OwnerSpotIds(visibleSpots, user)));
+        days.Add(ForecastDayDto(ordered, premium, ownerSlugs));
     }
     return Results.Ok(new { generatedAt = DateTimeOffset.UtcNow, availableFrom = DateOnly.FromDateTime(DateTime.UtcNow), availableTo = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(plan.MaxForecastDays - 1)), days });
 }).RequireAuthorization();
@@ -1047,6 +1048,8 @@ static async Task<IResult> VoteReportAsync(Guid id, string kind, ClaimsPrincipal
 }
 static HashSet<string> OwnerSpotIds(IEnumerable<FishingSpot> spots, User user) =>
     spots.Where(spot => SpotRules.Owns(spot, user)).Select(spot => spot.Slug).ToHashSet(StringComparer.Ordinal);
+static Task<HashSet<string>> OwnerSpotSlugsAsync(TaNoMarDbContext db, Guid userId, CancellationToken cancellationToken) =>
+    db.FishingSpots.AsNoTracking().Where(spot => spot.OwnerUserId == userId).Select(spot => spot.Slug).ToHashSetAsync(StringComparer.Ordinal, cancellationToken);
 static object ForecastDayDto(FishingForecast forecast, bool premium, HashSet<string>? ownerSpotIds = null) => new { date = forecast.Date, ranking = forecast.Ranking.Select(item => ForecastItemDto(item, premium, ownerSpotIds)).ToList(), unavailableSpotIds = forecast.Errors.Select(error => error.Location).ToList() };
 static object MarineLockedDto(string spotId, DateOnly date)
 {
