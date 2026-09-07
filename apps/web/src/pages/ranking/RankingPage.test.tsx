@@ -101,6 +101,14 @@ describe('RankingPage', () => {
     expect(getForecast).toHaveBeenCalledWith('rain');
   });
 
+  it('marca o local pessoal com o selo Meu local', async () => {
+    renderWithProviders(<RankingPage />, ['/ranking']);
+
+    expect(await screen.findByRole('heading', { name: 'Molhe da Barra' })).toBeInTheDocument();
+    expect(screen.getByText('Meu local')).toBeInTheDocument();
+    expect(screen.getAllByText('Meu local')).toHaveLength(1);
+  });
+
   it('bloqueia a ênfase no plano Free', async () => {
     authState.planCode = 'free';
     renderWithProviders(<RankingPage />, ['/ranking?enfase=vento']);

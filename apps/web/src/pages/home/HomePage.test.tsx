@@ -147,8 +147,21 @@ describe('HomePage', () => {
     expect(ranking).toBeTruthy();
     expect(partners && ranking).toBeTruthy();
     if (!partners || !ranking) return;
-    expect(partners.compareDocumentPosition(explore) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(ranking.compareDocumentPosition(partners) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      partners.compareDocumentPosition(explore) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      ranking.compareDocumentPosition(partners) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('marca o local pessoal com o selo Meu local no ranking do dia', async () => {
+    renderWithProviders(<HomePage />);
+
+    expect(await screen.findByRole('heading', { name: 'Molhe da Barra' })).toBeInTheDocument();
+    expect(screen.getByText('Meu local')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
+    expect(screen.getAllByText('Meu local')).toHaveLength(1);
   });
 
   it('omite a área de parceiros quando a vitrine está desligada', async () => {

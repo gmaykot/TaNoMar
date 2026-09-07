@@ -221,6 +221,10 @@
   gap: var(--space-4);
 }
 
+.hero:has([data-owner-badge]) .heroTopline {
+  padding-right: 5.5rem;
+}
+
 .heroLabel {
   gap: var(--space-2);
   color: var(--color-sea-200);

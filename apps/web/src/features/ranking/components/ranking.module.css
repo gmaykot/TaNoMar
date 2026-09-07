@@ -49,6 +49,7 @@
 .item {
   position: relative;
   padding: var(--space-4);
+  overflow: visible;
 }
 
 .item:has(.hit:focus-visible) {

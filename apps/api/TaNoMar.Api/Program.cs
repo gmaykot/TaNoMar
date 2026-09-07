@@ -571,7 +571,7 @@ api.MapGet("/forecasts/ranking", async (string? emphasis, ClaimsPrincipal princi
     {
         var forecast = await fishing.GetAsync(day, cancellationToken, user.Id, enabledSlugs);
         var ordered = forecast with { Ranking = FishingRankingEmphasis.Order(forecast.Ranking, parsedEmphasis) };
-        days.Add(ForecastDayDto(ordered, premium));
+        days.Add(ForecastDayDto(ordered, premium, OwnerSpotIds(visibleSpots, user)));
     }
     return Results.Ok(new { generatedAt = DateTimeOffset.UtcNow, availableFrom = DateOnly.FromDateTime(DateTime.UtcNow), availableTo = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(plan.MaxForecastDays - 1)), days });
 }).RequireAuthorization();
@@ -588,7 +588,7 @@ api.MapGet("/fishing-spots/{id}/forecast", async (string id, ClaimsPrincipal pri
     {
         var forecast = await fishing.GetAsync(day, cancellationToken, user.Id);
         var filtered = forecast with { Ranking = forecast.Ranking.Where(item => item.Id == spot.Slug).ToList() };
-        result.Add(ForecastDayDto(filtered, plan.Code == "premium"));
+        result.Add(ForecastDayDto(filtered, plan.Code == "premium", OwnerSpotIds([spot], user)));
     }
     return Results.Ok(new { spotId = spot.Slug, days = result });
 }).RequireAuthorization();
@@ -1045,7 +1045,9 @@ static async Task<IResult> VoteReportAsync(Guid id, string kind, ClaimsPrincipal
     await db.SaveChangesAsync(cancellationToken);
     return Results.NoContent();
 }
-static object ForecastDayDto(FishingForecast forecast, bool premium) => new { date = forecast.Date, ranking = forecast.Ranking.Select(item => ForecastItemDto(item, premium)).ToList(), unavailableSpotIds = forecast.Errors.Select(error => error.Location).ToList() };
+static HashSet<string> OwnerSpotIds(IEnumerable<FishingSpot> spots, User user) =>
+    spots.Where(spot => SpotRules.Owns(spot, user)).Select(spot => spot.Slug).ToHashSet(StringComparer.Ordinal);
+static object ForecastDayDto(FishingForecast forecast, bool premium, HashSet<string>? ownerSpotIds = null) => new { date = forecast.Date, ranking = forecast.Ranking.Select(item => ForecastItemDto(item, premium, ownerSpotIds)).ToList(), unavailableSpotIds = forecast.Errors.Select(error => error.Location).ToList() };
 static object MarineLockedDto(string spotId, DateOnly date)
 {
     object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = "Premium" };
@@ -1169,13 +1171,13 @@ static object TideTable(
         }
     };
 }
-static object ForecastItemDto(FishingLocationForecast item, bool premium)
+static object ForecastItemDto(FishingLocationForecast item, bool premium, HashSet<string>? ownerSpotIds = null)
 {
     var hour = item.BestHour;
     object Available(object value) => new { state = "available", value };
     object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = "Premium" };
     var classification = item.Score >= 8.5 ? "Excelente" : item.Score >= 7 ? "Muito bom" : item.Score >= 5 ? "Regular" : "Difícil";
-    return new { spotId = item.Id, spotName = item.Location, score = Available(item.Score), classification = Available(classification), bestHours = Available(item.BestHours.Select(best => best.Time).ToArray()), wind = Available(hour is null ? "n/d" : $"{hour.WindSpeedKmh:0.#} km/h {hour.WindDirection}"), gusts = Available(hour is null ? "n/d" : $"{hour.WindGustKmh:0.#} km/h"), waves = premium ? Available(hour?.WaveMeters.ToString("0.00") + " m") : Locked(), wavePeriod = premium ? Available(hour?.WavePeriodSeconds.ToString("0.#") + " s") : Locked(), swell = premium ? Available(hour?.SwellMeters.ToString("0.00") + " m") : Locked(), rain = Available(hour is null ? "n/d" : $"{hour.RainMm:0.#} mm ({hour.RainProbability}%)"), airTemperature = Available(hour is null ? "n/d" : $"{hour.AirTemperatureC:0.#} °C"), waterTemperature = premium ? Available(hour?.WaterTemperatureC.ToString("0.#") + " °C") : Locked() };
+    return new { spotId = item.Id, spotName = item.Location, isOwner = ownerSpotIds is not null && ownerSpotIds.Contains(item.Id), score = Available(item.Score), classification = Available(classification), bestHours = Available(item.BestHours.Select(best => best.Time).ToArray()), wind = Available(hour is null ? "n/d" : $"{hour.WindSpeedKmh:0.#} km/h {hour.WindDirection}"), gusts = Available(hour is null ? "n/d" : $"{hour.WindGustKmh:0.#} km/h"), waves = premium ? Available(hour?.WaveMeters.ToString("0.00") + " m") : Locked(), wavePeriod = premium ? Available(hour?.WavePeriodSeconds.ToString("0.#") + " s") : Locked(), swell = premium ? Available(hour?.SwellMeters.ToString("0.00") + " m") : Locked(), rain = Available(hour is null ? "n/d" : $"{hour.RainMm:0.#} mm ({hour.RainProbability}%)"), airTemperature = Available(hour is null ? "n/d" : $"{hour.AirTemperatureC:0.#} °C"), waterTemperature = premium ? Available(hour?.WaterTemperatureC.ToString("0.#") + " °C") : Locked() };
 }
 
 static double DistanceMeters(double lat1, double lon1, double lat2, double lon2)

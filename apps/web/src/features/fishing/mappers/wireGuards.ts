@@ -56,6 +56,7 @@ function parseForecastItem(value: unknown): WireForecastItem {
   return {
     spotId,
     spotName,
+    isOwner: readBoolean(value.isOwner) ?? false,
     score: parseMetric(value.score, readNumber, 'score'),
     classification: parseMetric(value.classification, readString, 'classification'),
     bestHours: parseMetric(value.bestHours, parseStringList, 'bestHours'),

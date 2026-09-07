@@ -118,6 +118,7 @@ export function mapForecastItem(item: WireForecastItem): ForecastRankingItem {
     locationId: item.spotId,
     locationName: item.spotName,
     score: requireAvailable(item.score, 'Nota'),
+    isOwner: item.isOwner,
     classification: mapClassification(requireAvailable(item.classification, 'Classificação')),
     bestWindow: mapBestWindow(hours),
     bestHours: hours,

@@ -5,6 +5,7 @@ import { Card } from '@/design-system/components/Card';
 import { ScoreIndicator } from '@/design-system/components/ScoreIndicator';
 import type { FishingMetricKey, ForecastRankingItem } from '@/features/fishing/types/fishing';
 import { MetricGrid } from '@/features/forecast/components/MetricGrid';
+import { OwnerBadge } from '@/features/locations/components/OwnerBadge';
 import { rankingMetricKeys } from '../rankingEmphasis';
 import styles from './ranking.module.css';
 
@@ -32,6 +33,7 @@ export function RankingList({ items, limit, emphasisKey }: RankingListProps) {
         const EmphasisIcon = emphasisKey ? emphasisIcons[emphasisKey] : undefined;
         return (
           <Card as="article" className={styles.item} key={item.locationId}>
+            {item.isOwner ? <OwnerBadge /> : null}
             <div className={styles.summary}>
               <span className={styles.position} aria-label={`${index + 1}º lugar`}>
                 {String(index + 1).padStart(2, '0')}

@@ -24,6 +24,7 @@ const rankingWire = {
         {
           spotId: 'pantano_do_sul',
           spotName: 'Pântano do Sul',
+          isOwner: true,
           score: available(9.1),
           classification: available('Excelente'),
           bestHours: available(['05:00', '06:00', '17:00']),
@@ -96,7 +97,9 @@ describe('forecastMapper', () => {
       score: 9.1,
       classification: 'excellent',
       bestWindow: '05:00–17:00',
+      isOwner: true,
     });
+    expect(forecast.days[1]?.ranking[0]).toMatchObject({ isOwner: false });
   });
 
   it('marca métricas premium como locked', () => {
@@ -185,7 +188,11 @@ describe('forecastMapper', () => {
       direction: 'Leste',
     });
     expect(marine.series[3]).toMatchObject({ locked: true, current: 'Premium' });
-    expect(marine.series[4]).toMatchObject({ label: 'Pressão', current: '1018 hPa', detail: 'estável' });
+    expect(marine.series[4]).toMatchObject({
+      label: 'Pressão',
+      current: '1018 hPa',
+      detail: 'estável',
+    });
     expect(marine.tide.unavailable).toBe(true);
   });
 

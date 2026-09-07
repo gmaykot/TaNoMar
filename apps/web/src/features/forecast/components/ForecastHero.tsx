@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Badge } from '@/design-system/components/Badge';
 import { ScoreIndicator } from '@/design-system/components/ScoreIndicator';
 import type { ForecastRankingItem } from '@/features/fishing/types/fishing';
+import { OwnerBadge } from '@/features/locations/components/OwnerBadge';
 import { MetricGrid } from './MetricGrid';
 import styles from './forecast.module.css';
 
@@ -13,6 +14,7 @@ interface ForecastHeroProps {
 export function ForecastHero({ forecast }: ForecastHeroProps) {
   return (
     <article className={styles.hero}>
+      {forecast.isOwner ? <OwnerBadge inset /> : null}
       <div className={styles.heroGlow} aria-hidden="true" />
       <div className={styles.heroTopline}>
         <span className={styles.heroLabel}>
@@ -32,10 +34,7 @@ export function ForecastHero({ forecast }: ForecastHeroProps) {
         <ScoreIndicator score={forecast.score} classification={forecast.classification} />
       </div>
       <MetricGrid metrics={forecast.metrics} limit={4} />
-      <Link
-        className={`${styles.heroLink} ${styles.hit}`}
-        to={`/locais/${forecast.locationId}`}
-      >
+      <Link className={`${styles.heroLink} ${styles.hit}`} to={`/locais/${forecast.locationId}`}>
         Ver previsão completa <ArrowRight size={18} aria-hidden="true" />
       </Link>
     </article>

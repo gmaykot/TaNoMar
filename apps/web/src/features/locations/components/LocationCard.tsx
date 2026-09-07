@@ -7,13 +7,13 @@ import {
   Lock,
   MapPin,
   Sailboat,
-  Star,
   Waves,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/design-system/components/Card';
 import { IconButton } from '@/design-system/components/IconButton';
 import type { FishingLocation } from '@/features/fishing/types/fishing';
+import { OwnerBadge } from './OwnerBadge';
 import styles from './locations.module.css';
 
 const profileVisual = {
@@ -56,12 +56,7 @@ export function LocationCard({
           <MapPin size={15} aria-hidden="true" /> {location.region}, {location.city}
         </p>
       </div>
-      {location.isOwner ? (
-        <span className={styles.ownerBadge}>
-          <Star size={11} fill="currentColor" aria-hidden="true" />
-          Meu local
-        </span>
-      ) : null}
+      {location.isOwner ? <OwnerBadge /> : null}
       {onToggleEnabled || onToggleFavorite ? (
         <div className={styles.actions}>
           {onToggleEnabled ? (

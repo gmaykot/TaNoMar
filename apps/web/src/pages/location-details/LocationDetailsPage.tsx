@@ -8,7 +8,6 @@ import {
   MapPin,
   Navigation,
   Pencil,
-  Star,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -23,6 +22,7 @@ import { DateSelector } from '@/features/forecast/components/DateSelector';
 import { MarineDetails, MarineDetailsToggle } from '@/features/forecast/components/MarineDetails';
 import { MetricGrid } from '@/features/forecast/components/MetricGrid';
 import { useLocationForecast } from '@/features/forecast/hooks/useForecast';
+import { OwnerBadge } from '@/features/locations/components/OwnerBadge';
 import { useLocationMutations } from '@/features/locations/hooks/useLocationMutations';
 import { routes } from '@/shared/constants/routes';
 import styles from '@/pages/shared/pages.module.css';
@@ -76,12 +76,7 @@ export function LocationDetailsPage() {
         <ArrowLeft size={18} aria-hidden="true" /> Voltar aos locais
       </Link>
       <section className={styles.locationHero}>
-        {location.isOwner ? (
-          <span className={styles.ownerBadge}>
-            <Star size={14} fill="currentColor" aria-hidden="true" />
-            Meu local
-          </span>
-        ) : null}
+        {location.isOwner ? <OwnerBadge inset /> : null}
         <div className={styles.locationIntro}>
           <span>
             <MapPin size={16} aria-hidden="true" /> {location.region}

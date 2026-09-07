@@ -38,6 +38,7 @@ function ranking(seeds: ForecastSeed[]): ForecastRankingItem[] {
       locationId: location.id,
       locationName: location.name,
       score: seed.score,
+      isOwner: location.isOwner,
       classification: seed.classification,
       bestWindow: seed.window,
       bestHours: [start, '07:00', '17:00'],
@@ -62,6 +63,15 @@ export const forecastFixture: FishingForecast = {
           wind: '7 km/h',
           wave: '0,7 m',
           rain: '8%',
+        },
+        {
+          id: 'molhe-da-barra',
+          score: 8.8,
+          classification: 'excellent',
+          window: '06:00–08:00',
+          wind: '8 km/h',
+          wave: '0,6 m',
+          rain: '9%',
         },
         {
           id: 'ribeirao',
