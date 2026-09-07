@@ -19,12 +19,11 @@ export function useForecast(emphasis?: ForecastRankingEmphasis) {
   });
 
   const data = useMemo(() => {
-    if (!query.data) return undefined;
-    if (!locations.data) return query.data;
+    if (!query.data || !locations.data) return query.data;
     return enrichForecastOwnership(query.data, locations.data);
   }, [locations.data, query.data]);
 
-  return { ...query, data };
+  return { ...query, data } as typeof query;
 }
 
 export function useLocationForecast(locationId: string) {
