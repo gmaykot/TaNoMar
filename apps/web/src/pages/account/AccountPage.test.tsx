@@ -121,6 +121,12 @@ describe('AccountPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<AccountPage />);
 
+    expect(
+      screen.getByText(
+        'Marque o que deseja ver nos cards. Essa escolha não altera a nota de pesca.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Altura prevista das ondas.')).toBeInTheDocument();
     await user.click(screen.getByRole('checkbox', { name: 'Ondas' }));
     await user.click(screen.getByRole('button', { name: 'Salvar preferências' }));
 

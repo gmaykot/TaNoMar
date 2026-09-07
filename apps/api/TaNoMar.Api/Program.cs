@@ -194,7 +194,7 @@ api.MapGet("/fishing-spots", async (ClaimsPrincipal principal, TaNoMarDbContext 
     var enabledSettings = await EnabledSettingsAsync(db, user.Id, cancellationToken);
     var preferredRegions = await PreferredRegionsAsync(db, user.Id, cancellationToken);
     var spots = await db.FishingSpots.AsNoTracking().Where(spot => spot.Visibility == "official" || (spot.Visibility == "shared" && spot.IsApproved) || spot.OwnerUserId == user.Id).OrderBy(spot => spot.Name).ToListAsync(cancellationToken);
-    return Results.Ok(spots.Where(spot => SpotRules.IsInPreferredRegion(spot, preferredRegions)).Select(spot => SpotDtoProjection(spot, user, favoriteIds.Contains(spot.Id), SpotRules.IsEnabledForUser(spot, enabledSettings))).ToList());
+    return Results.Ok(spots.Where(spot => SpotRules.Owns(spot, user) || SpotRules.IsInPreferredRegion(spot, preferredRegions)).Select(spot => SpotDtoProjection(spot, user, favoriteIds.Contains(spot.Id), SpotRules.IsEnabledForUser(spot, enabledSettings))).ToList());
 }).RequireAuthorization();
 
 api.MapPost("/fishing-spots", async (PersonalSpotRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, CancellationToken cancellationToken) =>

@@ -28,7 +28,7 @@ Namespaces, assembly, projeto, DbContext, seeder, options e usuário interno do 
 
 ## Pesca e locais
 
-- `GET /fishing-spots`: locais oficiais, compartilhados aprovados e privados do usuário cuja região esteja nas preferências da conta. O DTO inclui `profile`, `visibility`, `isApproved`, `isOwner`, `isFavorite`, `isEnabled`, `isInRanking` e `seaOrientationDegrees`. Sem preferência do usuário, oficiais, compartilhados aprovados e locais pessoais do dono vêm `isEnabled = true`.
+- `GET /fishing-spots`: locais oficiais e compartilhados aprovados cuja região esteja nas preferências da conta, além de todos os locais pessoais do dono independentemente da região. O DTO inclui `profile`, `visibility`, `isApproved`, `isOwner`, `isFavorite`, `isEnabled`, `isInRanking` e `seaOrientationDegrees`. Sem preferência do usuário, oficiais, compartilhados aprovados e locais pessoais do dono vêm `isEnabled = true`.
 - `POST /fishing-spots`: local pessoal com região obrigatória, sujeito ao plano, duplicidade (mesmo nome, ignorando maiúsculas, ou até 200 m), perfil costeiro e visibilidade (`shared` pendente ou `private`). O dono já recebe o local habilitado nas previsões; a API aquece o cache de previsão (nota e ranking) antes de responder.
 - `PUT /fishing-spots/{id}`: dono edita o local, mantendo a região obrigatória; a mesma regra de duplicidade vale contra os demais; compartilhar de novo volta para moderação.
 - `DELETE /fishing-spots/{id}`: dono remove o local e os relatos/favoritos/habilitações ligados.

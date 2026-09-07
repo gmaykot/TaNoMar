@@ -233,6 +233,10 @@
   padding-right: 6.5rem;
 }
 
+.hero [data-owner-badge] {
+  right: var(--space-1);
+}
+
 .heroLabel {
   gap: var(--space-2);
   color: var(--color-sea-200);
