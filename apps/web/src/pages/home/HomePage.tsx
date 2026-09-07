@@ -1,18 +1,22 @@
-import { ArrowRight, Compass, MapPinned } from 'lucide-react';
+import { ArrowRight, Compass, Download, MapPinned } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
+import { Button } from '@/design-system/components/Button';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { showsPartners } from '@/features/auth/types/auth';
 import { DayCarousel } from '@/features/forecast/components/DayCarousel';
 import { ForecastHero } from '@/features/forecast/components/ForecastHero';
 import { useForecast } from '@/features/forecast/hooks/useForecast';
+import { readOfflineForecast, saveOfflineForecast } from '@/features/forecast/utils/offlineForecast';
+import type { FishingForecast } from '@/features/fishing/types/fishing';
 import { PartnerCard } from '@/features/partners/components/PartnerCard';
 import { usePartners } from '@/features/partners/hooks/usePartners';
 import { RankingList } from '@/features/ranking/components/RankingList';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { routes } from '@/shared/constants/routes';
 import styles from '@/pages/shared/pages.module.css';
+import { formatDateTime } from '@/shared/utils/formatDateTime';
 
 export function HomePage() {
   const auth = useAuth();
@@ -21,10 +25,14 @@ export function HomePage() {
   const partners = usePartners(partnersEnabled);
   const featured = (partners.data ?? []).filter((item) => item.isFeatured);
   const [selectedDate, setSelectedDate] = useState('');
+  const [offlineForecast, setOfflineForecast] = useState<FishingForecast | null>(() => readOfflineForecast());
+  const [offlineSaved, setOfflineSaved] = useState(false);
   const visibleMetricKeys =
     auth.user?.plan.code === 'premium' ? auth.user.preferences.visibleMetrics : undefined;
 
-  if (forecast.isPending)
+  const data = forecast.data ?? (forecast.isError ? offlineForecast : undefined);
+
+  if (forecast.isPending && !data)
     return (
       <FeedbackState
         title="Lendo o mar"
@@ -33,21 +41,23 @@ export function HomePage() {
         busy
       />
     );
-  if (forecast.isError)
+  if (forecast.isError && !data)
     return (
       <FeedbackState
         title="Previsão indisponível"
         description="Não foi possível carregar a previsão."
+        action={<Button variant="secondary" onClick={() => void forecast.refetch()}>Tentar novamente</Button>}
       />
     );
 
-  const days = forecast.data.days;
+  const days = data?.days ?? [];
   const activeDate = selectedDate || days[0]?.date || '';
   if (!days.some((day) => day.ranking[0]))
     return (
       <FeedbackState
         title="Nenhum local nas previsões"
         description="Habilite locais na lista para ver a previsão aqui."
+        action={<Link to="/locais?filtro=previsoes">Escolher locais</Link>}
       />
     );
 
@@ -64,6 +74,9 @@ export function HomePage() {
             <>
               <ForecastHero
                 forecast={day.ranking[0]}
+                date={day.date}
+                dayLabel={day.label}
+                generatedAt={formatDateTime(data?.generatedAt ?? '')}
                 visibleMetricKeys={visibleMetricKeys}
                 windUnit={auth.user?.preferences.windUnit}
               />
@@ -80,6 +93,7 @@ export function HomePage() {
                 <RankingList
                   items={day.ranking.slice(1)}
                   limit={3}
+                  startAt={2}
                   visibleMetricKeys={visibleMetricKeys}
                   windUnit={auth.user?.preferences.windUnit}
                 />
@@ -89,6 +103,7 @@ export function HomePage() {
             <FeedbackState
               title="Nenhum local nas previsões"
               description="Habilite locais na lista para ver a previsão aqui."
+              action={<Link to="/locais?filtro=previsoes">Escolher locais</Link>}
             />
           )
         }
@@ -111,6 +126,23 @@ export function HomePage() {
           </div>
         </section>
       ) : null}
+      <div className={styles.homeActions}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => {
+            if (!data) return;
+            setOfflineSaved(saveOfflineForecast(data));
+            setOfflineForecast(data);
+          }}
+        >
+          <Download size={17} aria-hidden="true" />
+          {offlineSaved || offlineForecast ? 'Previsão salva nesta sessão' : 'Salvar para usar offline'}
+        </Button>
+        {offlineForecast && !forecast.data ? (
+          <small>Exibindo a última previsão salva nesta sessão. Ela pode estar desatualizada.</small>
+        ) : null}
+      </div>
       <Link className={styles.exploreCard} to="/locais">
         <span>
           <MapPinned size={22} aria-hidden="true" />

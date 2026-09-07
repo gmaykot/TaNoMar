@@ -103,6 +103,13 @@ export function AccountPage() {
         </dl>
       </Card>
 
+      {user?.plan.code !== 'premium' ? (
+        <Link className={accountStyles.premiumCallout} to={routes.premium}>
+          <strong>Conhecer o Premium</strong>
+          <small>Veja os recursos disponíveis para planejar melhor sua saída.</small>
+        </Link>
+      ) : null}
+
       <section className={accountStyles.accountSection} aria-labelledby="account-preferences">
         <h2 id="account-preferences">Preferências</h2>
         <div className={accountStyles.shortcuts}>
@@ -161,6 +168,12 @@ export function AccountPage() {
             icon={BookOpen}
             title="Sobre o TáNoMar"
             description="Entenda a previsão, a nota e as fontes utilizadas."
+          />
+          <AccountShortcut
+            to={routes.diary}
+            icon={BookOpen}
+            title="Diário de pesca"
+            description="Guarde o resultado das suas saídas neste aparelho."
           />
         </div>
       </section>

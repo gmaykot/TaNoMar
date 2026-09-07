@@ -86,7 +86,9 @@ function mapClassification(value: string): FishingClassification {
 function mapBestWindow(hours: string[]) {
   if (hours.length === 0) return '—';
   if (hours.length === 1) return hours[0]!;
-  return `${hours[0]}–${hours[hours.length - 1]}`;
+  const ordered = [...hours].sort((left, right) => left.localeCompare(right));
+  if (ordered.length === 2) return `${ordered[0]} e ${ordered[1]}`;
+  return `${ordered.slice(0, -1).join(', ')} e ${ordered[ordered.length - 1]}`;
 }
 
 function mapMetric(
@@ -122,6 +124,9 @@ export function mapForecastItem(item: WireForecastItem): ForecastRankingItem {
     classification: mapClassification(requireAvailable(item.classification, 'Classificação')),
     bestWindow: mapBestWindow(hours),
     bestHours: hours,
+    highlights: Array.isArray(item.highlights)
+      ? item.highlights.filter((highlight): highlight is string => typeof highlight === 'string')
+      : [],
     metrics: [
       mapMetric('wind', 'Vento', item.wind),
       mapMetric('gusts', 'Rajadas', item.gusts),

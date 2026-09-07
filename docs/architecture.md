@@ -35,7 +35,7 @@ Os services chamam `/api/v1`, validam DTOs de wire e mapeiam para os tipos da UI
 - `Fishing`: Open-Meteo, Tábua de Maré API, Geoapify Autocomplete (proxy autenticado de busca de lugares no cadastro de locais), cache em memória com snapshot no PostgreSQL, previsão e fórmula da nota. A consulta de previsão segue memória → `FishingForecastSnapshots` (mesmo TTL de `Fishing:CacheHours`) → Open-Meteo. Snapshot com horas é reutilizado mesmo sem tábua: isso não invalida o cache nem dispara re-fetch da Open-Meteo. A pressão (`pressure_msl`) entra na mesma série e no warmup; não entra na nota. A tábua (porto mais próximo, mês em cache) entra no snapshot quando a API comunitária responde; senão o marine cai no nível modelado da Open-Meteo, que costuma vir nulo nesta costa. O `FishingForecastWarmupWorker` aquece oficiais e compartilhados aprovados (dias 0–7) e aproveita o cache mensal da tábua para não estourar o limite da API pública. Cadastro de local pessoal, aprovação de compartilhado e religar um local nas previsões aquecem o mesmo cache para o ranking já nascer com a nota.
 - `Models`: contratos existentes.
 - `Options`: configuração da aplicação.
-- `Notifications`: hub SSE em memória e worker de Web Push (VAPID). Sem fila externa; um container.
+- `Notifications`: hub SSE em memória, worker de Web Push (VAPID) e worker horário de alertas de previsão. Sem fila externa; um container. Alertas são persistidos em `ForecastAlerts` e respeitam as preferências de notificação.
 - `Program.cs`: DI, middleware, worker de aquecimento e endpoints Minimal API sob `/api/v1`.
 
 Namespaces, assembly e tipos técnicos usam `TaNoMar.Api`. Identificadores de runtime estáveis (seção `TaNoMar`, cookie, caminhos persistentes) estão catalogados em `docs/api-contracts.md`.

@@ -12,6 +12,8 @@ export const routes = {
   account: '/conta',
   accountPreferences: '/conta/preferencias',
   accountNotifications: '/conta/notificacoes',
+  premium: '/premium',
+  diary: '/diario',
   about: '/sobre',
   partners: '/parceiros',
   partnerDetails: (slug: string) => `/parceiros/${slug}`,

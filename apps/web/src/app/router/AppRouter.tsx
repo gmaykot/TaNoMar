@@ -6,6 +6,7 @@ import { AccountNotificationsPage } from '@/pages/account/AccountNotificationsPa
 import { AboutPage } from '@/pages/about/AboutPage';
 import { AccountPage } from '@/pages/account/AccountPage';
 import { AccountPreferencesPage } from '@/pages/account/AccountPreferencesPage';
+import { DiaryPage } from '@/pages/diary/DiaryPage';
 import { AdminHomePage } from '@/pages/admin/AdminHomePage';
 import { AdminPartnerFormPage } from '@/pages/admin/AdminPartnerFormPage';
 import { AdminPartnersPage } from '@/pages/admin/AdminPartnersPage';
@@ -19,6 +20,7 @@ import { LocationsPage } from '@/pages/locations/LocationsPage';
 import { LoginPage } from '@/pages/login/LoginPage';
 import { PartnerDetailsPage } from '@/pages/partners/PartnerDetailsPage';
 import { PartnersPage } from '@/pages/partners/PartnersPage';
+import { PremiumPage } from '@/pages/premium/PremiumPage';
 import { RankingPage } from '@/pages/ranking/RankingPage';
 import { routes } from '@/shared/constants/routes';
 
@@ -37,6 +39,8 @@ export function AppRouter() {
           <Route path={routes.account} element={<AccountPage />} />
           <Route path={routes.accountPreferences} element={<AccountPreferencesPage />} />
           <Route path={routes.accountNotifications} element={<AccountNotificationsPage />} />
+          <Route path={routes.premium} element={<PremiumPage />} />
+          <Route path={routes.diary} element={<DiaryPage />} />
           <Route path={routes.about} element={<AboutPage />} />
           <Route path={routes.partners} element={<PartnersPage />} />
           <Route path="/parceiros/:partnerSlug" element={<PartnerDetailsPage />} />

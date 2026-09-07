@@ -407,6 +407,12 @@
   font-size: var(--font-size-sm);
 }
 
+.feedbackAction {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+
 .srOnly {
   position: absolute;
   width: 1px;

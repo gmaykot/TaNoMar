@@ -73,6 +73,7 @@ export function LocationsPage() {
       <FeedbackState
         title="Locais indisponíveis"
         description="Não foi possível carregar os locais."
+        action={<Button variant="secondary" onClick={() => void locations.refetch()}>Tentar novamente</Button>}
       />
     );
 

@@ -24,7 +24,7 @@ npm install
 npm run dev
 ```
 
-Rotas: `/entrar`, `/`, `/ranking`, `/locais`, `/locais/novo`, `/locais/:locationId`, `/conta`, `/conta/preferencias`, `/conta/notificacoes`, `/admin`, `/admin/locais` e `/admin/usuarios`. O Vite encaminha `/api` para `http://127.0.0.1:5000`. No celular use `http://<ip-lan>.nip.io:5173/` e, para instalar o PWA, `https://<ip-lan>.nip.io:5174/` — detalhes em [docs/pwa.md](docs/pwa.md).
+Rotas: `/entrar`, `/`, `/ranking`, `/locais`, `/locais/novo`, `/locais/:locationId`, `/conta`, `/conta/preferencias`, `/conta/notificacoes`, `/premium`, `/diario`, `/admin`, `/admin/locais` e `/admin/usuarios`. O Vite encaminha `/api` para `http://127.0.0.1:5000`. No celular use `http://<ip-lan>.nip.io:5173/` e, para instalar o PWA, `https://<ip-lan>.nip.io:5174/` — detalhes em [docs/pwa.md](docs/pwa.md).
 
 | Comando             | Uso                            |
 | ------------------- | ------------------------------ |
@@ -62,6 +62,7 @@ Guia completo: **[docs/deployment.md](docs/deployment.md)**.
 - A web chama a API por `/api/v1`, com mappers de contrato e Google Sign-In.
 - A API vive em `apps/api/TaNoMar.Api`, com namespace e assembly `TaNoMar.Api`.
 - Comunidade, favoritos e locais pessoais têm API e telas: criar/editar local, favoritar, habilitar para as previsões, relatos, moderação admin, gestão de usuários e inbox de notificações (SSE no sino; Web Push opcional com o app fechado).
-- Alertas de previsão (`MaxAlerts`) continuam reservados no plano, sem cadastro nesta versão.
+- Alertas de previsão podem ser configurados no Premium por local, nota mínima e antecedência; o worker envia avisos pelo inbox e pelos canais de notificação habilitados.
+- O diário de pesca e o planejamento de saída ficam privados no armazenamento local do aparelho nesta primeira versão.
 
 Antes de alterar o projeto, leia [AGENTS.md](AGENTS.md) e [docs/architecture.md](docs/architecture.md).

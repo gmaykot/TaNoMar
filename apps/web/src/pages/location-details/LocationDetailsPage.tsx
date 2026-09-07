@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   CalendarDays,
+  CalendarPlus,
   Eye,
   EyeOff,
   Heart,
@@ -10,7 +11,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Badge } from '@/design-system/components/Badge';
 import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
@@ -25,19 +26,22 @@ import { useLocationForecast } from '@/features/forecast/hooks/useForecast';
 import type { FishingMetricKey } from '@/features/fishing/types/fishing';
 import { OwnerBadge } from '@/features/locations/components/OwnerBadge';
 import { useLocationMutations } from '@/features/locations/hooks/useLocationMutations';
+import { saveTripPlan } from '@/features/diary/diaryStorage';
 import { routes } from '@/shared/constants/routes';
 import styles from '@/pages/shared/pages.module.css';
 
 export function LocationDetailsPage() {
   const { locationId = '' } = useParams();
+  const [searchParams] = useSearchParams();
   const auth = useAuth();
   const locationForecast = useLocationForecast(locationId);
   const mutations = useLocationMutations();
   const canFavorite = (auth.user?.entitlements.maxFavorites ?? 0) > 0;
   const visibleMetricKeys =
     auth.user?.plan.code === 'premium' ? auth.user.preferences.visibleMetrics : undefined;
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState(() => searchParams.get('data') ?? '');
   const [marineOpen, setMarineOpen] = useState(false);
+  const [planned, setPlanned] = useState(false);
 
   if (locationForecast.isPending)
     return (
@@ -52,6 +56,7 @@ export function LocationDetailsPage() {
       <FeedbackState
         title="Previsão indisponível"
         description="Não foi possível abrir este local."
+        action={<Button variant="secondary" onClick={() => void locationForecast.refetch()}>Tentar novamente</Button>}
       />
     );
   if (!locationForecast.data)
@@ -63,7 +68,9 @@ export function LocationDetailsPage() {
     );
 
   const { location, days } = locationForecast.data;
-  const activeDate = selectedDate || days[0]?.date || '';
+  const activeDate = days.some((day) => day.date === selectedDate)
+    ? selectedDate
+    : days[0]?.date || '';
   const activeDay = days.find((day) => day.date === activeDate);
   if (!activeDay)
     return (
@@ -101,6 +108,17 @@ export function LocationDetailsPage() {
         </div>
       </section>
       <div className={styles.toolbar}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => {
+            saveTripPlan({ spotId: location.id, spotName: location.name, date: activeDate });
+            setPlanned(true);
+          }}
+        >
+          <CalendarPlus size={16} aria-hidden="true" /> Planejar saída
+        </Button>
+        {planned ? <span role="status">Saída salva neste aparelho.</span> : null}
         <Button
           type="button"
           variant="secondary"

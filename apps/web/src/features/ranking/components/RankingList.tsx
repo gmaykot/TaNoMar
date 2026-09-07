@@ -13,6 +13,7 @@ import styles from './ranking.module.css';
 interface RankingListProps {
   items: ForecastRankingItem[];
   limit?: number;
+  startAt?: number;
   emphasisKey?: FishingMetricKey;
   visibleMetricKeys?: FishingMetricKey[];
   windUnit?: string;
@@ -27,6 +28,7 @@ const emphasisIcons: Partial<Record<FishingMetricKey, typeof Wind>> = {
 export function RankingList({
   items,
   limit,
+  startAt = 1,
   emphasisKey,
   visibleMetricKeys,
   windUnit,
@@ -48,8 +50,8 @@ export function RankingList({
           <Card as="article" className={styles.item} key={item.locationId}>
             {item.isOwner ? <OwnerBadge /> : null}
             <div className={styles.summary}>
-              <span className={styles.position} aria-label={`${index + 1}º lugar`}>
-                {String(index + 1).padStart(2, '0')}
+              <span className={styles.position} aria-label={`${index + startAt}º lugar`}>
+                {String(index + startAt).padStart(2, '0')}
               </span>
               <div className={styles.info}>
                 <Badge classification={item.classification} />

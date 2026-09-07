@@ -59,6 +59,7 @@ builder.Services.AddHttpClient<GeoapifyClient>(client =>
 });
 builder.Services.AddTransient<FishingForecastService>();
 builder.Services.AddHostedService<FishingForecastWarmupWorker>();
+builder.Services.AddHostedService<ForecastAlertWorker>();
 builder.Services.AddSingleton<NotificationRealtimeHub>();
 builder.Services.AddSingleton<WebPushQueue>();
 builder.Services.AddHttpClient<Lib.Net.Http.WebPush.PushServiceClient>();
@@ -533,6 +534,68 @@ api.MapPut("/me/preferences", async (PreferencesRequest request, ClaimsPrincipal
     });
 }).RequireAuthorization();
 
+api.MapGet("/me/alerts", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    var alerts = await db.ForecastAlerts.AsNoTracking()
+        .Join(db.FishingSpots, alert => alert.FishingSpotId, spot => spot.Id, (alert, spot) => new { alert, spot })
+        .Where(item => item.alert.UserId == user.Id)
+        .OrderBy(item => item.spot.Name)
+        .Select(item => new { item.alert, item.spot })
+        .ToListAsync(cancellationToken);
+    return Results.Ok(alerts.Select(item => ForecastAlertDto(item.alert, item.spot)));
+}).RequireAuthorization();
+
+api.MapPost("/me/alerts", async (ForecastAlertRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    var plan = await db.Plans.AsNoTracking().SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
+    if (plan.MaxAlerts <= 0) return Results.BadRequest(new { code = "plan_required", detail = "Alertas de previsão exigem o plano Premium.", requiredPlan = "Premium" });
+    if (request.MinimumScore is < 0 or > 10 || request.LeadHours is < 1 or > 168)
+        return Results.BadRequest(new { code = "invalid_alert", detail = "Informe uma nota entre 0 e 10 e antecedência entre 1 e 168 horas." });
+    var spot = await db.FishingSpots.SingleOrDefaultAsync(item => item.Slug == request.SpotId, cancellationToken);
+    var preferredRegions = await PreferredRegionsAsync(db, user.Id, cancellationToken);
+    if (spot is null || (!SpotRules.Owns(spot, user) && (!SpotRules.IsCommunityVisible(spot) || !SpotRules.IsInPreferredRegion(spot.Region, preferredRegions)))) return Results.NotFound();
+    var activeCount = await db.ForecastAlerts.CountAsync(item => item.UserId == user.Id && item.IsActive, cancellationToken);
+    if (activeCount >= plan.MaxAlerts) return Results.Conflict(new { code = "plan_limit", detail = "Seu plano não permite mais alertas." });
+    if (await db.ForecastAlerts.AnyAsync(item => item.UserId == user.Id && item.FishingSpotId == spot.Id, cancellationToken))
+        return Results.Conflict(new { code = "alert_exists", detail = "Você já acompanha este local." });
+    var alert = new ForecastAlert { UserId = user.Id, FishingSpotId = spot.Id, MinimumScore = request.MinimumScore, LeadHours = request.LeadHours };
+    db.ForecastAlerts.Add(alert);
+    await db.SaveChangesAsync(cancellationToken);
+    return Results.Created($"/api/v1/me/alerts/{alert.Id}", ForecastAlertDto(alert, spot));
+}).RequireAuthorization();
+
+api.MapPut("/me/alerts/{id:guid}", async (Guid id, ForecastAlertRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    if (request.MinimumScore is < 0 or > 10 || request.LeadHours is < 1 or > 168)
+        return Results.BadRequest(new { code = "invalid_alert", detail = "Informe uma nota entre 0 e 10 e antecedência entre 1 e 168 horas." });
+    var alert = await db.ForecastAlerts.SingleOrDefaultAsync(item => item.Id == id && item.UserId == user.Id, cancellationToken);
+    if (alert is null) return Results.NotFound();
+    alert.MinimumScore = request.MinimumScore;
+    alert.LeadHours = request.LeadHours;
+    alert.IsActive = request.IsActive;
+    alert.UpdatedAt = DateTimeOffset.UtcNow;
+    await db.SaveChangesAsync(cancellationToken);
+    var spot = await db.FishingSpots.FindAsync([alert.FishingSpotId], cancellationToken);
+    return spot is null ? Results.NotFound() : Results.Ok(ForecastAlertDto(alert, spot));
+}).RequireAuthorization();
+
+api.MapDelete("/me/alerts/{id:guid}", async (Guid id, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    var alert = await db.ForecastAlerts.SingleOrDefaultAsync(item => item.Id == id && item.UserId == user.Id, cancellationToken);
+    if (alert is null) return Results.NotFound();
+    db.ForecastAlerts.Remove(alert);
+    await db.SaveChangesAsync(cancellationToken);
+    return Results.NoContent();
+}).RequireAuthorization();
+
 api.MapPut("/me/favorites", async (FavoriteRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
@@ -995,6 +1058,18 @@ static object SpotDtoProjection(FishingSpot spot, User user, bool favorite = fal
         isOwner = SpotRules.Owns(spot, user)
     };
 }
+static object ForecastAlertDto(ForecastAlert alert, FishingSpot spot) => new
+{
+    id = alert.Id,
+    spotId = spot.Slug,
+    spotName = spot.Name,
+    minimumScore = alert.MinimumScore,
+    leadHours = alert.LeadHours,
+    isActive = alert.IsActive,
+    lastNotifiedDate = alert.LastNotifiedDate,
+    createdAt = alert.CreatedAt,
+    updatedAt = alert.UpdatedAt
+};
 static object ReportDto(CommunityReport report, FishingSpot spot, string? myVote, bool isMine, string authorName) => new
 {
     id = report.Id,
@@ -1232,7 +1307,18 @@ static object ForecastItemDto(FishingLocationForecast item, bool premium, HashSe
     object Available(object value) => new { state = "available", value };
     object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = "Premium" };
     var classification = item.Score >= 8.5 ? "Excelente" : item.Score >= 7 ? "Muito bom" : item.Score >= 5 ? "Regular" : "Difícil";
-    return new { spotId = item.Id, spotName = item.Location, isOwner = ownerSpotIds is not null && ownerSpotIds.Contains(item.Id), score = Available(item.Score), classification = Available(classification), bestHours = Available(item.BestHours.Select(best => best.Time).ToArray()), wind = Available(hour is null ? "n/d" : $"{hour.WindSpeedKmh:0.#} km/h {hour.WindDirection}"), gusts = Available(hour is null ? "n/d" : $"{hour.WindGustKmh:0.#} km/h"), waves = premium ? Available(hour?.WaveMeters.ToString("0.00") + " m") : Locked(), wavePeriod = premium ? Available(hour?.WavePeriodSeconds.ToString("0.#") + " s") : Locked(), swell = premium ? Available(hour?.SwellMeters.ToString("0.00") + " m") : Locked(), rain = Available(hour is null ? "n/d" : $"{hour.RainMm:0.#} mm ({hour.RainProbability}%)"), airTemperature = Available(hour is null ? "n/d" : $"{hour.AirTemperatureC:0.#} °C"), waterTemperature = premium ? Available(hour?.WaterTemperatureC.ToString("0.#") + " °C") : Locked() };
+    var highlights = ForecastHighlights(hour);
+    return new { spotId = item.Id, spotName = item.Location, isOwner = ownerSpotIds is not null && ownerSpotIds.Contains(item.Id), score = Available(item.Score), classification = Available(classification), bestHours = Available(item.BestHours.Select(best => best.Time).ToArray()), highlights, wind = Available(hour is null ? "n/d" : $"{hour.WindSpeedKmh:0.#} km/h {hour.WindDirection}"), gusts = Available(hour is null ? "n/d" : $"{hour.WindGustKmh:0.#} km/h"), waves = premium ? Available(hour?.WaveMeters.ToString("0.00") + " m") : Locked(), wavePeriod = premium ? Available(hour?.WavePeriodSeconds.ToString("0.#") + " s") : Locked(), swell = premium ? Available(hour?.SwellMeters.ToString("0.00") + " m") : Locked(), rain = Available(hour is null ? "n/d" : $"{hour.RainMm:0.#} mm ({hour.RainProbability}%)"), airTemperature = Available(hour is null ? "n/d" : $"{hour.AirTemperatureC:0.#} °C"), waterTemperature = premium ? Available(hour?.WaterTemperatureC.ToString("0.#") + " °C") : Locked() };
+}
+
+static string[] ForecastHighlights(FishingHourForecast? hour)
+{
+    if (hour is null) return [];
+    var highlights = new List<string>();
+    if (hour.WindSpeedKmh <= 15) highlights.Add("Vento leve");
+    if (hour.RainProbability <= 20) highlights.Add("Pouca chance de chuva");
+    if (hour.WaveMeters <= 1.2) highlights.Add("Ondas moderadas");
+    return highlights.Count > 0 ? highlights.Take(2).ToArray() : ["Condições equilibradas"];
 }
 
 static double DistanceMeters(double lat1, double lon1, double lat2, double lon2)
@@ -1368,6 +1454,7 @@ static void ReplacePartnerOffers(TaNoMarDbContext db, Guid partnerId, PartnerOff
 
 record GoogleLoginRequest(string Credential);
 record PreferencesRequest(string? Region, string? WindUnit, bool? ForecastNotifications, string[]? VisibleMetrics);
+record ForecastAlertRequest(string SpotId, double MinimumScore, int LeadHours, bool IsActive = true);
 record FavoriteRequest(string SpotId, bool IsFavorite);
 record EnabledSpotRequest(string SpotId, bool IsEnabled);
 record PersonalSpotRequest(string Name, double? Latitude, double? Longitude, string? Description, string? City, string? State, string? Region, bool Shared, double? SeaOrientationDegrees, string? Profile);

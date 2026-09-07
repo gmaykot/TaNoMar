@@ -10,6 +10,7 @@ import { updatePreferences } from '@/features/auth/services/preferencesService';
 import type { AuthUser } from '@/features/auth/types/auth';
 import formStyles from '@/features/locations/components/spotForm.module.css';
 import { useDevicePush } from '@/features/notifications/hooks/useDevicePush';
+import { ForecastAlerts } from '@/features/notifications/components/ForecastAlerts';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { routes } from '@/shared/constants/routes';
 import accountStyles from './account.module.css';
@@ -102,6 +103,8 @@ export function AccountNotificationsPage() {
           </div>
         )}
       </Card>
+
+      <ForecastAlerts />
 
       {devicePush.loading || devicePush.configured ? (
         <Card className={accountStyles.formCard}>

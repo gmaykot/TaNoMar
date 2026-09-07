@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import { Anchor } from 'lucide-react';
+import type { ReactNode } from 'react';
 import styles from './components.module.css';
 
 interface FeedbackStateProps {
@@ -7,6 +8,7 @@ interface FeedbackStateProps {
   description: string;
   icon?: LucideIcon;
   busy?: boolean;
+  action?: ReactNode;
 }
 
 export function FeedbackState({
@@ -14,6 +16,7 @@ export function FeedbackState({
   description,
   icon: Icon = Anchor,
   busy = false,
+  action,
 }: FeedbackStateProps) {
   return (
     <div className={`${styles.feedback} ${busy ? styles.busy : ''}`} role="status" aria-busy={busy}>
@@ -28,6 +31,7 @@ export function FeedbackState({
       </span>
       <strong>{title}</strong>
       <p>{description}</p>
+      {action ? <div className={styles.feedbackAction}>{action}</div> : null}
       {busy ? (
         <span className={styles.feedbackDots} aria-hidden="true">
           <i />

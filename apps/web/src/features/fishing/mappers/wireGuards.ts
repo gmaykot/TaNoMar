@@ -60,6 +60,7 @@ function parseForecastItem(value: unknown): WireForecastItem {
     score: parseMetric(value.score, readNumber, 'score'),
     classification: parseMetric(value.classification, readString, 'classification'),
     bestHours: parseMetric(value.bestHours, parseStringList, 'bestHours'),
+    highlights: parseStringList(value.highlights) ?? undefined,
     wind: parseMetric(value.wind, readString, 'wind'),
     gusts: parseMetric(value.gusts, readString, 'gusts'),
     waves: parseMetric(value.waves, readString, 'waves'),

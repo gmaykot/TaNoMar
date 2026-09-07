@@ -19,6 +19,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
     public DbSet<Partner> Partners => Set<Partner>();
     public DbSet<PartnerOffer> PartnerOffers => Set<PartnerOffer>();
     public DbSet<PlatformSettings> PlatformSettings => Set<PlatformSettings>();
+    public DbSet<ForecastAlert> ForecastAlerts => Set<ForecastAlert>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,6 +38,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
         modelBuilder.Entity<FishingForecastSnapshot>().Property(item => item.PayloadJson).HasColumnType("jsonb");
         modelBuilder.Entity<Partner>().HasIndex(item => item.Slug).IsUnique();
         modelBuilder.Entity<PartnerOffer>().HasIndex(item => item.PartnerId);
+        modelBuilder.Entity<ForecastAlert>().HasIndex(item => new { item.UserId, item.FishingSpotId }).IsUnique();
 
         modelBuilder.Entity<Plan>().HasData(
             new Plan { Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0001"), Code = "free", Name = "Free", MaxForecastDays = 3, MaxFavorites = 0, MaxPersonalSpots = 0, MaxAlerts = 0 },
@@ -221,4 +223,17 @@ public sealed class PlatformSettings
 {
     public Guid Id { get; set; }
     public bool ShowPartners { get; set; }
+}
+
+public sealed class ForecastAlert
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid UserId { get; set; }
+    public Guid FishingSpotId { get; set; }
+    public double MinimumScore { get; set; } = 8;
+    public int LeadHours { get; set; } = 24;
+    public bool IsActive { get; set; } = true;
+    public DateOnly? LastNotifiedDate { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

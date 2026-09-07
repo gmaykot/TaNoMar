@@ -96,7 +96,7 @@ describe('forecastMapper', () => {
       locationName: 'Pântano do Sul',
       score: 9.1,
       classification: 'excellent',
-      bestWindow: '05:00–17:00',
+      bestWindow: '05:00, 06:00 e 17:00',
       isOwner: true,
     });
     expect(forecast.days[1]?.ranking[0]).toMatchObject({ isOwner: false });

@@ -39,6 +39,7 @@ export interface ForecastRankingItem {
   classification: FishingClassification;
   bestWindow: string;
   bestHours: string[];
+  highlights?: string[];
   metrics: FishingMetric[];
   isOwner: boolean;
 }

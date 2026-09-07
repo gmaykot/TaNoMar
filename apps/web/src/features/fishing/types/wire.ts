@@ -85,6 +85,7 @@ export interface WireForecastItem {
   score: WireMetric<number>;
   classification: WireMetric<string>;
   bestHours: WireMetric<string[]>;
+  highlights?: string[];
   wind: WireMetric<string>;
   gusts: WireMetric<string>;
   waves: WireMetric<string>;

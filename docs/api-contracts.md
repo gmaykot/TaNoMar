@@ -59,8 +59,12 @@ O contrato de métrica é uma união `{ state: "available", value }` ou `{ state
 - `GET /notifications/stream`: SSE autenticado (`Authorization` Bearer). Primeiro evento e pings seguintes usam `{ unread }`. Heartbeat em comentário. O access token é validado na abertura da conexão.
 - `GET /notifications/push-public-key`: `{ publicKey }` VAPID. Sem chaves configuradas responde `404`.
 - `PUT /notifications/push-subscription` e `DELETE /notifications/push-subscription`: `{ endpoint, p256dh, auth }` no PUT; `{ endpoint }` no DELETE. Um endpoint por aparelho; `410` no envio remove a linha.
+- `GET /me/alerts`: lista os alertas de previsão do usuário com local, nota mínima, antecedência, estado e última data notificada.
+- `POST /me/alerts`: cria `{ spotId, minimumScore, leadHours }`. Só Premium; a cota é `Plan.MaxAlerts` e a antecedência aceita de 1 a 168 horas.
+- `PUT /me/alerts/{id}`: altera `{ spotId, minimumScore, leadHours, isActive }` do próprio alerta.
+- `DELETE /me/alerts/{id}`: remove o alerta do próprio usuário.
 
-`MaxAlerts` permanece no plano como cota reservada; não há entidade nem endpoints de alerta de previsão nesta versão.
+O worker de alertas verifica a previsão de hora em hora, respeita `forecastNotifications`, evita repetir a mesma data e publica no inbox, SSE e Web Push quando a nota mínima é atingida. O envio não substitui a conferência da previsão no local.
 
 ## Implantação
 
