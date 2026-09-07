@@ -19,6 +19,17 @@ internal static class SpotRules
     public static bool IsEnabledForUser(FishingSpot spot, IReadOnlyDictionary<Guid, bool> settings) =>
         settings.TryGetValue(spot.Id, out var enabled) ? enabled : EnabledByDefault(spot);
 
+    public static bool IsInPreferredRegion(FishingSpot spot, string? preferredRegions) =>
+        IsInPreferredRegion(spot.Region, preferredRegions);
+
+    public static bool IsInPreferredRegion(string spotRegion, string? preferredRegions)
+    {
+        var regions = preferredRegions?.Split('|', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) ?? [];
+        return regions.Length == 0
+            || regions.Any(IsEntireIsland)
+            || regions.Contains(spotRegion, StringComparer.OrdinalIgnoreCase);
+    }
+
     public static bool IsAdmin(User user) =>
         string.Equals(user.Role, "Admin", StringComparison.Ordinal);
 
@@ -29,6 +40,11 @@ internal static class SpotRules
 
     public static bool IsValidReportType(string type) =>
         ReportTypes.Contains(type, StringComparer.OrdinalIgnoreCase);
+
+    private static bool IsEntireIsland(string region) =>
+        string.Equals(region, "Florianópolis", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(region, "Meu mapa", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(region, "Ilha de Santa Catarina", StringComparison.OrdinalIgnoreCase);
 
     public static string? NormalizeReportComment(string? comment)
     {

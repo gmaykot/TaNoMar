@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { forecastFixture } from '@/features/forecast/fixtures/forecast';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { HomePage } from './HomePage';
 
 const { authState } = vi.hoisted(() => ({
-  authState: { showPartners: false },
+  authState: { showPartners: false, visibleMetrics: undefined as string[] | undefined },
 }));
 
 vi.mock('@/features/forecast/services/forecastService', () => ({
@@ -31,7 +31,12 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
         maxAlerts: 10,
       },
       features: { showPartners: authState.showPartners },
-      preferences: { region: 'Florianópolis', windUnit: 'kmh', forecastNotifications: true },
+      preferences: {
+        region: 'Florianópolis',
+        windUnit: 'kmh',
+        forecastNotifications: true,
+        visibleMetrics: authState.visibleMetrics,
+      },
     },
     loginWithGoogle: vi.fn(),
     logout: vi.fn(),
@@ -85,6 +90,7 @@ vi.mock('@/features/partners/hooks/usePartners', () => ({
 describe('HomePage', () => {
   beforeEach(() => {
     authState.showPartners = false;
+    authState.visibleMetrics = undefined;
   });
 
   it('troca a melhor escolha quando a data muda', async () => {
@@ -106,6 +112,18 @@ describe('HomePage', () => {
     );
     expect(screen.getByRole('button', { name: /Hoje/ })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: /Amanhã/ })).toBeInTheDocument();
+  });
+
+  it('mostra somente os indicadores escolhidos pelo usuário Premium', async () => {
+    authState.visibleMetrics = ['rain'];
+    renderWithProviders(<HomePage />);
+
+    const heading = await screen.findByRole('heading', { name: 'Pântano do Sul' });
+    const hero = heading.closest('article');
+    expect(hero).toBeTruthy();
+    if (!hero) return;
+    expect(within(hero).getByText('Chuva')).toBeInTheDocument();
+    expect(within(hero).queryByText('Vento')).not.toBeInTheDocument();
   });
 
   it('troca o dia ao arrastar o carrossel', async () => {

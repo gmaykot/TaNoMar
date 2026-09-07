@@ -72,8 +72,8 @@ public sealed class RefreshToken
 public sealed class FishingSpot
 {
     public FishingSpot() { }
-    public FishingSpot(string slug, string name, double latitude, double longitude, double seaOrientationDegrees, string profile)
-    { Slug = slug; Name = name; Latitude = latitude; Longitude = longitude; SeaOrientationDegrees = seaOrientationDegrees; Profile = profile; Visibility = "official"; City = "Florianópolis"; State = "SC"; Region = "Ilha de Santa Catarina"; }
+    public FishingSpot(string slug, string name, string region, double latitude, double longitude, double seaOrientationDegrees, string profile)
+    { Slug = slug; Name = name; Region = region; Latitude = latitude; Longitude = longitude; SeaOrientationDegrees = seaOrientationDegrees; Profile = profile; Visibility = "official"; City = "Florianópolis"; State = "SC"; }
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Slug { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
@@ -131,6 +131,7 @@ public sealed class Notification
     public Guid UserId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Body { get; set; } = string.Empty;
+    public string? Region { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? ReadAt { get; set; }
     public DateTimeOffset? RemovedAt { get; set; }
@@ -154,6 +155,7 @@ public sealed class UserPreference
     public string Region { get; set; } = "Florianópolis";
     public string WindUnit { get; set; } = "kmh";
     public bool ForecastNotifications { get; set; } = true;
+    public string VisibleMetrics { get; set; } = "wind,gusts,waves,wave-period,swell,rain,air-temperature,water-temperature";
 }
 
 public sealed class FavoriteSpot

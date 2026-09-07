@@ -22,6 +22,7 @@ export function RankingPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedDate, setSelectedDate] = useState('');
   const premium = auth.user?.plan.code === 'premium';
+  const visibleMetricKeys = premium ? auth.user?.preferences.visibleMetrics : undefined;
   const emphasis = parseRankingEmphasis(searchParams.get('enfase'), premium);
   const forecast = useForecast(rankingEmphasisParam(emphasis));
 
@@ -71,7 +72,11 @@ export function RankingPage() {
       />
       <RankingEmphasisFilters emphasis={emphasis} premium={premium} onChange={setEmphasis} />
       {activeDay?.ranking.length ? (
-        <RankingList items={activeDay.ranking} emphasisKey={rankingEmphasisMetricKey(emphasis)} />
+        <RankingList
+          items={activeDay.ranking}
+          emphasisKey={rankingEmphasisMetricKey(emphasis)}
+          visibleMetricKeys={visibleMetricKeys}
+        />
       ) : (
         <FeedbackState
           title="Nenhum local nas previsões"

@@ -4,15 +4,18 @@ import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { AccountPage } from './AccountPage';
 
-const { logout, togglePush, authState } = vi.hoisted(() => ({
+const { logout, togglePush, updatePreferences, authState } = vi.hoisted(() => ({
   logout: vi.fn(),
   togglePush: vi.fn(),
+  updatePreferences: vi.fn(() => Promise.resolve()),
   authState: {
     maxPersonalSpots: 10,
     maxFavorites: 20,
     maxAlerts: 10,
   },
 }));
+
+vi.mock('@/features/auth/services/preferencesService', () => ({ updatePreferences }));
 
 vi.mock('@/features/notifications/hooks/useDevicePush', () => ({
   useDevicePush: () => ({
@@ -70,6 +73,7 @@ describe('AccountPage', () => {
     authState.maxFavorites = 20;
     authState.maxAlerts = 10;
     togglePush.mockReset();
+    updatePreferences.mockClear();
   });
 
   it('mostra atalhos da área logada e chama logout', async () => {
@@ -113,6 +117,20 @@ describe('AccountPage', () => {
     expect(togglePush).toHaveBeenCalledWith(true);
   });
 
+  it('salva os indicadores escolhidos no plano Premium', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AccountPage />);
+
+    await user.click(screen.getByRole('checkbox', { name: 'Ondas' }));
+    await user.click(screen.getByRole('button', { name: 'Salvar preferências' }));
+
+    expect(updatePreferences).toHaveBeenCalledWith(
+      expect.objectContaining({
+        visibleMetrics: expect.not.arrayContaining(['waves']),
+      }),
+    );
+  });
+
   it('bloqueia locais, favoritos e notificações no plano Free', () => {
     authState.maxPersonalSpots = 0;
     authState.maxFavorites = 0;
@@ -133,6 +151,9 @@ describe('AccountPage', () => {
     );
     expect(
       screen.getByLabelText('Notificações de previsão bloqueadas no plano atual'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Seleção de indicadores bloqueada no plano atual'),
     ).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Meus locais/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Favoritos/ })).not.toBeInTheDocument();

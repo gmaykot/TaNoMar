@@ -28,6 +28,7 @@ export function MetricGrid({ metrics, keys, limit }: MetricGridProps) {
       })
     : metrics;
   const visibleMetrics = typeof limit === 'number' ? selected.slice(0, limit) : selected;
+  if (visibleMetrics.length === 0) return null;
   return (
     <div className={styles.metricGrid}>
       {visibleMetrics.map((metric) => (

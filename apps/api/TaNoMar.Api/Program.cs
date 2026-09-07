@@ -192,8 +192,9 @@ api.MapGet("/fishing-spots", async (ClaimsPrincipal principal, TaNoMarDbContext 
     if (user is null) return Results.Unauthorized();
     var favoriteIds = await db.FavoriteSpots.Where(item => item.UserId == user.Id).Select(item => item.FishingSpotId).ToListAsync(cancellationToken);
     var enabledSettings = await EnabledSettingsAsync(db, user.Id, cancellationToken);
+    var preferredRegions = await PreferredRegionsAsync(db, user.Id, cancellationToken);
     var spots = await db.FishingSpots.AsNoTracking().Where(spot => spot.Visibility == "official" || (spot.Visibility == "shared" && spot.IsApproved) || spot.OwnerUserId == user.Id).OrderBy(spot => spot.Name).ToListAsync(cancellationToken);
-    return Results.Ok(spots.Select(spot => SpotDtoProjection(spot, user, favoriteIds.Contains(spot.Id), SpotRules.IsEnabledForUser(spot, enabledSettings))).ToList());
+    return Results.Ok(spots.Where(spot => SpotRules.IsInPreferredRegion(spot, preferredRegions)).Select(spot => SpotDtoProjection(spot, user, favoriteIds.Contains(spot.Id), SpotRules.IsEnabledForUser(spot, enabledSettings))).ToList());
 }).RequireAuthorization();
 
 api.MapPost("/fishing-spots", async (PersonalSpotRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, CancellationToken cancellationToken) =>
@@ -203,7 +204,7 @@ api.MapPost("/fishing-spots", async (PersonalSpotRequest request, ClaimsPrincipa
     var plan = await db.Plans.SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
     var currentCount = await db.FishingSpots.CountAsync(spot => spot.OwnerUserId == user.Id, cancellationToken);
     if (currentCount >= plan.MaxPersonalSpots) return Results.Conflict(new { code = "plan_limit", detail = "Seu plano não permite mais locais pessoais." });
-    if (request.Latitude is null || request.Longitude is null || string.IsNullOrWhiteSpace(request.Name)) return Results.BadRequest(new { detail = "Nome e coordenadas são obrigatórios." });
+    if (request.Latitude is null || request.Longitude is null || string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Region)) return Results.BadRequest(new { detail = "Nome, região e coordenadas são obrigatórios." });
     var existingSpots = await db.FishingSpots.AsNoTracking().ToListAsync(cancellationToken);
     if (IsDuplicateSpot(existingSpots, request.Name.Trim(), request.Latitude.Value, request.Longitude.Value))
         return Results.Conflict(new { code = "duplicate_spot", detail = "Já existe um local com esse nome ou muito próximo." });
@@ -215,7 +216,7 @@ api.MapPost("/fishing-spots", async (PersonalSpotRequest request, ClaimsPrincipa
         Description = request.Description,
         City = request.City ?? "",
         State = request.State ?? "SC",
-        Region = request.Region ?? "Meu mapa",
+        Region = request.Region.Trim(),
         Type = "personalizado",
         Visibility = shared ? "shared" : "private",
         IsApproved = !shared,
@@ -239,7 +240,7 @@ api.MapPut("/fishing-spots/{id}", async (string id, PersonalSpotRequest request,
     var spot = await db.FishingSpots.SingleOrDefaultAsync(item => item.Slug == id, cancellationToken);
     if (spot is null) return Results.NotFound();
     if (!SpotRules.Owns(spot, user) || spot.Visibility == "official") return Results.Forbid();
-    if (request.Latitude is null || request.Longitude is null || string.IsNullOrWhiteSpace(request.Name)) return Results.BadRequest(new { detail = "Nome e coordenadas são obrigatórios." });
+    if (request.Latitude is null || request.Longitude is null || string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Region)) return Results.BadRequest(new { detail = "Nome, região e coordenadas são obrigatórios." });
     var others = await db.FishingSpots.AsNoTracking().Where(item => item.Id != spot.Id).ToListAsync(cancellationToken);
     if (IsDuplicateSpot(others, request.Name.Trim(), request.Latitude.Value, request.Longitude.Value))
         return Results.Conflict(new { code = "duplicate_spot", detail = "Já existe um local com esse nome ou muito próximo." });
@@ -296,12 +297,13 @@ api.MapPost("/admin/fishing-spots/{id}/approve", async (string id, ClaimsPrincip
     Guid? ownerId = spot.OwnerUserId;
     const string title = "Local publicado";
     var body = $"“{spot.Name}” agora aparece para a comunidade.";
-    if (ownerId is Guid recipientId)
-        AddNotification(db, recipientId, title, body);
+    var notifiedOwnerId = ownerId is Guid recipientId && await UserPrefersRegionAsync(db, recipientId, spot.Region, cancellationToken) ? recipientId : (Guid?)null;
+    if (notifiedOwnerId is Guid notifiedId)
+        AddNotification(db, notifiedId, title, body, spot.Region);
     await db.SaveChangesAsync(cancellationToken);
     await TryWarmSpotAsync(fishing, spot, cancellationToken);
-    if (ownerId is Guid notifiedId)
-        DispatchCreated(hub, push, notifiedId, title, body);
+    if (notifiedOwnerId is Guid dispatchedId)
+        DispatchCreated(hub, push, dispatchedId, title, body);
     return Results.NoContent();
 }).RequireAuthorization();
 
@@ -316,11 +318,12 @@ api.MapPost("/admin/fishing-spots/{id}/reject", async (string id, ClaimsPrincipa
     Guid? ownerId = spot.OwnerUserId;
     const string title = "Local não publicado";
     var body = $"“{spot.Name}” permanece só no seu mapa.";
-    if (ownerId is Guid recipientId)
-        AddNotification(db, recipientId, title, body);
+    var notifiedOwnerId = ownerId is Guid recipientId && await UserPrefersRegionAsync(db, recipientId, spot.Region, cancellationToken) ? recipientId : (Guid?)null;
+    if (notifiedOwnerId is Guid notifiedId)
+        AddNotification(db, notifiedId, title, body, spot.Region);
     await db.SaveChangesAsync(cancellationToken);
-    if (ownerId is Guid notifiedId)
-        DispatchCreated(hub, push, notifiedId, title, body);
+    if (notifiedOwnerId is Guid dispatchedId)
+        DispatchCreated(hub, push, dispatchedId, title, body);
     return Results.NoContent();
 }).RequireAuthorization();
 
@@ -503,14 +506,31 @@ api.MapPut("/me/preferences", async (PreferencesRequest request, ClaimsPrincipal
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
+    if (request.Region is not null && string.IsNullOrWhiteSpace(request.Region)) return Results.BadRequest(new { detail = "Região é obrigatória." });
     var preferences = await db.UserPreferences.SingleOrDefaultAsync(item => item.UserId == user.Id, cancellationToken) ?? new UserPreference { UserId = user.Id };
-    preferences.Region = request.Region ?? preferences.Region;
+    preferences.Region = request.Region?.Trim() ?? preferences.Region;
     preferences.WindUnit = request.WindUnit ?? preferences.WindUnit;
     preferences.ForecastNotifications = request.ForecastNotifications ?? preferences.ForecastNotifications;
+    if (request.VisibleMetrics is not null)
+    {
+        if (!string.Equals(user.PlanCode, "premium", StringComparison.Ordinal))
+            return Results.BadRequest(new { code = "plan_required", detail = "Personalizar os indicadores exige o plano Premium.", requiredPlan = "Premium" });
+        if (request.VisibleMetrics.Any(metric => !IsVisibleMetric(metric)))
+            return Results.BadRequest(new { code = "invalid_metrics", detail = "Um ou mais indicadores são inválidos." });
+        preferences.VisibleMetrics = string.Join(
+            ',',
+            ParseVisibleMetrics(null).Where(request.VisibleMetrics.Contains));
+    }
     if (preferences.Id == Guid.Empty) db.UserPreferences.Add(preferences);
     else if (db.Entry(preferences).State == EntityState.Detached) db.UserPreferences.Add(preferences);
     await db.SaveChangesAsync(cancellationToken);
-    return Results.Ok(preferences);
+    return Results.Ok(new
+    {
+        region = preferences.Region,
+        windUnit = preferences.WindUnit,
+        forecastNotifications = preferences.ForecastNotifications,
+        visibleMetrics = ParseVisibleMetrics(preferences.VisibleMetrics)
+    });
 }).RequireAuthorization();
 
 api.MapPut("/me/favorites", async (FavoriteRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
@@ -519,7 +539,8 @@ api.MapPut("/me/favorites", async (FavoriteRequest request, ClaimsPrincipal prin
     if (user is null) return Results.Unauthorized();
     var spot = await db.FishingSpots.SingleOrDefaultAsync(item => item.Slug == request.SpotId, cancellationToken);
     if (spot is null) return Results.NotFound();
-    if (!SpotRules.CanSee(spot, user) || (spot.Visibility == "shared" && !spot.IsApproved && !SpotRules.Owns(spot, user))) return Results.Forbid();
+    var preferredRegions = await PreferredRegionsAsync(db, user.Id, cancellationToken);
+    if (!SpotRules.CanSee(spot, user) || !SpotRules.IsInPreferredRegion(spot, preferredRegions) || (spot.Visibility == "shared" && !spot.IsApproved && !SpotRules.Owns(spot, user))) return Results.Forbid();
     var plan = await db.Plans.SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
     var favorite = await db.FavoriteSpots.SingleOrDefaultAsync(item => item.UserId == user.Id && item.FishingSpotId == spot.Id, cancellationToken);
     if (request.IsFavorite && favorite is null && await db.FavoriteSpots.CountAsync(item => item.UserId == user.Id, cancellationToken) >= plan.MaxFavorites) return Results.Conflict(new { code = "plan_limit", detail = "Seu plano não permite mais favoritos." });
@@ -535,7 +556,8 @@ api.MapPut("/me/enabled-spots", async (EnabledSpotRequest request, ClaimsPrincip
     if (user is null) return Results.Unauthorized();
     var spot = await db.FishingSpots.SingleOrDefaultAsync(item => item.Slug == request.SpotId, cancellationToken);
     if (spot is null) return Results.NotFound();
-    if (!SpotRules.CanSee(spot, user) || (spot.Visibility == "shared" && !spot.IsApproved && !SpotRules.Owns(spot, user))) return Results.Forbid();
+    var preferredRegions = await PreferredRegionsAsync(db, user.Id, cancellationToken);
+    if (!SpotRules.CanSee(spot, user) || !SpotRules.IsInPreferredRegion(spot, preferredRegions) || (spot.Visibility == "shared" && !spot.IsApproved && !SpotRules.Owns(spot, user))) return Results.Forbid();
     var setting = await db.EnabledSpots.SingleOrDefaultAsync(item => item.UserId == user.Id && item.FishingSpotId == spot.Id, cancellationToken);
     if (setting is null)
     {
@@ -562,9 +584,11 @@ api.MapGet("/forecasts/ranking", async (string? emphasis, ClaimsPrincipal princi
     if (FishingRankingEmphasis.RequiresPremium(parsedEmphasis) && !premium)
         return Results.BadRequest(new { code = "plan_required", detail = "Reordenar o ranking exige o plano Premium.", requiredPlan = "Premium" });
     var enabledSettings = await EnabledSettingsAsync(db, user.Id, cancellationToken);
+    var preferredRegions = await PreferredRegionsAsync(db, user.Id, cancellationToken);
     var visibleSpots = await db.FishingSpots.AsNoTracking()
         .Where(spot => spot.Visibility == "official" || (spot.Visibility == "shared" && spot.IsApproved) || spot.OwnerUserId == user.Id)
         .ToListAsync(cancellationToken);
+    visibleSpots = visibleSpots.Where(spot => SpotRules.IsInPreferredRegion(spot, preferredRegions)).ToList();
     var enabledSlugs = visibleSpots.Where(spot => SpotRules.IsEnabledForUser(spot, enabledSettings)).Select(spot => spot.Slug).ToHashSet();
     var ownerSlugs = await OwnerSpotSlugsAsync(db, user.Id, cancellationToken);
     var days = new List<object>();
@@ -582,7 +606,8 @@ api.MapGet("/fishing-spots/{id}/forecast", async (string id, ClaimsPrincipal pri
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
     var spot = await db.FishingSpots.AsNoTracking().SingleOrDefaultAsync(item => item.Slug == id && (item.Visibility == "official" || (item.Visibility == "shared" && item.IsApproved) || item.OwnerUserId == user.Id), cancellationToken);
-    if (spot is null) return Results.NotFound();
+    var preferredRegions = await PreferredRegionsAsync(db, user.Id, cancellationToken);
+    if (spot is null || !SpotRules.IsInPreferredRegion(spot, preferredRegions)) return Results.NotFound();
     var plan = await db.Plans.SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
     var result = new List<object>();
     for (var day = 0; day < plan.MaxForecastDays; day++)
@@ -599,7 +624,8 @@ api.MapGet("/fishing-spots/{id}/marine", async (string id, DateOnly? date, Claim
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
     var spot = await db.FishingSpots.AsNoTracking().SingleOrDefaultAsync(item => item.Slug == id && (item.Visibility == "official" || (item.Visibility == "shared" && item.IsApproved) || item.OwnerUserId == user.Id), cancellationToken);
-    if (spot is null) return Results.NotFound();
+    var preferredRegions = await PreferredRegionsAsync(db, user.Id, cancellationToken);
+    if (spot is null || !SpotRules.IsInPreferredRegion(spot, preferredRegions)) return Results.NotFound();
     var plan = await db.Plans.SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
     var targetDate = date ?? fishing.Today();
     var dayOffset = targetDate.DayNumber - fishing.Today().DayNumber;
@@ -624,13 +650,16 @@ api.MapGet("/community/reports", async (string? spotId, ClaimsPrincipal principa
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
+    var preferredRegions = await PreferredRegionsAsync(db, user.Id, cancellationToken);
     var now = DateTimeOffset.UtcNow;
     var query = db.CommunityReports.AsNoTracking().Where(report => report.ExpiresAt > now)
         .Join(db.FishingSpots, report => report.FishingSpotId, spot => spot.Id, (report, spot) => new { report, spot })
         .Where(item => item.spot.Visibility == "official" || (item.spot.Visibility == "shared" && item.spot.IsApproved));
     if (!string.IsNullOrWhiteSpace(spotId))
         query = query.Where(item => item.spot.Slug == spotId);
-    var rows = await query.OrderByDescending(item => item.report.CreatedAt).ToListAsync(cancellationToken);
+    var rows = (await query.OrderByDescending(item => item.report.CreatedAt).ToListAsync(cancellationToken))
+        .Where(item => SpotRules.IsInPreferredRegion(item.spot, preferredRegions))
+        .ToList();
     var reportIds = rows.Select(item => item.report.Id).ToList();
     var authorIds = rows.Select(item => item.report.UserId).Distinct().ToList();
     var myVotes = await db.CommunityReportVotes.AsNoTracking().Where(vote => vote.UserId == user.Id && reportIds.Contains(vote.ReportId)).ToListAsync(cancellationToken);
@@ -645,6 +674,8 @@ api.MapPost("/community/reports", async (CommunityReportRequest request, ClaimsP
     var spot = await db.FishingSpots.SingleOrDefaultAsync(item => item.Slug == request.SpotId, cancellationToken);
     if (spot is null) return Results.NotFound();
     if (!SpotRules.IsCommunityVisible(spot)) return Results.Forbid();
+    var preferredRegions = await PreferredRegionsAsync(db, user.Id, cancellationToken);
+    if (!SpotRules.IsInPreferredRegion(spot, preferredRegions)) return Results.Forbid();
     var type = request.Type.Trim().ToLowerInvariant();
     var comment = SpotRules.NormalizeReportComment(request.Comment);
     var (dayStart, dayEnd) = SpotRules.SaoPauloDayUtcRange(DateTimeOffset.UtcNow);
@@ -659,14 +690,16 @@ api.MapPost("/community/reports", async (CommunityReportRequest request, ClaimsP
         return Results.Conflict(new { code = "duplicate_report", detail = "Você já enviou este relato hoje neste local." });
     var report = new CommunityReport { UserId = user.Id, FishingSpotId = spot.Id, Type = type, Comment = comment, ExpiresAt = DateTimeOffset.UtcNow.AddHours(type == "perigo" ? 24 : 12) };
     db.CommunityReports.Add(report);
-    var recipientIds = await db.Users.Where(item => item.IsActive && item.Id != user.Id).Select(item => item.Id).ToListAsync(cancellationToken);
+    var activeRecipientIds = await db.Users.Where(item => item.IsActive && item.Id != user.Id).Select(item => item.Id).ToListAsync(cancellationToken);
+    var recipientPreferences = await db.UserPreferences.AsNoTracking().Where(item => activeRecipientIds.Contains(item.UserId)).ToDictionaryAsync(item => item.UserId, item => item.Region, cancellationToken);
+    var recipientIds = activeRecipientIds.Where(id => SpotRules.IsInPreferredRegion(spot.Region, recipientPreferences.GetValueOrDefault(id))).ToList();
     const string title = "Novo relato";
     var body = $"{user.Name} relatou {LabelForReportType(type)} em {spot.Name}.";
     foreach (var recipientId in recipientIds)
-        AddNotification(db, recipientId, title, body);
+        AddNotification(db, recipientId, title, body, spot.Region);
     const string authorTitle = "Relato enviado";
     var authorBody = $"Seu relato de {LabelForReportType(type)} em {spot.Name} foi publicado.";
-    AddNotification(db, user.Id, authorTitle, authorBody);
+    AddNotification(db, user.Id, authorTitle, authorBody, spot.Region);
     await db.SaveChangesAsync(cancellationToken);
     foreach (var recipientId in recipientIds)
         DispatchCreated(hub, push, recipientId, title, body);
@@ -691,7 +724,9 @@ api.MapGet("/notifications", async (ClaimsPrincipal principal, TaNoMarDbContext 
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
-    return Results.Ok(await db.Notifications.AsNoTracking().Where(item => item.UserId == user.Id && item.RemovedAt == null && item.ExpiresAt > DateTimeOffset.UtcNow).OrderByDescending(item => item.CreatedAt).Select(item => new { id = item.Id, title = item.Title, body = item.Body, createdAt = item.CreatedAt, readAt = item.ReadAt }).ToListAsync(cancellationToken));
+    var preferredRegions = await PreferredRegionsAsync(db, user.Id, cancellationToken);
+    var notifications = await db.Notifications.AsNoTracking().Where(item => item.UserId == user.Id && item.RemovedAt == null && item.ExpiresAt > DateTimeOffset.UtcNow).OrderByDescending(item => item.CreatedAt).ToListAsync(cancellationToken);
+    return Results.Ok(notifications.Where(item => item.Region is null || SpotRules.IsInPreferredRegion(item.Region, preferredRegions)).Select(item => new { id = item.Id, title = item.Title, body = item.Body, createdAt = item.CreatedAt, readAt = item.ReadAt }).ToList());
 }).RequireAuthorization();
 api.MapGet("/notifications/unread", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
 {
@@ -901,12 +936,23 @@ static async Task<object> UserDtoAsync(User user, TaNoMarDbContext db, Cancellat
         {
             region = preferences?.Region ?? "Florianópolis",
             windUnit = preferences?.WindUnit ?? "kmh",
-            forecastNotifications = preferences?.ForecastNotifications ?? true
+            forecastNotifications = preferences?.ForecastNotifications ?? true,
+            visibleMetrics = ParseVisibleMetrics(preferences?.VisibleMetrics)
         }
     };
 }
+static string[] ParseVisibleMetrics(string? value) =>
+    (value ?? "wind,gusts,waves,wave-period,swell,rain,air-temperature,water-temperature")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+static bool IsVisibleMetric(string metric) => metric is
+    "wind" or "gusts" or "waves" or "wave-period" or "swell" or "rain" or
+    "air-temperature" or "water-temperature";
 static Task<Dictionary<Guid, bool>> EnabledSettingsAsync(TaNoMarDbContext db, Guid userId, CancellationToken cancellationToken) =>
     db.EnabledSpots.Where(item => item.UserId == userId).ToDictionaryAsync(item => item.FishingSpotId, item => item.IsEnabled, cancellationToken);
+static async Task<string?> PreferredRegionsAsync(TaNoMarDbContext db, Guid userId, CancellationToken cancellationToken) =>
+    await db.UserPreferences.AsNoTracking().Where(item => item.UserId == userId).Select(item => item.Region).SingleOrDefaultAsync(cancellationToken);
+static async Task<bool> UserPrefersRegionAsync(TaNoMarDbContext db, Guid userId, string region, CancellationToken cancellationToken) =>
+    SpotRules.IsInPreferredRegion(region, await PreferredRegionsAsync(db, userId, cancellationToken));
 
 static async Task TryWarmSpotAsync(FishingForecastService fishing, FishingSpot spot, CancellationToken cancellationToken)
 {
@@ -967,15 +1013,19 @@ static object ReportDto(CommunityReport report, FishingSpot spot, string? myVote
 static string AuthorName(string? name) =>
     string.IsNullOrWhiteSpace(name) ? "Pescador" : name.Trim();
 static string LabelForReportType(string type) => type == "perigo" ? "perigo" : "condição";
-static void AddNotification(TaNoMarDbContext db, Guid userId, string title, string body) =>
-    db.Notifications.Add(new Notification { UserId = userId, Title = title, Body = body });
+static void AddNotification(TaNoMarDbContext db, Guid userId, string title, string body, string? region = null) =>
+    db.Notifications.Add(new Notification { UserId = userId, Title = title, Body = body, Region = region });
 static void DispatchCreated(NotificationRealtimeHub hub, WebPushQueue push, Guid userId, string title, string body)
 {
     hub.Publish(userId, true);
     push.Enqueue(userId, title, body);
 }
-static Task<bool> HasUnreadAsync(TaNoMarDbContext db, Guid userId, CancellationToken cancellationToken) =>
-    db.Notifications.AsNoTracking().AnyAsync(item => item.UserId == userId && item.RemovedAt == null && item.ExpiresAt > DateTimeOffset.UtcNow && item.ReadAt == null, cancellationToken);
+static async Task<bool> HasUnreadAsync(TaNoMarDbContext db, Guid userId, CancellationToken cancellationToken)
+{
+    var preferredRegions = await PreferredRegionsAsync(db, userId, cancellationToken);
+    var regions = await db.Notifications.AsNoTracking().Where(item => item.UserId == userId && item.RemovedAt == null && item.ExpiresAt > DateTimeOffset.UtcNow && item.ReadAt == null).Select(item => item.Region).ToListAsync(cancellationToken);
+    return regions.Any(region => region is null || SpotRules.IsInPreferredRegion(region, preferredRegions));
+}
 static async Task WriteSseEvent(HttpContext context, SemaphoreSlim gate, object payload, CancellationToken cancellationToken)
 {
     await gate.WaitAsync(cancellationToken);
@@ -999,7 +1049,7 @@ static void ApplyPersonalSpot(FishingSpot spot, PersonalSpotRequest request)
     spot.Description = request.Description;
     spot.City = request.City ?? spot.City;
     spot.State = request.State ?? spot.State;
-    spot.Region = request.Region ?? spot.Region;
+    spot.Region = request.Region!.Trim();
     spot.Latitude = request.Latitude;
     spot.Longitude = request.Longitude;
     spot.SeaOrientationDegrees = request.SeaOrientationDegrees ?? spot.SeaOrientationDegrees;
@@ -1028,6 +1078,8 @@ static async Task<IResult> VoteReportAsync(Guid id, string kind, ClaimsPrincipal
     if (report is null || report.ExpiresAt <= DateTimeOffset.UtcNow) return Results.NotFound();
     var spot = await db.FishingSpots.SingleOrDefaultAsync(item => item.Id == report.FishingSpotId, cancellationToken);
     if (spot is null || !SpotRules.IsCommunityVisible(spot)) return Results.NotFound();
+    var preferredRegions = await PreferredRegionsAsync(db, user.Id, cancellationToken);
+    if (!SpotRules.IsInPreferredRegion(spot, preferredRegions)) return Results.Forbid();
     if (report.UserId == user.Id) return Results.Forbid();
     var vote = await db.CommunityReportVotes.SingleOrDefaultAsync(item => item.ReportId == id && item.UserId == user.Id, cancellationToken);
     if (vote is not null && vote.Kind == kind) return Results.Conflict(new { code = "already_voted", detail = "Você já registrou este voto." });
@@ -1315,7 +1367,7 @@ static void ReplacePartnerOffers(TaNoMarDbContext db, Guid partnerId, PartnerOff
 }
 
 record GoogleLoginRequest(string Credential);
-record PreferencesRequest(string? Region, string? WindUnit, bool? ForecastNotifications);
+record PreferencesRequest(string? Region, string? WindUnit, bool? ForecastNotifications, string[]? VisibleMetrics);
 record FavoriteRequest(string SpotId, bool IsFavorite);
 record EnabledSpotRequest(string SpotId, bool IsEnabled);
 record PersonalSpotRequest(string Name, double? Latitude, double? Longitude, string? Description, string? City, string? State, string? Region, bool Shared, double? SeaOrientationDegrees, string? Profile);

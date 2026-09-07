@@ -1,6 +1,7 @@
 import { apiRequest, refreshAccessTokenOnce } from '@/shared/api/client';
 import { ContractError } from '@/shared/api/errors';
 import { setAccessToken } from '@/shared/api/session';
+import { fishingMetricKeys, type FishingMetricKey } from '@/features/fishing/types/fishing';
 import type { AuthUser } from '../types/auth';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -13,6 +14,19 @@ function readString(value: unknown) {
 
 function readNumber(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+export function parseVisibleMetrics(value: unknown): FishingMetricKey[] {
+  if (value === undefined) return [...fishingMetricKeys];
+  if (
+    !Array.isArray(value) ||
+    value.some(
+      (item) => typeof item !== 'string' || !fishingMetricKeys.includes(item as FishingMetricKey),
+    )
+  ) {
+    throw new ContractError('Preferência de indicadores inválida.');
+  }
+  return [...new Set(value as FishingMetricKey[])];
 }
 
 function parseAccessToken(payload: unknown) {
@@ -43,6 +57,7 @@ export function parseAuthUser(payload: unknown): AuthUser {
       ? preferencesRecord.forecastNotifications
       : true
     : true;
+  const visibleMetrics = parseVisibleMetrics(preferencesRecord?.visibleMetrics);
   const featuresRecord = isRecord(payload.features) ? payload.features : null;
   const showPartners = featuresRecord?.showPartners === true;
   if (
@@ -71,7 +86,7 @@ export function parseAuthUser(payload: unknown): AuthUser {
     plan: { code: planCode, name: planName },
     entitlements: { maxForecastDays, maxFavorites, maxPersonalSpots, maxAlerts },
     features: { showPartners },
-    preferences: { region, windUnit, forecastNotifications },
+    preferences: { region, windUnit, forecastNotifications, visibleMetrics },
   };
 }
 

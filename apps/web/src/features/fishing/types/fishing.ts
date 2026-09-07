@@ -10,6 +10,17 @@ export type FishingMetricKey =
   | 'air-temperature'
   | 'water-temperature';
 
+export const fishingMetricKeys: FishingMetricKey[] = [
+  'wind',
+  'gusts',
+  'waves',
+  'wave-period',
+  'swell',
+  'rain',
+  'air-temperature',
+  'water-temperature',
+];
+
 export interface FishingMetric {
   key: FishingMetricKey;
   label: string;

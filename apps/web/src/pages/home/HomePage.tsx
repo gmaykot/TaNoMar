@@ -21,6 +21,8 @@ export function HomePage() {
   const partners = usePartners(partnersEnabled);
   const featured = (partners.data ?? []).filter((item) => item.isFeatured);
   const [selectedDate, setSelectedDate] = useState('');
+  const visibleMetricKeys =
+    auth.user?.plan.code === 'premium' ? auth.user.preferences.visibleMetrics : undefined;
 
   if (forecast.isPending)
     return (
@@ -54,13 +56,13 @@ export function HomePage() {
       <PageHeader
         eyebrow="Decisão de pesca"
         title="Onde vale pescar hoje?"
-        description="Vento, ondas, chuva e temperatura no melhor momento."
+        description="Condições no melhor momento."
       />
       <DayCarousel days={days} selectedDate={activeDate} onSelect={setSelectedDate}>
         {(day) =>
           day.ranking[0] ? (
             <>
-              <ForecastHero forecast={day.ranking[0]} />
+              <ForecastHero forecast={day.ranking[0]} visibleMetricKeys={visibleMetricKeys} />
               <section className={styles.section} aria-labelledby={`ranking-${day.date}`}>
                 <div className={styles.sectionHeader}>
                   <div>
@@ -71,7 +73,11 @@ export function HomePage() {
                     Ver todos <ArrowRight size={17} aria-hidden="true" />
                   </Link>
                 </div>
-                <RankingList items={day.ranking.slice(1)} limit={3} />
+                <RankingList
+                  items={day.ranking.slice(1)}
+                  limit={3}
+                  visibleMetricKeys={visibleMetricKeys}
+                />
               </section>
             </>
           ) : (

@@ -22,6 +22,7 @@ import { DateSelector } from '@/features/forecast/components/DateSelector';
 import { MarineDetails, MarineDetailsToggle } from '@/features/forecast/components/MarineDetails';
 import { MetricGrid } from '@/features/forecast/components/MetricGrid';
 import { useLocationForecast } from '@/features/forecast/hooks/useForecast';
+import type { FishingMetricKey } from '@/features/fishing/types/fishing';
 import { OwnerBadge } from '@/features/locations/components/OwnerBadge';
 import { useLocationMutations } from '@/features/locations/hooks/useLocationMutations';
 import { routes } from '@/shared/constants/routes';
@@ -33,6 +34,8 @@ export function LocationDetailsPage() {
   const locationForecast = useLocationForecast(locationId);
   const mutations = useLocationMutations();
   const canFavorite = (auth.user?.entitlements.maxFavorites ?? 0) > 0;
+  const visibleMetricKeys =
+    auth.user?.plan.code === 'premium' ? auth.user.preferences.visibleMetrics : undefined;
   const [selectedDate, setSelectedDate] = useState('');
   const [marineOpen, setMarineOpen] = useState(false);
 
@@ -180,7 +183,9 @@ export function LocationDetailsPage() {
         </div>
         <MetricGrid
           metrics={activeDay.forecast.metrics}
-          keys={['wind', 'gusts', 'rain', 'air-temperature']}
+          keys={(['wind', 'gusts', 'rain', 'air-temperature'] as FishingMetricKey[]).filter(
+            (key) => !visibleMetricKeys || visibleMetricKeys.includes(key),
+          )}
         />
         <MarineDetailsToggle open={marineOpen} onToggle={setMarineOpen}>
           {marineOpen ? <MarineDetails locationId={location.id} date={activeDate} /> : null}

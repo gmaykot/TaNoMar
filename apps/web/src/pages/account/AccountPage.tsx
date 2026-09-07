@@ -19,6 +19,7 @@ import { Card } from '@/design-system/components/Card';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { isAdmin, showsPartners } from '@/features/auth/types/auth';
 import { updatePreferences } from '@/features/auth/services/preferencesService';
+import { fishingMetricKeys, type FishingMetricKey } from '@/features/fishing/types/fishing';
 import { RegionPicker } from '@/features/locations/components/RegionPicker';
 import { useLocations } from '@/features/locations/hooks/useLocations';
 import { parseRegions, serializeRegions } from '@/features/locations/regions';
@@ -28,6 +29,17 @@ import formStyles from '@/features/locations/components/spotForm.module.css';
 import { routes } from '@/shared/constants/routes';
 import accountStyles from './account.module.css';
 import styles from '@/pages/shared/pages.module.css';
+
+const metricLabels: Record<FishingMetricKey, string> = {
+  wind: 'Vento',
+  gusts: 'Rajadas',
+  waves: 'Ondas',
+  'wave-period': 'Período das ondas',
+  swell: 'Swell',
+  rain: 'Chuva',
+  'air-temperature': 'Temperatura do ar',
+  'water-temperature': 'Temperatura da água',
+};
 
 function AccountShortcut({
   to,
@@ -83,12 +95,16 @@ export function AccountPage() {
   const ownedCount = locations.data?.filter((item) => item.isOwner).length ?? 0;
   const favoriteCount = locations.data?.filter((item) => item.isFavorite).length ?? 0;
   const canNotify = (user?.entitlements.maxAlerts ?? 0) > 0;
+  const premium = user?.plan.code === 'premium';
   const [regions, setRegions] = useState(() =>
     parseRegions(user?.preferences.region ?? 'Florianópolis'),
   );
   const [windUnit, setWindUnit] = useState(user?.preferences.windUnit ?? 'kmh');
   const [forecastNotifications, setForecastNotifications] = useState(
     user?.preferences.forecastNotifications ?? true,
+  );
+  const [visibleMetrics, setVisibleMetrics] = useState<FishingMetricKey[]>(
+    user?.preferences.visibleMetrics ?? fishingMetricKeys,
   );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -218,9 +234,16 @@ export function AccountPage() {
               region: serializeRegions(regions),
               windUnit,
               forecastNotifications,
+              ...(premium ? { visibleMetrics } : {}),
             })
               .then(async () => {
-                await queryClient.invalidateQueries({ queryKey: ['me'] });
+                await Promise.all([
+                  queryClient.invalidateQueries({ queryKey: ['me'] }),
+                  queryClient.invalidateQueries({ queryKey: ['locations'] }),
+                  queryClient.invalidateQueries({ queryKey: ['forecast'] }),
+                  queryClient.invalidateQueries({ queryKey: ['community-reports'] }),
+                  queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+                ]);
               })
               .catch(() => setError('Não foi possível salvar as preferências.'))
               .finally(() => setPending(false));
@@ -239,6 +262,44 @@ export function AccountPage() {
               <option value="kt">nós</option>
             </select>
           </label>
+          {premium ? (
+            <fieldset className={accountStyles.metricPreferences}>
+              <legend>Indicadores exibidos</legend>
+              <small>Escolha o que aparece nos cards de previsão. Isso não altera a nota.</small>
+              <div className={accountStyles.metricChoices}>
+                {fishingMetricKeys.map((metric) => (
+                  <label className={formStyles.choice} key={metric}>
+                    <input
+                      type="checkbox"
+                      checked={visibleMetrics.includes(metric)}
+                      onChange={(event) => {
+                        setVisibleMetrics((current) =>
+                          event.target.checked
+                            ? fishingMetricKeys.filter(
+                                (item) => item === metric || current.includes(item),
+                              )
+                            : current.filter((item) => item !== metric),
+                        );
+                      }}
+                    />
+                    <span>{metricLabels[metric]}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ) : (
+            <div
+              className={`${formStyles.choice} ${accountStyles.choiceLocked}`}
+              aria-disabled="true"
+              aria-label="Seleção de indicadores bloqueada no plano atual"
+            >
+              <Lock size={16} aria-hidden="true" />
+              <span>
+                Indicadores exibidos
+                <small>Premium</small>
+              </span>
+            </div>
+          )}
           {canNotify ? (
             <label className={formStyles.choice}>
               <input

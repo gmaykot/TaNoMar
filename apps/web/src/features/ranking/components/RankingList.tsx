@@ -13,6 +13,7 @@ interface RankingListProps {
   items: ForecastRankingItem[];
   limit?: number;
   emphasisKey?: FishingMetricKey;
+  visibleMetricKeys?: FishingMetricKey[];
 }
 
 const emphasisIcons: Partial<Record<FishingMetricKey, typeof Wind>> = {
@@ -21,15 +22,19 @@ const emphasisIcons: Partial<Record<FishingMetricKey, typeof Wind>> = {
   waves: Waves,
 };
 
-export function RankingList({ items, limit, emphasisKey }: RankingListProps) {
+export function RankingList({ items, limit, emphasisKey, visibleMetricKeys }: RankingListProps) {
   const visibleItems = typeof limit === 'number' ? items.slice(0, limit) : items;
-  const metricKeys = rankingMetricKeys(emphasisKey);
+  const orderedMetricKeys = rankingMetricKeys(emphasisKey);
+  const metricKeys = visibleMetricKeys
+    ? (orderedMetricKeys ?? visibleMetricKeys).filter((key) => visibleMetricKeys.includes(key))
+    : orderedMetricKeys;
   return (
     <div className={styles.list}>
       {visibleItems.map((item, index) => {
-        const emphasisMetric = emphasisKey
-          ? item.metrics.find((metric) => metric.key === emphasisKey)
-          : undefined;
+        const emphasisMetric =
+          emphasisKey && (!visibleMetricKeys || visibleMetricKeys.includes(emphasisKey))
+            ? item.metrics.find((metric) => metric.key === emphasisKey)
+            : undefined;
         const EmphasisIcon = emphasisKey ? emphasisIcons[emphasisKey] : undefined;
         return (
           <Card as="article" className={styles.item} key={item.locationId}>

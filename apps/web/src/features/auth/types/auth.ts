@@ -1,3 +1,5 @@
+import type { FishingMetricKey } from '@/features/fishing/types/fishing';
+
 export interface AuthUser {
   id: string;
   name: string;
@@ -21,6 +23,7 @@ export interface AuthUser {
     region: string;
     windUnit: string;
     forecastNotifications: boolean;
+    visibleMetrics?: FishingMetricKey[];
   };
 }
 

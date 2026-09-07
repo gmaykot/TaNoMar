@@ -2,16 +2,17 @@ import { ArrowRight, Clock3, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/design-system/components/Badge';
 import { ScoreIndicator } from '@/design-system/components/ScoreIndicator';
-import type { ForecastRankingItem } from '@/features/fishing/types/fishing';
+import type { FishingMetricKey, ForecastRankingItem } from '@/features/fishing/types/fishing';
 import { OwnerBadge } from '@/features/locations/components/OwnerBadge';
 import { MetricGrid } from './MetricGrid';
 import styles from './forecast.module.css';
 
 interface ForecastHeroProps {
   forecast: ForecastRankingItem;
+  visibleMetricKeys?: FishingMetricKey[];
 }
 
-export function ForecastHero({ forecast }: ForecastHeroProps) {
+export function ForecastHero({ forecast, visibleMetricKeys }: ForecastHeroProps) {
   return (
     <article className={styles.hero}>
       {forecast.isOwner ? <OwnerBadge /> : null}
@@ -35,7 +36,7 @@ export function ForecastHero({ forecast }: ForecastHeroProps) {
         </div>
         <ScoreIndicator score={forecast.score} classification={forecast.classification} />
       </div>
-      <MetricGrid metrics={forecast.metrics} limit={4} />
+      <MetricGrid metrics={forecast.metrics} keys={visibleMetricKeys} limit={4} />
       <Link className={`${styles.heroLink} ${styles.hit}`} to={`/locais/${forecast.locationId}`}>
         Ver previsão completa <ArrowRight size={18} aria-hidden="true" />
       </Link>
