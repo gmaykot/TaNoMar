@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppShell } from '@/app/layout/AppShell';
 import { RequireAdmin } from '@/app/router/RequireAdmin';
 import { RequireAuth } from '@/app/router/RequireAuth';
+import { RequirePremium } from '@/app/router/RequirePremium';
 import { AccountNotificationsPage } from '@/pages/account/AccountNotificationsPage';
 import { AboutPage } from '@/pages/about/AboutPage';
 import { AccountPage } from '@/pages/account/AccountPage';
@@ -40,7 +41,9 @@ export function AppRouter() {
           <Route path={routes.accountPreferences} element={<AccountPreferencesPage />} />
           <Route path={routes.accountNotifications} element={<AccountNotificationsPage />} />
           <Route path={routes.premium} element={<PremiumPage />} />
-          <Route path={routes.diary} element={<DiaryPage />} />
+          <Route element={<RequirePremium />}>
+            <Route path={routes.diary} element={<DiaryPage />} />
+          </Route>
           <Route path={routes.about} element={<AboutPage />} />
           <Route path={routes.partners} element={<PartnersPage />} />
           <Route path="/parceiros/:partnerSlug" element={<PartnerDetailsPage />} />

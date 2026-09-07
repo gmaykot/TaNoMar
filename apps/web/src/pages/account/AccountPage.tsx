@@ -174,6 +174,7 @@ export function AccountPage() {
             icon={BookOpen}
             title="Diário de pesca"
             description="Guarde o resultado das suas saídas neste aparelho."
+            locked={user?.plan.code !== 'premium'}
           />
         </div>
       </section>

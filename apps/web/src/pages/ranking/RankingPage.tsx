@@ -66,16 +66,10 @@ export function RankingPage() {
         title="Os melhores locais, em ordem."
         description="Só os locais que você habilitou, em ordem."
       />
+      <RankingEmphasisFilters emphasis={emphasis} premium={premium} onChange={setEmphasis} />
       <DayCarousel days={forecast.data.days} selectedDate={activeDate} onSelect={setSelectedDate}>
         {(day) => (
           <>
-            {day.date === activeDate ? (
-              <RankingEmphasisFilters
-                emphasis={emphasis}
-                premium={premium}
-                onChange={setEmphasis}
-              />
-            ) : null}
             {day.ranking.length ? (
               <RankingList
                 items={day.ranking}

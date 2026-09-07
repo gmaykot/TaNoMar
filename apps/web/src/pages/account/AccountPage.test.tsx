@@ -81,6 +81,7 @@ describe('AccountPage', () => {
       '/locais?filtro=favoritos',
     );
     expect(screen.getByRole('link', { name: /Sobre o TáNoMar/ })).toHaveAttribute('href', '/sobre');
+    expect(screen.getByRole('link', { name: /Diário de pesca/ })).toHaveAttribute('href', '/diario');
     expect(screen.queryByRole('link', { name: /Novo local/ })).not.toBeInTheDocument();
     expect(screen.queryByText(/pescadores relatam como está o mar/)).not.toBeInTheDocument();
     expect(screen.getByText('Plano')).toBeInTheDocument();
@@ -119,6 +120,11 @@ describe('AccountPage', () => {
     );
     expect(screen.queryByRole('link', { name: /Meus locais/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Favoritos/ })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Diário de pesca bloqueado no plano atual')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(screen.queryByRole('link', { name: /Diário de pesca/ })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Notificações/ })).toHaveAttribute(
       'href',
       '/conta/notificacoes',

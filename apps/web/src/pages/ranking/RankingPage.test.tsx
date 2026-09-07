@@ -57,6 +57,9 @@ describe('RankingPage', () => {
       await screen.findByRole('heading', { name: 'Os melhores locais, em ordem.' }),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole('group', { name: 'Ênfase do ranking' }).closest('[data-snap-key]'),
+    ).toBeNull();
+    expect(
       screen.getByRole('button', { name: 'Vento. Toque para ordenar com menos vento.' }),
     ).toHaveAttribute('aria-pressed', 'false');
 

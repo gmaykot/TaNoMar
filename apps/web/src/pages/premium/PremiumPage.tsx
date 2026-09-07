@@ -1,4 +1,4 @@
-import { ArrowLeft, Bell, Heart, Waves } from 'lucide-react';
+import { ArrowLeft, Bell, BookOpen, Heart, SlidersHorizontal, Waves } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/design-system/components/Card';
 import { PageHeader } from '@/pages/shared/PageHeader';
@@ -9,17 +9,30 @@ const benefits = [
   {
     icon: Waves,
     title: 'Previsão ampliada',
-    description: 'Consulte mais dias e escolha uma ênfase para vento, chuva ou ondas.',
+    description:
+      'Consulte até 8 dias de previsão e veja os detalhes do mar para planejar melhor.',
+  },
+  {
+    icon: SlidersHorizontal,
+    title: 'Leitura sob medida',
+    description:
+      'Destaque vento, chuva ou ondas e escolha os indicadores mais importantes para você.',
   },
   {
     icon: Heart,
     title: 'Seus locais e favoritos',
-    description: 'Guarde os pontos que fazem parte da sua rotina de pesca.',
+    description: 'Cadastre até 10 locais privados e guarde até 20 pontos favoritos.',
   },
   {
     icon: Bell,
     title: 'Alertas de oportunidade',
-    description: 'Receba avisos quando as condições que você acompanha aparecerem.',
+    description: 'Configure até 10 alertas para acompanhar as condições dos seus locais.',
+  },
+  {
+    icon: BookOpen,
+    title: 'Diário de pesca',
+    description:
+      'Registre suas capturas e saídas sem captura para criar seu histórico de pesca.',
   },
 ];
 
@@ -31,8 +44,8 @@ export function PremiumPage() {
       </Link>
       <PageHeader
         eyebrow="Plano Premium"
-        title="Mais contexto para escolher sua saída."
-        description="Veja o que já está disponível e o que estamos preparando para os alertas personalizados."
+        title="Pesque com mais contexto."
+        description="O Premium reúne mais dados, mais controle e ferramentas para você planejar cada saída."
       />
       <div className={styles.locationGrid}>
         {benefits.map(({ icon: Icon, title, description }) => (
@@ -44,10 +57,10 @@ export function PremiumPage() {
         ))}
       </div>
       <Card as="section">
-        <h2>Ativação</h2>
+        <h2>Como funciona</h2>
         <p>
-          A ativação comercial ainda precisa ser configurada pela equipe do TáNoMar. Enquanto isso,
-          esta página torna os benefícios visíveis sem iniciar uma cobrança ou criar uma assinatura.
+          A ativação comercial ainda precisa ser configurada pela equipe do TáNoMar. Esta página
+          explica os recursos do plano e não inicia uma cobrança ou cria uma assinatura.
         </p>
         <Link className={styles.backLink} to={routes.about}>
           Entender como a previsão funciona
