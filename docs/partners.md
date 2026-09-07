@@ -19,6 +19,7 @@ O CRUD em `/admin/parceiros` continua ativo. `GET/PUT /admin/settings` troca a f
 - Diretório em `/parceiros` e landing em `/parceiros/:slug`
 - Categorias: loja, guia (leva para pescar), hospedagem, outro
 - Ofertas com preço em texto e validade opcional
+- Endereço ou link conferido no Google Maps e publicado como “Como chegar”
 - Destaque (`isFeatured`): Home, entre o ranking e “Explore todos os locais”, e no topo do diretório
 
 ## O que fica de fora

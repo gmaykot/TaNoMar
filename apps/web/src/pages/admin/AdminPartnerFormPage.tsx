@@ -1,4 +1,4 @@
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MapPin } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -26,6 +26,13 @@ import styles from '@/pages/shared/pages.module.css';
 
 function emptyOffer(): PartnerOffer {
   return { title: '', description: null, priceLabel: null, endsAt: null };
+}
+
+function googleMapsUrl(value: string) {
+  const addressOrUrl = value.trim();
+  if (!addressOrUrl || /^https?:\/\//i.test(addressOrUrl)) return addressOrUrl;
+
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressOrUrl)}`;
 }
 
 export function AdminPartnerFormPage() {
@@ -87,7 +94,7 @@ export function AdminPartnerFormPage() {
         onSubmit={(event) => {
           event.preventDefault();
           setError(null);
-          save.mutate(value);
+          save.mutate({ ...value, mapsUrl: googleMapsUrl(value.mapsUrl) });
         }}
       >
         <label className={formStyles.field}>
@@ -154,13 +161,26 @@ export function AdminPartnerFormPage() {
               onChange={(event) => patch('website', event.target.value)}
             />
           </label>
-          <label className={formStyles.field}>
-            <span>Maps</span>
-            <input
-              value={value.mapsUrl}
-              onChange={(event) => patch('mapsUrl', event.target.value)}
-            />
-          </label>
+          <div className={formStyles.field}>
+            <label className={formStyles.field}>
+              <span>Endereço ou link do Google Maps</span>
+              <input
+                value={value.mapsUrl}
+                placeholder="Rua, número, cidade"
+                onChange={(event) => patch('mapsUrl', event.target.value)}
+              />
+            </label>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={!value.mapsUrl.trim()}
+              onClick={() =>
+                window.open(googleMapsUrl(value.mapsUrl), '_blank', 'noopener,noreferrer')
+              }
+            >
+              <MapPin size={16} aria-hidden="true" /> Abrir no Google Maps
+            </Button>
+          </div>
         </div>
         <label className={formStyles.field}>
           <span>Imagem (URL)</span>
