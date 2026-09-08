@@ -46,6 +46,8 @@ Localmente, web e API são processos independentes: Vite executa o React em HTTP
 
 A sessão usa Google Sign-In. O access token fica só em memória; o refresh token segue no cookie HttpOnly `tanomar_refresh`. Endpoints autenticados não entram no cache do service worker.
 
+Cobrança do Premium (proposta): Checkout hospedado do Asaas, só cartão, assinatura mensal. O PWA não coleta dados de cartão. Ver [billing.md](billing.md) e [ADR-004](decisions/ADR-004-asaas-checkout.md).
+
 ## Produção
 
 Em produção, o Coolify usa `docker-compose.yml` e o Dockerfile em `apps/api/TaNoMar.Api/Dockerfile`. O build do web (`apps/web`) é compilado no estágio Node, copiado para `wwwroot/` e servido pela API junto com `/api/v1`. A imagem contém somente a aplicação; o PostgreSQL continua externo.
