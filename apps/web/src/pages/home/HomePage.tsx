@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { Button } from '@/design-system/components/Button';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { isPaidPlan, showsPartners } from '@/features/auth/types/auth';
+import { hasPlanModule, isPaidPlan, showsPartners } from '@/features/auth/types/auth';
 import { DayCarousel } from '@/features/forecast/components/DayCarousel';
 import { ForecastHero } from '@/features/forecast/components/ForecastHero';
 import { useForecast } from '@/features/forecast/hooks/useForecast';
@@ -33,9 +33,11 @@ export function HomePage() {
   );
   const [offlineSaved, setOfflineSaved] = useState(false);
   const isPaid = isPaidPlan(auth.user);
-  const visibleMetricKeys = isPaid ? auth.user?.preferences.visibleMetrics : undefined;
+  const canCustomizeMetrics = hasPlanModule(auth.user, 'customMetrics');
+  const canSaveOffline = hasPlanModule(auth.user, 'offline');
+  const visibleMetricKeys = canCustomizeMetrics ? auth.user?.preferences.visibleMetrics : undefined;
 
-  const data = forecast.data ?? (isPaid && forecast.isError ? offlineForecast : undefined);
+  const data = forecast.data ?? (canSaveOffline && forecast.isError ? offlineForecast : undefined);
 
   if (forecast.isPending && !data)
     return (
@@ -147,7 +149,7 @@ export function HomePage() {
           </div>
         </section>
       ) : null}
-      {isPaid ? (
+      {canSaveOffline ? (
         <div className={styles.homeActions}>
           <Button
             type="button"

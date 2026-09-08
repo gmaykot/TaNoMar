@@ -7,7 +7,17 @@ import { RequirePremium } from './RequirePremium';
 const { authState } = vi.hoisted(() => ({
   authState: {
     status: 'authenticated',
-    user: null as { plan: { code: string } } | null,
+    user: null as {
+      plan: { code: string };
+      modules?: {
+        marine: boolean;
+        diary: boolean;
+        offline: boolean;
+        customMetrics: boolean;
+        communityVote: boolean;
+        rankingEmphasis: boolean;
+      };
+    } | null,
     userLoading: false,
   },
 }));
@@ -53,5 +63,22 @@ describe('RequirePremium', () => {
     authState.user = { plan: { code: 'arrais' } };
     renderRoute();
     expect(screen.getByText('diário')).toBeInTheDocument();
+  });
+
+  it('bloqueia o Diário quando o módulo está desligado', () => {
+    authState.user = {
+      plan: { code: 'premium' },
+      modules: {
+        marine: true,
+        diary: false,
+        offline: true,
+        customMetrics: true,
+        communityVote: true,
+        rankingEmphasis: true,
+      },
+    };
+    renderRoute();
+    expect(screen.getByText('premium')).toBeInTheDocument();
+    expect(screen.queryByText('diário')).not.toBeInTheDocument();
   });
 });

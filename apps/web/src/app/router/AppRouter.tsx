@@ -11,6 +11,7 @@ import { DiaryPage } from '@/pages/diary/DiaryPage';
 import { AdminHomePage } from '@/pages/admin/AdminHomePage';
 import { AdminPartnerFormPage } from '@/pages/admin/AdminPartnerFormPage';
 import { AdminPartnersPage } from '@/pages/admin/AdminPartnersPage';
+import { AdminPlansPage } from '@/pages/admin/AdminPlansPage';
 import { AdminSpotsPage } from '@/pages/admin/AdminSpotsPage';
 import { AdminUsersPage } from '@/pages/admin/AdminUsersPage';
 import { HomePage } from '@/pages/home/HomePage';
@@ -51,6 +52,7 @@ export function AppRouter() {
             <Route path={routes.admin} element={<AdminHomePage />} />
             <Route path={routes.adminSpots} element={<AdminSpotsPage />} />
             <Route path={routes.adminUsers} element={<AdminUsersPage />} />
+            <Route path={routes.adminPlans} element={<AdminPlansPage />} />
             <Route path={routes.adminPartners} element={<AdminPartnersPage />} />
             <Route path={routes.adminPartnerNew} element={<AdminPartnerFormPage />} />
             <Route path="/admin/parceiros/:partnerSlug" element={<AdminPartnerFormPage />} />

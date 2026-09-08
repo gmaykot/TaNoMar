@@ -7,7 +7,7 @@ import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { updatePreferences } from '@/features/auth/services/preferencesService';
-import { isPaidPlan, SUBSCRIPTION_LOCK_LABEL, type AuthUser } from '@/features/auth/types/auth';
+import { hasPlanModule, SUBSCRIPTION_LOCK_LABEL, type AuthUser } from '@/features/auth/types/auth';
 import { fishingMetricKeys, type FishingMetricKey } from '@/features/fishing/types/fishing';
 import { RegionPicker } from '@/features/locations/components/RegionPicker';
 import formStyles from '@/features/locations/components/spotForm.module.css';
@@ -38,7 +38,7 @@ export function AccountPreferencesPage() {
   const auth = useAuth();
   const queryClient = useQueryClient();
   const user = auth.user;
-  const paid = isPaidPlan(user);
+  const canCustomizeMetrics = hasPlanModule(user, 'customMetrics');
   const [regions, setRegions] = useState(() =>
     parseRegions(user?.preferences.region ?? 'Florianópolis'),
   );
@@ -70,7 +70,7 @@ export function AccountPreferencesPage() {
               region: serializeRegions(regions),
               windUnit,
               forecastNotifications: user?.preferences.forecastNotifications ?? true,
-              ...(paid ? { visibleMetrics } : {}),
+              ...(canCustomizeMetrics ? { visibleMetrics } : {}),
             })
               .then(async (preferences) => {
                 queryClient.setQueryData<AuthUser>(['me'], (current) =>
@@ -113,7 +113,7 @@ export function AccountPreferencesPage() {
                 <option value="kt">nós</option>
               </select>
             </label>
-            {paid ? (
+            {canCustomizeMetrics ? (
               <fieldset className={accountStyles.metricPreferences}>
                 <legend>Indicadores da previsão</legend>
                 <small>

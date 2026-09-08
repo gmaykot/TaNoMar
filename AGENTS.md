@@ -17,6 +17,7 @@ TáNoMar ajuda pescadores a decidir onde e quando pescar. O repositório contém
 - Contratos e identificadores de runtime estão em `docs/api-contracts.md`.
 - Na interface, o ponto de pesca se chama **local** (plural **locais**). Não use “pesqueiro” nem “praia” para nomear a entidade. Ver `docs/frontend-guidelines.md`.
 - Parceiros (vitrine, sem venda no app) estão em `docs/partners.md`. A vitrine pública é ligada pelo admin em `/admin/parceiros`.
+- Planos (preço, cotas e módulos) são configurados pelo admin em `/admin/planos`.
 
 ## Antes de alterar uma feature
 

@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { isPaidPlan } from '@/features/auth/types/auth';
 import { useLocations } from '@/features/locations/hooks/useLocations';
 import formStyles from '@/features/locations/components/spotForm.module.css';
 import accountStyles from '@/pages/account/account.module.css';
@@ -22,13 +21,13 @@ export function ForecastAlerts() {
   const auth = useAuth();
   const locations = useLocations();
   const queryClient = useQueryClient();
-  const paid = isPaidPlan(auth.user);
+  const canNotify = (auth.user?.entitlements.maxAlerts ?? 0) > 0;
   const available = locations.data?.filter((item) => item.isEnabled) ?? [];
   const [spotId, setSpotId] = useState('');
   const [minimumScore, setMinimumScore] = useState(8);
   const [leadHours, setLeadHours] = useState(24);
   const [error, setError] = useState<string | null>(null);
-  const alerts = useQuery({ queryKey, queryFn: getForecastAlerts, enabled: paid });
+  const alerts = useQuery({ queryKey, queryFn: getForecastAlerts, enabled: canNotify });
   const create = useMutation({
     mutationFn: createForecastAlert,
     onSuccess: async () => {
@@ -48,7 +47,7 @@ export function ForecastAlerts() {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey }),
   });
 
-  if (!paid) {
+  if (!canNotify) {
     return (
       <Card className={accountStyles.formCard}>
         <div className={accountStyles.formHeader}>

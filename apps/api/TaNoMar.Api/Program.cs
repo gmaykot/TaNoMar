@@ -187,6 +187,18 @@ api.MapGet("/me", async (ClaimsPrincipal principal, TaNoMarDbContext db, Microso
     return Results.Ok(await UserDtoAsync(user, db, cancellationToken));
 }).RequireAuthorization();
 
+api.MapGet("/plans", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    var plans = await db.Plans.AsNoTracking()
+        .Where(plan => plan.Code != PlanRules.Free)
+        .OrderBy(plan => plan.SortOrder)
+        .ThenBy(plan => plan.Name)
+        .ToListAsync(cancellationToken);
+    return Results.Ok(plans.Select(PlanRules.CatalogDto).ToList());
+}).RequireAuthorization();
+
 api.MapGet("/fishing-spots", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
@@ -362,6 +374,63 @@ api.MapPut("/admin/users/{id:guid}/plan", async (Guid id, AdminPlanRequest reque
     return Results.Ok(AdminUserDto(target, plan, actor!, options.Value, activeAdmins));
 }).RequireAuthorization();
 
+api.MapGet("/admin/plans", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
+    if (failure is not null) return failure;
+    var plans = await db.Plans.AsNoTracking()
+        .OrderBy(plan => plan.SortOrder)
+        .ThenBy(plan => plan.Name)
+        .ToListAsync(cancellationToken);
+    return Results.Ok(plans.Select(PlanRules.CatalogDto).ToList());
+}).RequireAuthorization();
+
+api.MapPut("/admin/plans/{code}", async (string code, AdminPlanConfigRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
+    if (failure is not null) return failure;
+    var planCode = PlanRules.NormalizeAssignable(code);
+    if (planCode is null) return Results.NotFound();
+    var plan = await db.Plans.SingleOrDefaultAsync(item => item.Code == planCode, cancellationToken);
+    if (plan is null) return Results.NotFound();
+    var tagline = request.Tagline?.Trim() ?? string.Empty;
+    var error = PlanRules.ValidateUpdate(
+        request.Name,
+        tagline,
+        request.MonthlyPriceCents,
+        request.SortOrder,
+        request.MaxForecastDays,
+        request.MaxFavorites,
+        request.MaxPersonalSpots,
+        request.MaxAlerts);
+    if (error is not null) return Results.BadRequest(new { code = "invalid_plan", detail = error });
+    PlanRules.ApplyUpdate(
+        plan,
+        request.Name,
+        tagline,
+        request.MonthlyPriceCents,
+        request.SortOrder,
+        request.Featured,
+        request.MaxForecastDays,
+        request.MaxFavorites,
+        request.MaxPersonalSpots,
+        request.MaxAlerts,
+        request.CanMarine,
+        request.CanDiary,
+        request.CanOffline,
+        request.CanCustomMetrics,
+        request.CanCommunityVote,
+        request.CanRankingEmphasis);
+    if (plan.Featured)
+    {
+        var others = await db.Plans.Where(item => item.Id != plan.Id && item.Featured).ToListAsync(cancellationToken);
+        foreach (var other in others)
+            other.Featured = false;
+    }
+    await db.SaveChangesAsync(cancellationToken);
+    return Results.Ok(PlanRules.CatalogDto(plan));
+}).RequireAuthorization();
+
 api.MapPut("/admin/users/{id:guid}/active", async (Guid id, AdminActiveRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, NotificationRealtimeHub hub, WebPushQueue push, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
 {
     var (actor, failure) = await AdminActorAsync(principal, db, cancellationToken);
@@ -514,7 +583,8 @@ api.MapPut("/me/preferences", async (PreferencesRequest request, ClaimsPrincipal
     preferences.ForecastNotifications = request.ForecastNotifications ?? preferences.ForecastNotifications;
     if (request.VisibleMetrics is not null)
     {
-        if (!PlanRules.IsPaid(user.PlanCode))
+        var plan = await db.Plans.AsNoTracking().SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
+        if (!plan.CanCustomMetrics)
             return Results.BadRequest(new { code = "plan_required", detail = "Personalizar os indicadores exige uma assinatura.", requiredPlan = PlanRules.RequiredPlanLabel });
         if (request.VisibleMetrics.Any(metric => !IsVisibleMetric(metric)))
             return Results.BadRequest(new { code = "invalid_metrics", detail = "Um ou mais indicadores são inválidos." });
@@ -643,8 +713,7 @@ api.MapGet("/forecasts/ranking", async (string? emphasis, ClaimsPrincipal princi
     if (!FishingRankingEmphasis.TryParse(emphasis, out var parsedEmphasis))
         return Results.BadRequest(new { detail = "Ênfase inválida. Use wind, wind-more, rain, rain-more, waves ou waves-less." });
     var plan = await db.Plans.SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
-    var paid = PlanRules.IsPaid(plan.Code);
-    if (FishingRankingEmphasis.RequiresPremium(parsedEmphasis) && !paid)
+    if (FishingRankingEmphasis.RequiresPremium(parsedEmphasis) && !plan.CanRankingEmphasis)
         return Results.BadRequest(new { code = "plan_required", detail = "Reordenar o ranking exige uma assinatura.", requiredPlan = PlanRules.RequiredPlanLabel });
     var enabledSettings = await EnabledSettingsAsync(db, user.Id, cancellationToken);
     var preferredRegions = await PreferredRegionsAsync(db, user.Id, cancellationToken);
@@ -659,7 +728,7 @@ api.MapGet("/forecasts/ranking", async (string? emphasis, ClaimsPrincipal princi
     {
         var forecast = await fishing.GetAsync(day, cancellationToken, user.Id, enabledSlugs);
         var ordered = forecast with { Ranking = FishingRankingEmphasis.Order(forecast.Ranking, parsedEmphasis) };
-        days.Add(ForecastDayDto(ordered, paid, ownerSlugs));
+        days.Add(ForecastDayDto(ordered, plan.CanMarine, ownerSlugs));
     }
     return Results.Ok(new { generatedAt = DateTimeOffset.UtcNow, availableFrom = DateOnly.FromDateTime(DateTime.UtcNow), availableTo = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(plan.MaxForecastDays - 1)), days });
 }).RequireAuthorization();
@@ -677,7 +746,7 @@ api.MapGet("/fishing-spots/{id}/forecast", async (string id, ClaimsPrincipal pri
     {
         var forecast = await fishing.GetAsync(day, cancellationToken, user.Id);
         var filtered = forecast with { Ranking = forecast.Ranking.Where(item => item.Id == spot.Slug).ToList() };
-        result.Add(ForecastDayDto(filtered, PlanRules.IsPaid(plan.Code), OwnerSpotIds([spot], user)));
+        result.Add(ForecastDayDto(filtered, plan.CanMarine, OwnerSpotIds([spot], user)));
     }
     return Results.Ok(new { spotId = spot.Slug, days = result });
 }).RequireAuthorization();
@@ -693,8 +762,7 @@ api.MapGet("/fishing-spots/{id}/marine", async (string id, DateOnly? date, Claim
     var targetDate = date ?? fishing.Today();
     var dayOffset = targetDate.DayNumber - fishing.Today().DayNumber;
     if (dayOffset < 0 || dayOffset >= plan.MaxForecastDays) return Results.BadRequest(new { detail = "Data fora da janela do plano." });
-    var paid = PlanRules.IsPaid(plan.Code);
-    if (!paid) return Results.Ok(MarineLockedDto(spot.Slug, targetDate));
+    if (!plan.CanMarine) return Results.Ok(MarineLockedDto(spot.Slug, targetDate));
     var location = new FishingLocation
     {
         Id = spot.Slug,
@@ -994,6 +1062,7 @@ static async Task<object> UserDtoAsync(User user, TaNoMarDbContext db, Cancellat
         role = user.Role,
         plan = new { code = plan.Code, name = plan.Name },
         entitlements = new { maxForecastDays = plan.MaxForecastDays, maxFavorites = plan.MaxFavorites, maxPersonalSpots = plan.MaxPersonalSpots, maxAlerts = plan.MaxAlerts },
+        modules = PlanRules.ModulesDto(plan),
         features = new { showPartners = await ShowPartnersEnabledAsync(db, cancellationToken) },
         preferences = new
         {
@@ -1147,7 +1216,8 @@ static async Task<IResult> VoteReportAsync(Guid id, string kind, ClaimsPrincipal
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
-    if (!PlanRules.IsPaid(user.PlanCode))
+    var plan = await db.Plans.AsNoTracking().SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
+    if (!plan.CanCommunityVote)
         return Results.BadRequest(new { code = "plan_required", detail = "Confirmar ou contestar um relato exige uma assinatura.", requiredPlan = PlanRules.RequiredPlanLabel });
     var report = await db.CommunityReports.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
     if (report is null || report.ExpiresAt <= DateTimeOffset.UtcNow) return Results.NotFound();
@@ -1461,6 +1531,22 @@ record PersonalSpotRequest(string Name, double? Latitude, double? Longitude, str
 record CommunityReportRequest(string SpotId, string Type, string? Comment);
 record PushSubscriptionRequest(string? Endpoint, string? P256dh, string? Auth);
 record AdminPlanRequest(string PlanCode);
+record AdminPlanConfigRequest(
+    string Name,
+    string? Tagline,
+    int MonthlyPriceCents,
+    int SortOrder,
+    bool Featured,
+    int MaxForecastDays,
+    int MaxFavorites,
+    int MaxPersonalSpots,
+    int MaxAlerts,
+    bool CanMarine,
+    bool CanDiary,
+    bool CanOffline,
+    bool CanCustomMetrics,
+    bool CanCommunityVote,
+    bool CanRankingEmphasis);
 record AdminActiveRequest(bool IsActive);
 record PartnerOfferRequest(string Title, string? Description, string? PriceLabel, DateTimeOffset? EndsAt, int? SortOrder);
 record PartnerRequest(string? Slug, string Name, string Category, string? Tagline, string? About, string? City, string? WhatsApp, string? Instagram, string? Website, string? MapsUrl, string? CoverImageUrl, bool IsPublished, bool IsFeatured, int SortOrder, PartnerOfferRequest[]? Offers);

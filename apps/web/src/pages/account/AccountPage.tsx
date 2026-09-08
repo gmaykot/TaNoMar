@@ -15,6 +15,7 @@ import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import {
+  hasPlanModule,
   isAdmin,
   isPaidPlan,
   showsPartners,
@@ -179,7 +180,7 @@ export function AccountPage() {
             icon={BookOpen}
             title="Diário de pesca"
             description="Guarde o resultado das suas saídas neste aparelho."
-            locked={!isPaidPlan(user)}
+            locked={!hasPlanModule(user, 'diary')}
           />
         </div>
       </section>
@@ -192,7 +193,7 @@ export function AccountPage() {
               to={routes.admin}
               icon={Shield}
               title="Abrir painel administrativo"
-              description="Moderação, usuários e parceiros."
+              description="Moderação, usuários, planos e parceiros."
             />
           </div>
         </section>

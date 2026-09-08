@@ -2,7 +2,7 @@ import { BookOpen } from 'lucide-react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { isPaidPlan } from '@/features/auth/types/auth';
+import { hasPlanModule } from '@/features/auth/types/auth';
 import { routes } from '@/shared/constants/routes';
 
 export function RequirePremium() {
@@ -18,6 +18,6 @@ export function RequirePremium() {
     );
   }
 
-  if (!isPaidPlan(auth.user)) return <Navigate to={routes.premium} replace />;
+  if (!hasPlanModule(auth.user, 'diary')) return <Navigate to={routes.premium} replace />;
   return <Outlet />;
 }

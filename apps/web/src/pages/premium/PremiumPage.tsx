@@ -13,8 +13,10 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/design-system/components/Card';
+import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { isPaidPlan } from '@/features/auth/types/auth';
+import { useSubscriptionPlans } from '@/features/subscription/hooks/useSubscriptionPlans';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { SubscriptionPlanCards } from '@/pages/premium/SubscriptionPlanCards';
 import { routes } from '@/shared/constants/routes';
@@ -62,10 +64,46 @@ const benefits = [
   },
 ];
 
+function maxForecastCaption(plans: { name: string; entitlements: { maxForecastDays: number } }[]) {
+  if (plans.length === 0) return { days: 8, caption: 'conforme o plano' };
+  const maxDays = Math.max(...plans.map((plan) => plan.entitlements.maxForecastDays));
+  const names = plans
+    .filter((plan) => plan.entitlements.maxForecastDays === maxDays)
+    .map((plan) => plan.name);
+  if (names.length === 0) return { days: maxDays, caption: 'conforme o plano' };
+  if (names.length === 1) return { days: maxDays, caption: `no plano ${names[0]}` };
+  return {
+    days: maxDays,
+    caption: `no plano ${names.slice(0, -1).join(', ')} e ${names.at(-1)}`,
+  };
+}
+
 export function PremiumPage() {
   const auth = useAuth();
+  const catalog = useSubscriptionPlans();
   const isPaid = isPaidPlan(auth.user);
   const currentPlanName = isPaid ? auth.user?.plan.name : undefined;
+  const plans = catalog.data ?? [];
+  const highlight = maxForecastCaption(plans);
+
+  if (catalog.isPending) {
+    return (
+      <FeedbackState
+        title="Assinatura"
+        description="Carregando os planos disponíveis."
+        icon={Sparkles}
+        busy
+      />
+    );
+  }
+  if (catalog.isError) {
+    return (
+      <FeedbackState
+        title="Planos indisponíveis"
+        description="Não foi possível carregar os planos da assinatura."
+      />
+    );
+  }
 
   return (
     <div className={styles.page}>
@@ -102,8 +140,8 @@ export function PremiumPage() {
           className={premiumStyles.heroHighlight}
           aria-label="Resumo dos benefícios da assinatura"
         >
-          <strong>8 dias</strong>
-          <span>no plano Mestre e Capitão</span>
+          <strong>{highlight.days} dias</strong>
+          <span>{highlight.caption}</span>
           <div>
             <Check size={16} aria-hidden="true" /> Detalhes do mar
           </div>
@@ -119,7 +157,7 @@ export function PremiumPage() {
         </div>
         <p>Escolha o ritmo da sua pesca. A cobrança ainda não começa por aqui.</p>
       </div>
-      <SubscriptionPlanCards currentPlanCode={auth.user?.plan.code} />
+      <SubscriptionPlanCards plans={plans} currentPlanCode={auth.user?.plan.code} />
       <div className={premiumStyles.benefitIntro}>
         <div>
           <span>O que muda</span>

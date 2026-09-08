@@ -2,23 +2,34 @@ import { Anchor, Check, Compass, Ship } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Card } from '@/design-system/components/Card';
 import { isPaidPlan } from '@/features/auth/types/auth';
-import { subscriptionPlans } from '@/features/subscription/subscriptionPlans';
-import type { SubscriptionPlan } from '@/features/subscription/subscriptionPlans';
+import {
+  formatBrlFromCents,
+  planFeatureList,
+  subscriptionPlanIcon,
+  type PlanCatalog,
+  type SubscriptionPlanIcon,
+} from '@/features/subscription/subscriptionPlans';
 import premiumStyles from '@/pages/premium/premium.module.css';
 
-const planIcons: Record<SubscriptionPlan['icon'], LucideIcon> = {
+const planIcons: Record<SubscriptionPlanIcon, LucideIcon> = {
   anchor: Anchor,
   compass: Compass,
   ship: Ship,
 };
 
-export function SubscriptionPlanCards({ currentPlanCode }: { currentPlanCode?: string }) {
+export function SubscriptionPlanCards({
+  plans,
+  currentPlanCode,
+}: {
+  plans: PlanCatalog[];
+  currentPlanCode?: string;
+}) {
   const isPaid = isPaidPlan({ plan: { code: currentPlanCode } });
 
   return (
     <div className={premiumStyles.planGrid}>
-      {subscriptionPlans.map((plan) => {
-        const Icon = planIcons[plan.icon];
+      {plans.map((plan) => {
+        const Icon = planIcons[subscriptionPlanIcon(plan.code)];
         const isCurrent = currentPlanCode === plan.code;
         return (
           <Card
@@ -28,7 +39,7 @@ export function SubscriptionPlanCards({ currentPlanCode }: { currentPlanCode?: s
             aria-labelledby={`plan-${plan.code}-title`}
           >
             {plan.featured ? (
-              <span className={premiumStyles.planBadge}>{plan.featuredLabel}</span>
+              <span className={premiumStyles.planBadge}>Mais escolhido</span>
             ) : (
               <span className={premiumStyles.planBadgeSpacer} aria-hidden="true" />
             )}
@@ -38,11 +49,11 @@ export function SubscriptionPlanCards({ currentPlanCode }: { currentPlanCode?: s
             <h3 id={`plan-${plan.code}-title`}>{plan.name}</h3>
             <p className={premiumStyles.planTagline}>{plan.tagline}</p>
             <p className={premiumStyles.planPrice}>
-              <strong>{plan.monthlyPrice}</strong>
-              <span>{plan.period}</span>
+              <strong>{formatBrlFromCents(plan.monthlyPriceCents)}</strong>
+              <span>/mês</span>
             </p>
             <ul className={premiumStyles.planFeatures}>
-              {plan.features.map((feature) => (
+              {planFeatureList(plan).map((feature) => (
                 <li key={feature}>
                   <Check size={16} aria-hidden="true" />
                   {feature}
