@@ -20,6 +20,9 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
     public DbSet<PartnerOffer> PartnerOffers => Set<PartnerOffer>();
     public DbSet<PlatformSettings> PlatformSettings => Set<PlatformSettings>();
     public DbSet<ForecastAlert> ForecastAlerts => Set<ForecastAlert>();
+    public DbSet<BillingCustomer> BillingCustomers => Set<BillingCustomer>();
+    public DbSet<BillingSubscription> BillingSubscriptions => Set<BillingSubscription>();
+    public DbSet<BillingWebhookEvent> BillingWebhookEvents => Set<BillingWebhookEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -39,6 +42,12 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
         modelBuilder.Entity<Partner>().HasIndex(item => item.Slug).IsUnique();
         modelBuilder.Entity<PartnerOffer>().HasIndex(item => item.PartnerId);
         modelBuilder.Entity<ForecastAlert>().HasIndex(item => new { item.UserId, item.FishingSpotId }).IsUnique();
+        modelBuilder.Entity<BillingCustomer>().HasIndex(item => item.UserId).IsUnique();
+        modelBuilder.Entity<BillingCustomer>().HasIndex(item => item.AsaasCustomerId).IsUnique();
+        modelBuilder.Entity<BillingSubscription>().HasIndex(item => item.UserId);
+        modelBuilder.Entity<BillingSubscription>().HasIndex(item => item.AsaasCheckoutId);
+        modelBuilder.Entity<BillingSubscription>().HasIndex(item => item.AsaasSubscriptionId);
+        modelBuilder.Entity<BillingWebhookEvent>().HasIndex(item => item.AsaasEventId).IsUnique();
 
         modelBuilder.Entity<Plan>().HasData(
             new Plan
@@ -323,4 +332,45 @@ public sealed class ForecastAlert
     public DateOnly? LastNotifiedDate { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class BillingCustomer
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid UserId { get; set; }
+    public string AsaasCustomerId { get; set; } = string.Empty;
+    public string? CpfCnpj { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class BillingSubscription
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid UserId { get; set; }
+    public string PlanCode { get; set; } = string.Empty;
+    public string Cycle { get; set; } = "YEARLY";
+    public string Status { get; set; } = "pending_checkout";
+    public string? AsaasCheckoutId { get; set; }
+    public string? AsaasSubscriptionId { get; set; }
+    public string? PreviousAsaasSubscriptionId { get; set; }
+    public string? CheckoutUrl { get; set; }
+    public int PriceCents { get; set; }
+    public int RecurringPriceCents { get; set; }
+    public string ExternalReference { get; set; } = string.Empty;
+    public DateTimeOffset? ExpiresAt { get; set; }
+    public DateTimeOffset? PeriodStart { get; set; }
+    public DateTimeOffset? CurrentPeriodEnd { get; set; }
+    public DateTimeOffset? PastDueSince { get; set; }
+    public bool CancelAtPeriodEnd { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class BillingWebhookEvent
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string AsaasEventId { get; set; } = string.Empty;
+    public string Event { get; set; } = string.Empty;
+    public DateTimeOffset ReceivedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? ProcessedAt { get; set; }
 }

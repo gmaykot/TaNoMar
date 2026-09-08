@@ -36,6 +36,7 @@ Os services chamam `/api/v1`, validam DTOs de wire e mapeiam para os tipos da UI
 - `Models`: contratos existentes.
 - `Options`: configuração da aplicação.
 - `Notifications`: hub SSE em memória, worker de Web Push (VAPID) e worker horário de alertas de previsão. Sem fila externa; um container. Alertas são persistidos em `ForecastAlerts` e respeitam as preferências de notificação.
+- `Billing`: cliente Asaas, catálogo, checkout, webhook, cancelamento e worker do período.
 - `Program.cs`: DI, middleware, worker de aquecimento e endpoints Minimal API sob `/api/v1`.
 
 Namespaces, assembly e tipos técnicos usam `TaNoMar.Api`. Identificadores de runtime estáveis (seção `TaNoMar`, cookie, caminhos persistentes) estão catalogados em `docs/api-contracts.md`.
@@ -45,6 +46,8 @@ Namespaces, assembly e tipos técnicos usam `TaNoMar.Api`. Identificadores de ru
 Localmente, web e API são processos independentes: Vite executa o React em HTTP (`--host`) com proxy de `/api` para `http://127.0.0.1:5000`, e sobe HTTPS extra na porta seguinte para o PWA instalar no celular via `<ip>.nip.io`. `dotnet run` executa a API com `ASPNETCORE_ENVIRONMENT=Development`. Docker não participa do desenvolvimento local. A API recebe `ConnectionStrings__Default` pelo ambiente e conecta a um PostgreSQL externo; o repositório não provisiona banco.
 
 A sessão usa Google Sign-In. O access token fica só em memória; o refresh token segue no cookie HttpOnly `tanomar_refresh`. Endpoints autenticados não entram no cache do service worker.
+
+Cobrança da assinatura: Checkout hospedado do Asaas, só cartão, Arrais/Mestre/Capitão em mensal ou anual (−20%). O preço mensal de tabela vive em `Plans`. Reajuste de tabela não cobra a diferença no meio do período já pago; a renovação anual e a próxima fatura mensal usam o catálogo novo. Upgrade começa na hora com desconto proporcional. Cancelar a recorrência não estorna. Ver [billing.md](billing.md) e [ADR-004](decisions/ADR-004-asaas-checkout.md).
 
 ## Produção
 

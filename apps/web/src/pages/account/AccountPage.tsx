@@ -21,8 +21,12 @@ import {
   showsPartners,
   SUBSCRIPTION_LOCK_LABEL,
 } from '@/features/auth/types/auth';
+import { formatBillingDate } from '@/features/billing/billing';
+import { useCancelBillingSubscription } from '@/features/billing/hooks/useBillingCheckout';
 import { useLocations } from '@/features/locations/hooks/useLocations';
+import { formatBrlFromCents } from '@/features/subscription/subscriptionPlans';
 import { PageHeader } from '@/pages/shared/PageHeader';
+import { ApiError } from '@/shared/api/errors';
 import { routes } from '@/shared/constants/routes';
 import accountStyles from './account.module.css';
 import styles from '@/pages/shared/pages.module.css';
@@ -108,6 +112,8 @@ export function AccountPage() {
           </div>
         </dl>
       </Card>
+
+      <BillingSummary />
 
       <Link className={accountStyles.premiumCallout} to={routes.premium}>
         <strong>{isPaidPlan(user) ? 'Mudar plano' : 'Conhecer os planos'}</strong>
@@ -205,5 +211,75 @@ export function AccountPage() {
         Sair
       </Button>
     </div>
+  );
+}
+
+function formatReais(value: number | null | undefined) {
+  if (value === null || value === undefined) return null;
+  return formatBrlFromCents(Math.round(value * 100));
+}
+
+function BillingSummary() {
+  const auth = useAuth();
+  const cancel = useCancelBillingSubscription();
+  const billing = auth.user?.billing;
+  if (!billing?.enabled) return null;
+  const accessUntil = formatBillingDate(billing.accessUntil);
+  const contracted = formatReais(billing.contractedPrice);
+  const renewal = formatReais(billing.renewalPrice);
+  const canCancel =
+    (billing.status === 'active' || billing.status === 'past_due') && !billing.cancelAtPeriodEnd;
+  const cancelError =
+    cancel.error instanceof ApiError
+      ? cancel.error.message
+      : cancel.isError
+        ? 'Não foi possível cancelar a renovação.'
+        : null;
+
+  function handleCancel() {
+    const until = accessUntil ?? 'o fim do período já pago';
+    if (
+      !window.confirm(
+        `Cancelar a renovação? Você continua com o plano até ${until}. Não há estorno.`,
+      )
+    ) {
+      return;
+    }
+    cancel.mutate();
+  }
+
+  if (billing.status === 'inactive' && !isPaidPlan(auth.user)) return null;
+
+  return (
+    <Card className={accountStyles.billingCard}>
+      <strong>Assinatura</strong>
+      {billing.status === 'pending' ? (
+        <p>Há um pagamento em aberto. Conclua ou gere outro checkout na página de Assinatura.</p>
+      ) : null}
+      {billing.status === 'past_due' ? (
+        <p>A renovação está atrasada. Atualize o pagamento para manter o plano.</p>
+      ) : null}
+      {billing.cancelAtPeriodEnd && accessUntil ? (
+        <p>
+          Renovação cancelada · {auth.user?.plan.name} até {accessUntil}. Não há estorno.
+        </p>
+      ) : null}
+      {canCancel && accessUntil ? <p>Acesso do período atual até {accessUntil}.</p> : null}
+      {contracted && renewal && contracted !== renewal ? (
+        <p>
+          Neste período você pagou {contracted}. A renovação será {renewal}. A diferença não é
+          cobrada agora.
+        </p>
+      ) : null}
+      {cancelError ? <p className={accountStyles.billingError}>{cancelError}</p> : null}
+      {canCancel ? (
+        <Button variant="secondary" onClick={handleCancel} disabled={cancel.isPending}>
+          {cancel.isPending ? 'Cancelando…' : 'Cancelar renovação'}
+        </Button>
+      ) : null}
+      <Link className={styles.backLink} to={routes.premium}>
+        Ver planos
+      </Link>
+    </Card>
   );
 }

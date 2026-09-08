@@ -1,7 +1,8 @@
+import { parseBillingSubscription } from '@/features/billing/mappers/billingMapper';
+import { fishingMetricKeys, type FishingMetricKey } from '@/features/fishing/types/fishing';
 import { apiRequest, refreshAccessTokenOnce } from '@/shared/api/client';
 import { ContractError } from '@/shared/api/errors';
 import { setAccessToken } from '@/shared/api/session';
-import { fishingMetricKeys, type FishingMetricKey } from '@/features/fishing/types/fishing';
 import type { AuthUser } from '../types/auth';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -92,7 +93,13 @@ export function parseAuthUser(payload: unknown): AuthUser {
     modules: parsePlanModules(payload.modules),
     features: { showPartners },
     preferences: { region, windUnit, forecastNotifications, visibleMetrics },
+    billing: parseOptionalBilling(payload.billing),
   };
+}
+
+function parseOptionalBilling(value: unknown): AuthUser['billing'] {
+  if (value === undefined || value === null) return undefined;
+  return parseBillingSubscription(value);
 }
 
 function parsePlanModules(value: unknown): AuthUser['modules'] {

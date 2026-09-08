@@ -9,6 +9,7 @@ import { adminPlansQueryKey, useAdminPlans } from '@/features/admin-plans/hooks/
 import { updateAdminPlan } from '@/features/admin-plans/services/adminPlansService';
 import { planRevision, type AdminPlanUpdate } from '@/features/admin-plans/types/adminPlan';
 import { adminUsersQueryKey } from '@/features/admin-users/hooks/useAdminUsers';
+import { billingCatalogQueryKey } from '@/features/billing/hooks/useBillingCatalog';
 import { subscriptionPlansQueryKey } from '@/features/subscription/hooks/useSubscriptionPlans';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { ApiError } from '@/shared/api/errors';
@@ -31,6 +32,7 @@ export function AdminPlansPage() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: adminPlansQueryKey }),
+        queryClient.invalidateQueries({ queryKey: billingCatalogQueryKey }),
         queryClient.invalidateQueries({ queryKey: subscriptionPlansQueryKey }),
         queryClient.invalidateQueries({ queryKey: adminUsersQueryKey }),
         queryClient.invalidateQueries({ queryKey: ['me'] }),

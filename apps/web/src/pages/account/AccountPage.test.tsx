@@ -4,14 +4,38 @@ import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { AccountPage } from './AccountPage';
 
-const { logout, authState } = vi.hoisted(() => ({
+const { logout, cancelSubscription, authState } = vi.hoisted(() => ({
   logout: vi.fn(),
+  cancelSubscription: vi.fn(),
   authState: {
     maxPersonalSpots: 10,
     maxFavorites: 20,
     role: 'User',
     showPartners: false,
+    billing: undefined as
+      | {
+          status: 'active' | 'pending' | 'inactive' | 'past_due' | 'canceled';
+          planCode: string | null;
+          cycle: 'MONTHLY' | 'YEARLY' | null;
+          catalogMonthlyPrice: number | null;
+          catalogAnnualPrice: number | null;
+          contractedPrice: number | null;
+          renewalPrice: number | null;
+          discountPercent: number;
+          renewsAt: string | null;
+          accessUntil: string | null;
+          cancelAtPeriodEnd: boolean;
+          enabled: boolean;
+        }
+      | undefined,
   },
+}));
+
+vi.mock('@/features/billing/services/billingService', () => ({
+  cancelBillingSubscription: (...args: unknown[]) => cancelSubscription(...args),
+  getBillingCatalog: vi.fn(),
+  getBillingSubscription: vi.fn(),
+  startBillingCheckout: vi.fn(),
 }));
 
 vi.mock('@/features/locations/hooks/useLocations', () => ({
@@ -45,6 +69,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
       },
       features: { showPartners: authState.showPartners },
       preferences: { region: 'Florianópolis', windUnit: 'kmh', forecastNotifications: true },
+      billing: authState.billing,
     },
     loginWithGoogle: vi.fn(),
     logout,
@@ -57,7 +82,9 @@ describe('AccountPage', () => {
     authState.maxFavorites = 20;
     authState.role = 'User';
     authState.showPartners = false;
+    authState.billing = undefined;
     logout.mockClear();
+    cancelSubscription.mockReset();
   });
 
   it('funciona como central da conta e chama logout', async () => {
@@ -137,5 +164,35 @@ describe('AccountPage', () => {
       'href',
       '/premium',
     );
+  });
+
+  it('cancela a renovação sem estorno e mantém o acesso até o fim do período', async () => {
+    authState.billing = {
+      status: 'active',
+      planCode: 'premium',
+      cycle: 'YEARLY',
+      catalogMonthlyPrice: 19.9,
+      catalogAnnualPrice: 191.04,
+      contractedPrice: 191.04,
+      renewalPrice: 191.04,
+      discountPercent: 20,
+      renewsAt: '2027-09-08T00:00:00.000Z',
+      accessUntil: '2027-09-08T00:00:00.000Z',
+      cancelAtPeriodEnd: false,
+      enabled: true,
+    };
+    cancelSubscription.mockResolvedValue({
+      ...authState.billing,
+      status: 'canceled',
+      cancelAtPeriodEnd: true,
+      renewsAt: null,
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const user = userEvent.setup();
+    renderWithProviders(<AccountPage />);
+
+    await user.click(screen.getByRole('button', { name: 'Cancelar renovação' }));
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('Não há estorno'));
+    expect(cancelSubscription).toHaveBeenCalledTimes(1);
   });
 });
