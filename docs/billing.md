@@ -95,7 +95,7 @@ Base `/api/v1`. Autenticados, exceto o webhook.
 `POST /billing/checkout`:
 
 - exige sessão Google válida e conta ativa;
-- recusa se já existe assinatura `active` (admin-granted sem assinatura pode iniciar checkout);
+- recusa se já existe assinatura `active` **ou** período pago vigente (`accessUntil` no futuro), para não cobrar o ano duas vezes;
 - recusa checkout `ACTIVE` não expirado da mesma conta (idempotência);
 - a chave Asaas nunca sai da API.
 
