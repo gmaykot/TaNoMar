@@ -27,7 +27,7 @@ Sora e Caveat são servidas localmente. Caveat não entra em botões, formulári
 - `Badge`: classificação com texto e ícone.
 - `ScoreIndicator`: nota de 0 a 10 com descrição acessível.
 - `MetricTile`: indicador meteorológico ou marinho.
-- `IconButton`, `SearchField` e `FeedbackState` (vazio, erro ou `busy` para carregamento).
+- `IconButton`, `SearchField`, `FeedbackState` (vazio, erro ou `busy` para carregamento) e `ConfirmDrawer` (gaveta no rodapé para confirmar uma ação).
 
 ## Marca
 

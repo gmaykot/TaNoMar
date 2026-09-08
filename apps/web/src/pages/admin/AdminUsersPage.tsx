@@ -3,6 +3,7 @@ import { ArrowLeft, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { showSaveConfirmation } from '@/app/layout/saveConfirmationEvents';
+import { ConfirmDrawer } from '@/design-system/components/ConfirmDrawer';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { SearchField } from '@/design-system/components/SearchField';
 import { AdminUserCard } from '@/features/admin-users/components/AdminUserCard';
@@ -23,11 +24,44 @@ import styles from '@/pages/shared/pages.module.css';
 
 type Filter = 'all' | 'paid' | 'free' | 'blocked';
 
+type PendingAccountChange =
+  | { kind: 'plan'; id: string; name: string; planCode: AdminPlanCode; planName: string }
+  | { kind: 'active'; id: string; name: string; isActive: boolean };
+
+const planLabel: Record<AdminPlanCode, string> = {
+  free: 'Free',
+  arrais: 'Arrais',
+  premium: 'Mestre',
+  capitao: 'Capitão',
+};
+
 function filterLabel(filter: Filter) {
   if (filter === 'paid') return 'Assinantes';
   if (filter === 'free') return 'Free';
   if (filter === 'blocked') return 'Bloqueados';
   return 'Todos';
+}
+
+function accountChangeCopy(change: PendingAccountChange) {
+  if (change.kind === 'plan') {
+    return {
+      title: 'Mudar plano',
+      description: `Alterar o plano de ${change.name} para ${change.planName}? A conta passa a usar as cotas e os recursos desse plano.`,
+      confirmLabel: 'Confirmar plano',
+    };
+  }
+  if (change.isActive) {
+    return {
+      title: 'Liberar conta',
+      description: `Liberar a conta de ${change.name}? Ela volta a entrar no TáNoMar.`,
+      confirmLabel: 'Confirmar liberação',
+    };
+  }
+  return {
+    title: 'Bloquear conta',
+    description: `Bloquear a conta de ${change.name}? A sessão atual será encerrada.`,
+    confirmLabel: 'Confirmar bloqueio',
+  };
 }
 
 export function AdminUsersPage() {
@@ -42,6 +76,7 @@ export function AdminUsersPage() {
   const [filter, setFilter] = useState<Filter>('all');
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [errorById, setErrorById] = useState<Record<string, string>>({});
+  const [pendingChange, setPendingChange] = useState<PendingAccountChange | null>(null);
 
   const filtered = useMemo(() => {
     if (!users.data) return [];
@@ -72,12 +107,14 @@ export function AdminUsersPage() {
     onSuccess: async (user) => {
       await refresh(user.id);
       showSaveConfirmation('Plano da conta salvo.');
+      setPendingChange(null);
     },
     onError: (error, { id }) => {
       setErrorById((current) => ({
         ...current,
         [id]: error instanceof ApiError ? error.message : 'Não foi possível alterar o plano.',
       }));
+      setPendingChange(null);
     },
     onSettled: () => setPendingId(null),
   });
@@ -92,12 +129,14 @@ export function AdminUsersPage() {
     onSuccess: async (user) => {
       await refresh(user.id);
       showSaveConfirmation('Situação da conta salva.');
+      setPendingChange(null);
     },
     onError: (error, { id }) => {
       setErrorById((current) => ({
         ...current,
         [id]: error instanceof ApiError ? error.message : 'Não foi possível atualizar a conta.',
       }));
+      setPendingChange(null);
     },
     onSettled: () => setPendingId(null),
   });
@@ -120,6 +159,9 @@ export function AdminUsersPage() {
       />
     );
   }
+
+  const confirmation = pendingChange ? accountChangeCopy(pendingChange) : null;
+  const changeBusy = planMutation.isPending || activeMutation.isPending;
 
   return (
     <div className={styles.page}>
@@ -168,12 +210,45 @@ export function AdminUsersPage() {
               pending={pendingId === user.id}
               error={errorById[user.id] || null}
               enabledPlanCodes={enabledPlanCodes}
-              onPlanChange={(planCode) => planMutation.mutate({ id: user.id, planCode })}
-              onActiveChange={(isActive) => activeMutation.mutate({ id: user.id, isActive })}
+              onPlanChange={(planCode) =>
+                setPendingChange({
+                  kind: 'plan',
+                  id: user.id,
+                  name: user.name,
+                  planCode,
+                  planName: planLabel[planCode],
+                })
+              }
+              onActiveChange={(isActive) =>
+                setPendingChange({
+                  kind: 'active',
+                  id: user.id,
+                  name: user.name,
+                  isActive,
+                })
+              }
             />
           ))}
         </div>
       )}
+      {confirmation && pendingChange ? (
+        <ConfirmDrawer
+          title={confirmation.title}
+          description={confirmation.description}
+          confirmLabel={confirmation.confirmLabel}
+          busy={changeBusy}
+          onCancel={() => {
+            if (!changeBusy) setPendingChange(null);
+          }}
+          onConfirm={() => {
+            if (pendingChange.kind === 'plan') {
+              planMutation.mutate({ id: pendingChange.id, planCode: pendingChange.planCode });
+              return;
+            }
+            activeMutation.mutate({ id: pendingChange.id, isActive: pendingChange.isActive });
+          }}
+        />
+      ) : null}
     </div>
   );
 }

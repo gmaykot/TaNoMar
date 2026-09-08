@@ -16,7 +16,7 @@ import {
 import { formatDateTime, isSameCalendarDay } from '@/shared/utils/formatDateTime';
 import type { ReportType } from '../types/community';
 import { reportShortcuts, shortcutForComment } from '../utils/reportShortcuts';
-import { ReportConfirmDrawer } from './ReportConfirmDrawer';
+import { ConfirmDrawer } from '@/design-system/components/ConfirmDrawer';
 import styles from './community.module.css';
 
 const typeLabel: Record<ReportType, string> = {
@@ -326,7 +326,7 @@ export function CommunityReports({ spotId, canReport, canVote = false }: Communi
         />
       )}
       {pendingCreate ? (
-        <ReportConfirmDrawer
+        <ConfirmDrawer
           title="Enviar relato"
           description={`Enviar “${pendingCreate.label}” neste local? Os outros pescadores receberão um aviso no sino.`}
           confirmLabel="Confirmar envio"
@@ -343,7 +343,7 @@ export function CommunityReports({ spotId, canReport, canVote = false }: Communi
         />
       ) : null}
       {pendingDelete && pendingDeleteLabel ? (
-        <ReportConfirmDrawer
+        <ConfirmDrawer
           title="Apagar relato"
           description={`Apagar “${pendingDeleteLabel}”? Ele some para toda a comunidade.`}
           confirmLabel="Confirmar exclusão"

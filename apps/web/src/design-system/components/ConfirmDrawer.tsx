@@ -1,9 +1,9 @@
 import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/design-system/components/Button';
-import styles from './reportConfirmDrawer.module.css';
+import styles from './confirmDrawer.module.css';
 
-interface ReportConfirmDrawerProps {
+interface ConfirmDrawerProps {
   title: string;
   description: string;
   confirmLabel: string;
@@ -12,19 +12,22 @@ interface ReportConfirmDrawerProps {
   onConfirm: () => void;
 }
 
-export function ReportConfirmDrawer({
+export function ConfirmDrawer({
   title,
   description,
   confirmLabel,
   busy = false,
   onCancel,
   onConfirm,
-}: ReportConfirmDrawerProps) {
+}: ConfirmDrawerProps) {
   const titleId = useId();
   const descriptionId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const onCancelRef = useRef(onCancel);
-  onCancelRef.current = onCancel;
+
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+  }, [onCancel]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
