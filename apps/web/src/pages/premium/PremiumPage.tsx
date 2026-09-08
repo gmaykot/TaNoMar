@@ -11,12 +11,16 @@ import {
   Users,
   Waves,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Card } from '@/design-system/components/Card';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { isPaidPlan } from '@/features/auth/types/auth';
-import { useSubscriptionPlans } from '@/features/subscription/hooks/useSubscriptionPlans';
+import { useBillingCatalog } from '@/features/billing/hooks/useBillingCatalog';
+import { useBillingCheckout } from '@/features/billing/hooks/useBillingCheckout';
+import type { BillingCycle } from '@/features/billing/billing';
+import { ApiError } from '@/shared/api/errors';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { SubscriptionPlanCards } from '@/pages/premium/SubscriptionPlanCards';
 import { routes } from '@/shared/constants/routes';
@@ -78,13 +82,42 @@ function maxForecastCaption(plans: { name: string; entitlements: { maxForecastDa
   };
 }
 
+function checkoutMessage(value: string | null) {
+  if (value === 'success') {
+    return 'Recebemos o retorno do pagamento. O plano entra quando a cobrança for confirmada.';
+  }
+  if (value === 'cancel') {
+    return 'O pagamento foi cancelado. Você pode escolher o plano de novo.';
+  }
+  if (value === 'expired') {
+    return 'O checkout expirou. Gere um novo pagamento.';
+  }
+  return null;
+}
+
 export function PremiumPage() {
   const auth = useAuth();
-  const catalog = useSubscriptionPlans();
+  const catalog = useBillingCatalog();
+  const checkout = useBillingCheckout();
+  const [searchParams] = useSearchParams();
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
   const isPaid = isPaidPlan(auth.user);
   const currentPlanName = isPaid ? auth.user?.plan.name : undefined;
-  const plans = catalog.data ?? [];
+  const billing = catalog.data;
+  const plans = billing?.plans ?? [];
   const highlight = maxForecastCaption(plans);
+  const returnMessage = checkoutMessage(searchParams.get('checkout'));
+  const checkoutError =
+    checkout.error instanceof ApiError
+      ? checkout.error.message
+      : checkout.isError
+        ? 'Não foi possível abrir o pagamento.'
+        : null;
+
+  function handleCheckout(planCode: string, cycle: BillingCycle) {
+    setPendingKey(`${planCode}:${cycle}`);
+    checkout.mutate({ planCode, cycle });
+  }
 
   if (catalog.isPending) {
     return (
@@ -115,6 +148,16 @@ export function PremiumPage() {
         title="Escolha o comando da sua pesca."
         description="Arrais, Mestre ou Capitão. Três planos para ver mais dias, guardar seus locais e sair com mais contexto."
       />
+      {returnMessage ? (
+        <p className={premiumStyles.checkoutBanner} role="status">
+          {returnMessage}
+        </p>
+      ) : null}
+      {checkoutError ? (
+        <p className={premiumStyles.checkoutError} role="alert">
+          {checkoutError}
+        </p>
+      ) : null}
       <section className={premiumStyles.hero} aria-labelledby="premium-hero-title">
         <div className={premiumStyles.heroCopy}>
           <span className={premiumStyles.heroEyebrow}>
@@ -155,9 +198,21 @@ export function PremiumPage() {
           <span>Planos</span>
           <h2>Três rotas. O mesmo mar.</h2>
         </div>
-        <p>Escolha o ritmo da sua pesca. A cobrança ainda não começa por aqui.</p>
+        <p>
+          {billing?.enabled
+            ? 'Escolha o mês ou o ano. O anual tem 20% de desconto. No upgrade, o plano novo começa na hora.'
+            : 'Escolha o ritmo da sua pesca. A cobrança ainda não começa por aqui.'}
+        </p>
       </div>
-      <SubscriptionPlanCards plans={plans} currentPlanCode={auth.user?.plan.code} />
+      <SubscriptionPlanCards
+        plans={plans}
+        currentPlanCode={auth.user?.plan.code}
+        currentCycle={auth.user?.billing?.cycle}
+        currentStatus={auth.user?.billing?.status}
+        billingEnabled={billing?.enabled === true}
+        pendingKey={pendingKey}
+        onCheckout={handleCheckout}
+      />
       <div className={premiumStyles.benefitIntro}>
         <div>
           <span>O que muda</span>
@@ -178,13 +233,15 @@ export function PremiumPage() {
       </div>
       <Card as="section" className={premiumStyles.infoCard}>
         <div>
-          <span>Disponibilidade</span>
-          <h2>Os planos já existem na conta</h2>
+          <span>Pagamento</span>
+          <h2>
+            {billing?.enabled ? 'Cartão só na página do Asaas' : 'Os planos já existem na conta'}
+          </h2>
         </div>
         <p>
-          Arrais, Mestre e Capitão já podem ser liberados pelo administrador. A cobrança automática
-          ainda está sendo configurada pela equipe do TáNoMar e esta página não inicia pagamento nem
-          cria assinatura sozinha.
+          {billing?.enabled
+            ? 'O TáNoMar não vê o número do cartão. Cancelar a renovação não estorna o período já pago. Se a tabela mudar no meio do ciclo, a diferença não é cobrada agora — a renovação usa o preço novo.'
+            : 'Arrais, Mestre e Capitão já podem ser liberados pelo administrador. A cobrança automática ainda está sendo configurada pela equipe do TáNoMar e esta página não inicia pagamento nem cria assinatura sozinha.'}
         </p>
         <Link className={styles.backLink} to={routes.about}>
           Saiba como a previsão é feita <ArrowRight size={16} aria-hidden="true" />

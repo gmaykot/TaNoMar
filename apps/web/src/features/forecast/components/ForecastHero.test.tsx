@@ -29,4 +29,19 @@ describe('ForecastHero', () => {
 
     expect(screen.queryByText('Meu local')).not.toBeInTheDocument();
   });
+
+  it('mostra a média das horas e a origem das métricas', () => {
+    const forecast = forecastFixture.days[0]?.ranking[0];
+    if (!forecast) throw new Error('fixture de ranking ausente');
+
+    render(
+      <MemoryRouter>
+        <ForecastHero forecast={forecast} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/Média das 3 melhores horas/)).toBeInTheDocument();
+    expect(screen.getByText('Condições às 05:30')).toBeInTheDocument();
+    expect(screen.getByText(/Melhor hora/)).toBeInTheDocument();
+  });
 });

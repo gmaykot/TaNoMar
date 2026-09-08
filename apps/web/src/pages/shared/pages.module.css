@@ -350,6 +350,18 @@
   background: rgb(255 255 255 / 10%);
 }
 
+.scoreBreakdown,
+.metricCaption {
+  margin: 0 0 var(--space-3);
+  color: rgb(255 255 255 / 72%);
+  font-size: var(--font-size-xs);
+}
+
+.metricCaption {
+  font-weight: 750;
+  color: var(--color-sea-200);
+}
+
 @media (min-width: 48rem) {
   .page {
     gap: var(--space-8);

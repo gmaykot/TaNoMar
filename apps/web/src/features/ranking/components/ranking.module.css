@@ -116,6 +116,21 @@
   font-size: var(--font-size-xs);
 }
 
+.info .scoreBreakdown {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-ocean-800);
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
+}
+
+.metricCaption {
+  margin: var(--space-2) 0 var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+}
+
 .emphasis {
   margin-top: var(--space-1);
   color: var(--color-ocean-950);

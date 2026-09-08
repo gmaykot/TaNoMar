@@ -66,7 +66,8 @@ public sealed record FishingHourForecast(
     string WaveDirection,
     string SwellDirection,
     double? SeaLevelHeightMsl,
-    double PressureHpa);
+    double PressureHpa,
+    string WindOrigin = "");
 
 public sealed record FishingForecastError(string Location, string Error);
 

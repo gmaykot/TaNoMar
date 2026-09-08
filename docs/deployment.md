@@ -69,9 +69,15 @@ Alterações no frontend exigem **rebuild da imagem inteira** (web + API). Isso 
 | `VAPID_PRIVATE_KEY` | `TaNoMar__VapidPrivateKey` | Chave privada Web Push. Gere o par com `npx web-push generate-vapid-keys`. |
 | `VAPID_SUBJECT` | `TaNoMar__VapidSubject` | Contato VAPID (`mailto:` ou URL HTTPS). |
 | `TABUA_MARE_API_KEY` | `Fishing:TabuaMareApiKey` | Chave opcional da Tábua de Maré API. Sem ela vale o limite anônimo (16 req/min). |
+| `GEOAPIFY_API_KEY` | `Fishing:GeoapifyApiKey` | Chave da Autocomplete API da Geoapify no cadastro de locais. Sem ela a busca devolve lista vazia e o formulário continua em texto livre. |
+| `ASAAS_API_KEY` | `Billing:AsaasApiKey` | Chave da API Asaas (`access_token`). Sem ela o checkout responde `503` e `/premium` permanece vitrine. |
+| `ASAAS_BASE_URL` | `Billing:AsaasBaseUrl` | Produção `https://api.asaas.com/v3`; sandbox `https://api-sandbox.asaas.com/v3`. |
+| `ASAAS_WEBHOOK_TOKEN` | `Billing:AsaasWebhookToken` | Token do header `asaas-access-token`. Diferente da API key. |
+| `PUBLIC_APP_ORIGIN` | `Billing:PublicAppOrigin` | Origem HTTPS dos callbacks do checkout (`/premium?checkout=`). |
 
 A vitrine de parceiros não usa mais variável de ambiente. O admin liga ou desliga em `/admin/parceiros`; o valor fica em `PlatformSettings`.
-| `GEOAPIFY_API_KEY` | `Fishing:GeoapifyApiKey` | Chave da Autocomplete API da Geoapify no cadastro de locais. Sem ela a busca devolve lista vazia e o formulário continua em texto livre. |
+
+O preço da assinatura não usa variável de ambiente: o admin edita `Plans.MonthlyPriceCents` em `/admin/planos`.
 
 > A seção de configuração da API é `TaNoMar` e o prefixo de ambiente é `TaNoMar__`. Detalhes em [api-contracts.md](api-contracts.md#identificadores-de-runtime).
 

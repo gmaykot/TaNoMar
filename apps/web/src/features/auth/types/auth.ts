@@ -1,3 +1,4 @@
+import type { BillingSubscription } from '@/features/billing/billing';
 import type { FishingMetricKey } from '@/features/fishing/types/fishing';
 
 export interface AuthUser {
@@ -26,6 +27,7 @@ export interface AuthUser {
     forecastNotifications: boolean;
     visibleMetrics?: FishingMetricKey[];
   };
+  billing?: BillingSubscription;
 }
 
 export type AuthStatus = 'booting' | 'anonymous' | 'authenticated';

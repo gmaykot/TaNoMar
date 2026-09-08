@@ -7,7 +7,9 @@ using Google.Apis.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Options;
 using TaNoMar.Api.Auth;
+using TaNoMar.Api.Billing;
 using TaNoMar.Api.Data;
 using TaNoMar.Api.Fishing;
 using TaNoMar.Api.Notifications;
@@ -38,6 +40,18 @@ builder.Services.PostConfigure<FishingOptions>(options =>
     if (string.IsNullOrWhiteSpace(options.GeoapifyApiKey))
         options.GeoapifyApiKey = builder.Configuration["GEOAPIFY_API_KEY"] ?? string.Empty;
 });
+builder.Services.Configure<BillingOptions>(builder.Configuration.GetSection(BillingOptions.SectionName));
+builder.Services.PostConfigure<BillingOptions>(options =>
+{
+    if (string.IsNullOrWhiteSpace(options.AsaasApiKey))
+        options.AsaasApiKey = builder.Configuration["ASAAS_API_KEY"] ?? string.Empty;
+    if (string.IsNullOrWhiteSpace(options.AsaasBaseUrl))
+        options.AsaasBaseUrl = builder.Configuration["ASAAS_BASE_URL"] ?? "https://api.asaas.com/v3";
+    if (string.IsNullOrWhiteSpace(options.AsaasWebhookToken))
+        options.AsaasWebhookToken = builder.Configuration["ASAAS_WEBHOOK_TOKEN"] ?? string.Empty;
+    if (string.IsNullOrWhiteSpace(options.PublicAppOrigin))
+        options.PublicAppOrigin = builder.Configuration["PUBLIC_APP_ORIGIN"] ?? string.Empty;
+});
 builder.Services.AddDbContext<TaNoMarDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 builder.Services.AddScoped<AuthTokenService>();
 builder.Services.AddMemoryCache();
@@ -57,9 +71,21 @@ builder.Services.AddHttpClient<GeoapifyClient>(client =>
     client.Timeout = TimeSpan.FromSeconds(10);
     client.DefaultRequestHeaders.UserAgent.ParseAdd("tanomar/2.0");
 });
+builder.Services.AddHttpClient<AsaasClient>((provider, client) =>
+{
+    var billing = provider.GetRequiredService<IOptions<BillingOptions>>().Value;
+    var baseUrl = string.IsNullOrWhiteSpace(billing.AsaasBaseUrl)
+        ? "https://api.asaas.com/v3"
+        : billing.AsaasBaseUrl.Trim().TrimEnd('/');
+    client.BaseAddress = new Uri(baseUrl + "/");
+    client.Timeout = TimeSpan.FromSeconds(20);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("tanomar/2.0");
+});
+builder.Services.AddScoped<BillingService>();
 builder.Services.AddTransient<FishingForecastService>();
 builder.Services.AddHostedService<FishingForecastWarmupWorker>();
 builder.Services.AddHostedService<ForecastAlertWorker>();
+builder.Services.AddHostedService<BillingPeriodWorker>();
 builder.Services.AddSingleton<NotificationRealtimeHub>();
 builder.Services.AddSingleton<WebPushQueue>();
 builder.Services.AddHttpClient<Lib.Net.Http.WebPush.PushServiceClient>();
@@ -179,13 +205,13 @@ api.MapPost("/auth/logout", async (TaNoMarDbContext db, AuthTokenService tokens,
     return Results.NoContent();
 });
 
-api.MapGet("/me", async (ClaimsPrincipal principal, TaNoMarDbContext db, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
+api.MapGet("/me", async (ClaimsPrincipal principal, TaNoMarDbContext db, BillingService billing, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
     if (ApplyBootstrapAdmin(user, user.Email, user.GoogleSubject, options.Value))
         await db.SaveChangesAsync(cancellationToken);
-    return Results.Ok(await UserDtoAsync(user, db, cancellationToken));
+    return Results.Ok(await UserDtoAsync(user, db, billing, cancellationToken));
 }).RequireAuthorization();
 
 api.MapGet("/plans", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
@@ -199,6 +225,51 @@ api.MapGet("/plans", async (ClaimsPrincipal principal, TaNoMarDbContext db, Canc
         .ToListAsync(cancellationToken);
     return Results.Ok(plans.Select(PlanRules.CatalogDto).ToList());
 }).RequireAuthorization();
+
+api.MapGet("/billing/catalog", async (ClaimsPrincipal principal, TaNoMarDbContext db, BillingService billing, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    return Results.Ok(await billing.CatalogAsync(user, cancellationToken));
+}).RequireAuthorization();
+
+api.MapPost("/billing/checkout", async (BillingCheckoutRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, BillingService billing, HttpContext http, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    var origin = billing.PublicOrigin($"{http.Request.Scheme}://{http.Request.Host.Value}");
+    return await billing.CreateCheckoutAsync(user, request.PlanCode, request.Cycle, origin, cancellationToken);
+}).RequireAuthorization();
+
+api.MapGet("/billing/subscription", async (ClaimsPrincipal principal, TaNoMarDbContext db, BillingService billing, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    return Results.Ok(await billing.SubscriptionAsync(user, cancellationToken));
+}).RequireAuthorization();
+
+api.MapPost("/billing/subscription/cancel", async (ClaimsPrincipal principal, TaNoMarDbContext db, BillingService billing, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    return await billing.CancelAsync(user, cancellationToken);
+}).RequireAuthorization();
+
+api.MapPost("/webhooks/asaas", async (HttpRequest request, BillingService billing, CancellationToken cancellationToken) =>
+{
+    var token = request.Headers["asaas-access-token"].ToString();
+    JsonElement payload;
+    try
+    {
+        using var document = await JsonDocument.ParseAsync(request.Body, cancellationToken: cancellationToken);
+        payload = document.RootElement.Clone();
+    }
+    catch (JsonException)
+    {
+        return Results.BadRequest();
+    }
+    return await billing.HandleWebhookAsync(token, payload, cancellationToken);
+});
 
 api.MapGet("/fishing-spots", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
 {
@@ -391,7 +462,7 @@ api.MapGet("/admin/plans", async (ClaimsPrincipal principal, TaNoMarDbContext db
     return Results.Ok(plans.Select(plan => PlanRules.CatalogDto(plan, activeCounts.GetValueOrDefault(plan.Code))).ToList());
 }).RequireAuthorization();
 
-api.MapPut("/admin/plans/{code}", async (string code, AdminPlanConfigRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+api.MapPut("/admin/plans/{code}", async (string code, AdminPlanConfigRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, BillingService billing, CancellationToken cancellationToken) =>
 {
     var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
     if (failure is not null) return failure;
@@ -438,6 +509,7 @@ api.MapPut("/admin/plans/{code}", async (string code, AdminPlanConfigRequest req
             other.Featured = false;
     }
     await db.SaveChangesAsync(cancellationToken);
+    await billing.SyncCatalogPricesAsync(plan.Code, cancellationToken);
     return Results.Ok(PlanRules.CatalogDto(plan, activeUserCount));
 }).RequireAuthorization();
 
@@ -1059,8 +1131,9 @@ static async Task<bool> ShowPartnersEnabledAsync(TaNoMarDbContext db, Cancellati
     return settings?.ShowPartners == true;
 }
 
-static async Task<object> UserDtoAsync(User user, TaNoMarDbContext db, CancellationToken cancellationToken)
+static async Task<object> UserDtoAsync(User user, TaNoMarDbContext db, BillingService billing, CancellationToken cancellationToken)
 {
+    await billing.ApplyDueAccessAsync(user, cancellationToken);
     var plan = await db.Plans.SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
     var preferences = await db.UserPreferences.AsNoTracking().SingleOrDefaultAsync(item => item.UserId == user.Id, cancellationToken);
     return new
@@ -1080,7 +1153,8 @@ static async Task<object> UserDtoAsync(User user, TaNoMarDbContext db, Cancellat
             windUnit = preferences?.WindUnit ?? "kmh",
             forecastNotifications = preferences?.ForecastNotifications ?? true,
             visibleMetrics = ParseVisibleMetrics(preferences?.VisibleMetrics)
-        }
+        },
+        billing = await billing.DtoAsync(user, cancellationToken)
     };
 }
 static string[] ParseVisibleMetrics(string? value) =>
@@ -1388,17 +1462,41 @@ static object ForecastItemDto(FishingLocationForecast item, bool paid, HashSet<s
     object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = PlanRules.RequiredPlanLabel };
     var classification = item.Score >= 8.5 ? "Excelente" : item.Score >= 7 ? "Muito bom" : item.Score >= 5 ? "Regular" : "Difícil";
     var highlights = ForecastHighlights(hour);
-    return new { spotId = item.Id, spotName = item.Location, isOwner = ownerSpotIds is not null && ownerSpotIds.Contains(item.Id), score = Available(item.Score), classification = Available(classification), bestHours = Available(item.BestHours.Select(best => best.Time).ToArray()), highlights, wind = Available(hour is null ? "n/d" : $"{hour.WindSpeedKmh:0.#} km/h {hour.WindDirection}"), gusts = Available(hour is null ? "n/d" : $"{hour.WindGustKmh:0.#} km/h"), waves = paid ? Available(hour?.WaveMeters.ToString("0.00") + " m") : Locked(), wavePeriod = paid ? Available(hour?.WavePeriodSeconds.ToString("0.#") + " s") : Locked(), swell = paid ? Available(hour?.SwellMeters.ToString("0.00") + " m") : Locked(), rain = Available(hour is null ? "n/d" : $"{hour.RainMm:0.#} mm ({hour.RainProbability}%)"), airTemperature = Available(hour is null ? "n/d" : $"{hour.AirTemperatureC:0.#} °C"), waterTemperature = paid ? Available(hour?.WaterTemperatureC.ToString("0.#") + " °C") : Locked() };
+    var windOrigin = string.IsNullOrEmpty(hour?.WindOrigin) ? null : hour.WindOrigin;
+    return new
+    {
+        spotId = item.Id,
+        spotName = item.Location,
+        isOwner = ownerSpotIds is not null && ownerSpotIds.Contains(item.Id),
+        score = Available(item.Score),
+        classification = Available(classification),
+        bestHours = Available(item.BestHours.Select(best => best.Time).ToArray()),
+        bestHourWindows = Available(item.BestHours.Select(best => new { time = best.Time, score = best.Score }).ToArray()),
+        metricsHour = hour?.Time,
+        windOrigin,
+        highlights,
+        wind = Available(hour is null ? "n/d" : $"{hour.WindSpeedKmh:0.#} km/h {hour.WindDirection}"),
+        gusts = Available(hour is null ? "n/d" : $"{hour.WindGustKmh:0.#} km/h"),
+        waves = paid ? Available(hour?.WaveMeters.ToString("0.00") + " m") : Locked(),
+        wavePeriod = paid ? Available(hour?.WavePeriodSeconds.ToString("0.#") + " s") : Locked(),
+        swell = paid ? Available(hour?.SwellMeters.ToString("0.00") + " m") : Locked(),
+        rain = Available(hour is null ? "n/d" : $"{hour.RainMm:0.#} mm ({hour.RainProbability}%)"),
+        airTemperature = Available(hour is null ? "n/d" : $"{hour.AirTemperatureC:0.#} °C"),
+        waterTemperature = paid ? Available(hour?.WaterTemperatureC.ToString("0.#") + " °C") : Locked()
+    };
 }
 
 static string[] ForecastHighlights(FishingHourForecast? hour)
 {
     if (hour is null) return [];
     var highlights = new List<string>();
+    if (hour.WindOrigin == "terra") highlights.Add("Vento de terra");
+    else if (hour.WindOrigin == "mar") highlights.Add("Vento do mar");
+    else if (hour.WindOrigin == "cruzado") highlights.Add("Vento cruzado");
     if (hour.WindSpeedKmh <= 15) highlights.Add("Vento leve");
     if (hour.RainProbability <= 20) highlights.Add("Pouca chance de chuva");
     if (hour.WaveMeters <= 1.2) highlights.Add("Ondas moderadas");
-    return highlights.Count > 0 ? highlights.Take(2).ToArray() : ["Condições equilibradas"];
+    return highlights.Count > 0 ? highlights.Take(3).ToArray() : ["Condições equilibradas"];
 }
 
 static double DistanceMeters(double lat1, double lon1, double lat2, double lon2)
@@ -1532,6 +1630,7 @@ static void ReplacePartnerOffers(TaNoMarDbContext db, Guid partnerId, PartnerOff
     }
 }
 
+record BillingCheckoutRequest(string? PlanCode, string? Cycle);
 record GoogleLoginRequest(string Credential);
 record PreferencesRequest(string? Region, string? WindUnit, bool? ForecastNotifications, string[]? VisibleMetrics);
 record ForecastAlertRequest(string SpotId, double MinimumScore, int LeadHours, bool IsActive = true);

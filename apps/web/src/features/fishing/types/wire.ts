@@ -78,6 +78,11 @@ export interface WireSpot {
   isOwner: boolean;
 }
 
+export interface WireBestHourWindow {
+  time: string;
+  score: number;
+}
+
 export interface WireForecastItem {
   spotId: string;
   spotName: string;
@@ -85,6 +90,9 @@ export interface WireForecastItem {
   score: WireMetric<number>;
   classification: WireMetric<string>;
   bestHours: WireMetric<string[]>;
+  bestHourWindows?: WireMetric<WireBestHourWindow[]>;
+  metricsHour?: string | null;
+  windOrigin?: string | null;
   highlights?: string[];
   wind: WireMetric<string>;
   gusts: WireMetric<string>;
