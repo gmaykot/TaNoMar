@@ -14,7 +14,7 @@ O access token é JWT Bearer e fica só em memória no frontend. O refresh token
 
 `BOOTSTRAP_ADMIN_EMAIL` e `BOOTSTRAP_ADMIN_GOOGLE_SUBJECT` promovem o usuário correspondente a Admin com plano Mestre (`premium`) no login Google e de novo em `GET /me`. O subject é a claim `sub` do token Google, não o e-mail. Usuários novos entram no plano Free.
 
-Planos pagos na interface: **Arrais** (`arrais`), **Mestre** (`premium`) e **Capitão** (`capitao`). O código `premium` permanece estável para contas já assinantes. Preço (centavos), texto de apoio, destaque, ordem, cotas e módulos ficam em `Plans` e o admin edita em `/admin/planos`. `GET /plans` devolve os planos diferentes de `free` para a tela de assinatura. A API aplica as flags de módulo nos gates; cotas continuam em `entitlements`.
+Planos pagos na interface: **Arrais** (`arrais`), **Mestre** (`premium`) e **Capitão** (`capitao`). O código `premium` permanece estável para contas já assinantes. Preço (centavos), texto de apoio, destaque, ordem, disponibilidade, cotas e módulos ficam em `Plans` e o admin edita em `/admin/planos`. `GET /plans` devolve os planos pagos com `enabled = true`. A API aplica as flags de módulo nos gates; cotas continuam em `entitlements`.
 
 ## Identificadores de runtime
 
@@ -51,9 +51,9 @@ O contrato de métrica é uma união `{ state: "available", value }` ou `{ state
 - `DELETE /community/reports/{id}`: o autor apaga o próprio relato e os votos ligados.
 - `POST /community/reports/{id}/confirm` e `/contest`: um voto por usuário, só com `modules.communityVote`. Free vê e cria relatos; o autor não vota no próprio. Sem o módulo a API responde `400` (`plan_required`).
 - `GET /admin/fishing-spots/pending`, `POST /admin/fishing-spots/{id}/approve` e `/reject`: só Admin. Recusar devolve o ponto para `private` e notifica o dono.
-- `GET /admin/users`, `PUT /admin/users/{id}/plan` e `PUT /admin/users/{id}/active`: só Admin. Lista contas, troca o plano (`free`, `arrais`, `premium` ou `capitao`; `mestre` é aceito como alias de `premium`) e bloqueia ou libera o acesso. A conta do bootstrap permanece no Mestre e não é bloqueada; o admin não bloqueia a si mesmo nem o último admin ativo. Bloquear revoga os refresh tokens.
-- `GET /plans`: autenticado. Catálogo comercial dos planos diferentes de `free` (nome, tagline, `monthlyPriceCents`, destaque, ordem, cotas e módulos), na ordem da vitrine.
-- `GET /admin/plans` e `PUT /admin/plans/{code}`: só Admin. Lista os quatro códigos (`free`, `arrais`, `premium`, `capitao`) e atualiza nome (até 40), tagline (até 160), `monthlyPriceCents` (0–999900), ordem (0–99), destaque, cotas e flags de módulo. O código não muda. Marcar `featured` tira o destaque dos demais. Sem criação nem exclusão de plano.
+- `GET /admin/users`, `PUT /admin/users/{id}/plan` e `PUT /admin/users/{id}/active`: só Admin. Lista contas, troca o plano (`free`, `arrais`, `premium` ou `capitao`; `mestre` é aceito como alias de `premium`) e bloqueia ou libera o acesso. Não atribui plano desligado. A conta do bootstrap permanece no Mestre e não é bloqueada; o admin não bloqueia a si mesmo nem o último admin ativo. Bloquear revoga os refresh tokens.
+- `GET /plans`: autenticado. Catálogo comercial dos planos pagos com `enabled = true` (nome, tagline, `monthlyPriceCents`, destaque, ordem, cotas e módulos), na ordem da vitrine.
+- `GET /admin/plans` e `PUT /admin/plans/{code}`: só Admin. Lista os quatro códigos (`free`, `arrais`, `premium`, `capitao`) com `enabled` e `activeUserCount` (contas `IsActive`). Atualiza nome (até 40), tagline (até 160), `monthlyPriceCents` (0–999900), ordem (0–99), destaque, `enabled`, cotas e flags de módulo. O código não muda. Marcar `featured` tira o destaque dos demais. Desligar um plano exige zero contas ativas nele; o Free não desliga. Plano desligado some da vitrine e não recebe contas novas. Sem criação nem exclusão de plano.
 - `GET /me` inclui `features.showPartners`, ligado pela configuração persistida em `PlatformSettings` (admin em `/admin/parceiros`, padrão `false`).
 - `GET /partners` e `GET /partners/{slug}`: vitrine autenticada. Só com a flag ligada; senão `404` (`feature_disabled`). Lista só publicados; ofertas com `endsAt` vencido somem.
 - `GET/PUT /admin/settings`: só Admin. Lê e grava `{ showPartners }`. Independente da vitrine pública.

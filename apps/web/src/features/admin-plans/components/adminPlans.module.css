@@ -26,6 +26,16 @@
   font-weight: 650;
 }
 
+.cardDisabled {
+  opacity: 0.86;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 .badge {
   display: inline-flex;
   min-height: 1.75rem;
@@ -34,6 +44,18 @@
   border-radius: var(--radius-pill);
   color: var(--color-ocean-950);
   background: var(--color-sea-200);
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+}
+
+.badgeWarn {
+  display: inline-flex;
+  min-height: 1.75rem;
+  align-items: center;
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-pill);
+  color: var(--color-ocean-950);
+  background: var(--color-warning-soft);
   font-size: var(--font-size-xs);
   font-weight: 750;
 }

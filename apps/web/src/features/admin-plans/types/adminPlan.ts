@@ -10,6 +10,7 @@ export interface AdminPlanUpdate {
   monthlyPriceCents: number;
   sortOrder: number;
   featured: boolean;
+  enabled: boolean;
   maxForecastDays: number;
   maxFavorites: number;
   maxPersonalSpots: number;
@@ -28,6 +29,7 @@ export interface AdminPlanInput {
   monthlyPrice: string;
   sortOrder: number;
   featured: boolean;
+  enabled: boolean;
   maxForecastDays: number;
   maxFavorites: number;
   maxPersonalSpots: number;
@@ -81,6 +83,8 @@ export function planRevision(plan: PlanCatalog) {
     plan.monthlyPriceCents,
     plan.sortOrder,
     plan.featured,
+    plan.enabled,
+    plan.activeUserCount,
     plan.entitlements.maxForecastDays,
     plan.entitlements.maxFavorites,
     plan.entitlements.maxPersonalSpots,
@@ -101,6 +105,7 @@ export function planToInput(plan: PlanCatalog): AdminPlanInput {
     monthlyPrice: reaisFromCents(plan.monthlyPriceCents),
     sortOrder: plan.sortOrder,
     featured: plan.featured,
+    enabled: plan.enabled,
     maxForecastDays: plan.entitlements.maxForecastDays,
     maxFavorites: plan.entitlements.maxFavorites,
     maxPersonalSpots: plan.entitlements.maxPersonalSpots,
@@ -123,6 +128,7 @@ export function inputToUpdate(input: AdminPlanInput): AdminPlanUpdate | null {
     monthlyPriceCents,
     sortOrder: input.sortOrder,
     featured: input.featured,
+    enabled: input.enabled,
     maxForecastDays: input.maxForecastDays,
     maxFavorites: input.maxFavorites,
     maxPersonalSpots: input.maxPersonalSpots,

@@ -8,6 +8,7 @@ const sample = {
   tagline: 'O equilíbrio para planejar a semana.',
   monthlyPriceCents: 1990,
   featured: true,
+  enabled: true,
   sortOrder: 2,
   entitlements: {
     maxForecastDays: 8,
@@ -32,6 +33,7 @@ describe('parsePlanCatalog', () => {
       name: 'Mestre',
       monthlyPriceCents: 1990,
       featured: true,
+      enabled: true,
       entitlements: { maxForecastDays: 8, maxAlerts: 10 },
       modules: { marine: true, diary: true },
     });

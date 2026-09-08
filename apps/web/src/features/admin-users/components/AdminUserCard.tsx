@@ -25,6 +25,7 @@ interface AdminUserCardProps {
   user: AdminUser;
   pending?: boolean;
   error?: string | null;
+  enabledPlanCodes?: ReadonlySet<string> | null;
   onPlanChange: (planCode: AdminPlanCode) => void;
   onActiveChange: (isActive: boolean) => void;
 }
@@ -33,11 +34,18 @@ export function AdminUserCard({
   user,
   pending = false,
   error,
+  enabledPlanCodes = null,
   onPlanChange,
   onActiveChange,
 }: AdminUserCardProps) {
   const initials = user.name.trim().charAt(0).toUpperCase() || 'T';
   const protectionText = user.protection ? protectionLabel[user.protection] : null;
+
+  function canAssign(code: string) {
+    if (pending || !user.canChangePlan || user.plan.code === code) return false;
+    if (enabledPlanCodes && !enabledPlanCodes.has(code)) return false;
+    return true;
+  }
 
   return (
     <Card as="article" className={`${styles.card} ${user.isActive ? '' : styles.cardBlocked}`}>
@@ -66,7 +74,7 @@ export function AdminUserCard({
         <Button
           type="button"
           variant={user.plan.code === 'free' ? 'primary' : 'secondary'}
-          disabled={pending || !user.canChangePlan || user.plan.code === 'free'}
+          disabled={!canAssign('free')}
           onClick={() => onPlanChange('free')}
         >
           Free
@@ -76,7 +84,7 @@ export function AdminUserCard({
             key={plan.code}
             type="button"
             variant={user.plan.code === plan.code ? 'primary' : 'secondary'}
-            disabled={pending || !user.canChangePlan || user.plan.code === plan.code}
+            disabled={!canAssign(plan.code)}
             onClick={() => onPlanChange(plan.code)}
           >
             {plan.label}

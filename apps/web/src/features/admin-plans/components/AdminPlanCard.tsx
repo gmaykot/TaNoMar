@@ -12,6 +12,17 @@ import {
 } from '../types/adminPlan';
 import styles from './adminPlans.module.css';
 
+function availabilityMessage(plan: PlanCatalog) {
+  if (plan.code === 'free') return 'O plano gratuito não pode ser desligado.';
+  if (plan.enabled && plan.activeUserCount === 1) {
+    return 'Há 1 conta ativa neste plano. Mova essa conta em Usuários antes de desligar.';
+  }
+  if (plan.enabled && plan.activeUserCount > 1) {
+    return `Há ${plan.activeUserCount} contas ativas neste plano. Mova essas contas em Usuários antes de desligar.`;
+  }
+  return 'Desligado some da assinatura e não recebe contas novas.';
+}
+
 interface AdminPlanCardProps {
   plan: PlanCatalog;
   pending?: boolean;
@@ -27,8 +38,17 @@ export function AdminPlanCard({ plan, pending = false, error, onSave }: AdminPla
     setForm((current) => ({ ...current, [key]: next }));
   }
 
+  const isFree = plan.code === 'free';
+  const hasActiveUsers = plan.enabled && plan.activeUserCount > 0;
+  const canToggleEnabled = !isFree && !hasActiveUsers;
+  const availabilityHint = availabilityMessage(plan);
+
   return (
-    <Card as="article" className={styles.card} aria-labelledby={`admin-plan-${plan.code}`}>
+    <Card
+      as="article"
+      className={`${styles.card} ${plan.enabled ? '' : styles.cardDisabled}`}
+      aria-labelledby={`admin-plan-${plan.code}`}
+    >
       <div className={styles.header}>
         <div>
           <h2 id={`admin-plan-${plan.code}`}>{plan.name}</h2>
@@ -37,7 +57,10 @@ export function AdminPlanCard({ plan, pending = false, error, onSave }: AdminPla
             {plan.code === 'premium' ? ' · estável para contas já assinantes' : null}
           </p>
         </div>
-        {plan.featured ? <span className={styles.badge}>Mais escolhido</span> : null}
+        <div className={styles.badges}>
+          {plan.enabled ? null : <span className={styles.badgeWarn}>Desligado</span>}
+          {plan.featured ? <span className={styles.badge}>Mais escolhido</span> : null}
+        </div>
       </div>
       <form
         className={formStyles.form}
@@ -52,6 +75,18 @@ export function AdminPlanCard({ plan, pending = false, error, onSave }: AdminPla
           onSave(payload);
         }}
       >
+        <label className={formStyles.choice}>
+          <input
+            type="checkbox"
+            checked={form.enabled}
+            disabled={!canToggleEnabled}
+            onChange={(event) => patch('enabled', event.target.checked)}
+          />
+          <span>
+            Plano disponível
+            <small>{availabilityHint}</small>
+          </span>
+        </label>
         <label className={formStyles.field}>
           <span>Nome do plano</span>
           <input

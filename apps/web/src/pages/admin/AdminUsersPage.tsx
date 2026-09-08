@@ -7,6 +7,7 @@ import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { SearchField } from '@/design-system/components/SearchField';
 import { AdminUserCard } from '@/features/admin-users/components/AdminUserCard';
 import { adminUsersQueryKey, useAdminUsers } from '@/features/admin-users/hooks/useAdminUsers';
+import { useAdminPlans } from '@/features/admin-plans/hooks/useAdminPlans';
 import {
   setAdminUserActive,
   setAdminUserPlan,
@@ -33,6 +34,10 @@ export function AdminUsersPage() {
   const auth = useAuth();
   const queryClient = useQueryClient();
   const users = useAdminUsers();
+  const catalog = useAdminPlans();
+  const enabledPlanCodes = catalog.isSuccess
+    ? new Set(catalog.data.filter((plan) => plan.enabled).map((plan) => plan.code))
+    : null;
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -162,6 +167,7 @@ export function AdminUsersPage() {
               user={user}
               pending={pendingId === user.id}
               error={errorById[user.id] || null}
+              enabledPlanCodes={enabledPlanCodes}
               onPlanChange={(planCode) => planMutation.mutate({ id: user.id, planCode })}
               onActiveChange={(isActive) => activeMutation.mutate({ id: user.id, isActive })}
             />

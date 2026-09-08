@@ -20,7 +20,9 @@ const catalog: PlanCatalog[] = [
     tagline: 'O primeiro comando da sua pesca.',
     monthlyPriceCents: 1490,
     featured: false,
+    enabled: true,
     sortOrder: 1,
+    activeUserCount: 0,
     entitlements: {
       maxForecastDays: 5,
       maxFavorites: 10,
@@ -35,7 +37,9 @@ const catalog: PlanCatalog[] = [
     tagline: 'O equilíbrio para planejar a semana.',
     monthlyPriceCents: 1990,
     featured: true,
+    enabled: true,
     sortOrder: 2,
+    activeUserCount: 0,
     entitlements: {
       maxForecastDays: 8,
       maxFavorites: 20,
@@ -50,7 +54,9 @@ const catalog: PlanCatalog[] = [
     tagline: 'Mais cotas para quem pesca o ano todo.',
     monthlyPriceCents: 2490,
     featured: false,
+    enabled: true,
     sortOrder: 3,
+    activeUserCount: 0,
     entitlements: {
       maxForecastDays: 8,
       maxFavorites: 40,

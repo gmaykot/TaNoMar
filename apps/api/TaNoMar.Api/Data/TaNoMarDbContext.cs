@@ -50,6 +50,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 MonthlyPriceCents = 0,
                 SortOrder = 0,
                 Featured = false,
+                IsEnabled = true,
                 MaxForecastDays = 3,
                 MaxFavorites = 0,
                 MaxPersonalSpots = 0,
@@ -64,6 +65,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 MonthlyPriceCents = 1490,
                 SortOrder = 1,
                 Featured = false,
+                IsEnabled = true,
                 MaxForecastDays = 5,
                 MaxFavorites = 10,
                 MaxPersonalSpots = 5,
@@ -84,6 +86,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 MonthlyPriceCents = 1990,
                 SortOrder = 2,
                 Featured = true,
+                IsEnabled = true,
                 MaxForecastDays = 8,
                 MaxFavorites = 20,
                 MaxPersonalSpots = 10,
@@ -104,6 +107,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 MonthlyPriceCents = 2490,
                 SortOrder = 3,
                 Featured = false,
+                IsEnabled = true,
                 MaxForecastDays = 8,
                 MaxFavorites = 40,
                 MaxPersonalSpots = 20,
@@ -175,6 +179,7 @@ public sealed class Plan
     public int MonthlyPriceCents { get; set; }
     public int SortOrder { get; set; }
     public bool Featured { get; set; }
+    public bool IsEnabled { get; set; } = true;
     public int MaxForecastDays { get; set; }
     public int MaxFavorites { get; set; }
     public int MaxPersonalSpots { get; set; }

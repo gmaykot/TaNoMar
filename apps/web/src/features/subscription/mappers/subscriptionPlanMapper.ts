@@ -63,13 +63,16 @@ export function parsePlanCatalog(value: unknown): PlanCatalog {
   const tagline = readString(value.tagline);
   const monthlyPriceCents = readInteger(value.monthlyPriceCents);
   const featured = readBoolean(value.featured);
+  const enabled = readBoolean(value.enabled);
   const sortOrder = readInteger(value.sortOrder);
+  const activeUserCount = readInteger(value.activeUserCount) ?? 0;
   if (
     !code ||
     !name ||
     tagline === null ||
     monthlyPriceCents === null ||
     featured === null ||
+    enabled === null ||
     sortOrder === null
   ) {
     throw new ContractError('Plano incompleto.');
@@ -80,7 +83,9 @@ export function parsePlanCatalog(value: unknown): PlanCatalog {
     tagline,
     monthlyPriceCents,
     featured,
+    enabled,
     sortOrder,
+    activeUserCount,
     entitlements: parseEntitlements(value.entitlements),
     modules: parseModules(value.modules),
   };

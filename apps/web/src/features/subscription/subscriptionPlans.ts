@@ -13,7 +13,9 @@ export interface PlanCatalog {
   tagline: string;
   monthlyPriceCents: number;
   featured: boolean;
+  enabled: boolean;
   sortOrder: number;
+  activeUserCount: number;
   entitlements: PlanEntitlements;
   modules: PlanModules;
 }

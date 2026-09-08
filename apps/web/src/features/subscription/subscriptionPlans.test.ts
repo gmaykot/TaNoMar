@@ -13,7 +13,9 @@ const plan: PlanCatalog = {
   tagline: 'O equilíbrio para planejar a semana.',
   monthlyPriceCents: 1990,
   featured: true,
+  enabled: true,
   sortOrder: 2,
+  activeUserCount: 0,
   entitlements: {
     maxForecastDays: 8,
     maxFavorites: 20,

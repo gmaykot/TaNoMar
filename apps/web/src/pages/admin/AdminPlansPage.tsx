@@ -74,7 +74,7 @@ export function AdminPlansPage() {
       <PageHeader
         eyebrow="Administração"
         title="Planos da assinatura."
-        description="Ajuste preço, cotas e módulos. O código de cada plano não muda."
+        description="Ajuste preço, cotas, módulos e disponibilidade. Só dá para desligar um plano sem contas ativas."
       />
       <div className={styles.locationGrid}>
         {(plans.data ?? []).map((plan) => (

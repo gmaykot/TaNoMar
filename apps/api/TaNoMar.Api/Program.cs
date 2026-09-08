@@ -192,7 +192,7 @@ api.MapGet("/plans", async (ClaimsPrincipal principal, TaNoMarDbContext db, Canc
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
     var plans = await db.Plans.AsNoTracking()
-        .Where(plan => plan.Code != PlanRules.Free)
+        .Where(plan => plan.Code != PlanRules.Free && plan.IsEnabled)
         .OrderBy(plan => plan.SortOrder)
         .ThenBy(plan => plan.Name)
         .ToListAsync(cancellationToken);
@@ -361,6 +361,8 @@ api.MapPut("/admin/users/{id:guid}/plan", async (Guid id, AdminPlanRequest reque
     if (MatchesBootstrapAdmin(target.Email, target.GoogleSubject, options.Value))
         return Results.Conflict(new { code = "bootstrap_locked", detail = "A conta inicial do bootstrap permanece no plano Mestre." });
     var plan = await db.Plans.SingleAsync(item => item.Code == planCode, cancellationToken);
+    if (!plan.IsEnabled)
+        return Results.Conflict(new { code = "plan_disabled", detail = "Esse plano está desligado." });
     if (!string.Equals(target.PlanCode, plan.Code, StringComparison.Ordinal))
     {
         target.PlanCode = plan.Code;
@@ -382,7 +384,12 @@ api.MapGet("/admin/plans", async (ClaimsPrincipal principal, TaNoMarDbContext db
         .OrderBy(plan => plan.SortOrder)
         .ThenBy(plan => plan.Name)
         .ToListAsync(cancellationToken);
-    return Results.Ok(plans.Select(PlanRules.CatalogDto).ToList());
+    var activeCounts = await db.Users.AsNoTracking()
+        .Where(item => item.IsActive)
+        .GroupBy(item => item.PlanCode)
+        .Select(group => new { Code = group.Key, Count = group.Count() })
+        .ToDictionaryAsync(item => item.Code, item => item.Count, cancellationToken);
+    return Results.Ok(plans.Select(plan => PlanRules.CatalogDto(plan, activeCounts.GetValueOrDefault(plan.Code))).ToList());
 }).RequireAuthorization();
 
 api.MapPut("/admin/plans/{code}", async (string code, AdminPlanConfigRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
@@ -404,6 +411,9 @@ api.MapPut("/admin/plans/{code}", async (string code, AdminPlanConfigRequest req
         request.MaxPersonalSpots,
         request.MaxAlerts);
     if (error is not null) return Results.BadRequest(new { code = "invalid_plan", detail = error });
+    var activeUserCount = await db.Users.CountAsync(item => item.IsActive && item.PlanCode == plan.Code, cancellationToken);
+    var availabilityError = PlanRules.ValidateAvailability(plan.Code, request.Enabled, activeUserCount);
+    if (availabilityError is not null) return Results.Conflict(new { code = "plan_in_use", detail = availabilityError });
     PlanRules.ApplyUpdate(
         plan,
         request.Name,
@@ -411,6 +421,7 @@ api.MapPut("/admin/plans/{code}", async (string code, AdminPlanConfigRequest req
         request.MonthlyPriceCents,
         request.SortOrder,
         request.Featured,
+        request.Enabled,
         request.MaxForecastDays,
         request.MaxFavorites,
         request.MaxPersonalSpots,
@@ -428,7 +439,7 @@ api.MapPut("/admin/plans/{code}", async (string code, AdminPlanConfigRequest req
             other.Featured = false;
     }
     await db.SaveChangesAsync(cancellationToken);
-    return Results.Ok(PlanRules.CatalogDto(plan));
+    return Results.Ok(PlanRules.CatalogDto(plan, activeUserCount));
 }).RequireAuthorization();
 
 api.MapPut("/admin/users/{id:guid}/active", async (Guid id, AdminActiveRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, NotificationRealtimeHub hub, WebPushQueue push, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
@@ -1537,6 +1548,7 @@ record AdminPlanConfigRequest(
     int MonthlyPriceCents,
     int SortOrder,
     bool Featured,
+    bool Enabled,
     int MaxForecastDays,
     int MaxFavorites,
     int MaxPersonalSpots,

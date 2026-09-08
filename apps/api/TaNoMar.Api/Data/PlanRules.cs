@@ -20,14 +20,16 @@ internal static class PlanRules
         return code is Free or Arrais or Mestre or Capitao ? code : null;
     }
 
-    public static object CatalogDto(Plan plan) => new
+    public static object CatalogDto(Plan plan, int activeUserCount = 0) => new
     {
         code = plan.Code,
         name = plan.Name,
         tagline = plan.Tagline,
         monthlyPriceCents = plan.MonthlyPriceCents,
         featured = plan.Featured,
+        enabled = plan.IsEnabled,
         sortOrder = plan.SortOrder,
+        activeUserCount,
         entitlements = new
         {
             maxForecastDays = plan.MaxForecastDays,
@@ -61,6 +63,16 @@ internal static class PlanRules
         return null;
     }
 
+    public static string? ValidateAvailability(string planCode, bool enabled, int activeUserCount)
+    {
+        if (enabled) return null;
+        if (string.Equals(planCode, Free, StringComparison.OrdinalIgnoreCase))
+            return "O plano Free permanece disponível.";
+        if (activeUserCount == 1) return "Há 1 conta ativa neste plano. Mova essa conta antes de desligar.";
+        if (activeUserCount > 1) return $"Há {activeUserCount} contas ativas neste plano. Mova essas contas antes de desligar.";
+        return null;
+    }
+
     public static void ApplyUpdate(
         Plan plan,
         string name,
@@ -68,6 +80,7 @@ internal static class PlanRules
         int monthlyPriceCents,
         int sortOrder,
         bool featured,
+        bool isEnabled,
         int maxForecastDays,
         int maxFavorites,
         int maxPersonalSpots,
@@ -83,7 +96,8 @@ internal static class PlanRules
         plan.Tagline = tagline.Trim();
         plan.MonthlyPriceCents = monthlyPriceCents;
         plan.SortOrder = sortOrder;
-        plan.Featured = featured;
+        plan.IsEnabled = isEnabled;
+        plan.Featured = isEnabled && featured;
         plan.MaxForecastDays = maxForecastDays;
         plan.MaxFavorites = maxFavorites;
         plan.MaxPersonalSpots = maxPersonalSpots;
