@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { Button } from '@/design-system/components/Button';
+import { forecastPresentation } from '@/features/auth/appFocus';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { hasPlanModule } from '@/features/auth/types/auth';
 import { DayCarousel } from '@/features/forecast/components/DayCarousel';
@@ -25,7 +26,8 @@ export function RankingPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const canCustomizeMetrics = hasPlanModule(auth.user, 'customMetrics');
   const canEmphasis = hasPlanModule(auth.user, 'rankingEmphasis');
-  const visibleMetricKeys = canCustomizeMetrics ? auth.user?.preferences.visibleMetrics : undefined;
+  const presentation = forecastPresentation(auth.user?.preferences, canCustomizeMetrics);
+  const visibleMetricKeys = presentation.visibleMetricKeys;
   const emphasis = parseRankingEmphasis(searchParams.get('enfase'), canEmphasis);
   const forecast = useForecast(rankingEmphasisParam(emphasis));
 
@@ -68,9 +70,9 @@ export function RankingPage() {
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow="Visão comparativa"
-        title="Os melhores locais, em ordem."
-        description="Ordem pela média das 3 melhores horas."
+        eyebrow={presentation.ranking.eyebrow}
+        title={presentation.ranking.title}
+        description={presentation.ranking.description}
       />
       <RankingEmphasisFilters emphasis={emphasis} premium={canEmphasis} onChange={setEmphasis} />
       <DayCarousel days={forecast.data.days} selectedDate={activeDate} onSelect={setSelectedDate}>
@@ -82,6 +84,7 @@ export function RankingPage() {
                 emphasisKey={rankingEmphasisMetricKey(emphasis)}
                 visibleMetricKeys={visibleMetricKeys}
                 windUnit={auth.user?.preferences.windUnit}
+                showFishingScore={presentation.showFishingScore}
               />
             ) : (
               <FeedbackState

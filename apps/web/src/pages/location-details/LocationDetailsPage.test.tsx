@@ -69,6 +69,7 @@ vi.mock('@/features/community/services/communityService', () => ({
 
 const authState = vi.hoisted(() => ({
   maxFavorites: 20,
+  focus: null as string | null,
 }));
 
 vi.mock('@/features/auth/hooks/useAuth', () => ({
@@ -91,7 +92,12 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
         maxAlerts: 10,
       },
       features: { showPartners: false },
-      preferences: { region: 'Florianópolis', windUnit: 'kmh', forecastNotifications: true },
+      preferences: {
+        region: 'Florianópolis',
+        windUnit: 'kmh',
+        forecastNotifications: true,
+        focus: authState.focus,
+      },
     },
     loginWithGoogle: vi.fn(),
     logout: vi.fn(),
@@ -113,6 +119,7 @@ vi.mock('@/features/locations/services/locationsService', () => ({
 describe('LocationDetailsPage', () => {
   beforeEach(() => {
     authState.maxFavorites = 20;
+    authState.focus = null;
     localStorage.clear();
   });
 
@@ -146,6 +153,21 @@ describe('LocationDetailsPage', () => {
     expect(screen.getByText('Ondas')).toBeInTheDocument();
     expect(screen.getByText('Pressão')).toBeInTheDocument();
     expect(screen.getByLabelText('Maré')).toBeInTheDocument();
+  });
+
+  it('no foco surfista abre o mar e esconde a nota de pesca', async () => {
+    authState.focus = 'surfista';
+    renderWithProviders(
+      <Routes>
+        <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
+      </Routes>,
+      ['/locais/pantano_do_sul'],
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Mar' })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Nota /)).not.toBeInTheDocument();
+    expect(screen.queryByText('Chuva')).not.toBeInTheDocument();
+    expect(screen.getByText('Swell')).toBeInTheDocument();
   });
 
   it('bloqueia favoritar no plano Free com cadeado Premium', async () => {
@@ -205,7 +227,11 @@ describe('LocationDetailsPage', () => {
     expect(selector).toHaveAttribute('aria-roledescription', 'carrossel');
     const days = [...selector.querySelectorAll<HTMLElement>('[data-snap-key]')];
     Object.defineProperty(selector, 'clientWidth', { configurable: true, value: 320 });
-    Object.defineProperty(selector, 'scrollLeft', { configurable: true, writable: true, value: 320 });
+    Object.defineProperty(selector, 'scrollLeft', {
+      configurable: true,
+      writable: true,
+      value: 320,
+    });
     days.forEach((day, index) => {
       Object.defineProperty(day, 'offsetLeft', { configurable: true, value: index * 320 });
       Object.defineProperty(day, 'offsetWidth', { configurable: true, value: 320 });

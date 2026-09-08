@@ -68,10 +68,28 @@ describe('AccountPreferencesPage', () => {
       expect(updatePreferences).toHaveBeenCalledWith(
         expect.objectContaining({
           forecastNotifications: true,
+          focus: 'pescador',
           visibleMetrics: expect.not.arrayContaining(['waves']),
         }),
       );
       expect(showSaveConfirmation).toHaveBeenCalledWith('Preferências salvas.');
+    });
+  });
+
+  it('salva a troca de foco sem recalcular a nota', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AccountPreferencesPage />);
+
+    await user.click(screen.getByRole('radio', { name: /Surfista/ }));
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+
+    await waitFor(() => {
+      expect(updatePreferences).toHaveBeenCalledWith(
+        expect.objectContaining({
+          focus: 'surfista',
+          forecastNotifications: true,
+        }),
+      );
     });
   });
 

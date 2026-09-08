@@ -1,3 +1,4 @@
+import { isAppFocus, type AppFocus } from '@/features/auth/appFocus';
 import { parseBillingSubscription } from '@/features/billing/mappers/billingMapper';
 import { fishingMetricKeys, type FishingMetricKey } from '@/features/fishing/types/fishing';
 import { apiRequest, refreshAccessTokenOnce } from '@/shared/api/client';
@@ -34,6 +35,12 @@ export function parseVisibleMetrics(value: unknown): FishingMetricKey[] {
   return [...new Set(value as FishingMetricKey[])];
 }
 
+export function parseAppFocus(value: unknown): AppFocus | null {
+  if (value === undefined || value === null || value === '') return null;
+  if (isAppFocus(value)) return value;
+  throw new ContractError('Foco do aplicativo inválido.');
+}
+
 function parseAccessToken(payload: unknown) {
   const token = isRecord(payload) ? readString(payload.accessToken) : null;
   if (!token) throw new ContractError('A API não devolveu um access token.');
@@ -63,6 +70,7 @@ export function parseAuthUser(payload: unknown): AuthUser {
       : true
     : true;
   const visibleMetrics = parseVisibleMetrics(preferencesRecord?.visibleMetrics);
+  const focus = parseAppFocus(preferencesRecord?.focus);
   const featuresRecord = isRecord(payload.features) ? payload.features : null;
   const showPartners = featuresRecord?.showPartners === true;
   if (
@@ -92,7 +100,7 @@ export function parseAuthUser(payload: unknown): AuthUser {
     entitlements: { maxForecastDays, maxFavorites, maxPersonalSpots, maxAlerts },
     modules: parsePlanModules(payload.modules),
     features: { showPartners },
-    preferences: { region, windUnit, forecastNotifications, visibleMetrics },
+    preferences: { region, windUnit, forecastNotifications, focus, visibleMetrics },
     billing: parseOptionalBilling(payload.billing),
   };
 }

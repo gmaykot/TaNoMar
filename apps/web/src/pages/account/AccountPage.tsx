@@ -131,7 +131,7 @@ export function AccountPage() {
             to={routes.accountPreferences}
             icon={Settings}
             title="Previsão e regiões"
-            description="Escolha regiões, unidade de vento e indicadores."
+            description="Escolha o foco, as regiões e a exibição."
           />
           <AccountShortcut
             to={routes.accountNotifications}

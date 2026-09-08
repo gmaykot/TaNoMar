@@ -30,6 +30,21 @@ describe('ForecastHero', () => {
     expect(screen.queryByText('Meu local')).not.toBeInTheDocument();
   });
 
+  it('omite a nota quando o foco não é de pesca', () => {
+    const forecast = forecastFixture.days[0]?.ranking[0];
+    if (!forecast) throw new Error('fixture de ranking ausente');
+
+    render(
+      <MemoryRouter>
+        <ForecastHero forecast={forecast} showFishingScore={false} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByLabelText(/Nota /)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Melhor hora/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Destaque/)).toBeInTheDocument();
+  });
+
   it('mostra a média das horas e a origem das métricas', () => {
     const forecast = forecastFixture.days[0]?.ranking[0];
     if (!forecast) throw new Error('fixture de ranking ausente');

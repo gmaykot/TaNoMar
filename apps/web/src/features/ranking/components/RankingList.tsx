@@ -18,6 +18,7 @@ interface RankingListProps {
   emphasisKey?: FishingMetricKey;
   visibleMetricKeys?: FishingMetricKey[];
   windUnit?: string;
+  showFishingScore?: boolean;
 }
 
 const emphasisIcons: Partial<Record<FishingMetricKey, typeof Wind>> = {
@@ -33,6 +34,7 @@ export function RankingList({
   emphasisKey,
   visibleMetricKeys,
   windUnit,
+  showFishingScore = true,
 }: RankingListProps) {
   const visibleItems = typeof limit === 'number' ? items.slice(0, limit) : items;
   const orderedMetricKeys = rankingMetricKeys(emphasisKey);
@@ -55,14 +57,16 @@ export function RankingList({
                 {String(index + startAt).padStart(2, '0')}
               </span>
               <div className={styles.info}>
-                <Badge classification={item.classification} />
+                {showFishingScore ? <Badge classification={item.classification} /> : null}
                 <Link className={styles.hit} to={`/locais/${item.locationId}`}>
                   <h3>{item.locationName}</h3>
                 </Link>
-                <p>
-                  <Clock3 size={15} aria-hidden="true" /> {item.bestWindow}
-                </p>
-                {item.scoreBreakdown ? (
+                {showFishingScore ? (
+                  <p>
+                    <Clock3 size={15} aria-hidden="true" /> {item.bestWindow}
+                  </p>
+                ) : null}
+                {showFishingScore && item.scoreBreakdown ? (
                   <p className={styles.scoreBreakdown}>{item.scoreBreakdown}</p>
                 ) : null}
                 {emphasisMetric ? (
@@ -72,11 +76,13 @@ export function RankingList({
                   </p>
                 ) : null}
               </div>
-              <ScoreIndicator
-                score={item.score}
-                classification={item.classification}
-                size="small"
-              />
+              {showFishingScore ? (
+                <ScoreIndicator
+                  score={item.score}
+                  classification={item.classification}
+                  size="small"
+                />
+              ) : null}
             </div>
             <details className={styles.details}>
               <summary>

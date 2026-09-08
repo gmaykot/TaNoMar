@@ -663,6 +663,12 @@ api.MapPut("/me/preferences", async (PreferencesRequest request, ClaimsPrincipal
     preferences.Region = request.Region?.Trim() ?? preferences.Region;
     preferences.WindUnit = request.WindUnit ?? preferences.WindUnit;
     preferences.ForecastNotifications = request.ForecastNotifications ?? preferences.ForecastNotifications;
+    if (request.Focus is not null)
+    {
+        if (!IsAppFocus(request.Focus))
+            return Results.BadRequest(new { code = "invalid_focus", detail = "Informe pescador, surfista ou ambos." });
+        preferences.Focus = request.Focus;
+    }
     if (request.VisibleMetrics is not null)
     {
         var plan = await db.Plans.AsNoTracking().SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
@@ -682,6 +688,7 @@ api.MapPut("/me/preferences", async (PreferencesRequest request, ClaimsPrincipal
         region = preferences.Region,
         windUnit = preferences.WindUnit,
         forecastNotifications = preferences.ForecastNotifications,
+        focus = preferences.Focus,
         visibleMetrics = ParseVisibleMetrics(preferences.VisibleMetrics)
     });
 }).RequireAuthorization();
@@ -1152,6 +1159,7 @@ static async Task<object> UserDtoAsync(User user, TaNoMarDbContext db, BillingSe
             region = preferences?.Region ?? "Florianópolis",
             windUnit = preferences?.WindUnit ?? "kmh",
             forecastNotifications = preferences?.ForecastNotifications ?? true,
+            focus = preferences?.Focus,
             visibleMetrics = ParseVisibleMetrics(preferences?.VisibleMetrics)
         },
         billing = await billing.DtoAsync(user, cancellationToken)
@@ -1163,6 +1171,7 @@ static string[] ParseVisibleMetrics(string? value) =>
 static bool IsVisibleMetric(string metric) => metric is
     "wind" or "gusts" or "waves" or "wave-period" or "swell" or "rain" or
     "air-temperature" or "water-temperature";
+static bool IsAppFocus(string focus) => focus is "pescador" or "surfista" or "ambos";
 static Task<Dictionary<Guid, bool>> EnabledSettingsAsync(TaNoMarDbContext db, Guid userId, CancellationToken cancellationToken) =>
     db.EnabledSpots.Where(item => item.UserId == userId).ToDictionaryAsync(item => item.FishingSpotId, item => item.IsEnabled, cancellationToken);
 static async Task<string?> PreferredRegionsAsync(TaNoMarDbContext db, Guid userId, CancellationToken cancellationToken) =>
@@ -1632,7 +1641,7 @@ static void ReplacePartnerOffers(TaNoMarDbContext db, Guid partnerId, PartnerOff
 
 record BillingCheckoutRequest(string? PlanCode, string? Cycle);
 record GoogleLoginRequest(string Credential);
-record PreferencesRequest(string? Region, string? WindUnit, bool? ForecastNotifications, string[]? VisibleMetrics);
+record PreferencesRequest(string? Region, string? WindUnit, bool? ForecastNotifications, string? Focus, string[]? VisibleMetrics);
 record ForecastAlertRequest(string SpotId, double MinimumScore, int LeadHours, bool IsActive = true);
 record FavoriteRequest(string SpotId, bool IsFavorite);
 record EnabledSpotRequest(string SpotId, bool IsEnabled);

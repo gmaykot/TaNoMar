@@ -26,7 +26,7 @@ Page → feature/design-system components → tokens CSS
 - `apps/web/src/pages`: composição e estado exclusivo da rota.
 - `apps/web/src/shared`: cliente HTTP e utilitários com mais de um consumidor real.
 
-Os services chamam `/api/v1`, validam DTOs de wire e mapeiam para os tipos da UI. Componentes não fazem `fetch` e não calculam a nota.
+Os services chamam `/api/v1`, validam DTOs de wire e mapeiam para os tipos da UI. Componentes não fazem `fetch` e não calculam a nota. A preferência `focus` (`pescador`, `surfista` ou `ambos`) só altera o que a web mostra.
 
 ## Backend
 

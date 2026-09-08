@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { Button } from '@/design-system/components/Button';
+import { forecastPresentation } from '@/features/auth/appFocus';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { hasPlanModule, isPaidPlan, showsPartners } from '@/features/auth/types/auth';
 import { DayCarousel } from '@/features/forecast/components/DayCarousel';
@@ -35,7 +36,8 @@ export function HomePage() {
   const isPaid = isPaidPlan(auth.user);
   const canCustomizeMetrics = hasPlanModule(auth.user, 'customMetrics');
   const canSaveOffline = hasPlanModule(auth.user, 'offline');
-  const visibleMetricKeys = canCustomizeMetrics ? auth.user?.preferences.visibleMetrics : undefined;
+  const presentation = forecastPresentation(auth.user?.preferences, canCustomizeMetrics);
+  const visibleMetricKeys = presentation.visibleMetricKeys;
 
   const data = forecast.data ?? (canSaveOffline && forecast.isError ? offlineForecast : undefined);
 
@@ -75,9 +77,9 @@ export function HomePage() {
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow="Decisão de pesca"
-        title="Onde vale pescar hoje?"
-        description="Melhor média do dia."
+        eyebrow={presentation.home.eyebrow}
+        title={presentation.home.title}
+        description={presentation.home.description}
       />
       {!isPaid ? (
         <Link className={styles.premiumBanner} to={routes.premium}>
@@ -85,7 +87,7 @@ export function HomePage() {
             <Sparkles size={19} aria-hidden="true" />
           </span>
           <div>
-            <strong>Pesque com mais contexto na assinatura</strong>
+            <strong>{presentation.home.premiumTitle}</strong>
             <small>Arrais, Mestre ou Capitão: mais dias, detalhes do mar e alertas.</small>
           </div>
           <ArrowRight size={19} aria-hidden="true" />
@@ -102,6 +104,7 @@ export function HomePage() {
                 generatedAt={formatDateTime(data?.generatedAt ?? '')}
                 visibleMetricKeys={visibleMetricKeys}
                 windUnit={auth.user?.preferences.windUnit}
+                showFishingScore={presentation.showFishingScore}
               />
               <section className={styles.section} aria-labelledby={`ranking-${day.date}`}>
                 <div className={styles.sectionHeader}>
@@ -119,6 +122,7 @@ export function HomePage() {
                   startAt={2}
                   visibleMetricKeys={visibleMetricKeys}
                   windUnit={auth.user?.preferences.windUnit}
+                  showFishingScore={presentation.showFishingScore}
                 />
               </section>
             </>

@@ -55,6 +55,7 @@ export function AccountNotificationsPage() {
                 region: user?.preferences.region ?? 'Florianópolis',
                 windUnit: user?.preferences.windUnit ?? 'kmh',
                 forecastNotifications,
+                focus: user?.preferences.focus ?? null,
                 ...(canCustomizeMetrics && user?.preferences.visibleMetrics
                   ? { visibleMetrics: user.preferences.visibleMetrics }
                   : {}),

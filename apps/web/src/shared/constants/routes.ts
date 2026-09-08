@@ -1,6 +1,7 @@
 export const routes = {
   home: '/',
   login: '/entrar',
+  onboarding: '/comecar',
   ranking: '/ranking',
   locations: '/locais',
   locationsMine: '/locais?filtro=meus',

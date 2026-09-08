@@ -12,7 +12,7 @@ TáNoMar ajuda pescadores a decidir onde e quando pescar. O repositório contém
 - Docker é exclusivo do deploy de produção no Coolify (`docker-compose.yml` + Dockerfile da API). Ver `docs/deployment.md`.
 - PostgreSQL é externo em todos os ambientes e chega pela configuração `ConnectionStrings__Default`.
 - Pages web orquestram em `apps/web/src/pages`; hooks coordenam, services acessam dados e componentes renderizam.
-- Regras e cálculo de pesca pertencem à API; o frontend nunca recalcula a nota.
+- Regras e cálculo de pesca pertencem à API; o frontend nunca recalcula a nota. O foco do usuário (`pescador`, `surfista` ou `ambos`) só mostra ou oculta informações.
 - Tokens e componentes globais ficam em `apps/web/src/design-system`.
 - Contratos e identificadores de runtime estão em `docs/api-contracts.md`.
 - Na interface, o ponto de pesca se chama **local** (plural **locais**). Não use “pesqueiro” nem “praia” para nomear a entidade. Ver `docs/frontend-guidelines.md`.

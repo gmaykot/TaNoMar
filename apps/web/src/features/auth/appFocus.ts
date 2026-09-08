@@ -1,0 +1,139 @@
+import { fishingMetricKeys, type FishingMetricKey } from '@/features/fishing/types/fishing';
+
+export const appFocusValues = ['pescador', 'surfista', 'ambos'] as const;
+
+export type AppFocus = (typeof appFocusValues)[number];
+
+export const focusMetricKeys: Record<AppFocus, FishingMetricKey[]> = {
+  pescador: ['wind', 'gusts', 'waves', 'rain', 'air-temperature', 'water-temperature'],
+  surfista: ['wind', 'waves', 'wave-period', 'swell', 'gusts'],
+  ambos: [...fishingMetricKeys],
+};
+
+const locationPrimaryByFocus: Record<AppFocus, FishingMetricKey[]> = {
+  pescador: ['wind', 'gusts', 'rain', 'air-temperature'],
+  surfista: ['wind', 'waves', 'wave-period', 'swell'],
+  ambos: ['wind', 'gusts', 'rain', 'air-temperature'],
+};
+
+export function isAppFocus(value: unknown): value is AppFocus {
+  return typeof value === 'string' && (appFocusValues as readonly string[]).includes(value);
+}
+
+export function hasChosenAppFocus(focus: AppFocus | null | undefined): focus is AppFocus {
+  return isAppFocus(focus);
+}
+
+export function resolveVisibleMetricKeys(
+  focus: AppFocus | null | undefined,
+  customMetrics?: FishingMetricKey[],
+): FishingMetricKey[] | undefined {
+  const focusKeys = focusMetricKeys[isAppFocus(focus) ? focus : 'ambos'];
+  if (!customMetrics && (!focus || focus === 'ambos')) return undefined;
+  return customMetrics ? focusKeys.filter((key) => customMetrics.includes(key)) : focusKeys;
+}
+
+export function locationPrimaryMetricKeys(focus: AppFocus | null | undefined): FishingMetricKey[] {
+  return locationPrimaryByFocus[isAppFocus(focus) ? focus : 'ambos'];
+}
+
+export function showsFishingScore(focus: AppFocus | null | undefined) {
+  return focus !== 'surfista';
+}
+
+export function prefersMarineDetails(focus: AppFocus | null | undefined) {
+  return focus === 'surfista';
+}
+
+export function homeCopy(focus: AppFocus | null | undefined) {
+  if (focus === 'surfista') {
+    return {
+      eyebrow: 'Condições do mar',
+      title: 'Como está o mar hoje?',
+      description: 'Ondulação, vento e maré nos seus locais.',
+      premiumTitle: 'Veja mais do mar na assinatura',
+    };
+  }
+  if (focus === 'ambos') {
+    return {
+      eyebrow: 'Decisão no mar',
+      title: 'Onde vale ir hoje?',
+      description: 'Melhor média do dia.',
+      premiumTitle: 'Pesque com mais contexto na assinatura',
+    };
+  }
+  return {
+    eyebrow: 'Decisão de pesca',
+    title: 'Onde vale pescar hoje?',
+    description: 'Melhor média do dia.',
+    premiumTitle: 'Pesque com mais contexto na assinatura',
+  };
+}
+
+export function rankingCopy(focus: AppFocus | null | undefined) {
+  if (focus === 'surfista') {
+    return {
+      eyebrow: 'Visão comparativa',
+      title: 'Os seus locais, lado a lado.',
+      description: 'Compare ondulação, vento e maré.',
+    };
+  }
+  if (focus === 'ambos') {
+    return {
+      eyebrow: 'Visão comparativa',
+      title: 'Os melhores locais, em ordem.',
+      description: 'Ordem pela média das 3 melhores horas.',
+    };
+  }
+  return {
+    eyebrow: 'Visão comparativa',
+    title: 'Os melhores locais, em ordem.',
+    description: 'Ordem pela média das 3 melhores horas.',
+  };
+}
+
+export function forecastPresentation(
+  preferences:
+    | {
+        focus?: AppFocus | null;
+        visibleMetrics?: FishingMetricKey[];
+      }
+    | null
+    | undefined,
+  canCustomizeMetrics: boolean,
+) {
+  const focus = preferences?.focus ?? null;
+  return {
+    focus,
+    visibleMetricKeys: resolveVisibleMetricKeys(
+      focus,
+      canCustomizeMetrics ? preferences?.visibleMetrics : undefined,
+    ),
+    showFishingScore: showsFishingScore(focus),
+    preferMarineDetails: prefersMarineDetails(focus),
+    home: homeCopy(focus),
+    ranking: rankingCopy(focus),
+  };
+}
+
+export const focusChoices: Array<{
+  id: AppFocus;
+  title: string;
+  description: string;
+}> = [
+  {
+    id: 'pescador',
+    title: 'Pescador',
+    description: 'Nota, melhores horários e condições para pescar.',
+  },
+  {
+    id: 'surfista',
+    title: 'Surfista',
+    description: 'Ondulação, período, swell, vento e maré.',
+  },
+  {
+    id: 'ambos',
+    title: 'Ambos',
+    description: 'Visão completa, sem esconder indicadores.',
+  },
+];

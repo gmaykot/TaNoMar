@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppShell } from '@/app/layout/AppShell';
 import { RequireAdmin } from '@/app/router/RequireAdmin';
 import { RequireAuth } from '@/app/router/RequireAuth';
+import { RequireFocus } from '@/app/router/RequireFocus';
 import { RequirePremium } from '@/app/router/RequirePremium';
 import { AccountNotificationsPage } from '@/pages/account/AccountNotificationsPage';
 import { AboutPage } from '@/pages/about/AboutPage';
@@ -20,6 +21,7 @@ import { LocationDetailsPage } from '@/pages/location-details/LocationDetailsPag
 import { NewLocationPage } from '@/pages/location-new/NewLocationPage';
 import { LocationsPage } from '@/pages/locations/LocationsPage';
 import { LoginPage } from '@/pages/login/LoginPage';
+import { FocusOnboardingPage } from '@/pages/onboarding/FocusOnboardingPage';
 import { PartnerDetailsPage } from '@/pages/partners/PartnerDetailsPage';
 import { PartnersPage } from '@/pages/partners/PartnersPage';
 import { PremiumPage } from '@/pages/premium/PremiumPage';
@@ -31,31 +33,34 @@ export function AppRouter() {
     <Routes>
       <Route path={routes.login} element={<LoginPage />} />
       <Route element={<RequireAuth />}>
-        <Route element={<AppShell />}>
-          <Route path={routes.home} element={<HomePage />} />
-          <Route path={routes.ranking} element={<RankingPage />} />
-          <Route path={routes.locations} element={<LocationsPage />} />
-          <Route path={routes.locationNew} element={<NewLocationPage />} />
-          <Route path="/locais/:locationId/editar" element={<EditLocationPage />} />
-          <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
-          <Route path={routes.account} element={<AccountPage />} />
-          <Route path={routes.accountPreferences} element={<AccountPreferencesPage />} />
-          <Route path={routes.accountNotifications} element={<AccountNotificationsPage />} />
-          <Route path={routes.premium} element={<PremiumPage />} />
-          <Route element={<RequirePremium />}>
-            <Route path={routes.diary} element={<DiaryPage />} />
-          </Route>
-          <Route path={routes.about} element={<AboutPage />} />
-          <Route path={routes.partners} element={<PartnersPage />} />
-          <Route path="/parceiros/:partnerSlug" element={<PartnerDetailsPage />} />
-          <Route element={<RequireAdmin />}>
-            <Route path={routes.admin} element={<AdminHomePage />} />
-            <Route path={routes.adminSpots} element={<AdminSpotsPage />} />
-            <Route path={routes.adminUsers} element={<AdminUsersPage />} />
-            <Route path={routes.adminPlans} element={<AdminPlansPage />} />
-            <Route path={routes.adminPartners} element={<AdminPartnersPage />} />
-            <Route path={routes.adminPartnerNew} element={<AdminPartnerFormPage />} />
-            <Route path="/admin/parceiros/:partnerSlug" element={<AdminPartnerFormPage />} />
+        <Route path={routes.onboarding} element={<FocusOnboardingPage />} />
+        <Route element={<RequireFocus />}>
+          <Route element={<AppShell />}>
+            <Route path={routes.home} element={<HomePage />} />
+            <Route path={routes.ranking} element={<RankingPage />} />
+            <Route path={routes.locations} element={<LocationsPage />} />
+            <Route path={routes.locationNew} element={<NewLocationPage />} />
+            <Route path="/locais/:locationId/editar" element={<EditLocationPage />} />
+            <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
+            <Route path={routes.account} element={<AccountPage />} />
+            <Route path={routes.accountPreferences} element={<AccountPreferencesPage />} />
+            <Route path={routes.accountNotifications} element={<AccountNotificationsPage />} />
+            <Route path={routes.premium} element={<PremiumPage />} />
+            <Route element={<RequirePremium />}>
+              <Route path={routes.diary} element={<DiaryPage />} />
+            </Route>
+            <Route path={routes.about} element={<AboutPage />} />
+            <Route path={routes.partners} element={<PartnersPage />} />
+            <Route path="/parceiros/:partnerSlug" element={<PartnerDetailsPage />} />
+            <Route element={<RequireAdmin />}>
+              <Route path={routes.admin} element={<AdminHomePage />} />
+              <Route path={routes.adminSpots} element={<AdminSpotsPage />} />
+              <Route path={routes.adminUsers} element={<AdminUsersPage />} />
+              <Route path={routes.adminPlans} element={<AdminPlansPage />} />
+              <Route path={routes.adminPartners} element={<AdminPartnersPage />} />
+              <Route path={routes.adminPartnerNew} element={<AdminPartnerFormPage />} />
+              <Route path="/admin/parceiros/:partnerSlug" element={<AdminPartnerFormPage />} />
+            </Route>
           </Route>
         </Route>
       </Route>

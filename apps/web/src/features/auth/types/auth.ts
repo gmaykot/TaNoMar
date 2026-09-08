@@ -1,3 +1,4 @@
+import type { AppFocus } from '@/features/auth/appFocus';
 import type { BillingSubscription } from '@/features/billing/billing';
 import type { FishingMetricKey } from '@/features/fishing/types/fishing';
 
@@ -25,6 +26,7 @@ export interface AuthUser {
     region: string;
     windUnit: string;
     forecastNotifications: boolean;
+    focus: AppFocus | null;
     visibleMetrics?: FishingMetricKey[];
   };
   billing?: BillingSubscription;

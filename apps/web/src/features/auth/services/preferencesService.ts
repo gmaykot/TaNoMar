@@ -1,5 +1,5 @@
 import { apiRequest } from '@/shared/api/client';
-import { parseAuthUser, parseVisibleMetrics } from './authService';
+import { parseAppFocus, parseAuthUser, parseVisibleMetrics } from './authService';
 import type { AuthUser } from '../types/auth';
 
 export async function updatePreferences(
@@ -18,6 +18,7 @@ export async function updatePreferences(
         typeof record.forecastNotifications === 'boolean'
           ? record.forecastNotifications
           : input.forecastNotifications,
+      focus: 'focus' in record ? parseAppFocus(record.focus) : input.focus,
       visibleMetrics: parseVisibleMetrics(record.visibleMetrics),
     };
   }

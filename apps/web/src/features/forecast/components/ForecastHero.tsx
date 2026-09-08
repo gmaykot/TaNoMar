@@ -15,6 +15,7 @@ interface ForecastHeroProps {
   generatedAt?: string;
   visibleMetricKeys?: FishingMetricKey[];
   windUnit?: string;
+  showFishingScore?: boolean;
 }
 
 export function ForecastHero({
@@ -24,6 +25,7 @@ export function ForecastHero({
   generatedAt,
   visibleMetricKeys,
   windUnit,
+  showFishingScore = true,
 }: ForecastHeroProps) {
   const otherHours = [...forecast.bestHours]
     .filter((hour) => hour !== forecast.metricsHour)
@@ -43,27 +45,38 @@ export function ForecastHero({
       </div>
       <div className={styles.heroTopline}>
         <span className={styles.heroLabel}>
-          <MapPin size={16} aria-hidden="true" /> Melhor escolha · {dayLabel}
+          <MapPin size={16} aria-hidden="true" />{' '}
+          {showFishingScore ? `Melhor escolha · ${dayLabel}` : `Destaque · ${dayLabel}`}
         </span>
-        <Badge classification={forecast.classification} />
+        {showFishingScore ? <Badge classification={forecast.classification} /> : null}
       </div>
       <div className={styles.heroMain}>
         <div>
           <p className={styles.heroEyebrow}>{dayLabel} o mar aponta para</p>
           <h2>{forecast.locationName}</h2>
-          <div className={styles.window}>
-            <Clock3 size={18} aria-hidden="true" />
-            Melhor hora{' '}
-            <strong>{forecast.metricsHour ?? forecast.bestHours[0] ?? forecast.bestWindow}</strong>
-          </div>
-          {otherHoursLabel ? <p className={styles.windowExtra}>Também {otherHoursLabel}</p> : null}
+          {showFishingScore ? (
+            <>
+              <div className={styles.window}>
+                <Clock3 size={18} aria-hidden="true" />
+                Melhor hora{' '}
+                <strong>
+                  {forecast.metricsHour ?? forecast.bestHours[0] ?? forecast.bestWindow}
+                </strong>
+              </div>
+              {otherHoursLabel ? (
+                <p className={styles.windowExtra}>Também {otherHoursLabel}</p>
+              ) : null}
+            </>
+          ) : null}
         </div>
-        <ScoreIndicator score={forecast.score} classification={forecast.classification} />
+        {showFishingScore ? (
+          <ScoreIndicator score={forecast.score} classification={forecast.classification} />
+        ) : null}
       </div>
-      {forecast.scoreBreakdown ? (
+      {showFishingScore && forecast.scoreBreakdown ? (
         <p className={styles.scoreBreakdown}>{forecast.scoreBreakdown}</p>
       ) : null}
-      {forecast.highlights?.length ? (
+      {showFishingScore && forecast.highlights?.length ? (
         <ul className={styles.heroHighlights} aria-label="Por que este local foi recomendado">
           {forecast.highlights.map((highlight) => (
             <li key={highlight}>{highlight}</li>

@@ -253,6 +253,7 @@ public sealed class UserPreference
     public string Region { get; set; } = "Florianópolis";
     public string WindUnit { get; set; } = "kmh";
     public bool ForecastNotifications { get; set; } = true;
+    public string? Focus { get; set; }
     public string VisibleMetrics { get; set; } = "wind,gusts,waves,wave-period,swell,rain,air-temperature,water-temperature";
 }
 

@@ -10,6 +10,7 @@ const { authState, forecastState } = vi.hoisted(() => ({
     planCode: 'premium' as 'free' | 'premium',
     showPartners: false,
     visibleMetrics: undefined as string[] | undefined,
+    focus: null as string | null,
   },
   forecastState: { error: false },
 }));
@@ -45,6 +46,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
         windUnit: 'kmh',
         forecastNotifications: true,
         visibleMetrics: authState.visibleMetrics,
+        focus: authState.focus,
       },
     },
     loginWithGoogle: vi.fn(),
@@ -101,6 +103,7 @@ describe('HomePage', () => {
     authState.planCode = 'premium';
     authState.showPartners = false;
     authState.visibleMetrics = undefined;
+    authState.focus = null;
     forecastState.error = false;
     localStorage.removeItem('tanomar.offline-forecast.v1');
   });
@@ -250,6 +253,22 @@ describe('HomePage', () => {
     expect(screen.getByText('Meu local')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
     expect(screen.getAllByText('Meu local')).toHaveLength(1);
+  });
+
+  it('no foco surfista esconde a nota e prioriza o mar', async () => {
+    authState.focus = 'surfista';
+    renderWithProviders(<HomePage />);
+
+    const heading = await screen.findByRole('heading', { name: 'Como está o mar hoje?' });
+    expect(heading).toBeInTheDocument();
+    const hero = (await screen.findByRole('heading', { name: 'Pântano do Sul' })).closest(
+      'article',
+    );
+    expect(hero).toBeTruthy();
+    if (!hero) return;
+    expect(within(hero).queryByLabelText(/Nota /)).not.toBeInTheDocument();
+    expect(within(hero).queryByText('Chuva')).not.toBeInTheDocument();
+    expect(within(hero).getByText('Swell')).toBeInTheDocument();
   });
 
   it('omite a área de parceiros quando a vitrine está desligada', async () => {
