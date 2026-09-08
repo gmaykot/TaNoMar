@@ -24,7 +24,10 @@ export function ReportConfirmDrawer({
   const descriptionId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const onCancelRef = useRef(onCancel);
-  onCancelRef.current = onCancel;
+
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+  }, [onCancel]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;

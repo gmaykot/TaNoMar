@@ -264,6 +264,45 @@
   font-size: var(--font-size-sm);
 }
 
+.planAnnual {
+  margin: -0.35rem 0 0;
+  color: var(--color-sea-700);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.planActions {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.planHint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+
+.checkoutBanner,
+.checkoutError {
+  margin: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.checkoutBanner {
+  color: var(--color-ocean-950);
+  background: var(--color-sea-100);
+}
+
+.checkoutError {
+  color: var(--color-ocean-950);
+  background: var(--color-warning-soft);
+}
+
 .planFeatures {
   display: grid;
   gap: var(--space-2);

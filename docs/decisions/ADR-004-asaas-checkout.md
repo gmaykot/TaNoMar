@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposta. Alinhada aos planos de `cursor/planos-assinatura-arrais-mestre-capitao-d738`.
+Aceita. Preço de catálogo em `Plans.MonthlyPriceCents`.
 
 ## Contexto
 
@@ -70,7 +70,7 @@ renovação daqui a 1 ano = anual de **catálogo** vigente
 Reajuste de tabela:
 
 ```text
-ASAAS_*_MONTHLY_PRICE muda
+Plans.MonthlyPriceCents muda em /admin/planos
         │
         ├── YEARLY vigente → não cobra a diferença agora
         │                     renovação = novo anual de catálogo (PUT só a cobrança futura)

@@ -1,8 +1,8 @@
 # Cobrança da assinatura (Asaas)
 
-Proposta de integração. Nada disto está implementado. A decisão está em [ADR-004](decisions/ADR-004-asaas-checkout.md).
+Checkout hospedado do Asaas, só cartão. A decisão está em [ADR-004](decisions/ADR-004-asaas-checkout.md).
 
-Os códigos e cotas vêm da branch `cursor/planos-assinatura-arrais-mestre-capitao-d738` (`PlanRules`, tabela `Plans`). O TáNoMar cobra só a assinatura da conta logada. Cancelar a recorrência não estorna. Não vende produto de parceiro e não guarda dados de cartão.
+Os códigos, cotas e o preço mensal de tabela vêm de `Plans` (`PlanRules`, `/admin/planos`). O TáNoMar cobra só a assinatura da conta logada. Cancelar a recorrência não estorna. Não vende produto de parceiro e não guarda dados de cartão.
 
 ## Planos cobrados
 
@@ -74,7 +74,7 @@ No **upgrade**, o `items[].value` da primeira cobrança é o valor proporcional 
 
 ## Reajuste de tabela
 
-A tabela (`ASAAS_*_MONTHLY_PRICE`) é o preço de **catálogo**. Mudar a tabela **não cobra a mais** no meio do período já pago.
+A tabela (`Plans.MonthlyPriceCents`, editável em `/admin/planos`) é o preço de **catálogo**. Mudar a tabela **não cobra a mais** no meio do período já pago.
 
 | Ciclo da assinatura ativa | O que acontece se a tabela mudar |
 | --- | --- |
@@ -127,7 +127,7 @@ PostgreSQL                       BillingCustomer, BillingSubscription, BillingWe
 
 Regras de pesca, fórmula e entitlements permanecem na API. O frontend não “libera plano” localmente.
 
-## Contratos previstos
+## Contratos
 
 Base `/api/v1`. Autenticados, exceto o webhook.
 
@@ -152,47 +152,36 @@ Base `/api/v1`. Autenticados, exceto o webhook.
 
 ```json
 {
+  "enabled": true,
   "discountPercent": 20,
   "plans": [
     {
       "code": "arrais",
       "name": "Arrais",
-      "monthlyListPrice": 14.90,
-      "annualPrice": 143.04
+      "monthlyPriceCents": 1490,
+      "annualPriceCents": 14304
     },
     {
       "code": "premium",
       "name": "Mestre",
-      "monthlyListPrice": 19.90,
-      "annualPrice": 191.04,
-      "quote": {
-        "kind": "upgrade",
-        "cycle": "YEARLY",
-        "remainingDays": 265,
-        "credit": 103.85,
-        "firstCharge": 87.19,
-        "renewalPrice": 191.04
-      }
-    },
-    {
-      "code": "capitao",
-      "name": "Capitão",
-      "monthlyListPrice": 24.90,
-      "annualPrice": 239.04,
-      "quote": {
-        "kind": "upgrade",
-        "cycle": "YEARLY",
-        "remainingDays": 265,
-        "credit": 103.85,
-        "firstCharge": 135.19,
-        "renewalPrice": 239.04
-      }
+      "monthlyPriceCents": 1990,
+      "annualPriceCents": 19104,
+      "quotes": [
+        {
+          "kind": "upgrade",
+          "cycle": "YEARLY",
+          "remainingDays": 265,
+          "creditCents": 10385,
+          "firstChargeCents": 8719,
+          "renewalPriceCents": 19104
+        }
+      ]
     }
   ]
 }
 ```
 
-`quote` só aparece nos destinos permitidos, com período pago vigente. Sem assinatura, a primeira cobrança é o preço de catálogo do ciclo escolhido (`monthlyListPrice` ou `annualPrice`).
+`quotes` só aparece nos destinos permitidos, com período pago vigente, um item por ciclo (`MONTHLY` ou `YEARLY`). Sem assinatura, a primeira cobrança é o preço de catálogo do ciclo escolhido (`monthlyPriceCents` ou `annualPriceCents`).
 
 `GET /billing/subscription` e o bloco em `GET /me`:
 
@@ -222,7 +211,7 @@ Base `/api/v1`. Autenticados, exceto o webhook.
 | `pending` | Checkout aberto, ainda sem pagamento |
 | `active` | Pago; `cancelAtPeriodEnd: false` renova no aniversário |
 | `past_due` | Cobrança da renovação atrasada |
-| `canceled` | Recorrência encerrada; `accessUntil` é o fim do ano já pago |
+| `canceled` | Recorrência encerrada; `accessUntil` é o fim do período já pago |
 
 Ausente ou `inactive` = comportamento atual da conta.
 
@@ -311,18 +300,15 @@ Somente runtime da API. Prefixo `TaNoMar__` / variáveis Coolify.
 | `ASAAS_API_KEY` | `access_token` das chamadas à API |
 | `ASAAS_BASE_URL` | Produção `https://api.asaas.com/v3`; sandbox `https://api-sandbox.asaas.com/v3` |
 | `ASAAS_WEBHOOK_TOKEN` | Valor esperado em `asaas-access-token` |
-| `ASAAS_ARRAIS_MONTHLY_PRICE` | Tabela Arrais (padrão `14.90`). Catálogo |
-| `ASAAS_MESTRE_MONTHLY_PRICE` | Tabela Mestre (padrão `19.90`). Catálogo |
-| `ASAAS_CAPITAO_MONTHLY_PRICE` | Tabela Capitão (padrão `24.90`). Catálogo |
 | `PUBLIC_APP_ORIGIN` | Origem HTTPS para `callback.*` |
 
-Sem `ASAAS_API_KEY`, `/premium` permanece vitrine e `POST /billing/checkout` responde `503` (`billing_disabled`).
+O preço de catálogo **não** vem do ambiente: vive em `Plans.MonthlyPriceCents`. Sem `ASAAS_API_KEY`, `/premium` permanece vitrine e `POST /billing/checkout` responde `503` (`billing_disabled`).
 
 O webhook no painel Asaas aponta para `https://<domínio>/api/v1/webhooks/asaas`.
 
 ## Frontend
 
-- `/premium`: cada card oferece **mês** (tabela) e **ano** (−20%). No upgrade, o CTA usa `quote.firstCharge` e deixa claro que o plano novo começa na hora. Se a tabela mudar no meio do anual, a Conta mostra o valor deste período e o da renovação, sem cobrar a diferença agora. Sem chave, permanece “A cobrança ainda não começa por aqui.”
+- `/premium`: cada card oferece **mês** (tabela) e **ano** (−20%). No upgrade, o CTA usa `quotes[].firstChargeCents` e deixa claro que o plano novo começa na hora. Se a tabela mudar no meio do anual, a Conta mostra o valor deste período e o da renovação, sem cobrar a diferença agora. Sem chave, permanece “A cobrança ainda não começa por aqui.”
 - Retornos `?checkout=success|cancel|expired`: copy local; o plano vem de `GET /me`.
 - Conta: plano atual, “Cancelar renovação” com texto de que **não há estorno** e a data de acesso. Depois, “Renovação cancelada · {nome} até {data}”.
 - Upgrade: CTA só nos cards de tabela maior. Downgrade: copy apontando para o cancelamento e a nova assinatura após o vencimento.
@@ -338,7 +324,7 @@ Vocabulário: na interface, **Arrais**, **Mestre** e **Capitão**. “Assinatura
 - Sandbox primeiro. Produção só com conta Asaas aprovada para cartão.
 - Sem fila extra: persistir evento e aplicar o plano no request do webhook.
 
-## Fora desta proposta
+## Fora desta integração
 
 - Pix
 - Boleto
@@ -350,12 +336,4 @@ Vocabulário: na interface, **Arrais**, **Mestre** e **Capitão**. “Assinatura
 - Estorno pelo app
 - Alterar issuer JWT, cookie, fórmula da nota ou o código `premium` do Mestre
 
-## Ordem de implementação
-
-1. Opções + `HttpClient` Asaas + tabelas + webhook idempotente (ainda sem promover).
-2. `GET /billing/catalog` e `POST /billing/checkout { planCode, cycle }`.
-3. Aplicar `arrais` / `premium` / `capitao` nos eventos da tabela acima.
-4. Cancelamento sem refund, worker de `CurrentPeriodEnd` e copy na Conta.
-5. Reajuste de tabela: sem cobrança no meio do período; `PUT` só na cobrança futura (renovação anual ou próxima fatura mensal).
-6. Upgrade proporcional; `PUT` da recorrência para `RecurringPrice`; `DELETE` da assinatura antiga sem refund.
-7. Sandbox: mensal, anual, reajuste no meio do período (não cobra a diferença; renovação/próximo mês usa tabela nova) e upgrade Arrais→Mestre; só então chave de produção.
+Sandbox primeiro. Produção só com conta Asaas aprovada para cartão.
