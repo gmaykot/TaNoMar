@@ -12,6 +12,7 @@ import { RankingEmphasisFilters } from '@/features/ranking/components/RankingEmp
 import { RankingList } from '@/features/ranking/components/RankingList';
 import {
   parseRankingEmphasis,
+  rankingEmphasisMetric,
   rankingEmphasisMetricKey,
   rankingEmphasisParam,
   rankingEmphasisQueryValue,
@@ -32,7 +33,12 @@ export function RankingPage() {
     showsAppFocus(auth.user),
   );
   const visibleMetricKeys = presentation.visibleMetricKeys;
-  const emphasis = parseRankingEmphasis(searchParams.get('enfase'), canEmphasis);
+  const requestedEmphasis = parseRankingEmphasis(searchParams.get('enfase'), canEmphasis);
+  const emphasisMetric = rankingEmphasisMetric(requestedEmphasis);
+  const emphasis =
+    !visibleMetricKeys || !emphasisMetric || visibleMetricKeys.includes(emphasisMetric)
+      ? requestedEmphasis
+      : 'score';
   const forecast = useForecast(rankingEmphasisParam(emphasis));
 
   function setEmphasis(next: RankingEmphasis) {
@@ -78,7 +84,12 @@ export function RankingPage() {
         title={presentation.ranking.title}
         description={presentation.ranking.description}
       />
-      <RankingEmphasisFilters emphasis={emphasis} premium={canEmphasis} onChange={setEmphasis} />
+      <RankingEmphasisFilters
+        emphasis={emphasis}
+        premium={canEmphasis}
+        visibleMetricKeys={visibleMetricKeys}
+        onChange={setEmphasis}
+      />
       <DayCarousel days={forecast.data.days} selectedDate={activeDate} onSelect={setSelectedDate}>
         {(day) => (
           <>

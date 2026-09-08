@@ -86,6 +86,19 @@ export function readTripPlan(): TripPlan | null {
   return readTripPlans()[0] ?? null;
 }
 
+export function findTripPlan(spotId: string, date: string) {
+  return readTripPlans().find((plan) => plan.spotId === spotId && plan.date === date) ?? null;
+}
+
+export function consumeTripPlan(input: { id?: string | null; spotId: string; date: string }) {
+  const plans = readTripPlans();
+  const match = input.id
+    ? plans.find((plan) => plan.id === input.id)
+    : plans.find((plan) => plan.spotId === input.spotId && plan.date === input.date);
+  if (!match) return plans;
+  return removeTripPlan(match.id);
+}
+
 export function saveTripPlan(plan: TripPlanInput) {
   const next = [
     { ...plan, id: crypto.randomUUID(), createdAt: new Date().toISOString() },

@@ -17,7 +17,7 @@ export function Button({
     <button
       {...props}
       className={`${styles.button} ${styles[variant]} ${locked ? styles.buttonLocked : ''} ${className}`}
-      disabled={disabled || locked}
+      disabled={disabled}
     />
   );
 }

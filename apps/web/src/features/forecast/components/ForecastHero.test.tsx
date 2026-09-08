@@ -115,4 +115,43 @@ describe('ForecastHero', () => {
     expect(infoButton.tagName).toBe('SUMMARY');
     expect(infoButton).toHaveFocus();
   });
+
+  it('não mostra o período no tile de ondas quando o período está oculto', () => {
+    const forecast = forecastFixture.days[0]?.ranking[0];
+    if (!forecast) throw new Error('fixture de ranking ausente');
+
+    render(
+      <MemoryRouter>
+        <ForecastHero forecast={forecast} visibleMetricKeys={['waves', 'wind']} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Ondas')).toBeInTheDocument();
+    expect(screen.queryByText(/Período:/)).not.toBeInTheDocument();
+  });
+
+  it('esconde indicadores de mar bloqueados no card compacto', () => {
+    const forecast = forecastFixture.days[0]?.ranking[0];
+    if (!forecast) throw new Error('fixture de ranking ausente');
+    const metrics = forecast.metrics.map((metric) =>
+      metric.key === 'waves' ||
+      metric.key === 'wave-period' ||
+      metric.key === 'swell' ||
+      metric.key === 'water-temperature'
+        ? { ...metric, value: 'Assinatura', locked: true }
+        : metric,
+    );
+
+    render(
+      <MemoryRouter>
+        <ForecastHero forecast={{ ...forecast, metrics }} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Vento')).toBeInTheDocument();
+    expect(screen.getByText('Rajadas')).toBeInTheDocument();
+    expect(screen.queryByText(/Rajadas:/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Ondas')).not.toBeInTheDocument();
+    expect(screen.queryByText('Assinatura')).not.toBeInTheDocument();
+  });
 });

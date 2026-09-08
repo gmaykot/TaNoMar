@@ -200,7 +200,7 @@ export function AccountPage() {
             to={routes.diary}
             icon={BookOpen}
             title="Diário de pesca"
-            description="Guarde o resultado das suas saídas neste aparelho."
+            description="Planeje a próxima saída e registre o resultado neste aparelho."
             locked={!hasPlanModule(user, 'diary')}
           />
         </div>

@@ -59,7 +59,7 @@ export function planFeatureList(plan: PlanCatalog) {
   items.push(`Cadastre até ${maxPersonalSpots} locais próprios`);
   items.push(`Salve até ${maxFavorites} locais favoritos`);
   items.push(`Mantenha até ${maxAlerts} alertas ativos ao mesmo tempo`);
-  if (plan.modules.diary) items.push('Diário para registrar suas saídas');
+  if (plan.modules.diary) items.push('Diário e planejamento de saídas');
   if (plan.modules.offline) items.push('Previsão salva no aparelho para consultar sem conexão');
   if (plan.modules.customMetrics) items.push('Escolha quais indicadores quer acompanhar');
   if (plan.modules.communityVote) items.push('Ajude a validar relatos da comunidade');

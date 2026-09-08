@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { locationsFixture } from '@/features/locations/fixtures/locations';
 import { saveTripPlan } from '@/features/diary/diaryStorage';
@@ -40,6 +40,30 @@ describe('DiaryPage', () => {
     expect(screen.getByLabelText('Local')).toHaveValue('pantano_do_sul');
     expect(screen.getByLabelText('Data')).toHaveValue('2026-09-06');
     expect(screen.getByLabelText('Observações')).toHaveValue('Levar camarão');
+
+    await user.click(screen.getByRole('button', { name: 'Salvar no diário' }));
+
+    expect(screen.queryByRole('heading', { name: 'Saídas planejadas' })).not.toBeInTheDocument();
+    expect(screen.getByText('2026-09-06 · Teve captura')).toBeInTheDocument();
+  });
+
+  it('remove a saída planejada ao registrar o mesmo local e data', async () => {
+    const user = userEvent.setup();
+    saveTripPlan({
+      spotId: 'pantano_do_sul',
+      spotName: 'Pântano do Sul',
+      date: '2026-09-06',
+      time: '16:30–19:00',
+      notes: '',
+    });
+
+    renderWithProviders(<DiaryPage />);
+
+    await user.selectOptions(await screen.findByLabelText('Local'), 'pantano_do_sul');
+    fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2026-09-06' } });
+    await user.click(screen.getByRole('button', { name: 'Salvar no diário' }));
+
+    expect(screen.queryByRole('heading', { name: 'Saídas planejadas' })).not.toBeInTheDocument();
   });
 
   it('edita e cancela uma saída planejada', async () => {

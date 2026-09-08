@@ -3,7 +3,7 @@ import { Activity, Anchor, ChevronDown, Droplets, Gauge, Waves } from 'lucide-re
 import type { LucideIcon } from 'lucide-react';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { Sparkline } from '@/design-system/components/Sparkline';
-import type { MarineSeries, MarineTide } from '@/features/fishing/types/fishing';
+import type { FishingMetricKey, MarineSeries, MarineTide } from '@/features/fishing/types/fishing';
 import { useMarineDetails } from '../hooks/useMarineDetails';
 import styles from './forecast.module.css';
 
@@ -18,9 +18,22 @@ const seriesIcons = {
 interface MarineDetailsProps {
   locationId: string;
   date: string;
+  visibleMetricKeys?: FishingMetricKey[];
 }
 
-export function MarineDetails({ locationId, date }: MarineDetailsProps) {
+const preferenceSeriesKeys = new Set<MarineSeries['key']>([
+  'waves',
+  'wave-period',
+  'swell',
+  'water-temperature',
+]);
+
+function showsMarineSeries(key: MarineSeries['key'], visibleMetricKeys?: FishingMetricKey[]) {
+  if (!visibleMetricKeys || !preferenceSeriesKeys.has(key)) return true;
+  return visibleMetricKeys.includes(key as FishingMetricKey);
+}
+
+export function MarineDetails({ locationId, date, visibleMetricKeys }: MarineDetailsProps) {
   const marine = useMarineDetails(locationId, date, true);
 
   if (marine.isPending)
@@ -36,21 +49,25 @@ export function MarineDetails({ locationId, date }: MarineDetailsProps) {
     );
 
   const { series, tide } = marine.data;
-  const sea = series.filter((item) => item.key !== 'atmospheric-pressure');
+  const sea = series.filter(
+    (item) => item.key !== 'atmospheric-pressure' && showsMarineSeries(item.key, visibleMetricKeys),
+  );
   const pressure = series.find((item) => item.key === 'atmospheric-pressure');
 
   return (
     <div className={styles.marine}>
-      <section className={styles.marineSection} aria-labelledby="marine-sea-heading">
-        <h3 className={styles.marineEyebrow} id="marine-sea-heading">
-          Mar
-        </h3>
-        <div className={styles.marineGrid}>
-          {sea.map((item) => (
-            <MarineMetricCard key={item.key} item={item} />
-          ))}
-        </div>
-      </section>
+      {sea.length > 0 ? (
+        <section className={styles.marineSection} aria-labelledby="marine-sea-heading">
+          <h3 className={styles.marineEyebrow} id="marine-sea-heading">
+            Mar
+          </h3>
+          <div className={styles.marineGrid}>
+            {sea.map((item) => (
+              <MarineMetricCard key={item.key} item={item} />
+            ))}
+          </div>
+        </section>
+      ) : null}
       <section className={styles.marineSection} aria-labelledby="marine-tide-heading">
         <h3 className={styles.marineEyebrow} id="marine-tide-heading">
           Maré e pressão

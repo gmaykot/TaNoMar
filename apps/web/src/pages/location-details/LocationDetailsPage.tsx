@@ -1,7 +1,6 @@
 import {
   ArrowLeft,
   CalendarDays,
-  CalendarPlus,
   Eye,
   EyeOff,
   Heart,
@@ -10,26 +9,21 @@ import {
   Navigation,
   Pencil,
 } from 'lucide-react';
-import { useState } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Badge } from '@/design-system/components/Badge';
 import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { ScoreIndicator } from '@/design-system/components/ScoreIndicator';
-import { forecastPresentation, locationPrimaryMetricKeys } from '@/features/auth/appFocus';
+import { forecastPresentation } from '@/features/auth/appFocus';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { WebcamLiveView } from '@/features/webcam/components/WebcamCard';
 import { WebcamManager } from '@/features/webcam/components/WebcamManager';
-import { WebcamPremiumGate } from '@/features/webcam/components/WebcamPremiumGate';
-import {
-  hasLiveWebcams,
-  hasPlanModule,
-  isAdmin,
-  showsAppFocus,
-  SUBSCRIPTION_LOCK_LABEL,
-} from '@/features/auth/types/auth';
+import { hasLiveWebcams, hasPlanModule, isAdmin, showsAppFocus } from '@/features/auth/types/auth';
 import { CommunityReports } from '@/features/community/components/CommunityReports';
+import { PlanTripAction } from '@/features/diary/components/PlanTripAction';
+import { SubscriptionGateDrawer } from '@/features/subscription/components/SubscriptionGateDrawer';
 import { DayCarousel } from '@/features/forecast/components/DayCarousel';
 import { MarineDetails, MarineDetailsToggle } from '@/features/forecast/components/MarineDetails';
 import { MetricGrid } from '@/features/forecast/components/MetricGrid';
@@ -38,7 +32,6 @@ import { formatScore, metricsHourCaption } from '@/features/fishing/utils/scoreB
 import { formatHourLabel, formatHourList } from '@/features/fishing/utils/hours';
 import { LocationStampFor } from '@/features/locations/components/LocationStamp';
 import { useLocationMutations } from '@/features/locations/hooks/useLocationMutations';
-import { saveTripPlan } from '@/features/diary/diaryStorage';
 import { routes } from '@/shared/constants/routes';
 import styles from '@/pages/shared/pages.module.css';
 
@@ -49,10 +42,11 @@ export function LocationDetailsPage() {
   const locationForecast = useLocationForecast(locationId);
   const mutations = useLocationMutations();
   const canFavorite = (auth.user?.entitlements.maxFavorites ?? 0) > 0;
+  const canDiary = hasPlanModule(auth.user, 'diary');
   const canWatchWebcams = hasLiveWebcams(auth.user);
   const canManageWebcams = (location: { isOwner: boolean; visibility: string }) =>
-    isAdmin(auth.user) ||
-    (location.isOwner && location.visibility !== 'official' && canWatchWebcams);
+    canWatchWebcams &&
+    (isAdmin(auth.user) || (location.isOwner && location.visibility !== 'official'));
   const presentation = forecastPresentation(
     auth.user?.preferences,
     hasPlanModule(auth.user, 'customMetrics'),
@@ -61,7 +55,7 @@ export function LocationDetailsPage() {
   const visibleMetricKeys = presentation.visibleMetricKeys;
   const [selectedDate, setSelectedDate] = useState(() => searchParams.get('data') ?? '');
   const [marineOpen, setMarineOpen] = useState(presentation.preferMarineDetails);
-  const [planned, setPlanned] = useState(false);
+  const [favoriteGateOpen, setFavoriteGateOpen] = useState(false);
 
   if (locationForecast.isPending)
     return (
@@ -104,6 +98,94 @@ export function LocationDetailsPage() {
       />
     );
 
+  const favoriteLocked = !canFavorite && !location.isFavorite;
+  const toolbarActions: { key: string; locked: boolean; node: ReactNode }[] = [
+    {
+      key: 'plan',
+      locked: !canDiary,
+      node: (
+        <PlanTripAction
+          spotId={location.id}
+          spotName={location.name}
+          date={activeDate}
+          time={activeDay.forecast.bestWindow}
+        />
+      ),
+    },
+    {
+      key: 'enabled',
+      locked: false,
+      node: (
+        <Button
+          type="button"
+          variant="secondary"
+          aria-pressed={location.isEnabled}
+          onClick={() => {
+            mutations.enabled.mutate({
+              spotId: location.id,
+              isEnabled: !location.isEnabled,
+            });
+          }}
+        >
+          {location.isEnabled ? (
+            <Eye size={16} aria-hidden="true" />
+          ) : (
+            <EyeOff size={16} aria-hidden="true" />
+          )}
+          {location.isEnabled ? 'Nas previsões' : 'Fora das previsões'}
+        </Button>
+      ),
+    },
+    {
+      key: 'favorite',
+      locked: favoriteLocked,
+      node: (
+        <Button
+          type="button"
+          variant="secondary"
+          locked={favoriteLocked}
+          aria-label={favoriteLocked ? 'Favoritar. Disponível na assinatura.' : undefined}
+          onClick={() => {
+            if (favoriteLocked) {
+              setFavoriteGateOpen(true);
+              return;
+            }
+            mutations.favorite.mutate({
+              spotId: location.id,
+              isFavorite: !location.isFavorite,
+            });
+          }}
+        >
+          {favoriteLocked ? (
+            <Lock size={16} aria-hidden="true" />
+          ) : (
+            <Heart
+              size={16}
+              fill={location.isFavorite ? 'currentColor' : 'none'}
+              aria-hidden="true"
+            />
+          )}
+          {location.isFavorite ? 'Favorito' : 'Favoritar'}
+        </Button>
+      ),
+    },
+  ];
+  if (location.isOwner) {
+    toolbarActions.push({
+      key: 'edit',
+      locked: false,
+      node: (
+        <Link className={styles.backLink} to={routes.locationEdit(location.id)}>
+          <Pencil size={16} aria-hidden="true" /> Editar
+        </Link>
+      ),
+    });
+  }
+  const orderedToolbar = [
+    ...toolbarActions.filter((item) => !item.locked),
+    ...toolbarActions.filter((item) => item.locked),
+  ];
+
   return (
     <div className={styles.page}>
       <Link className={styles.backLink} to={routes.locations}>
@@ -131,84 +213,22 @@ export function LocationDetailsPage() {
           <Navigation size={24} />
         </div>
       </section>
-      <div className={styles.toolbar}>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => {
-            saveTripPlan({
-              spotId: location.id,
-              spotName: location.name,
-              date: activeDate,
-              time: activeDay.forecast.bestWindow,
-              notes: '',
-            });
-            setPlanned(true);
-          }}
-        >
-          <CalendarPlus size={16} aria-hidden="true" /> Planejar saída
-        </Button>
-        {planned ? <span role="status">Saída planejada neste aparelho.</span> : null}
-        <Button
-          type="button"
-          variant="secondary"
-          aria-pressed={location.isEnabled}
-          onClick={() => {
-            mutations.enabled.mutate({
-              spotId: location.id,
-              isEnabled: !location.isEnabled,
-            });
-          }}
-        >
-          {location.isEnabled ? (
-            <Eye size={16} aria-hidden="true" />
-          ) : (
-            <EyeOff size={16} aria-hidden="true" />
-          )}
-          {location.isEnabled ? 'Nas previsões' : 'Fora das previsões'}
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          locked={!canFavorite && !location.isFavorite}
-          aria-label={
-            !canFavorite && !location.isFavorite ? 'Favoritar bloqueado no plano atual' : undefined
-          }
-          onClick={() => {
-            if (!canFavorite && !location.isFavorite) return;
-            mutations.favorite.mutate({
-              spotId: location.id,
-              isFavorite: !location.isFavorite,
-            });
-          }}
-        >
-          {!canFavorite && !location.isFavorite ? (
-            <Lock size={16} aria-hidden="true" />
-          ) : (
-            <Heart
-              size={16}
-              fill={location.isFavorite ? 'currentColor' : 'none'}
-              aria-hidden="true"
-            />
-          )}
-          {!canFavorite && !location.isFavorite
-            ? SUBSCRIPTION_LOCK_LABEL
-            : location.isFavorite
-              ? 'Favorito'
-              : 'Favoritar'}
-        </Button>
-        {location.isOwner ? (
-          <Link className={styles.backLink} to={routes.locationEdit(location.id)}>
-            <Pencil size={16} aria-hidden="true" /> Editar
-          </Link>
-        ) : null}
+      <div
+        className={`${styles.toolbar} ${styles.locationToolbar}`}
+        role="toolbar"
+        aria-label="Ações do local"
+      >
+        {orderedToolbar.map((item) => (
+          <Fragment key={item.key}>{item.node}</Fragment>
+        ))}
       </div>
+      {favoriteGateOpen ? (
+        <SubscriptionGateDrawer action="Favoritar" onCancel={() => setFavoriteGateOpen(false)} />
+      ) : null}
       {canManageWebcams(location) ? (
         <WebcamManager spotId={location.id} admin={isAdmin(auth.user)} />
-      ) : location.hasLiveWebcam && canWatchWebcams ? (
+      ) : canWatchWebcams && location.hasLiveWebcam ? (
         <WebcamLiveView spotId={location.id} />
-      ) : location.hasLiveWebcam ? (
-        <WebcamPremiumGate />
       ) : canWatchWebcams ? (
         <p className={styles.webcamEmpty}>Sem câmera ao vivo neste local.</p>
       ) : null}
@@ -251,14 +271,16 @@ export function LocationDetailsPage() {
             ) : null}
             <MetricGrid
               metrics={day.forecast.metrics}
-              keys={locationPrimaryMetricKeys(presentation.focus).filter(
-                (key) => !visibleMetricKeys || visibleMetricKeys.includes(key),
-              )}
+              keys={visibleMetricKeys}
               windUnit={auth.user?.preferences.windUnit}
             />
             <MarineDetailsToggle open={marineOpen} onToggle={setMarineOpen}>
               {marineOpen && day.date === activeDate ? (
-                <MarineDetails locationId={location.id} date={day.date} />
+                <MarineDetails
+                  locationId={location.id}
+                  date={day.date}
+                  visibleMetricKeys={visibleMetricKeys}
+                />
               ) : null}
             </MarineDetailsToggle>
           </Card>

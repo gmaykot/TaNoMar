@@ -54,15 +54,18 @@ export function RankingList({
             : undefined;
         const EmphasisIcon = emphasisKey ? emphasisIcons[emphasisKey] : undefined;
         const { best, alternatives } = splitRecommendationHours(item.bestHours, item.metricsHour);
+        const conditions = conditionSummary(item, visibleMetricKeys, windUnit);
         return (
           <Card as="article" className={styles.item} key={item.locationId}>
             <LocationStampFor isOwner={item.isOwner} visibility={item.visibility} />
+            {showFishingScore ? (
+              <Badge className={styles.itemBadge} classification={item.classification} />
+            ) : null}
             <div className={styles.summary}>
               <span className={styles.position} aria-label={`${index + startAt}º lugar`}>
                 {String(index + startAt).padStart(2, '0')}
               </span>
               <div className={styles.info}>
-                {showFishingScore ? <Badge classification={item.classification} /> : null}
                 <Link className={styles.hit} to={`/locais/${item.locationId}`}>
                   <h3>{item.locationName}</h3>
                 </Link>
@@ -75,7 +78,11 @@ export function RankingList({
                 ) : null}
                 {showFishingScore ? (
                   <p className={styles.conditionSummary}>
-                    {conditionSummary(item, visibleMetricKeys, windUnit)}
+                    {conditions.map((condition) => (
+                      <span className={styles.conditionSummaryItem} key={condition}>
+                        {condition}
+                      </span>
+                    ))}
                   </p>
                 ) : null}
                 {!showFishingScore ? (
@@ -101,7 +108,12 @@ export function RankingList({
                 <summary>
                   Ver condições <ChevronDown size={17} aria-hidden="true" />
                 </summary>
-                <MetricGrid metrics={item.metrics} keys={metricKeys} windUnit={windUnit} />
+                <MetricGrid
+                  metrics={item.metrics}
+                  keys={metricKeys}
+                  windUnit={windUnit}
+                  hideLocked
+                />
                 <Link className={styles.locationLink} to={`/locais/${item.locationId}`}>
                   <MapPin size={16} aria-hidden="true" /> Abrir local
                 </Link>
@@ -113,6 +125,7 @@ export function RankingList({
                   keys={metricKeys}
                   limit={4}
                   windUnit={windUnit}
+                  hideLocked
                 />
                 <Link className={styles.locationLink} to={`/locais/${item.locationId}`}>
                   <MapPin size={16} aria-hidden="true" /> Abrir local
@@ -135,7 +148,9 @@ function marineSummary(
   const selected = preferred.filter((key) => !keys || keys.includes(key));
   const parts = selected.flatMap((key) => {
     const metric = item.metrics.find((itemMetric) => itemMetric.key === key);
-    return metric ? [`${metric.label} ${formatWindMetric(metric, windUnit)}`] : [];
+    return metric && !metric.locked
+      ? [`${metric.label} ${formatWindMetric(metric, windUnit)}`]
+      : [];
   });
   return parts.join(' · ') || 'Condições do mar';
 }
@@ -149,7 +164,9 @@ function conditionSummary(
   const selected = preferred.filter((key) => !visibleMetricKeys || visibleMetricKeys.includes(key));
   const parts = selected.flatMap((key) => {
     const metric = item.metrics.find((itemMetric) => itemMetric.key === key);
-    return metric ? [`${metric.label} ${formatWindMetric(metric, windUnit)}`] : [];
+    return metric && !metric.locked
+      ? [`${metric.label} ${formatWindMetric(metric, windUnit)}`]
+      : [];
   });
-  return parts.join(' · ') || 'Condições disponíveis nos detalhes';
+  return parts.length > 0 ? parts : ['Condições disponíveis nos detalhes'];
 }

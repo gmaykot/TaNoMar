@@ -6,6 +6,7 @@ import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import {
+  consumeTripPlan,
   readDiaryEntries,
   readTripPlans,
   removeDiaryEntry,
@@ -33,6 +34,7 @@ export function DiaryPage() {
   const [bait, setBait] = useState('');
   const [result, setResult] = useState<DiaryEntry['result']>('captura');
   const [notes, setNotes] = useState('');
+  const [sourcePlanId, setSourcePlanId] = useState<string | null>(null);
 
   if (locations.isPending)
     return (
@@ -48,6 +50,8 @@ export function DiaryPage() {
     const spot = locations.data?.find((item) => item.id === spotId);
     if (!spot) return;
     setEntries(saveDiaryEntry({ spotId, spotName: spot.name, date, species, bait, result, notes }));
+    setPlans(consumeTripPlan({ id: sourcePlanId, spotId, date }));
+    setSourcePlanId(null);
     setSpecies('');
     setBait('');
     setNotes('');
@@ -57,6 +61,7 @@ export function DiaryPage() {
     setSpotId(plan.spotId);
     setDate(plan.date);
     if (plan.notes) setNotes(plan.notes);
+    setSourcePlanId(plan.id);
   }
 
   function submitPlanEdit(event: FormEvent) {
@@ -80,7 +85,7 @@ export function DiaryPage() {
       <PageHeader
         eyebrow="Memória de pesca"
         title="Seu diário."
-        description="Registre capturas e saídas sem captura neste aparelho."
+        description="Registre capturas e saídas sem captura neste aparelho. As saídas planejadas ficam aqui até você registrar o resultado."
       />
       {plans.length ? (
         <section className={accountStyles.accountSection} aria-labelledby="planned-trips">

@@ -223,6 +223,25 @@
   gap: var(--space-3);
 }
 
+.locationToolbar {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.locationToolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.locationToolbar > * {
+  flex-shrink: 0;
+}
+
+.locationToolbar :is(button, a) {
+  white-space: nowrap;
+}
+
 .locationGrid {
   display: grid;
   gap: var(--space-3);

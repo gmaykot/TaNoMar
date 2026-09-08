@@ -4,6 +4,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { forecastFixture } from '@/features/forecast/fixtures/forecast';
 import { locationsFixture } from '@/features/locations/fixtures/locations';
+import { saveTripPlan } from '@/features/diary/diaryStorage';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { LocationDetailsPage } from './LocationDetailsPage';
 
@@ -16,19 +17,32 @@ vi.mock('@/features/forecast/services/forecastService', () => ({
       {
         key: 'waves',
         label: 'Ondas',
-        current: '0.70 m',
+        current: authState.lockMarine ? 'Assinatura' : '0.70 m',
         range: '0.40–1.10 m',
+        locked: authState.lockMarine,
         points: [
           { time: '05:00', value: 0.4 },
           { time: '12:00', value: 0.7 },
         ],
       },
       {
+        key: 'swell',
+        label: 'Swell',
+        current: authState.lockMarine ? 'Assinatura' : '0,50 m',
+        range: '0,40–0,60 m',
+        locked: authState.lockMarine,
+        points: [
+          { time: '05:00', value: 0.4 },
+          { time: '12:00', value: 0.5 },
+        ],
+      },
+      {
         key: 'atmospheric-pressure',
         label: 'Pressão',
-        current: '1018 hPa',
+        current: authState.lockMarine ? 'Assinatura' : '1018 hPa',
         range: '1016–1020 hPa',
         detail: 'estável',
+        locked: authState.lockMarine,
         points: [
           { time: '05:00', value: 1016 },
           { time: '12:00', value: 1018 },
@@ -36,9 +50,10 @@ vi.mock('@/features/forecast/services/forecastService', () => ({
       },
     ],
     tide: {
-      current: '0.85 m',
+      current: authState.lockMarine ? 'Assinatura' : '0.85 m',
       phase: 'Enchente',
       nextExtreme: 'Preamar 14:20 · 1.20 m',
+      locked: authState.lockMarine,
       extremes: [{ type: 'preamar', time: '14:20', height: '1.20 m' }],
       points: [
         { time: '00:00', value: 0.2 },
@@ -51,9 +66,25 @@ vi.mock('@/features/forecast/services/forecastService', () => ({
     if (!location) return null;
     const days = forecastFixture.days.flatMap((day) => {
       const forecast = day.ranking.find((item) => item.locationId === locationId);
-      return forecast
-        ? [{ date: day.date, label: day.label, shortLabel: day.shortLabel, forecast }]
-        : [];
+      if (!forecast) return [];
+      const metrics = authState.lockMarine
+        ? forecast.metrics.map((metric) =>
+            metric.key === 'waves' ||
+            metric.key === 'wave-period' ||
+            metric.key === 'swell' ||
+            metric.key === 'water-temperature'
+              ? { ...metric, value: 'Assinatura', locked: true }
+              : metric,
+          )
+        : forecast.metrics;
+      return [
+        {
+          date: day.date,
+          label: day.label,
+          shortLabel: day.shortLabel,
+          forecast: { ...forecast, metrics },
+        },
+      ];
     });
     return { location, days };
   },
@@ -67,11 +98,20 @@ vi.mock('@/features/community/services/communityService', () => ({
   deleteReport: vi.fn(),
 }));
 
+const { showSaveConfirmation } = vi.hoisted(() => ({
+  showSaveConfirmation: vi.fn(),
+}));
+
 const authState = vi.hoisted(() => ({
   maxFavorites: 20,
   focus: null as string | null,
   showAppFocus: false,
+  visibleMetrics: undefined as string[] | undefined,
+  lockMarine: false,
+  canDiary: true,
 }));
+
+vi.mock('@/app/layout/saveConfirmationEvents', () => ({ showSaveConfirmation }));
 
 vi.mock('@/features/auth/hooks/useAuth', () => ({
   useAuth: () => ({
@@ -92,12 +132,22 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
         maxPersonalSpots: authState.maxFavorites > 0 ? 10 : 0,
         maxAlerts: 10,
       },
+      modules: {
+        marine: true,
+        diary: authState.canDiary,
+        offline: true,
+        customMetrics: true,
+        communityVote: true,
+        rankingEmphasis: true,
+        liveWebcams: false,
+      },
       features: { showPartners: false, showAppFocus: authState.showAppFocus },
       preferences: {
         region: 'Florianópolis',
         windUnit: 'kmh',
         forecastNotifications: true,
         focus: authState.focus,
+        visibleMetrics: authState.visibleMetrics,
       },
     },
     loginWithGoogle: vi.fn(),
@@ -121,6 +171,7 @@ function renderLocation(path = '/locais/pantano_do_sul') {
   return renderWithProviders(
     <Routes>
       <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
+      <Route path="/premium" element={<p>Página de planos</p>} />
     </Routes>,
     [path],
   );
@@ -139,7 +190,11 @@ describe('LocationDetailsPage', () => {
     authState.maxFavorites = 20;
     authState.focus = null;
     authState.showAppFocus = false;
+    authState.visibleMetrics = undefined;
+    authState.lockMarine = false;
+    authState.canDiary = true;
     localStorage.clear();
+    showSaveConfirmation.mockClear();
   });
 
   it('mostra estado amigável para local inexistente', async () => {
@@ -154,16 +209,17 @@ describe('LocationDetailsPage', () => {
     const slide = within(visibleDaySlide());
     expect(await slide.findByText('Vento')).toBeInTheDocument();
     expect(slide.getByText('Chuva')).toBeInTheDocument();
-    expect(slide.queryByText('Ondas')).not.toBeInTheDocument();
+    expect(slide.getByText('Ondas')).toBeInTheDocument();
+    expect(slide.queryByText('Swell')).not.toBeInTheDocument();
     expect(slide.queryByLabelText('Maré')).not.toBeInTheDocument();
 
     await user.click(slide.getByText('Mar e maré'));
     expect(await screen.findByRole('heading', { name: 'Mar' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Maré e pressão' })).toBeInTheDocument();
     expect(screen.getByText('Enchente')).toBeInTheDocument();
-    expect(screen.getByText('Ondas')).toBeInTheDocument();
     expect(screen.getByText('Pressão')).toBeInTheDocument();
     expect(screen.getByLabelText('Maré')).toBeInTheDocument();
+    expect(screen.queryByText('Swell')).not.toBeInTheDocument();
   });
 
   it('no foco surfista abre o mar e esconde a nota de pesca', async () => {
@@ -175,28 +231,78 @@ describe('LocationDetailsPage', () => {
     expect(screen.queryByLabelText(/Nota /)).not.toBeInTheDocument();
     const slide = within(visibleDaySlide());
     expect(slide.queryByText('Chuva')).not.toBeInTheDocument();
-    expect(slide.getByText('Swell')).toBeInTheDocument();
+    expect(slide.getAllByText('Swell').length).toBeGreaterThan(0);
     expect(screen.queryByText('Nenhum relato ativo')).not.toBeInTheDocument();
     expect(screen.queryByText('Enviar relato')).not.toBeInTheDocument();
   });
 
-  it('bloqueia favoritar no plano Free com cadeado Premium', async () => {
+  it('omite no painel de mar o indicador desmarcado na conta', async () => {
+    const user = userEvent.setup();
+    authState.focus = 'ambos';
+    authState.showAppFocus = true;
+    authState.visibleMetrics = ['wind', 'waves', 'rain'];
+    renderLocation();
+
+    expect(await screen.findByLabelText('Previsão por dia')).toBeInTheDocument();
+    const slide = within(visibleDaySlide());
+    expect(await slide.findByText('Ondas')).toBeInTheDocument();
+    expect(slide.queryByText('Swell')).not.toBeInTheDocument();
+
+    await user.click(slide.getByText('Mar e maré'));
+    expect(await screen.findByRole('heading', { name: 'Mar' })).toBeInTheDocument();
+    expect(screen.queryByText('Swell')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Maré')).toBeInTheDocument();
+  });
+
+  it('mantém o cadeado do mar no detalhe do local no plano Free', async () => {
+    const user = userEvent.setup();
+    authState.maxFavorites = 0;
+    authState.lockMarine = true;
+    renderLocation();
+
+    expect(await screen.findByLabelText('Previsão por dia')).toBeInTheDocument();
+    const slide = within(visibleDaySlide());
+    expect(await slide.findByLabelText('Ondas bloqueado no plano atual')).toBeInTheDocument();
+
+    await user.click(slide.getByText('Mar e maré'));
+    expect(await screen.findByLabelText('Maré bloqueada no plano atual')).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Ondas bloqueado no plano atual').length).toBeGreaterThan(0);
+  });
+
+  it('abre o drawer de planos ao favoritar sem cota', async () => {
+    const user = userEvent.setup();
     authState.maxFavorites = 0;
     renderLocation();
     const favorite = await screen.findByRole('button', {
-      name: 'Favoritar bloqueado no plano atual',
+      name: 'Favoritar. Disponível na assinatura.',
     });
-    expect(favorite).toBeDisabled();
-    expect(favorite).toHaveTextContent('Assinatura');
+    expect(favorite).toBeEnabled();
+    expect(favorite).toHaveTextContent('Favoritar');
+
+    await user.click(favorite);
+    const dialog = await screen.findByRole('dialog', { name: 'Ver os planos?' });
+    expect(dialog).toHaveTextContent('Favoritar está na Assinatura.');
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
+
+    await user.click(favorite);
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Ver planos' }),
+    );
+    expect(await screen.findByText('Página de planos')).toBeInTheDocument();
   });
 
-  it('mostra o convite do plano Capitão quando o local tem câmera e a conta não', async () => {
+  it('não mostra câmera nem convite no plano Free', async () => {
     const location = locationsFixture.find((item) => item.id === 'pantano_do_sul');
     if (!location) throw new Error('fixture pantano_do_sul ausente');
     location.hasLiveWebcam = true;
+    authState.maxFavorites = 0;
     try {
       renderLocation();
-      expect(await screen.findByText('Recurso do plano Capitão')).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
+      expect(screen.queryByText('Recurso do plano Capitão')).not.toBeInTheDocument();
+      expect(screen.queryByText('Câmera ao vivo')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Ver câmera ao vivo' })).not.toBeInTheDocument();
     } finally {
       location.hasLiveWebcam = false;
@@ -241,6 +347,19 @@ describe('LocationDetailsPage', () => {
     expect(enabled).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('mostra as ações livres antes das travadas', async () => {
+    authState.maxFavorites = 0;
+    authState.canDiary = false;
+    renderLocation();
+
+    const toolbar = await screen.findByRole('toolbar', { name: 'Ações do local' });
+    const actions = within(toolbar)
+      .getAllByRole('button')
+      .map((item) => item.textContent?.replace(/\s+/g, ' ').trim());
+
+    expect(actions).toEqual(['Nas previsões', 'Planejar saída', 'Favoritar']);
+  });
+
   it('permite trocar o dia arrastando o carrossel nos detalhes', async () => {
     renderLocation();
     expect(await screen.findByRole('heading', { name: '05h30, 07h e 17h' })).toBeInTheDocument();
@@ -266,13 +385,22 @@ describe('LocationDetailsPage', () => {
     });
   });
 
-  it('planeja a saída com a melhor janela do dia selecionado', async () => {
+  it('confirma e planeja a saída com a melhor janela do dia selecionado', async () => {
     const user = userEvent.setup();
     renderLocation('/locais/pantano_do_sul?data=2026-09-06');
 
     await user.click(await screen.findByRole('button', { name: 'Planejar saída' }));
 
-    expect(screen.getByText('Saída planejada neste aparelho.')).toBeInTheDocument();
+    expect(localStorage.getItem('tanomar.trip-plan.v1')).toBeNull();
+    const dialog = await screen.findByRole('dialog', { name: 'Planejar esta saída?' });
+    expect(dialog).toHaveTextContent('Pântano do Sul em 06/09, na melhor janela 16:30–19:00');
+    await user.click(within(dialog).getByRole('button', { name: 'Planejar saída' }));
+
+    expect(
+      screen.getByText('Saída em 06/09 · 16:30–19:00. Guardada neste aparelho.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ver no diário' })).toHaveAttribute('href', '/diario');
+    expect(showSaveConfirmation).toHaveBeenCalledWith('Saída planejada.');
     expect(JSON.parse(localStorage.getItem('tanomar.trip-plan.v1') ?? '[]')).toEqual([
       expect.objectContaining({
         spotId: 'pantano_do_sul',
@@ -282,5 +410,73 @@ describe('LocationDetailsPage', () => {
         notes: '',
       }),
     ]);
+  });
+
+  it('não grava o planejamento se a confirmação for cancelada', async () => {
+    const user = userEvent.setup();
+    renderLocation('/locais/pantano_do_sul?data=2026-09-06');
+
+    await user.click(await screen.findByRole('button', { name: 'Planejar saída' }));
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(localStorage.getItem('tanomar.trip-plan.v1')).toBeNull();
+    expect(showSaveConfirmation).not.toHaveBeenCalled();
+  });
+
+  it('mostra a saída já planejada depois de reabrir o local', async () => {
+    const user = userEvent.setup();
+    saveTripPlan({
+      spotId: 'pantano_do_sul',
+      spotName: 'Pântano do Sul',
+      date: '2026-09-06',
+      time: '16:30–19:00',
+      notes: '',
+    });
+    renderLocation('/locais/pantano_do_sul?data=2026-09-06');
+
+    expect(
+      await screen.findByText('Saída em 06/09 · 16:30–19:00. Guardada neste aparelho.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ver no diário' })).toHaveAttribute('href', '/diario');
+
+    await user.click(screen.getByRole('button', { name: 'Planejar saída' }));
+    expect(await screen.findByRole('dialog', { name: 'Planejar esta saída?' })).toHaveTextContent(
+      'Já existe um planejamento para Pântano do Sul em 06/09',
+    );
+  });
+
+  it('abre o drawer de planos ao planejar saída sem o módulo de diário', async () => {
+    const user = userEvent.setup();
+    authState.canDiary = false;
+    saveTripPlan({
+      spotId: 'pantano_do_sul',
+      spotName: 'Pântano do Sul',
+      date: '2026-09-06',
+      time: '16:30–19:00',
+      notes: '',
+    });
+    renderLocation('/locais/pantano_do_sul?data=2026-09-06');
+
+    const plan = await screen.findByRole('button', {
+      name: 'Planejar saída. Disponível na assinatura.',
+    });
+    expect(plan).toBeEnabled();
+    expect(plan).toHaveTextContent('Planejar saída');
+    expect(screen.queryByRole('link', { name: 'Ver no diário' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Guardada neste aparelho/)).not.toBeInTheDocument();
+
+    await user.click(plan);
+    const dialog = await screen.findByRole('dialog', { name: 'Ver os planos?' });
+    expect(dialog).toHaveTextContent('Planejar saída está na Assinatura.');
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(localStorage.getItem('tanomar.trip-plan.v1')).not.toBeNull();
+
+    await user.click(plan);
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Ver planos' }),
+    );
+    expect(await screen.findByText('Página de planos')).toBeInTheDocument();
   });
 });

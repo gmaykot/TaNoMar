@@ -55,7 +55,7 @@ const benefits = [
   {
     icon: BookOpen,
     title: 'Diário de pesca',
-    description: 'Registre suas capturas e saídas sem captura para criar seu histórico de pesca.',
+    description: 'Planeje a saída e registre capturas ou saídas sem captura neste aparelho.',
   },
   {
     icon: Download,

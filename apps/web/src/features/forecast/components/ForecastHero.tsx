@@ -89,7 +89,13 @@ export function ForecastHero({
       {metricsHourCaption(forecast.metricsHour) ? (
         <p className={styles.metricCaption}>{metricsHourCaption(forecast.metricsHour)}</p>
       ) : null}
-      <MetricGrid metrics={forecast.metrics} keys={visibleMetricKeys} windUnit={windUnit} compact />
+      <MetricGrid
+        metrics={forecast.metrics}
+        keys={visibleMetricKeys}
+        windUnit={windUnit}
+        compact
+        hideLocked
+      />
       {showFishingScore && hourWindows.length > 0 ? (
         <section className={styles.scoreTrend} aria-label="Notas dos melhores horários">
           <strong className={styles.scoreTrendTitle}>Notas dos melhores horários</strong>

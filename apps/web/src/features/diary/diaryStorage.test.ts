@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  consumeTripPlan,
+  findTripPlan,
   readTripPlan,
   readTripPlans,
   removeTripPlan,
@@ -68,6 +70,31 @@ describe('diaryStorage', () => {
       notes: 'Checar maré',
     });
     expect(removeTripPlan(plan.id)).toEqual([]);
+  });
+
+  it('encontra e consome o planejamento pelo id ou pelo local e data', () => {
+    const [first] = saveTripPlan({
+      spotId: 'pantano_do_sul',
+      spotName: 'Pântano do Sul',
+      date: '2026-09-06',
+      time: '16:30–19:00',
+      notes: '',
+    });
+    saveTripPlan({
+      spotId: 'acores',
+      spotName: 'Açores',
+      date: '2026-09-07',
+      time: '05:30–08:00',
+      notes: '',
+    });
+
+    expect(findTripPlan('pantano_do_sul', '2026-09-06')?.id).toBe(first.id);
+    expect(consumeTripPlan({ id: first.id, spotId: 'pantano_do_sul', date: '2026-09-06' })).toEqual([
+      expect.objectContaining({ spotId: 'acores' }),
+    ]);
+    expect(
+      consumeTripPlan({ spotId: 'acores', date: '2026-09-07' }),
+    ).toEqual([]);
   });
 
   it('lê o planejamento antigo salvo como objeto único', () => {

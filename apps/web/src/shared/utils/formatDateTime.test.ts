@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { formatDateTime, isSameCalendarDay } from './formatDateTime';
+import { formatCalendarDate, formatDateTime, isSameCalendarDay } from './formatDateTime';
 
 describe('formatDateTime', () => {
   it('formata data e hora no fuso de São Paulo', () => {
     expect(formatDateTime('2026-09-05T12:00:00Z')).toMatch(/05\/09/);
     expect(formatDateTime('2026-09-05T12:00:00Z')).toMatch(/09:00/);
+  });
+
+  it('formata a data civil sem deslocar o dia', () => {
+    expect(formatCalendarDate('2026-09-06')).toBe('06/09');
   });
 
   it('reconhece o mesmo dia civil em São Paulo', () => {

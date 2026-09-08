@@ -72,7 +72,7 @@ describe('planFeatureList', () => {
       'Cadastre até 10 locais próprios',
       'Salve até 20 locais favoritos',
       'Mantenha até 10 alertas ativos ao mesmo tempo',
-      'Diário para registrar suas saídas',
+      'Diário e planejamento de saídas',
       'Previsão salva no aparelho para consultar sem conexão',
       'Escolha quais indicadores quer acompanhar',
       'Ajude a validar relatos da comunidade',

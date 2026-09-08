@@ -1,4 +1,5 @@
 import { CloudRain, Lock, Waves, Wind } from 'lucide-react';
+import type { FishingMetricKey } from '@/features/fishing/types/fishing';
 import {
   cycleRankingEmphasis,
   rankingEmphasisControlLabel,
@@ -22,20 +23,25 @@ const metrics: Array<{
 interface RankingEmphasisFiltersProps {
   emphasis: RankingEmphasis;
   premium: boolean;
+  visibleMetricKeys?: FishingMetricKey[];
   onChange: (next: RankingEmphasis) => void;
 }
 
 export function RankingEmphasisFilters({
   emphasis,
   premium,
+  visibleMetricKeys,
   onChange,
 }: RankingEmphasisFiltersProps) {
   const activeMetric = rankingEmphasisMetric(emphasis);
   const direction = rankingEmphasisDirection(emphasis);
+  const options = metrics.filter(
+    (option) => !visibleMetricKeys || visibleMetricKeys.includes(option.id),
+  );
 
   return (
     <div className={styles.filters} role="group" aria-label="Ênfase do ranking">
-      {metrics.map((option) => {
+      {options.map((option) => {
         const locked = !premium;
         const selected = activeMetric === option.id;
         const Icon = option.icon;

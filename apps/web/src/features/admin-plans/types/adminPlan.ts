@@ -53,7 +53,7 @@ export const planModuleFields = [
   {
     key: 'canDiary',
     label: 'Diário de pesca',
-    hint: 'Registro das saídas neste aparelho.',
+    hint: 'Planejamento e registro das saídas neste aparelho.',
   },
   {
     key: 'canOffline',

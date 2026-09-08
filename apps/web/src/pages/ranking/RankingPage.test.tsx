@@ -11,6 +11,7 @@ const { getForecast, authState } = vi.hoisted(() => ({
     planCode: 'premium' as 'free' | 'premium',
     focus: null as string | null,
     showAppFocus: false,
+    visibleMetrics: undefined as string[] | undefined,
   },
 }));
 
@@ -44,6 +45,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
         windUnit: 'kmh',
         forecastNotifications: true,
         focus: authState.focus,
+        visibleMetrics: authState.visibleMetrics,
       },
     },
     loginWithGoogle: vi.fn(),
@@ -56,6 +58,7 @@ describe('RankingPage', () => {
     authState.planCode = 'premium';
     authState.focus = null;
     authState.showAppFocus = false;
+    authState.visibleMetrics = undefined;
     getForecast.mockClear();
     getForecast.mockResolvedValue(forecastFixture);
   });
@@ -194,6 +197,20 @@ describe('RankingPage', () => {
     expect(screen.getByRole('button', { name: 'Vento, disponível na assinatura' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Chuva, disponível na assinatura' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Ondas, disponível na assinatura' })).toBeDisabled();
+    expect(getForecast).toHaveBeenCalledWith(undefined);
+  });
+
+  it('esconde a ênfase de ondas quando o indicador não está visível', async () => {
+    authState.visibleMetrics = ['wind', 'rain'];
+    renderWithProviders(<RankingPage />, ['/ranking?enfase=ondas']);
+
+    expect(
+      await screen.findByRole('heading', { name: 'Os melhores locais, em ordem.' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Ondas/ })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Vento. Toque para ordenar com menos vento.' }),
+    ).toBeInTheDocument();
     expect(getForecast).toHaveBeenCalledWith(undefined);
   });
 });

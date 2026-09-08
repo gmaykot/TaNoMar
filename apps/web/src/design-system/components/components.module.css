@@ -37,15 +37,6 @@
   transform: none;
 }
 
-.buttonLocked,
-.buttonLocked:hover,
-.buttonLocked:disabled,
-.buttonLocked:disabled:hover {
-  color: var(--color-ocean-950);
-  background: var(--color-warning-soft);
-  box-shadow: none;
-}
-
 .primary {
   color: white;
   background: var(--color-coral-500);
@@ -64,6 +55,18 @@
 .quiet {
   color: var(--color-ocean-950);
   background: transparent;
+}
+
+.buttonLocked,
+.buttonLocked:hover,
+.buttonLocked:active,
+.buttonLocked:disabled,
+.buttonLocked:disabled:hover,
+.buttonLocked:disabled:active {
+  color: var(--color-warning);
+  background: var(--color-warning-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-warning) 32%, transparent);
+  transform: none;
 }
 
 .card {
@@ -339,9 +342,9 @@
 
 .iconButtonLocked,
 .iconButtonLocked:disabled {
-  color: var(--color-ocean-950);
+  color: var(--color-warning);
   background: var(--color-warning-soft);
-  border-color: transparent;
+  border-color: color-mix(in srgb, var(--color-warning) 32%, transparent);
 }
 
 .searchField {

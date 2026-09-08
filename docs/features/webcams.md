@@ -36,7 +36,7 @@ Metadado opcional de origem: `providerDisplayName`. Windy vale `"Windy"`; YouTub
 - **Admin**: pesquisa Windy por proximidade, consulta live do YouTube pelo link, seleciona, troca e remove a câmera de qualquer local (`/admin/fishing-spots/{id}/…`). Liga ou desliga a feature em `/admin` (`Mostrar câmeras ao vivo`).
 - **Capitão dono de Meu Local** (local pessoal, `OwnerUserId` = usuário autenticado): pesquisa Windy e vincula em `/fishing-spots/{id}/…`, se a feature estiver ligada. Não vincula YouTube.
 - **Capitão**: vê a transmissão de um local que já tem câmera válida (`GET /fishing-spots/{id}/webcam`), se a feature estiver ligada.
-- **Demais planos**: `403` nesse GET. O DTO do local pode trazer `hasLiveWebcam` (booleano, sem URL) para o convite do plano.
+- **Demais planos**: `403` nesse GET. O DTO do local pode trazer `hasLiveWebcam` (booleano, sem URL). A web não mostra câmera nem convite no detalhe do local sem `modules.liveWebcams`.
 
 Com a feature desligada no admin (`PlatformSettings.ShowLiveWebcams`, padrão `true`):
 

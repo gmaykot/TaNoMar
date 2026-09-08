@@ -13,12 +13,31 @@ const { authState, forecastState } = vi.hoisted(() => ({
     focus: null as string | null,
     showAppFocus: false,
   },
-  forecastState: { error: false },
+  forecastState: { error: false, lockMarine: false },
 }));
 
 vi.mock('@/features/forecast/services/forecastService', () => ({
-  getForecast: () =>
-    forecastState.error ? Promise.reject(new Error('offline')) : Promise.resolve(forecastFixture),
+  getForecast: () => {
+    if (forecastState.error) return Promise.reject(new Error('offline'));
+    if (!forecastState.lockMarine) return Promise.resolve(forecastFixture);
+    return Promise.resolve({
+      ...forecastFixture,
+      days: forecastFixture.days.map((day) => ({
+        ...day,
+        ranking: day.ranking.map((item) => ({
+          ...item,
+          metrics: item.metrics.map((metric) =>
+            metric.key === 'waves' ||
+            metric.key === 'wave-period' ||
+            metric.key === 'swell' ||
+            metric.key === 'water-temperature'
+              ? { ...metric, value: 'Assinatura', locked: true }
+              : metric,
+          ),
+        })),
+      })),
+    });
+  },
   getLocationForecast: () => Promise.resolve(null),
 }));
 
@@ -107,6 +126,7 @@ describe('HomePage', () => {
     authState.focus = null;
     authState.showAppFocus = false;
     forecastState.error = false;
+    forecastState.lockMarine = false;
     localStorage.removeItem('tanomar.offline-forecast.v1');
   });
 
@@ -202,6 +222,22 @@ describe('HomePage', () => {
     expect(within(hero).queryByText('Vento')).not.toBeInTheDocument();
   });
 
+  it('esconde o mar bloqueado nos cards da home', async () => {
+    authState.planCode = 'free';
+    forecastState.lockMarine = true;
+    renderWithProviders(<HomePage />);
+
+    const heading = await screen.findByRole('heading', { name: 'Pântano do Sul' });
+    const hero = heading.closest('article');
+    expect(hero).toBeTruthy();
+    if (!hero) return;
+    expect(within(hero).getByText('Vento')).toBeInTheDocument();
+    expect(within(hero).getByText('Rajadas')).toBeInTheDocument();
+    expect(within(hero).queryByText('Ondas')).not.toBeInTheDocument();
+    expect(within(hero).queryByText('Assinatura')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Ondas Assinatura/)).not.toBeInTheDocument();
+  });
+
   it('mostra condições e as notas dos melhores horários sem sugerir evolução diária', async () => {
     renderWithProviders(<HomePage />);
 
@@ -213,7 +249,7 @@ describe('HomePage', () => {
     expect(within(hero).getByText('Condições às 05h30')).toBeInTheDocument();
     expect(within(hero).getByText(/Rajadas/)).toBeInTheDocument();
     expect(within(hero).getByText('Ondas')).toBeInTheDocument();
-    expect(within(hero).getByText(/Período:/)).toBeInTheDocument();
+    expect(within(hero).queryByText(/Período:/)).not.toBeInTheDocument();
     expect(within(hero).getByText('Chuva')).toBeInTheDocument();
     expect(
       within(hero).getByRole('region', { name: 'Notas dos melhores horários' }),
@@ -274,6 +310,8 @@ describe('HomePage', () => {
     renderWithProviders(<HomePage />);
 
     expect(await screen.findByRole('heading', { name: 'Molhe da Barra' })).toBeInTheDocument();
+    expect(screen.getAllByText(/^Vento /)[0]?.tagName).toBe('SPAN');
+    expect(screen.getAllByText(/^Ondas /)[0]?.tagName).toBe('SPAN');
     expect(screen.getByText('Meu local')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
     expect(screen.getAllByText('Meu local')).toHaveLength(1);

@@ -26,23 +26,34 @@ interface MetricGridProps {
   limit?: number;
   windUnit?: string;
   compact?: boolean;
+  hideLocked?: boolean;
 }
 
-export function MetricGrid({ metrics, keys, limit, windUnit, compact = false }: MetricGridProps) {
+export function MetricGrid({
+  metrics,
+  keys,
+  limit,
+  windUnit,
+  compact = false,
+  hideLocked = false,
+}: MetricGridProps) {
   const selected = keys
     ? keys.flatMap((key) => {
         const metric = metrics.find((item) => item.key === key);
         return metric ? [metric] : [];
       })
     : metrics;
-  const visibleMetrics = typeof limit === 'number' ? selected.slice(0, limit) : selected;
+  const unlocked = hideLocked ? selected.filter((metric) => !metric.locked) : selected;
+  const visibleMetrics = typeof limit === 'number' ? unlocked.slice(0, limit) : unlocked;
   const gusts = visibleMetrics.find((metric) => metric.key === 'gusts');
   const wind = visibleMetrics.find((metric) => metric.key === 'wind');
-  const wavePeriod = metrics.find((metric) => metric.key === 'wave-period');
+  const wavePeriod = visibleMetrics.find((metric) => metric.key === 'wave-period');
   const waves = visibleMetrics.find((metric) => metric.key === 'waves');
   const airTemperature = visibleMetrics.find((metric) => metric.key === 'air-temperature');
   const waterTemperature = visibleMetrics.find((metric) => metric.key === 'water-temperature');
-  const combineWind = Boolean(compact && wind && gusts && !wind.locked && !gusts.locked);
+  const combineWind = Boolean(
+    compact && wind && gusts && !wind.locked && !gusts.locked && unlocked.length > 4,
+  );
   const combineWaves = Boolean(
     compact && waves && wavePeriod && !waves.locked && !wavePeriod.locked,
   );
