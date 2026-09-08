@@ -5,7 +5,7 @@ import styles from './adminUsers.module.css';
 
 const protectionLabel = {
   self: 'Você não pode bloquear a própria conta.',
-  bootstrap: 'A conta inicial do bootstrap permanece no plano Mestre e ativa.',
+  bootstrap: 'A conta inicial do bootstrap não pode ser bloqueada.',
   last_admin: 'Mantenha pelo menos um admin ativo.',
 } as const;
 
