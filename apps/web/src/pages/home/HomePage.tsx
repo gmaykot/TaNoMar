@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { Button } from '@/design-system/components/Button';
-import { forecastPresentation } from '@/features/auth/appFocus';
+import { forecastPresentation, homeCopy } from '@/features/auth/appFocus';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import {
   hasPlanModule,
@@ -54,7 +54,7 @@ export function HomePage() {
     return (
       <FeedbackState
         title="Lendo o mar"
-        description="Organizando as melhores janelas para você."
+        description="Organizando os melhores horários para você."
         icon={Compass}
         busy
       />
@@ -74,6 +74,8 @@ export function HomePage() {
 
   const days = data?.days ?? [];
   const activeDate = selectedDate || days[0]?.date || '';
+  const activeDay = days.find((day) => day.date === activeDate);
+  const home = homeCopy(presentation.focus, activeDay?.label);
   if (!days.some((day) => day.ranking[0]))
     return (
       <FeedbackState
@@ -85,18 +87,14 @@ export function HomePage() {
 
   return (
     <div className={styles.page}>
-      <PageHeader
-        eyebrow={presentation.home.eyebrow}
-        title={presentation.home.title}
-        description={presentation.home.description}
-      />
+      <PageHeader eyebrow={home.eyebrow} title={home.title} description={home.description} />
       {!isPaid ? (
         <Link className={styles.premiumBanner} to={routes.premium}>
           <span>
             <Sparkles size={19} aria-hidden="true" />
           </span>
           <div>
-            <strong>{presentation.home.premiumTitle}</strong>
+            <strong>{home.premiumTitle}</strong>
             <small>Arrais, Mestre ou Capitão: mais dias, detalhes do mar e alertas.</small>
           </div>
           <ArrowRight size={19} aria-hidden="true" />

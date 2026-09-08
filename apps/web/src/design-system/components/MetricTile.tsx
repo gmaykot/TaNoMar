@@ -7,11 +7,57 @@ interface MetricTileProps {
   label: string;
   value: string;
   detail?: string;
+  secondary?: string[];
+  rows?: Array<{ label: string; value: string }>;
   locked?: boolean;
+  compact?: boolean;
 }
 
-export function MetricTile({ icon: Icon, label, value, detail, locked = false }: MetricTileProps) {
+export function MetricTile({
+  icon: Icon,
+  label,
+  value,
+  detail,
+  secondary,
+  rows,
+  locked = false,
+  compact = false,
+}: MetricTileProps) {
   const DisplayIcon = locked ? Lock : Icon;
+  const secondaryLines = secondary ?? (detail ? [detail] : []);
+
+  if (compact)
+    return (
+      <div
+        className={`${styles.metric} ${styles.metricCompact} ${locked ? styles.metricLocked : ''}`}
+        aria-label={locked ? `${label} bloqueado no plano atual` : undefined}
+      >
+        <div className={styles.metricCompactHeader}>
+          <DisplayIcon size={19} aria-hidden="true" />
+          <span>{label}</span>
+        </div>
+        {rows ? (
+          <div className={styles.metricCompactRows}>
+            {rows.map((row) => (
+              <div key={row.label}>
+                <span>{row.label}:</span>
+                <strong>{row.value}</strong>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            <strong className={styles.metricCompactValue}>{value}</strong>
+            {secondaryLines.map((line) => (
+              <small className={styles.metricCompactSecondary} key={line}>
+                {line}
+              </small>
+            ))}
+          </>
+        )}
+      </div>
+    );
+
   return (
     <div
       className={`${styles.metric} ${locked ? styles.metricLocked : ''}`}

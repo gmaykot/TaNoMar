@@ -240,6 +240,85 @@
   background: var(--color-warning-soft);
 }
 
+.metricCompact {
+  display: grid;
+  align-items: stretch;
+  gap: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+}
+
+.metricCompactHeader {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.metricCompactHeader svg {
+  flex: 0 0 auto;
+  color: var(--color-sea-500);
+}
+
+.metricCompactHeader span,
+.metricCompactRows > div {
+  min-width: 0;
+}
+
+.metricCompactHeader span {
+  color: rgb(255 255 255 / 82%);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.metricCompactValue {
+  margin-top: 0.35rem;
+  color: white;
+  font-size: 1.25rem;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.metricCompactSecondary {
+  margin-top: var(--space-1);
+  color: rgb(255 255 255 / 72%);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.metricCompactRows {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: 0.35rem;
+}
+
+.metricCompactRows > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.metricCompactRows span {
+  color: rgb(255 255 255 / 72%);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.metricCompactRows strong {
+  margin: 0;
+  color: white;
+  font-size: 1.25rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
 .iconButton {
   display: grid;
   width: 2.75rem;

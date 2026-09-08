@@ -31,19 +31,6 @@
   font-size: var(--font-size-sm);
 }
 
-.premiumCallout {
-  display: grid;
-  gap: var(--space-1);
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  color: var(--color-ocean-950);
-  background: var(--color-sea-100);
-}
-
-.premiumCallout small {
-  color: var(--color-text-muted);
-}
-
 .stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

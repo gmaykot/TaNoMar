@@ -7,6 +7,7 @@ interface ConfirmDrawerProps {
   title: string;
   description: string;
   confirmLabel: string;
+  cancelLabel?: string;
   busy?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -16,6 +17,7 @@ export function ConfirmDrawer({
   title,
   description,
   confirmLabel,
+  cancelLabel = 'Cancelar',
   busy = false,
   onCancel,
   onConfirm,
@@ -70,7 +72,7 @@ export function ConfirmDrawer({
         <p id={descriptionId}>{description}</p>
         <div className={styles.actions}>
           <Button type="button" variant="quiet" onClick={onCancel} disabled={busy}>
-            Cancelar
+            {cancelLabel}
           </Button>
           <Button type="button" onClick={onConfirm} disabled={busy}>
             {confirmLabel}

@@ -1,19 +1,31 @@
 import type { ForecastHourWindow, WindOrigin } from '../types/fishing';
+import { formatDecimal } from '@/shared/utils/formatNumber';
+import { formatHourLabel } from './hours';
 
 export function formatScore(score: number) {
-  return score.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  return formatDecimal(score);
 }
 
 export function formatScoreBreakdown(windows: ForecastHourWindow[]) {
   if (windows.length === 0) return '';
-  const ordered = [...windows].sort((left, right) => left.time.localeCompare(right.time));
-  const parts = ordered.map((item) => `${item.time} ${formatScore(item.score)}`);
-  if (windows.length === 1) return `Nota da hora · ${parts[0]}`;
-  return `Média das ${windows.length} melhores horas · ${parts.join(' · ')}`;
+  if (windows.length === 1) return 'Nota da melhor hora prevista.';
+  return `Nota pela média das ${windows.length} melhores horas.`;
+}
+
+export function forecastScoreNote() {
+  return 'A nota descreve as condições previstas, não a chance de captura.';
+}
+
+export function rankingLeadReason(windowCount: number) {
+  const criterion =
+    windowCount <= 1
+      ? 'Em primeiro pela melhor hora prevista.'
+      : `Em primeiro pela média das ${windowCount} melhores horas previstas.`;
+  return `${criterion} ${forecastScoreNote()}`;
 }
 
 export function metricsHourCaption(time: string | null) {
-  return time ? `Condições às ${time}` : null;
+  return time ? `Condições às ${formatHourLabel(time)}` : null;
 }
 
 export function windOriginLabel(origin: WindOrigin | null) {

@@ -1,25 +1,44 @@
-import { Check, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/design-system/components/Card';
+import { ANNUAL_DISCOUNT_PERCENT } from '@/features/billing/billing';
+import { PlanComparisonPanel } from '@/features/subscription/components/PlanComparisonPanel';
+import { PlanOfferCard } from '@/features/subscription/components/PlanOfferCard';
+import offerStyles from '@/features/subscription/components/planOffer.module.css';
 import { useSubscriptionPlans } from '@/features/subscription/hooks/useSubscriptionPlans';
-import { formatBrlFromCents, planFeatureList } from '@/features/subscription/subscriptionPlans';
+import { plansWithFreeBaseline } from '@/features/subscription/subscriptionPlans';
 import { routes } from '@/shared/constants/routes';
 import styles from './landing.module.css';
 
 export function PlansSection() {
   const catalog = useSubscriptionPlans();
-  const plans = catalog.data ?? [];
+  const freePlan = catalog.data?.find((plan) => plan.code === 'free');
+  const plans = catalog.data?.filter((plan) => plan.code !== 'free') ?? [];
 
   return (
     <section className={styles.section} id="planos" aria-labelledby="landing-plans-title">
       <div className={styles.sectionHeading}>
-        <span>Planos configurados no TáNoMar</span>
-        <h2 id="landing-plans-title">Escolha quanto contexto quer levar para o mar.</h2>
+        <span>Planos</span>
+        <h2 id="landing-plans-title">Comece grátis e assine quando precisar de mais.</h2>
         <p>
-          Preços, limites e recursos vêm do catálogo administrado no próprio sistema. Para assinar,
-          entre na sua conta.
+          O Free não tem prazo de teste. Os planos pagos ampliam o período, cobram no mês ou no ano
+          e o anual sai com {ANNUAL_DISCOUNT_PERCENT}% de desconto.
         </p>
       </div>
+      {freePlan ? (
+        <div className={styles.freeAccess}>
+          <div>
+            <span>Acesso inicial</span>
+            <h3>{freePlan.name}</h3>
+            <p>
+              Mapa, ranking e até {freePlan.entitlements.maxForecastDays} dias de previsão, sem
+              cadastrar cartão.
+            </p>
+          </div>
+          <Link className={styles.secondaryCta} to={routes.login}>
+            Experimentar grátis
+          </Link>
+        </div>
+      ) : null}
       {catalog.isPending ? (
         <p className={styles.catalogStatus} role="status">
           Carregando os planos disponíveis…
@@ -31,42 +50,21 @@ export function PlansSection() {
         </Card>
       ) : null}
       {plans.length > 0 ? (
-        <div className={styles.planGrid}>
+        <div className={offerStyles.planGrid}>
           {plans.map((plan) => (
-            <Card
-              as="article"
-              className={`${styles.planCard} ${plan.featured ? styles.planFeatured : ''}`}
-              key={plan.code}
-              aria-labelledby={`landing-plan-${plan.code}`}
-            >
-              <div className={styles.planTopline}>
-                <span>{plan.featured ? 'Mais escolhido' : 'Plano TáNoMar'}</span>
-                {plan.featured ? <Sparkles size={18} aria-hidden="true" /> : null}
-              </div>
-              <h3 id={`landing-plan-${plan.code}`}>{plan.name}</h3>
-              <p className={styles.planTagline}>{plan.tagline}</p>
-              <p className={styles.planPrice}>
-                <strong>{formatBrlFromCents(plan.monthlyPriceCents)}</strong>
-                <span>por mês</span>
-              </p>
-              <ul className={styles.planFeatures}>
-                {planFeatureList(plan).map((feature) => (
-                  <li key={feature}>
-                    <Check size={16} aria-hidden="true" /> {feature}
-                  </li>
-                ))}
-              </ul>
-              <footer className={styles.planFooter}>
-                <Link
-                  className={plan.featured ? styles.primaryCta : styles.secondaryCta}
-                  to={routes.login}
-                >
-                  Começar
-                </Link>
-              </footer>
-            </Card>
+            <PlanOfferCard key={plan.code} plan={plan} headingId={`landing-plan-${plan.code}`}>
+              <Link
+                className={plan.featured ? styles.primaryCta : styles.secondaryCta}
+                to={routes.login}
+              >
+                Escolher {plan.name}
+              </Link>
+            </PlanOfferCard>
           ))}
         </div>
+      ) : null}
+      {catalog.data && catalog.data.length > 0 ? (
+        <PlanComparisonPanel plans={plansWithFreeBaseline(plans, catalog.data)} />
       ) : null}
     </section>
   );

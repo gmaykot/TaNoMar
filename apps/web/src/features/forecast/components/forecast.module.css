@@ -167,7 +167,7 @@
   position: relative;
   min-width: 0;
   max-width: 100%;
-  padding: var(--space-6);
+  padding: var(--space-5);
   overflow: visible;
   border-radius: var(--radius-xl);
   color: white;
@@ -224,26 +224,9 @@
 }
 
 .heroFreshness {
-  margin: 0 0 var(--space-3);
-  color: var(--color-sea-200);
-  font-size: var(--font-size-xs);
-}
-
-.heroHighlights {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin: 0 0 var(--space-3);
-  padding: 0;
-  list-style: none;
-}
-
-.heroHighlights li {
-  padding: 0.35rem 0.6rem;
-  border-radius: var(--radius-pill);
+  margin: var(--space-3) 0 0;
   color: var(--color-sea-100);
-  background: color-mix(in srgb, var(--color-sea-500) 22%, transparent);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-sm);
 }
 
 .heroTopline {
@@ -263,7 +246,7 @@
 
 .heroLabel {
   gap: var(--space-2);
-  color: var(--color-sea-200);
+  color: var(--color-sea-100);
   font-size: var(--font-size-xs);
   font-weight: 750;
   letter-spacing: 0.06em;
@@ -275,18 +258,12 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-5);
-  margin: var(--space-8) 0 var(--space-6);
+  gap: var(--space-4);
+  margin: var(--space-4) 0 var(--space-3);
 }
 
 .heroMain > div {
   min-width: 0;
-}
-
-.heroEyebrow {
-  margin: 0 0 var(--space-2);
-  color: rgb(255 255 255 / 56%);
-  font-size: var(--font-size-xs);
 }
 
 .hero h2 {
@@ -295,14 +272,15 @@
   font-size: clamp(1.8rem, 8vw, 3rem);
   line-height: 1.05;
   letter-spacing: -0.055em;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .window {
   flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
-  color: rgb(255 255 255 / 65%);
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  color: rgb(255 255 255 / 86%);
   font-size: var(--font-size-sm);
 }
 
@@ -311,22 +289,116 @@
 }
 
 .windowExtra {
-  margin: 0.35rem 0 0;
-  color: rgb(255 255 255 / 55%);
-  font-size: var(--font-size-xs);
-}
-
-.scoreBreakdown {
-  margin: 0 0 var(--space-3);
-  color: rgb(255 255 255 / 78%);
-  font-size: var(--font-size-xs);
+  margin: var(--space-1) 0 0;
+  color: rgb(255 255 255 / 88%);
+  font-size: var(--font-size-sm);
+  font-weight: 650;
 }
 
 .metricCaption {
   margin: 0 0 var(--space-2);
-  color: var(--color-sea-200);
-  font-size: var(--font-size-xs);
+  color: var(--color-sea-100);
+  font-size: var(--font-size-sm);
   font-weight: 750;
+}
+
+.scoreGroup {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.scoreInfo {
+  position: absolute;
+  right: -0.45rem;
+  bottom: -0.45rem;
+  z-index: 3;
+  margin: 0;
+}
+
+.scoreInfo[open] {
+  z-index: 5;
+}
+
+.scoreInfo summary {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 24%);
+  border-radius: 50%;
+  color: var(--color-sea-100);
+  background: var(--color-ocean-900);
+  cursor: pointer;
+  list-style: none;
+}
+
+.scoreInfo summary::-webkit-details-marker {
+  display: none;
+}
+
+.scoreInfo summary:focus-visible {
+  outline: 3px solid var(--color-coral-500);
+  outline-offset: 2px;
+}
+
+.scoreInfo p {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  width: min(16rem, calc(100vw - 3rem));
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: var(--radius-sm);
+  color: rgb(255 255 255 / 82%);
+  background: var(--color-ocean-900);
+  box-shadow: var(--shadow-md);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+}
+
+.scoreTrend {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid rgb(255 255 255 / 16%);
+}
+
+.scoreTrendTitle {
+  color: var(--color-sea-100);
+  font-size: var(--font-size-sm);
+}
+
+.scoreTrendValues {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scoreTrendValues li {
+  display: grid;
+  gap: 0.1rem;
+  padding: var(--space-2);
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: var(--radius-sm);
+  color: rgb(255 255 255 / 76%);
+  background: rgb(255 255 255 / 6%);
+  font-size: var(--font-size-sm);
+}
+
+.scoreTrendValues strong {
+  color: white;
+  font-size: var(--font-size-sm);
+}
+
+.scoreTrendValues .scoreTrendBest {
+  border-color: var(--color-coral-500);
+  color: white;
+  background: color-mix(in srgb, var(--color-coral-500) 10%, transparent);
 }
 
 .metricGrid {
@@ -336,35 +408,26 @@
 }
 
 .heroLink {
+  position: relative;
+  z-index: 2;
   width: fit-content;
   min-height: 2.75rem;
   justify-content: center;
   gap: var(--space-2);
-  margin-top: var(--space-5);
-  color: var(--color-sea-200);
+  margin-top: var(--space-2);
+  color: var(--color-sea-100);
   font-size: var(--font-size-sm);
   font-weight: 750;
 }
 
-.hero:has(.hit:focus-visible) {
+.heroLink:focus-visible {
   outline: 3px solid var(--color-coral-500);
   outline-offset: 3px;
 }
 
-.hit:focus-visible {
-  outline: none;
-}
-
-.hit::after {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  content: '';
-}
-
 @media (min-width: 48rem) {
   .hero {
-    padding: var(--space-8);
+    padding: var(--space-6);
   }
 
   .metricGrid {

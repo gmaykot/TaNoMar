@@ -55,7 +55,7 @@ export function LoginPage() {
         }}
       />
       <small>
-        <Compass size={14} aria-hidden="true" /> A nota continua vindo só da API.
+      © 2026 TáNoMar. Todos os direitos reservados.<Compass size={14} aria-hidden="true" />
       </small>
     </main>
   );

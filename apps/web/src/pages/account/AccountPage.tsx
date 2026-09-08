@@ -9,6 +9,7 @@ import {
   MapPinned,
   Settings,
   Shield,
+  Sparkles,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/design-system/components/Button';
@@ -112,25 +113,29 @@ export function AccountPage() {
         </dl>
       </Card>
 
-      <SubscriptionBillingCard planName={user?.plan.name} billing={user?.billing} showPlansLink />
-
-      <Link
-        className={accountStyles.premiumCallout}
-        to={
-          paid ? `${routes.premium}${billingEnabled ? '#assinatura' : '#planos'}` : routes.premium
-        }
-      >
-        <strong>
-          {paid ? (billingEnabled ? 'Gerenciar assinatura' : 'Mudar plano') : 'Conhecer os planos'}
-        </strong>
-        <small>
-          {paid
-            ? billingEnabled
-              ? 'Troque de plano ou cancele a renovação para voltar ao Free no fim do período.'
-              : 'Compare Arrais, Mestre e Capitão e escolha outro comando.'
-            : 'Arrais, Mestre ou Capitão: mais contexto para planejar a saída.'}
-        </small>
-      </Link>
+      <section className={accountStyles.accountSection} aria-labelledby="account-subscription">
+        <h2 id="account-subscription">Assinatura</h2>
+        <SubscriptionBillingCard
+          planName={user?.plan.name}
+          billing={user?.billing}
+          isPaid={paid}
+          showPlansLink
+        />
+        <div className={accountStyles.shortcuts}>
+          <AccountShortcut
+            to={paid ? `${routes.premium}#assinatura` : routes.premium}
+            icon={Sparkles}
+            title={paid ? 'Gerenciar assinatura' : 'Conhecer os planos'}
+            description={
+              paid
+                ? billingEnabled
+                  ? 'Cancele a renovação para voltar ao Free no fim do período, ou troque de plano.'
+                  : 'Abra a página da assinatura para ver o plano atual e os demais comandos.'
+                : 'Arrais, Mestre ou Capitão: mais contexto para planejar a saída.'
+            }
+          />
+        </div>
+      </section>
 
       <section className={accountStyles.accountSection} aria-labelledby="account-preferences">
         <h2 id="account-preferences">Preferências</h2>

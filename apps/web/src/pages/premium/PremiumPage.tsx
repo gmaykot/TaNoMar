@@ -21,6 +21,8 @@ import { useBillingCatalog } from '@/features/billing/hooks/useBillingCatalog';
 import { useBillingCheckout } from '@/features/billing/hooks/useBillingCheckout';
 import type { BillingCycle } from '@/features/billing/billing';
 import { SubscriptionBillingCard } from '@/features/billing/components/SubscriptionBillingCard';
+import { useSubscriptionPlans } from '@/features/subscription/hooks/useSubscriptionPlans';
+import { plansWithFreeBaseline } from '@/features/subscription/subscriptionPlans';
 import { ApiError } from '@/shared/api/errors';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { SubscriptionPlanCards } from '@/pages/premium/SubscriptionPlanCards';
@@ -99,6 +101,7 @@ function checkoutMessage(value: string | null) {
 export function PremiumPage() {
   const auth = useAuth();
   const catalog = useBillingCatalog();
+  const publicPlans = useSubscriptionPlans();
   const checkout = useBillingCheckout();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -107,6 +110,7 @@ export function PremiumPage() {
   const currentPlanName = isPaid ? auth.user?.plan.name : undefined;
   const billing = catalog.data;
   const plans = billing?.plans ?? [];
+  const comparisonPlans = plansWithFreeBaseline(plans, publicPlans.data);
   const highlight = maxForecastCaption(plans);
   const returnMessage = checkoutMessage(searchParams.get('checkout'));
   const checkoutError =
@@ -159,8 +163,12 @@ export function PremiumPage() {
       </Link>
       <PageHeader
         eyebrow="Assinatura"
-        title="Escolha o comando da sua pesca."
-        description="Arrais, Mestre ou Capitão. Três planos para ver mais dias, guardar seus locais e sair com mais contexto."
+        title={isPaid ? 'Gerencie o comando da sua pesca.' : 'Escolha o comando da sua pesca.'}
+        description={
+          isPaid
+            ? 'Troque de plano ou cancele a renovação. O período já pago continua válido até o fim.'
+            : 'Arrais, Mestre ou Capitão. Três planos para ver mais dias, guardar seus locais e sair com mais contexto.'
+        }
       />
       {returnMessage ? (
         <p className={premiumStyles.checkoutBanner} role="status">
@@ -172,7 +180,11 @@ export function PremiumPage() {
           {checkoutError}
         </p>
       ) : null}
-      <SubscriptionBillingCard planName={currentPlanName} billing={auth.user?.billing} />
+      <SubscriptionBillingCard
+        planName={currentPlanName}
+        billing={auth.user?.billing}
+        isPaid={isPaid}
+      />
       <section className={premiumStyles.hero} aria-labelledby="premium-hero-title">
         <div className={premiumStyles.heroCopy}>
           <span className={premiumStyles.heroEyebrow}>
@@ -187,6 +199,11 @@ export function PremiumPage() {
             <a className={premiumStyles.heroLink} href="#planos">
               Ver os planos <ArrowRight size={17} aria-hidden="true" />
             </a>
+            {isPaid ? (
+              <a className={premiumStyles.heroQuiet} href="#assinatura">
+                Cancelar renovação
+              </a>
+            ) : null}
             <span>
               {isPaid
                 ? `Você já é assinante${currentPlanName ? ` · ${currentPlanName}` : ''}`
@@ -221,6 +238,7 @@ export function PremiumPage() {
       </div>
       <SubscriptionPlanCards
         plans={plans}
+        comparisonPlans={comparisonPlans}
         currentPlanCode={auth.user?.plan.code}
         currentCycle={auth.user?.billing?.cycle}
         currentStatus={auth.user?.billing?.status}
@@ -229,6 +247,42 @@ export function PremiumPage() {
         pendingKey={pendingKey}
         onCheckout={handleCheckout}
       />
+      <section className={premiumStyles.notes} aria-labelledby="premium-notes-title">
+        <div className={premiumStyles.benefitIntro}>
+          <div>
+            <span>Antes de assinar</span>
+            <h2 id="premium-notes-title">Pagamento e câmeras</h2>
+          </div>
+          <p>Cartão só no Asaas. As transmissões ao vivo dependem de terceiros.</p>
+        </div>
+        <div className={premiumStyles.notesGrid}>
+          <Card as="article" className={premiumStyles.infoCard}>
+            <div>
+              <span>Pagamento</span>
+              <h3>
+                {billing?.enabled
+                  ? 'Cartão só na página do Asaas'
+                  : 'Os planos já existem na conta'}
+              </h3>
+            </div>
+            <p>
+              {billing?.enabled
+                ? 'O TáNoMar não vê o número do cartão. Cancelar a renovação não estorna o período já pago: você usa o plano até o fim do mês ou do ano contratado e depois volta para Free. Se a tabela mudar no meio do ciclo, a diferença não é cobrada agora — a renovação usa o preço novo.'
+                : 'Arrais, Mestre e Capitão já podem ser liberados pelo administrador. A cobrança automática ainda está sendo configurada pela equipe do TáNoMar e esta página não inicia pagamento nem cria assinatura sozinha.'}
+            </p>
+          </Card>
+          <Card as="article" className={premiumStyles.infoCard}>
+            <div>
+              <span>Câmeras ao vivo</span>
+              <h3>Transmissão de terceiros</h3>
+            </div>
+            <p>
+              As câmeras do Capitão são streams de terceiros. O TáNoMar apenas as exibe, não se
+              responsabiliza pelas imagens e não garante manutenção nem disponibilidade.
+            </p>
+          </Card>
+        </div>
+      </section>
       <div className={premiumStyles.benefitIntro}>
         <div>
           <span>O que muda</span>
@@ -247,22 +301,6 @@ export function PremiumPage() {
           </Card>
         ))}
       </div>
-      <Card as="section" className={premiumStyles.infoCard}>
-        <div>
-          <span>Pagamento</span>
-          <h2>
-            {billing?.enabled ? 'Cartão só na página do Asaas' : 'Os planos já existem na conta'}
-          </h2>
-        </div>
-        <p>
-          {billing?.enabled
-            ? 'O TáNoMar não vê o número do cartão. Cancelar a renovação não estorna o período já pago: você usa o plano até o fim do mês ou do ano contratado e depois volta para Free. Se a tabela mudar no meio do ciclo, a diferença não é cobrada agora — a renovação usa o preço novo.'
-            : 'Arrais, Mestre e Capitão já podem ser liberados pelo administrador. A cobrança automática ainda está sendo configurada pela equipe do TáNoMar e esta página não inicia pagamento nem cria assinatura sozinha.'}
-        </p>
-        <Link className={styles.backLink} to={routes.about}>
-          Saiba como a previsão é feita <ArrowRight size={16} aria-hidden="true" />
-        </Link>
-      </Card>
     </div>
   );
 }

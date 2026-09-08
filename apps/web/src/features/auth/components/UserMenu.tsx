@@ -71,7 +71,7 @@ export function UserMenu() {
             onClick={close}
           >
             <Sparkles size={17} aria-hidden="true" />
-            {isPaidPlan(user) ? 'Assinatura' : 'Conhecer os planos'}
+            {isPaidPlan(user) ? 'Gerenciar assinatura' : 'Conhecer os planos'}
           </NavLink>
           <NavLink
             role="menuitem"

@@ -49,6 +49,6 @@ describe('canCancelRenewal', () => {
     );
     expect(canCancelRenewal({ ...activeYearly, enabled: false })).toBe(false);
     expect(billingCycleLabel('YEARLY')).toBe('anual');
-    expect(cancelRenewalConfirmMessage('08/09/2027')).toContain('volta para Free');
+    expect(cancelRenewalConfirmMessage('08/09/2027')).toContain('permanece vigente até 08/09/2027');
   });
 });

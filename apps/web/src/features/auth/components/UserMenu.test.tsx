@@ -51,7 +51,7 @@ describe('UserMenu', () => {
     expect(screen.getByText('Ana')).toBeInTheDocument();
     expect(screen.getByText('ana@example.com')).toBeInTheDocument();
     expect(screen.getByText('Plano Mestre')).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: 'Assinatura' })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: 'Gerenciar assinatura' })).toHaveAttribute(
       'href',
       '/premium#assinatura',
     );

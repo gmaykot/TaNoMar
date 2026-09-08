@@ -35,6 +35,7 @@ import { MarineDetails, MarineDetailsToggle } from '@/features/forecast/componen
 import { MetricGrid } from '@/features/forecast/components/MetricGrid';
 import { useLocationForecast } from '@/features/forecast/hooks/useForecast';
 import { formatScore, metricsHourCaption } from '@/features/fishing/utils/scoreBreakdown';
+import { formatHourLabel, formatHourList } from '@/features/fishing/utils/hours';
 import { LocationStampFor } from '@/features/locations/components/LocationStamp';
 import { useLocationMutations } from '@/features/locations/hooks/useLocationMutations';
 import { saveTripPlan } from '@/features/diary/diaryStorage';
@@ -208,6 +209,8 @@ export function LocationDetailsPage() {
         <WebcamLiveView spotId={location.id} />
       ) : location.hasLiveWebcam ? (
         <WebcamPremiumGate />
+      ) : canWatchWebcams ? (
+        <p className={styles.webcamEmpty}>Sem câmera ao vivo neste local.</p>
       ) : null}
       {mutations.favoriteError ? <p>{mutations.favoriteError}</p> : null}
       {mutations.enabledError ? <p>{mutations.enabledError}</p> : null}
@@ -218,8 +221,8 @@ export function LocationDetailsPage() {
               <>
                 <div className={styles.detailSummary}>
                   <div>
-                    <span className={styles.detailEyebrow}>Melhor janela</span>
-                    <h2>{day.forecast.bestWindow}</h2>
+                    <span className={styles.detailEyebrow}>Melhores horários</span>
+                    <h2>{formatHourList(day.forecast.bestHours)}</h2>
                     <Badge classification={day.forecast.classification} />
                     {day.forecast.scoreBreakdown ? (
                       <p className={styles.scoreBreakdown}>{day.forecast.scoreBreakdown}</p>
@@ -230,17 +233,17 @@ export function LocationDetailsPage() {
                     classification={day.forecast.classification}
                   />
                 </div>
-                <div className={styles.bestHours}>
-                  <CalendarDays size={17} aria-hidden="true" />
-                  <span>Horários em destaque:</span>
-                  {day.forecast.hourWindows.length > 0
-                    ? day.forecast.hourWindows.map((hour) => (
-                        <strong key={hour.time}>
-                          {hour.time} {formatScore(hour.score)}
-                        </strong>
-                      ))
-                    : day.forecast.bestHours.map((hour) => <strong key={hour}>{hour}</strong>)}
-                </div>
+                {day.forecast.hourWindows.length > 0 ? (
+                  <div className={styles.bestHours}>
+                    <CalendarDays size={17} aria-hidden="true" />
+                    <span>Notas por horário:</span>
+                    {day.forecast.hourWindows.map((hour) => (
+                      <strong key={hour.time}>
+                        {formatHourLabel(hour.time)} {formatScore(hour.score)}
+                      </strong>
+                    ))}
+                  </div>
+                ) : null}
               </>
             ) : null}
             {metricsHourCaption(day.forecast.metricsHour) ? (

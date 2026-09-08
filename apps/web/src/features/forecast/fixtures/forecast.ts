@@ -24,7 +24,11 @@ function metrics(seed: ForecastSeed, index: number): FishingMetric[] {
     { key: 'gusts', label: 'Rajadas', value: `${14 + index * 2} km/h` },
     { key: 'waves', label: 'Ondas', value: seed.wave },
     { key: 'wave-period', label: 'Período', value: `${7 + (index % 4)} s` },
-    { key: 'swell', label: 'Swell', value: `${(0.5 + (index % 4) * 0.1).toFixed(1)} m` },
+    {
+      key: 'swell',
+      label: 'Swell',
+      value: `${(0.5 + (index % 4) * 0.1).toFixed(1).replace('.', ',')} m`,
+    },
     { key: 'rain', label: 'Chuva', value: seed.rain },
     { key: 'air-temperature', label: 'Temperatura', value: `${22 + (index % 3)} °C`, detail: 'Ar' },
     { key: 'water-temperature', label: 'Água', value: `${20 + (index % 2)} °C` },
@@ -54,6 +58,7 @@ function ranking(seeds: ForecastSeed[]): ForecastRankingItem[] {
       scoreBreakdown: formatScoreBreakdown(hourWindows),
       metricsHour: start,
       windOrigin: index % 2 ? 'mar' : 'terra',
+      highlights: index === 0 ? ['Vento leve', 'Pouca chance de chuva'] : ['Vento leve'],
       metrics: metrics(seed, index),
     };
   });

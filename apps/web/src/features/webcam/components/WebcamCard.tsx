@@ -5,6 +5,7 @@ import { Card } from '@/design-system/components/Card';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { useSpotWebcam } from '../hooks/useSpotWebcam';
 import type { SpotWebcam } from '../types/webcam';
+import { WebcamDisclaimer } from './WebcamDisclaimer';
 import { WebcamPlayer } from './WebcamPlayer';
 import { WebcamThumb } from './WebcamThumb';
 import styles from './webcam.module.css';
@@ -45,6 +46,7 @@ export function WebcamCard({ webcam, heading = 'Ao vivo' }: WebcamCardProps) {
       ) : (
         <p className={styles.copy}>A câmera vinculada não está disponível agora.</p>
       )}
+      <WebcamDisclaimer />
       {open && webcam.player ? (
         <WebcamPlayer
           title={name}

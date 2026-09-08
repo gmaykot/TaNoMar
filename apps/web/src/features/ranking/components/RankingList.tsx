@@ -6,7 +6,11 @@ import { ScoreIndicator } from '@/design-system/components/ScoreIndicator';
 import type { FishingMetricKey, ForecastRankingItem } from '@/features/fishing/types/fishing';
 import { MetricGrid } from '@/features/forecast/components/MetricGrid';
 import { formatWindMetric } from '@/features/forecast/utils/formatWindMetric';
-import { metricsHourCaption } from '@/features/fishing/utils/scoreBreakdown';
+import {
+  formatHourLabel,
+  formatHourList,
+  splitRecommendationHours,
+} from '@/features/fishing/utils/hours';
 import { LocationStampFor } from '@/features/locations/components/LocationStamp';
 import { rankingMetricKeys } from '../rankingEmphasis';
 import styles from './ranking.module.css';
@@ -49,6 +53,7 @@ export function RankingList({
             ? item.metrics.find((metric) => metric.key === emphasisKey)
             : undefined;
         const EmphasisIcon = emphasisKey ? emphasisIcons[emphasisKey] : undefined;
+        const { best, alternatives } = splitRecommendationHours(item.bestHours, item.metricsHour);
         return (
           <Card as="article" className={styles.item} key={item.locationId}>
             <LocationStampFor isOwner={item.isOwner} visibility={item.visibility} />
@@ -61,13 +66,17 @@ export function RankingList({
                 <Link className={styles.hit} to={`/locais/${item.locationId}`}>
                   <h3>{item.locationName}</h3>
                 </Link>
-                {showFishingScore ? (
-                  <p>
-                    <Clock3 size={15} aria-hidden="true" /> {item.bestWindow}
+                {showFishingScore && best ? (
+                  <p className={styles.hours}>
+                    <Clock3 size={15} aria-hidden="true" />
+                    {formatHourLabel(best)}
+                    {alternatives.length > 0 ? ` · ${formatHourList(alternatives)}` : ''}
                   </p>
                 ) : null}
-                {showFishingScore && item.scoreBreakdown ? (
-                  <p className={styles.scoreBreakdown}>{item.scoreBreakdown}</p>
+                {showFishingScore ? (
+                  <p className={styles.conditionSummary}>
+                    {conditionSummary(item, visibleMetricKeys, windUnit)}
+                  </p>
                 ) : null}
                 {!showFishingScore ? (
                   <p className={styles.emphasis}>{marineSummary(item, metricKeys, windUnit)}</p>
@@ -92,9 +101,6 @@ export function RankingList({
                 <summary>
                   Ver condições <ChevronDown size={17} aria-hidden="true" />
                 </summary>
-                {metricsHourCaption(item.metricsHour) ? (
-                  <p className={styles.metricCaption}>{metricsHourCaption(item.metricsHour)}</p>
-                ) : null}
                 <MetricGrid metrics={item.metrics} keys={metricKeys} windUnit={windUnit} />
                 <Link className={styles.locationLink} to={`/locais/${item.locationId}`}>
                   <MapPin size={16} aria-hidden="true" /> Abrir local
@@ -102,9 +108,6 @@ export function RankingList({
               </details>
             ) : (
               <div className={styles.marineBlock}>
-                {metricsHourCaption(item.metricsHour) ? (
-                  <p className={styles.metricCaption}>{metricsHourCaption(item.metricsHour)}</p>
-                ) : null}
                 <MetricGrid
                   metrics={item.metrics}
                   keys={metricKeys}
@@ -135,4 +138,18 @@ function marineSummary(
     return metric ? [`${metric.label} ${formatWindMetric(metric, windUnit)}`] : [];
   });
   return parts.join(' · ') || 'Condições do mar';
+}
+
+function conditionSummary(
+  item: ForecastRankingItem,
+  visibleMetricKeys: FishingMetricKey[] | undefined,
+  windUnit?: string,
+) {
+  const preferred: FishingMetricKey[] = ['wind', 'waves'];
+  const selected = preferred.filter((key) => !visibleMetricKeys || visibleMetricKeys.includes(key));
+  const parts = selected.flatMap((key) => {
+    const metric = item.metrics.find((itemMetric) => itemMetric.key === key);
+    return metric ? [`${metric.label} ${formatWindMetric(metric, windUnit)}`] : [];
+  });
+  return parts.join(' · ') || 'Condições disponíveis nos detalhes';
 }

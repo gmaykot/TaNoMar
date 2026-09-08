@@ -5,6 +5,7 @@ import { Card } from '@/design-system/components/Card';
 import { ConfirmDrawer } from '@/design-system/components/ConfirmDrawer';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { useSpotWebcam } from '../hooks/useSpotWebcam';
+import { WebcamDisclaimer } from './WebcamDisclaimer';
 import { WebcamPlayer } from './WebcamPlayer';
 import { WebcamSearch } from './WebcamSearch';
 import { WebcamThumb } from './WebcamThumb';
@@ -56,7 +57,7 @@ export function WebcamManager({ spotId, admin = false }: WebcamManagerProps) {
   }
 
   return (
-    <Card as="section" className={styles.card}>
+    <Card as="section" className={`${styles.card} ${linked ? '' : styles.cardEmpty}`}>
       <div className={styles.header}>
         <div>
           <span className={styles.meta}>
@@ -105,6 +106,7 @@ export function WebcamManager({ spotId, admin = false }: WebcamManagerProps) {
           </Button>
         ) : null}
       </div>
+      <WebcamDisclaimer />
       {playerOpen && linked?.player ? (
         <WebcamPlayer
           title={linked.name ?? 'Câmera ao vivo'}
@@ -141,7 +143,8 @@ export function WebcamManager({ spotId, admin = false }: WebcamManagerProps) {
               required
             />
             <small>
-              Cole o link da live, do canal ou de um vídeo desse canal. Só vinculamos transmissão no ar.
+              Cole o link da live, do canal ou de um vídeo desse canal. Só vinculamos transmissão no
+              ar.
             </small>
           </label>
           <Button type="submit" disabled={webcams.youtubeLookup.isPending || !youtubeQuery.trim()}>

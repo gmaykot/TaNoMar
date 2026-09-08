@@ -1,7 +1,4 @@
-import { Anchor, Check, Compass, Ship } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/design-system/components/Button';
-import { Card } from '@/design-system/components/Card';
 import { isPaidPlan } from '@/features/auth/types/auth';
 import {
   isBillingUpgrade,
@@ -10,19 +7,11 @@ import {
   type BillingPlan,
   type BillingStatus,
 } from '@/features/billing/billing';
-import {
-  formatBrlFromCents,
-  planFeatureList,
-  subscriptionPlanIcon,
-  type SubscriptionPlanIcon,
-} from '@/features/subscription/subscriptionPlans';
+import { PlanComparisonPanel } from '@/features/subscription/components/PlanComparisonPanel';
+import { PlanOfferCard } from '@/features/subscription/components/PlanOfferCard';
+import offerStyles from '@/features/subscription/components/planOffer.module.css';
+import { formatBrlFromCents, type PlanCatalog } from '@/features/subscription/subscriptionPlans';
 import premiumStyles from '@/pages/premium/premium.module.css';
-
-const planIcons: Record<SubscriptionPlanIcon, LucideIcon> = {
-  anchor: Anchor,
-  compass: Compass,
-  ship: Ship,
-};
 
 function statusLabel({
   isCurrent,
@@ -40,6 +29,7 @@ function statusLabel({
 
 export function SubscriptionPlanCards({
   plans,
+  comparisonPlans,
   currentPlanCode,
   currentCycle,
   currentStatus,
@@ -49,6 +39,7 @@ export function SubscriptionPlanCards({
   onCheckout,
 }: {
   plans: BillingPlan[];
+  comparisonPlans?: PlanCatalog[];
   currentPlanCode?: string;
   currentCycle?: BillingCycle | null;
   currentStatus?: BillingStatus | null;
@@ -62,168 +53,68 @@ export function SubscriptionPlanCards({
     currentStatus === 'active' || currentStatus === 'past_due' || currentStatus === 'canceled';
 
   return (
-    <div className={premiumStyles.planGrid}>
-      <div className={premiumStyles.planComparison}>
-        <table aria-label="Comparação dos planos">
-          <thead>
-            <tr>
-              <th scope="col">Recurso</th>
-              {plans.map((plan) => (
-                <th scope="col" key={plan.code}>
-                  {plan.name}
-                  {currentPlanCode === plan.code ? <small>Plano atual</small> : null}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            <ComparisonRow
-              label="Mensal"
-              plans={plans}
-              value={(plan) => formatBrlFromCents(plan.monthlyPriceCents)}
-            />
-            <ComparisonRow
-              label="Anual"
-              plans={plans}
-              value={(plan) => formatBrlFromCents(plan.annualPriceCents)}
-            />
-            <ComparisonRow
-              label="Previsão"
-              plans={plans}
-              value={(plan) => `${plan.entitlements.maxForecastDays} dias`}
-            />
-            <ComparisonRow
-              label="Locais pessoais"
-              plans={plans}
-              value={(plan) => String(plan.entitlements.maxPersonalSpots)}
-            />
-            <ComparisonRow
-              label="Favoritos"
-              plans={plans}
-              value={(plan) => String(plan.entitlements.maxFavorites)}
-            />
-            <ComparisonRow
-              label="Alertas"
-              plans={plans}
-              value={(plan) => String(plan.entitlements.maxAlerts)}
-            />
-            <ComparisonRow
-              label="Câmeras ao vivo"
-              plans={plans}
-              value={(plan) => (plan.modules.liveWebcams ? 'Incluídas' : '—')}
-            />
-          </tbody>
-        </table>
+    <>
+      <div className={offerStyles.planGrid}>
+        {plans.map((plan) => {
+          const isCurrent = currentPlanCode === plan.code;
+          const status = statusLabel({ isCurrent, isPaid, billingEnabled });
+          return (
+            <PlanOfferCard
+              key={plan.code}
+              plan={plan}
+              headingId={`plan-${plan.code}-title`}
+              isCurrent={isCurrent}
+            >
+              {status ? <p className={premiumStyles.planStatus}>{status}</p> : null}
+              {billingEnabled && (!isCurrent || (hasPaidPeriod && currentCycle === 'MONTHLY')) ? (
+                <div className={premiumStyles.planActions}>
+                  <CycleAction
+                    plan={plan}
+                    cycle="MONTHLY"
+                    currentPlanCode={currentPlanCode}
+                    currentCycle={currentCycle}
+                    hasPaidPeriod={hasPaidPeriod}
+                    pendingKey={pendingKey}
+                    onCheckout={onCheckout}
+                  />
+                  <CycleAction
+                    plan={plan}
+                    cycle="YEARLY"
+                    currentPlanCode={currentPlanCode}
+                    currentCycle={currentCycle}
+                    hasPaidPeriod={hasPaidPeriod}
+                    pendingKey={pendingKey}
+                    onCheckout={onCheckout}
+                  />
+                  {hasPaidPeriod &&
+                  !isBillingUpgrade(currentPlanCode, currentCycle, plan.code, 'MONTHLY') &&
+                  !isBillingUpgrade(currentPlanCode, currentCycle, plan.code, 'YEARLY') &&
+                  currentPlanCode !== plan.code ? (
+                    <p className={premiumStyles.planHint}>
+                      Para mudar para este plano, <a href="#assinatura">cancele a renovação</a>. A
+                      troca fica disponível no fim do período já pago.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+              {isCurrent && billingEnabled && hasPaidPeriod ? (
+                <p className={premiumStyles.planHint}>
+                  {cancelAtPeriodEnd ? (
+                    'Renovação cancelada. Você usa o plano até o fim do período já pago e depois volta para Free.'
+                  ) : (
+                    <>
+                      Para voltar ao Free, <a href="#assinatura">cancele a renovação</a>. Você usa o
+                      plano até o fim do período já pago.
+                    </>
+                  )}
+                </p>
+              ) : null}
+            </PlanOfferCard>
+          );
+        })}
       </div>
-      {plans.map((plan) => {
-        const Icon = planIcons[subscriptionPlanIcon(plan.code)];
-        const isCurrent = currentPlanCode === plan.code;
-        return (
-          <Card
-            as="article"
-            className={`${premiumStyles.planCard} ${plan.featured ? premiumStyles.planCardFeatured : ''} ${isCurrent ? premiumStyles.planCardCurrent : ''}`}
-            key={plan.code}
-            aria-labelledby={`plan-${plan.code}-title`}
-            aria-current={isCurrent ? 'true' : undefined}
-          >
-            {isCurrent ? (
-              <span className={premiumStyles.planBadge}>Seu plano atual</span>
-            ) : plan.featured ? (
-              <span className={premiumStyles.planBadge}>Mais escolhido</span>
-            ) : (
-              <span className={premiumStyles.planBadgeSpacer} aria-hidden="true" />
-            )}
-            <span className={premiumStyles.planIcon}>
-              <Icon size={22} aria-hidden="true" />
-            </span>
-            <h3 id={`plan-${plan.code}-title`}>{plan.name}</h3>
-            <p className={premiumStyles.planTagline}>{plan.tagline}</p>
-            <p className={premiumStyles.planPrice}>
-              <strong>{formatBrlFromCents(plan.monthlyPriceCents)}</strong>
-              <span>/mês</span>
-            </p>
-            <p className={premiumStyles.planAnnual}>
-              {formatBrlFromCents(plan.annualPriceCents)} /ano · −20%
-            </p>
-            <ul className={premiumStyles.planFeatures}>
-              {planFeatureList(plan).map((feature) => (
-                <li key={feature}>
-                  <Check size={16} aria-hidden="true" />
-                  {feature}
-                </li>
-              ))}
-            </ul>
-            {statusLabel({ isCurrent, isPaid, billingEnabled }) ? (
-              <p className={premiumStyles.planStatus}>
-                {statusLabel({ isCurrent, isPaid, billingEnabled })}
-              </p>
-            ) : null}
-            {billingEnabled && (!isCurrent || (hasPaidPeriod && currentCycle === 'MONTHLY')) ? (
-              <div className={premiumStyles.planActions}>
-                <CycleAction
-                  plan={plan}
-                  cycle="MONTHLY"
-                  currentPlanCode={currentPlanCode}
-                  currentCycle={currentCycle}
-                  hasPaidPeriod={hasPaidPeriod}
-                  pendingKey={pendingKey}
-                  onCheckout={onCheckout}
-                />
-                <CycleAction
-                  plan={plan}
-                  cycle="YEARLY"
-                  currentPlanCode={currentPlanCode}
-                  currentCycle={currentCycle}
-                  hasPaidPeriod={hasPaidPeriod}
-                  pendingKey={pendingKey}
-                  onCheckout={onCheckout}
-                />
-                {hasPaidPeriod &&
-                !isBillingUpgrade(currentPlanCode, currentCycle, plan.code, 'MONTHLY') &&
-                !isBillingUpgrade(currentPlanCode, currentCycle, plan.code, 'YEARLY') &&
-                currentPlanCode !== plan.code ? (
-                  <p className={premiumStyles.planHint}>
-                    Para mudar para este plano, <a href="#assinatura">cancele a renovação</a>. A
-                    troca fica disponível no fim do período já pago.
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-            {isCurrent && billingEnabled && hasPaidPeriod ? (
-              <p className={premiumStyles.planHint}>
-                {cancelAtPeriodEnd ? (
-                  'Renovação cancelada. Você usa o plano até o fim do período já pago e depois volta para Free.'
-                ) : (
-                  <>
-                    Para voltar ao Free, <a href="#assinatura">cancele a renovação</a>. Você usa o
-                    plano até o fim do período já pago.
-                  </>
-                )}
-              </p>
-            ) : null}
-          </Card>
-        );
-      })}
-    </div>
-  );
-}
-
-function ComparisonRow({
-  label,
-  plans,
-  value,
-}: {
-  label: string;
-  plans: BillingPlan[];
-  value: (plan: BillingPlan) => string;
-}) {
-  return (
-    <tr>
-      <th scope="row">{label}</th>
-      {plans.map((plan) => (
-        <td key={plan.code}>{value(plan)}</td>
-      ))}
-    </tr>
+      <PlanComparisonPanel plans={comparisonPlans ?? plans} currentPlanCode={currentPlanCode} />
+    </>
   );
 }
 

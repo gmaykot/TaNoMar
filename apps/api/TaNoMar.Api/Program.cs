@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.RateLimiting;
@@ -259,10 +260,10 @@ api.MapGet("/me", async (ClaimsPrincipal principal, TaNoMarDbContext db, Billing
     return Results.Ok(await UserDtoAsync(user, db, billing, cancellationToken));
 }).RequireAuthorization();
 
-api.MapGet("/plans", async (TaNoMarDbContext db, CancellationToken cancellationToken) =>
+api.MapGet("/plans", async (bool? includeFree, TaNoMarDbContext db, CancellationToken cancellationToken) =>
 {
     var plans = await db.Plans.AsNoTracking()
-        .Where(plan => plan.Code != PlanRules.Free && plan.IsEnabled)
+        .Where(plan => (includeFree == true || plan.Code != PlanRules.Free) && plan.IsEnabled)
         .OrderBy(plan => plan.SortOrder)
         .ThenBy(plan => plan.Name)
         .ToListAsync(cancellationToken);
@@ -1490,7 +1491,7 @@ static object MarineDto(string spotId, DateOnly date, FishingLocationForecast fo
         date,
         waves = MarineSeries(hours, reference, hour => hour.WaveMeters, "m", 2, hour => hour.WaveDirection),
         wavePeriod = MarineSeries(hours, reference, hour => hour.WavePeriodSeconds, "s", 1),
-        swell = MarineSeries(hours, reference, hour => hour.SwellMeters, "m", 2, hour => hour.SwellDirection, hour => $"{hour.SwellPeriodSeconds:0.#} s"),
+        swell = MarineSeries(hours, reference, hour => hour.SwellMeters, "m", 2, hour => hour.SwellDirection, hour => $"{FormatPt(hour.SwellPeriodSeconds, "0.#")} s"),
         waterTemperature = MarineSeries(hours, reference, hour => hour.WaterTemperatureC, "°C", 1),
         atmosphericPressure = MarineSeries(hours, reference, hour => hour.PressureHpa, "hPa", 0, detail: _ => PressureTrend(hours, reference)),
         tide
@@ -1512,8 +1513,8 @@ static object MarineSeries(
     var current = selector(reference);
     return Available(new
     {
-        current = $"{current.ToString($"0.{new string('0', digits)}")} {unit}".Trim(),
-        range = $"{values.Min().ToString($"0.{new string('0', digits)}")}–{values.Max().ToString($"0.{new string('0', digits)}")} {unit}".Trim(),
+        current = $"{FormatPt(current, $"0.{new string('0', digits)}")} {unit}".Trim(),
+        range = $"{FormatPt(values.Min(), $"0.{new string('0', digits)}")}–{FormatPt(values.Max(), $"0.{new string('0', digits)}")} {unit}".Trim(),
         direction = direction?.Invoke(reference),
         detail = detail?.Invoke(reference),
         points = hours.Select(hour => new { time = hour.Time, value = Math.Round(selector(hour), digits, MidpointRounding.ToEven) }).ToList()
@@ -1581,7 +1582,7 @@ static object TideTable(
         ?? extremes.FirstOrDefault();
     var nextLabel = nextExtreme is null
         ? "n/d"
-        : $"{(nextExtreme.Type == "preamar" ? "Preamar" : "Baixa-mar")} {nextExtreme.Time} · {nextExtreme.HeightMeters:0.00} m";
+        : $"{(nextExtreme.Type == "preamar" ? "Preamar" : "Baixa-mar")} {nextExtreme.Time} · {FormatMeasure(nextExtreme.HeightMeters, "0.00", "m")}";
     var currentHeight = current.Time is null ? nextExtreme?.HeightMeters : current.Height;
     if (currentHeight is null) return new { state = "unavailable" };
     return new
@@ -1589,11 +1590,11 @@ static object TideTable(
         state = "available",
         value = new
         {
-            current = $"{currentHeight.Value:0.00} m",
+            current = $"{FormatMeasure(currentHeight.Value, "0.00", "m")}",
             phase,
             nextExtreme = nextLabel,
             attribution,
-            extremes = extremes.Select(item => new { type = item.Type, time = item.Time, height = $"{item.HeightMeters:0.00} m" }).ToList(),
+            extremes = extremes.Select(item => new { type = item.Type, time = item.Time, height = FormatMeasure(item.HeightMeters, "0.00", "m") }).ToList(),
             points = points.Select(item => new { time = item.Time, value = Math.Round(item.Height, 2, MidpointRounding.ToEven) }).ToList()
         }
     };
@@ -1619,14 +1620,14 @@ static object ForecastItemDto(FishingLocationForecast item, bool paid, HashSet<s
         metricsHour = hour?.Time,
         windOrigin,
         highlights,
-        wind = Available(hour is null ? "n/d" : $"{hour.WindSpeedKmh:0.#} km/h {hour.WindDirection}"),
-        gusts = Available(hour is null ? "n/d" : $"{hour.WindGustKmh:0.#} km/h"),
-        waves = paid ? Available(hour?.WaveMeters.ToString("0.00") + " m") : Locked(),
-        wavePeriod = paid ? Available(hour?.WavePeriodSeconds.ToString("0.#") + " s") : Locked(),
-        swell = paid ? Available(hour?.SwellMeters.ToString("0.00") + " m") : Locked(),
-        rain = Available(hour is null ? "n/d" : $"{hour.RainMm:0.#} mm ({hour.RainProbability}%)"),
-        airTemperature = Available(hour is null ? "n/d" : $"{hour.AirTemperatureC:0.#} °C"),
-        waterTemperature = paid ? Available(hour?.WaterTemperatureC.ToString("0.#") + " °C") : Locked()
+        wind = Available(hour is null ? "n/d" : $"{FormatPt(hour.WindSpeedKmh, "0.#")} km/h {hour.WindDirection}"),
+        gusts = Available(hour is null ? "n/d" : FormatMeasure(hour.WindGustKmh, "0.#", "km/h")),
+        waves = paid ? Available(hour is null ? "n/d" : FormatMeasure(hour.WaveMeters, "0.00", "m")) : Locked(),
+        wavePeriod = paid ? Available(hour is null ? "n/d" : FormatMeasure(hour.WavePeriodSeconds, "0.#", "s")) : Locked(),
+        swell = paid ? Available(hour is null ? "n/d" : FormatMeasure(hour.SwellMeters, "0.00", "m")) : Locked(),
+        rain = Available(hour is null ? "n/d" : $"{FormatPt(hour.RainMm, "0.#")} mm ({hour.RainProbability}%)"),
+        airTemperature = Available(hour is null ? "n/d" : FormatMeasure(hour.AirTemperatureC, "0.#", "°C")),
+        waterTemperature = paid ? Available(hour is null ? "n/d" : FormatMeasure(hour.WaterTemperatureC, "0.#", "°C")) : Locked()
     };
 }
 
@@ -1642,6 +1643,10 @@ static string[] ForecastHighlights(FishingHourForecast? hour)
     if (hour.WaveMeters <= 1.2) highlights.Add("Ondas moderadas");
     return highlights.Count > 0 ? highlights.Take(3).ToArray() : ["Condições equilibradas"];
 }
+
+static string FormatPt(double value, string format) =>
+    value.ToString(format, CultureInfo.GetCultureInfo("pt-BR"));
+static string FormatMeasure(double value, string format, string unit) => $"{FormatPt(value, format)} {unit}";
 
 static double DistanceMeters(double lat1, double lon1, double lat2, double lon2)
 {

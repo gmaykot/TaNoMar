@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { AccountPage } from './AccountPage';
@@ -118,9 +118,12 @@ describe('AccountPage', () => {
     expect(screen.getByText('Mestre')).toBeInTheDocument();
     expect(screen.getByText('1 / 10')).toBeInTheDocument();
     expect(screen.getByText('2 / 20')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Mudar plano/ })).toHaveAttribute(
+    expect(screen.getByRole('heading', { name: 'Assinatura' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Sua assinatura' })).toBeInTheDocument();
+    expect(screen.getByText(/não há renovação para cancelar por aqui/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Gerenciar assinatura/ })).toHaveAttribute(
       'href',
-      '/premium#planos',
+      '/premium#assinatura',
     );
 
     await user.click(screen.getByRole('button', { name: 'Sair' }));
@@ -190,7 +193,6 @@ describe('AccountPage', () => {
       cancelAtPeriodEnd: true,
       renewsAt: null,
     });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const user = userEvent.setup();
     renderWithProviders(<AccountPage />);
 
@@ -199,7 +201,9 @@ describe('AccountPage', () => {
       '/premium#assinatura',
     );
     await user.click(screen.getByRole('button', { name: 'Cancelar renovação' }));
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('volta para Free'));
+    const dialog = screen.getByRole('dialog', { name: 'Cancelar renovação?' });
+    expect(within(dialog).getByText(/permanece vigente até/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar renovação' }));
     expect(cancelSubscription).toHaveBeenCalledTimes(1);
   });
 });

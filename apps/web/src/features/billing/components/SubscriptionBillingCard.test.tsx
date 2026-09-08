@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import type { BillingSubscription } from '../billing';
@@ -43,14 +43,27 @@ describe('SubscriptionBillingCard', () => {
       cancelAtPeriodEnd: true,
       renewsAt: null,
     });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const user = userEvent.setup();
     renderWithProviders(<SubscriptionBillingCard planName="Mestre" billing={activeYearly} />);
 
     expect(screen.getByText(/conta passa para Free/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Cancelar renovação' }));
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('volta para Free'));
+    const dialog = screen.getByRole('dialog', { name: 'Cancelar renovação?' });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText(/permanece vigente até/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/não é estornado/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar renovação' }));
     expect(cancelSubscription).toHaveBeenCalledTimes(1);
+  });
+
+  it('mantém o plano se a confirmação for fechada', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<SubscriptionBillingCard planName="Mestre" billing={activeYearly} />);
+
+    await user.click(screen.getByRole('button', { name: 'Cancelar renovação' }));
+    await user.click(screen.getByRole('button', { name: 'Manter plano' }));
+    expect(screen.queryByRole('dialog', { name: 'Cancelar renovação?' })).not.toBeInTheDocument();
+    expect(cancelSubscription).not.toHaveBeenCalled();
   });
 
   it('mostra o estado já cancelado até o fim do período', () => {
@@ -66,8 +79,21 @@ describe('SubscriptionBillingCard', () => {
     expect(screen.queryByRole('button', { name: 'Cancelar renovação' })).not.toBeInTheDocument();
   });
 
-  it('não renderiza quando a cobrança está desligada', () => {
+  it('não renderiza quando a cobrança está desligada e a conta é Free', () => {
     renderWithProviders(<SubscriptionBillingCard billing={{ ...activeYearly, enabled: false }} />);
     expect(screen.queryByRole('heading', { name: 'Sua assinatura' })).not.toBeInTheDocument();
+  });
+
+  it('explica a ausência de renovação quando o plano pago não tem cobrança', () => {
+    renderWithProviders(
+      <SubscriptionBillingCard
+        planName="Capitão"
+        isPaid
+        billing={{ ...activeYearly, status: 'inactive', enabled: false }}
+      />,
+    );
+    expect(screen.getByRole('heading', { name: 'Sua assinatura' })).toBeInTheDocument();
+    expect(screen.getByText(/não há renovação para cancelar por aqui/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancelar renovação' })).not.toBeInTheDocument();
   });
 });

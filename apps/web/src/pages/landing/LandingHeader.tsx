@@ -10,6 +10,13 @@ const navigation = [
   { href: '#recursos', label: 'Recursos' },
   { href: '#planos', label: 'Planos' },
   { href: '#instalar', label: 'Instalar' },
+  { href: '#duvidas', label: 'Dúvidas' },
+];
+
+const mobileNavigation = [
+  ...navigation.slice(0, 3),
+  { href: '#comparacao-planos', label: 'Comparar planos' },
+  ...navigation.slice(3),
 ];
 
 export function LandingHeader() {
@@ -32,9 +39,9 @@ export function LandingHeader() {
           <Link className={styles.secondaryCta} to={routes.login}>
             Entrar
           </Link>
-          <Link className={styles.primaryCta} to={routes.login}>
-            Acessar o TáNoMar
-          </Link>
+          <a className={styles.primaryCta} href="#planos">
+            Ver planos
+          </a>
         </div>
         <button
           className={styles.menuButton}
@@ -53,7 +60,7 @@ export function LandingHeader() {
           id="landing-mobile-menu"
           aria-label="Navegação da apresentação no celular"
         >
-          {navigation.map((item) => (
+          {mobileNavigation.map((item) => (
             <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)}>
               {item.label}
             </a>
@@ -61,9 +68,9 @@ export function LandingHeader() {
           <Link className={styles.secondaryCta} to={routes.login}>
             Entrar
           </Link>
-          <Link className={styles.primaryCta} to={routes.login}>
-            Acessar o TáNoMar
-          </Link>
+          <a className={styles.primaryCta} href="#planos" onClick={() => setMenuOpen(false)}>
+            Ver planos
+          </a>
         </nav>
       ) : null}
     </header>

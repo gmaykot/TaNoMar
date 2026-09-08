@@ -243,7 +243,7 @@ describe('LocationDetailsPage', () => {
 
   it('permite trocar o dia arrastando o carrossel nos detalhes', async () => {
     renderLocation();
-    expect(await screen.findByRole('heading', { name: '05:30–08:00' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '05h30, 07h e 17h' })).toBeInTheDocument();
 
     const track = screen.getByLabelText('Previsão por dia');
     const slides = [...track.querySelectorAll<HTMLElement>('[data-snap-key]')];
@@ -262,7 +262,7 @@ describe('LocationDetailsPage', () => {
     track.dispatchEvent(new Event('scroll'));
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: '16:30–19:00' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: '16h30, 07h e 17h' })).toBeInTheDocument();
     });
   });
 

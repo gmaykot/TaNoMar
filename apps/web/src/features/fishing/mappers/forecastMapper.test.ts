@@ -108,7 +108,7 @@ describe('forecastMapper', () => {
       visibility: 'official',
       metricsHour: '05:00',
       windOrigin: 'terra',
-      scoreBreakdown: 'Média das 3 melhores horas · 05:00 9,3 · 06:00 9,1 · 17:00 8,9',
+      scoreBreakdown: 'Nota pela média das 3 melhores horas.',
     });
     expect(forecast.days[1]?.ranking[0]).toMatchObject({ isOwner: false, visibility: 'official' });
     expect(forecast.days[1]?.ranking[0]?.scoreBreakdown).toBe('');

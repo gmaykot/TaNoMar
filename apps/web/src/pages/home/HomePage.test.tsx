@@ -175,6 +175,7 @@ describe('HomePage', () => {
     expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Amanhã/ }));
     expect(screen.getByRole('heading', { name: 'Armação' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Onde vale pescar?' })).toBeInTheDocument();
   });
 
   it('expõe a previsão do dia como carrossel', async () => {
@@ -199,6 +200,27 @@ describe('HomePage', () => {
     if (!hero) return;
     expect(within(hero).getByText('Chuva')).toBeInTheDocument();
     expect(within(hero).queryByText('Vento')).not.toBeInTheDocument();
+  });
+
+  it('mostra condições e as notas dos melhores horários sem sugerir evolução diária', async () => {
+    renderWithProviders(<HomePage />);
+
+    const hero = (await screen.findByRole('heading', { name: 'Pântano do Sul' })).closest(
+      'article',
+    );
+    expect(hero).toBeTruthy();
+    if (!hero) return;
+    expect(within(hero).getByText('Condições às 05h30')).toBeInTheDocument();
+    expect(within(hero).getByText(/Rajadas/)).toBeInTheDocument();
+    expect(within(hero).getByText('Ondas')).toBeInTheDocument();
+    expect(within(hero).getByText(/Período:/)).toBeInTheDocument();
+    expect(within(hero).getByText('Chuva')).toBeInTheDocument();
+    expect(
+      within(hero).getByRole('region', { name: 'Notas dos melhores horários' }),
+    ).toBeInTheDocument();
+    expect(within(hero).queryByRole('img', { name: /Evolução das notas/ })).not.toBeInTheDocument();
+    expect(within(hero).getAllByText('05h30')).toHaveLength(2);
+    expect(within(hero).getAllByText('9,1')).toHaveLength(2);
   });
 
   it('troca o dia ao arrastar o carrossel', async () => {

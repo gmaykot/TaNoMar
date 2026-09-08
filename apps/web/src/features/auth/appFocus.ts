@@ -61,11 +61,18 @@ export function prefersMarineDetails(focus: AppFocus | null | undefined) {
   return focus === 'surfista';
 }
 
-export function homeCopy(focus: AppFocus | null | undefined) {
+export function homeWhenPhrase(dayLabel?: string) {
+  if (!dayLabel || dayLabel === 'Hoje') return 'hoje';
+  if (dayLabel === 'Amanhã') return 'amanhã';
+  return `na ${dayLabel.toLowerCase()}`;
+}
+
+export function homeCopy(focus: AppFocus | null | undefined, dayLabel?: string) {
+  const when = homeWhenPhrase(dayLabel);
   if (focus === 'surfista') {
     return {
       eyebrow: 'Condições do mar',
-      title: 'Como está o mar hoje?',
+      title: `Como está o mar ${when}?`,
       description: 'Ondulação, vento e maré nos seus locais.',
       premiumTitle: 'Veja mais do mar na assinatura',
     };
@@ -73,15 +80,15 @@ export function homeCopy(focus: AppFocus | null | undefined) {
   if (focus === 'ambos') {
     return {
       eyebrow: 'Decisão no mar',
-      title: 'Onde vale ir hoje?',
-      description: 'Melhor média do dia.',
+      title: `Onde vale ir ${when}?`,
+      description: 'Nota pela média das 3 melhores horas.',
       premiumTitle: 'Pesque com mais contexto na assinatura',
     };
   }
   return {
     eyebrow: 'Decisão de pesca',
-    title: 'Onde vale pescar hoje?',
-    description: 'Melhor média do dia.',
+    title: 'Onde vale pescar?',
+    description: `Escolha local e horário ${when} com base nas condições.`,
     premiumTitle: 'Pesque com mais contexto na assinatura',
   };
 }

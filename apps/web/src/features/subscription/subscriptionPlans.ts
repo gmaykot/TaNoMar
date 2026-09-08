@@ -39,6 +39,13 @@ export function centsFromReaisInput(value: string) {
   return Math.round(reais * 100);
 }
 
+export function plansWithFreeBaseline(paidPlans: PlanCatalog[], catalog?: PlanCatalog[] | null) {
+  const free =
+    catalog?.find((plan) => plan.code === 'free') ?? paidPlans.find((plan) => plan.code === 'free');
+  const paid = paidPlans.filter((plan) => plan.code !== 'free');
+  return free ? [free, ...paid] : paid;
+}
+
 export function subscriptionPlanIcon(code: string): SubscriptionPlanIcon {
   if (code === 'arrais') return 'anchor';
   if (code === 'capitao') return 'ship';
@@ -48,23 +55,16 @@ export function subscriptionPlanIcon(code: string): SubscriptionPlanIcon {
 export function planFeatureList(plan: PlanCatalog) {
   const { maxForecastDays, maxFavorites, maxPersonalSpots, maxAlerts } = plan.entitlements;
   const items = [`Até ${maxForecastDays} dias de previsão`];
-  if (plan.modules.marine) items.push('Detalhes do mar');
-  items.push(`${maxPersonalSpots} locais pessoais e ${maxFavorites} favoritos`);
-  items.push(maxAlerts === 1 ? '1 alerta de oportunidade' : `${maxAlerts} alertas de oportunidade`);
-  const extras = [
-    plan.modules.diary ? 'Diário' : null,
-    plan.modules.offline ? 'offline' : null,
-    plan.modules.customMetrics ? 'indicadores' : null,
-  ].filter((item): item is string => item !== null);
-  if (extras.length === 1) items.push(capitalizeFeature(extras[0]));
-  if (extras.length === 2) items.push(`${capitalizeFeature(extras[0])} e ${extras[1]}`);
-  if (extras.length === 3) items.push('Diário, offline e indicadores');
-  if (plan.modules.communityVote) items.push('Confirmar e contestar relatos');
-  if (plan.modules.rankingEmphasis) items.push('Ênfase no ranking');
-  if (plan.modules.liveWebcams) items.push('Câmeras ao vivo');
+  if (plan.modules.marine) items.push('Detalhes de ondas, swell, temperaturas e maré');
+  items.push(`Cadastre até ${maxPersonalSpots} locais próprios`);
+  items.push(`Salve até ${maxFavorites} locais favoritos`);
+  items.push(`Mantenha até ${maxAlerts} alertas ativos ao mesmo tempo`);
+  if (plan.modules.diary) items.push('Diário para registrar suas saídas');
+  if (plan.modules.offline) items.push('Previsão salva no aparelho para consultar sem conexão');
+  if (plan.modules.customMetrics) items.push('Escolha quais indicadores quer acompanhar');
+  if (plan.modules.communityVote) items.push('Ajude a validar relatos da comunidade');
+  if (plan.modules.rankingEmphasis)
+    items.push('Ordene o ranking por vento, chuva ou ondas sem mudar a nota');
+  if (plan.modules.liveWebcams) items.push('Câmeras ao vivo nos locais com transmissão');
   return items;
-}
-
-function capitalizeFeature(value: string) {
-  return value.charAt(0).toUpperCase() + value.slice(1);
 }

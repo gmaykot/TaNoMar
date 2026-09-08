@@ -13,9 +13,11 @@ Feature exclusiva do plano **Capitão**, ligada pelo módulo `liveWebcams` em `P
 | `YouTubeWebcamProvider` | `apps/api/TaNoMar.Api/Webcams/YouTubeWebcamProvider.cs` | HTTP para a YouTube Data API v3 (admin, por link) |
 | `FishingSpotWebcam` | `apps/api/TaNoMar.Api/Data/TaNoMarDbContext.cs` | Persistência: `Provider` + `ExternalId`. URL não é identidade |
 | Endpoints | `apps/api/TaNoMar.Api/Webcams/WebcamEndpoints.cs` | Minimal API sob `/api/v1` |
-| UI | `apps/web/src/features/webcam` | Card, player expandido (vire o celular para preencher), pesquisa, gestão e convite do Capitão |
+| UI | `apps/web/src/features/webcam` | Card, player expandido (vire o celular para preencher), pesquisa, gestão, convite do Capitão e aviso de que a transmissão é de terceiros, sem garantia de manutenção ou disponibilidade |
 
 O frontend **não** envia URL, embed ou stream. A vinculação envia só `{ provider, externalId }`. O backend consulta o provider de novo antes de gravar.
+
+A UI avisa que a transmissão, a manutenção e a disponibilidade são de terceiros. O TáNoMar só exibe o stream e não garante que a câmera esteja no ar.
 
 ## Identidade
 

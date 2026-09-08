@@ -3,6 +3,7 @@ import {
   centsFromReaisInput,
   formatBrlFromCents,
   planFeatureList,
+  plansWithFreeBaseline,
   reaisFromCents,
   type PlanCatalog,
 } from './subscriptionPlans';
@@ -49,22 +50,39 @@ describe('centsFromReaisInput', () => {
   });
 });
 
+describe('plansWithFreeBaseline', () => {
+  it('coloca o Free na frente dos planos pagos', () => {
+    expect(
+      plansWithFreeBaseline([plan], [{ ...plan, code: 'free', name: 'Free' }]).map(
+        (item) => item.code,
+      ),
+    ).toEqual(['free', 'premium']);
+  });
+
+  it('mantém só os pagos quando o catálogo não traz o Free', () => {
+    expect(plansWithFreeBaseline([plan])).toEqual([plan]);
+  });
+});
+
 describe('planFeatureList', () => {
   it('lista cotas e módulos ligados', () => {
     expect(planFeatureList(plan)).toEqual([
       'Até 8 dias de previsão',
-      'Detalhes do mar',
-      '10 locais pessoais e 20 favoritos',
-      '10 alertas de oportunidade',
-      'Diário, offline e indicadores',
-      'Confirmar e contestar relatos',
-      'Ênfase no ranking',
+      'Detalhes de ondas, swell, temperaturas e maré',
+      'Cadastre até 10 locais próprios',
+      'Salve até 20 locais favoritos',
+      'Mantenha até 10 alertas ativos ao mesmo tempo',
+      'Diário para registrar suas saídas',
+      'Previsão salva no aparelho para consultar sem conexão',
+      'Escolha quais indicadores quer acompanhar',
+      'Ajude a validar relatos da comunidade',
+      'Ordene o ranking por vento, chuva ou ondas sem mudar a nota',
     ]);
   });
 
   it('inclui câmeras ao vivo quando o módulo está ligado', () => {
     expect(planFeatureList({ ...plan, modules: { ...plan.modules, liveWebcams: true } })).toContain(
-      'Câmeras ao vivo',
+      'Câmeras ao vivo nos locais com transmissão',
     );
   });
 
@@ -84,8 +102,9 @@ describe('planFeatureList', () => {
       }),
     ).toEqual([
       'Até 8 dias de previsão',
-      '10 locais pessoais e 20 favoritos',
-      '10 alertas de oportunidade',
+      'Cadastre até 10 locais próprios',
+      'Salve até 20 locais favoritos',
+      'Mantenha até 10 alertas ativos ao mesmo tempo',
     ]);
   });
 });

@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { FishSymbol } from 'lucide-react';
 import type { FishingClassification } from '@/features/fishing/types/fishing';
 import { classificationLabel } from '@/features/fishing/utils/classification';
+import { formatDecimal } from '@/shared/utils/formatNumber';
 import styles from './components.module.css';
 
 interface ScoreIndicatorProps {
@@ -16,11 +17,11 @@ export function ScoreIndicator({ score, classification, size = 'large' }: ScoreI
     <div
       className={`${styles.score} ${styles[size]}`}
       style={{ '--score-percentage': `${percentage}%` } as CSSProperties}
-      aria-label={`Nota ${score.toFixed(1)} de 10, ${classificationLabel[classification]}`}
+      aria-label={`Nota ${formatDecimal(score)} de 10, ${classificationLabel[classification]}`}
     >
       <div className={styles.scoreInner}>
         <FishSymbol className={styles.scoreMark} aria-hidden="true" />
-        <strong>{score.toFixed(1)}</strong>
+        <strong>{formatDecimal(score)}</strong>
         <small>/10</small>
       </div>
     </div>

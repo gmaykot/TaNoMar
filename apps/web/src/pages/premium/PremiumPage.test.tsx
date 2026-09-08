@@ -126,6 +126,37 @@ vi.mock('@/features/billing/services/billingService', () => ({
   cancelBillingSubscription: (...args: unknown[]) => cancelSubscription(...args),
 }));
 
+vi.mock('@/features/subscription/services/subscriptionPlansService', () => ({
+  getSubscriptionPlans: () =>
+    Promise.resolve([
+      {
+        code: 'free',
+        name: 'Free',
+        tagline: 'Consulta o mapa TáNoMar.',
+        monthlyPriceCents: 0,
+        featured: false,
+        enabled: true,
+        sortOrder: 0,
+        activeUserCount: 0,
+        entitlements: {
+          maxForecastDays: 3,
+          maxFavorites: 0,
+          maxPersonalSpots: 0,
+          maxAlerts: 0,
+        },
+        modules: {
+          marine: false,
+          diary: false,
+          offline: false,
+          customMetrics: false,
+          communityVote: false,
+          rankingEmphasis: false,
+          liveWebcams: false,
+        },
+      },
+    ]),
+}));
+
 describe('PremiumPage', () => {
   beforeEach(() => {
     authState.user = { plan: { code: 'free', name: 'Free' } };
@@ -133,6 +164,7 @@ describe('PremiumPage', () => {
     startCheckout.mockReset();
     cancelSubscription.mockReset();
     scrollIntoView.mockReset();
+    window.location.hash = '';
   });
 
   it('lista os três planos de assinatura e os recursos incluídos', async () => {
@@ -141,12 +173,28 @@ describe('PremiumPage', () => {
     expect(await screen.findByRole('heading', { name: 'Arrais' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Mestre' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Capitão' })).toBeInTheDocument();
-    expect(screen.getAllByText('R$ 14,90')).toHaveLength(2);
-    expect(screen.getAllByText('R$ 19,90')).toHaveLength(2);
-    expect(screen.getAllByText('R$ 24,90')).toHaveLength(2);
-    expect(screen.getByRole('table', { name: 'Comparação dos planos' })).toBeInTheDocument();
-    expect(screen.getByText('Mais escolhido')).toBeInTheDocument();
+    expect(screen.getAllByText('R$ 14,90')).toHaveLength(1);
+    expect(screen.getAllByText('R$ 19,90')).toHaveLength(1);
+    expect(screen.getAllByText('R$ 24,90')).toHaveLength(1);
+    expect(screen.getByText('No anual, R$ 191,04 com 20% de desconto')).toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: 'Comparação dos planos' })).not.toBeInTheDocument();
+    await userEvent.setup().click(screen.getByText('Comparar os planos'));
+    const comparison = screen.getByRole('table', { name: 'Comparação dos planos' });
+    expect(
+      await within(comparison).findByRole('columnheader', { name: /Free/ }),
+    ).toBeInTheDocument();
+    expect(within(comparison).getByText('Grátis')).toBeInTheDocument();
+    expect(screen.getByText('Recomendado')).toBeInTheDocument();
+    expect(screen.queryByText('Mais escolhido')).not.toBeInTheDocument();
     expect(screen.getByText(/A cobrança ainda não começa por aqui/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Os planos já existem na conta' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Transmissão de terceiros' })).toBeInTheDocument();
+    expect(screen.getByText(/não garante manutenção nem disponibilidade/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /Saiba como a previsão é feita/ }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Previsão ampliada' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Leitura sob medida' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Seus locais e favoritos' })).toBeInTheDocument();
@@ -162,6 +210,14 @@ describe('PremiumPage', () => {
     renderWithProviders(<PremiumPage />);
 
     expect(await screen.findByText(/Você já é assinante · Mestre/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Gerencie o comando da sua pesca.' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Cancelar renovação' })).toHaveAttribute(
+      'href',
+      '#assinatura',
+    );
+    expect(screen.getByRole('heading', { name: 'Sua assinatura' })).toBeInTheDocument();
     expect(screen.getByRole('article', { name: 'Mestre' })).toHaveAttribute('aria-current', 'true');
     expect(screen.getByText('Seu plano atual')).toBeInTheDocument();
     expect(screen.getByText('Compare os demais planos')).toBeInTheDocument();
@@ -209,6 +265,9 @@ describe('PremiumPage', () => {
     expect(
       await screen.findByRole('button', { name: 'Assinar no mês · R$ 14,90' }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Cartão só na página do Asaas' }),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Assinar no mês · R$ 14,90' }));
     expect(startCheckout).toHaveBeenCalledWith('arrais', 'MONTHLY');
   });
@@ -231,10 +290,11 @@ describe('PremiumPage', () => {
     expect(startCheckout).toHaveBeenCalledTimes(2);
   });
 
-  it('leva o atalho de mudança direto para a comparação', async () => {
+  it('leva o atalho de mudança direto para os planos', async () => {
     renderWithProviders(<PremiumPage />, ['/premium#planos']);
 
-    await screen.findByRole('table', { name: 'Comparação dos planos' });
+    expect(await screen.findByRole('heading', { name: 'Arrais' })).toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: 'Comparação dos planos' })).not.toBeInTheDocument();
     await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' }));
   });
 
@@ -263,7 +323,6 @@ describe('PremiumPage', () => {
       cancelAtPeriodEnd: true,
       renewsAt: null,
     });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const user = userEvent.setup();
     renderWithProviders(<PremiumPage />, ['/premium#assinatura']);
 
@@ -274,6 +333,9 @@ describe('PremiumPage', () => {
     );
     await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' }));
     await user.click(screen.getByRole('button', { name: 'Cancelar renovação' }));
+    const dialog = screen.getByRole('dialog', { name: 'Cancelar renovação?' });
+    expect(within(dialog).getByText(/permanece vigente até/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar renovação' }));
     expect(cancelSubscription).toHaveBeenCalledTimes(1);
   });
 

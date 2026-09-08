@@ -14,7 +14,9 @@ describe('appFocus', () => {
     expect(hasChosenAppFocus(null)).toBe(false);
     expect(resolveVisibleMetricKeys(null)).toBeUndefined();
     expect(showsFishingScore(null)).toBe(true);
-    expect(homeCopy(null).title).toBe('Onde vale pescar hoje?');
+    expect(homeCopy(null).title).toBe('Onde vale pescar?');
+    expect(homeCopy(null, 'Amanhã').title).toBe('Onde vale pescar?');
+    expect(homeCopy(null).description).toBe('Escolha local e horário hoje com base nas condições.');
     expect(locationPrimaryMetricKeys(null)).toEqual(['wind', 'gusts', 'rain', 'air-temperature']);
   });
 
@@ -46,6 +48,7 @@ describe('appFocus', () => {
       'swell',
     ]);
     expect(homeCopy('surfista').title).toBe('Como está o mar hoje?');
+    expect(homeCopy('surfista', 'Amanhã').title).toBe('Como está o mar amanhã?');
   });
 
   it('força pesca quando a escolha de perfil está desligada', () => {

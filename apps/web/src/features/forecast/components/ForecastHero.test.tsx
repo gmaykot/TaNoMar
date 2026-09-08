@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { forecastFixture } from '@/features/forecast/fixtures/forecast';
 import { ForecastHero } from './ForecastHero';
@@ -57,22 +58,61 @@ describe('ForecastHero', () => {
     );
 
     expect(screen.queryByLabelText(/Nota /)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Melhor hora/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Melhor horário/)).not.toBeInTheDocument();
     expect(screen.getByText(/Destaque/)).toBeInTheDocument();
   });
 
-  it('mostra a média das horas e a origem das métricas', () => {
+  it('mostra a recomendação compacta, condições e série de notas', async () => {
     const forecast = forecastFixture.days[0]?.ranking[0];
     if (!forecast) throw new Error('fixture de ranking ausente');
 
+    const metrics = forecast.metrics.map((metric) => {
+      if (metric.key === 'wind') return { ...metric, value: '5,3 km/h Sudoeste' };
+      if (metric.key === 'gusts') return { ...metric, value: '12,6 km/h' };
+      if (metric.key === 'waves') return { ...metric, value: '0,66 m' };
+      if (metric.key === 'wave-period') return { ...metric, value: '8 s' };
+      if (metric.key === 'rain') return { ...metric, value: '0 mm (9%)' };
+      if (metric.key === 'air-temperature') return { ...metric, value: '12 °C' };
+      if (metric.key === 'water-temperature') return { ...metric, value: '18,4 °C' };
+      return metric;
+    });
+
     render(
       <MemoryRouter>
-        <ForecastHero forecast={forecast} />
+        <ForecastHero
+          forecast={{ ...forecast, metrics, hourWindows: [...forecast.hourWindows].reverse() }}
+        />
       </MemoryRouter>,
     );
 
-    expect(screen.getByText(/Média das 3 melhores horas/)).toBeInTheDocument();
-    expect(screen.getByText('Condições às 05:30')).toBeInTheDocument();
-    expect(screen.getByText(/Melhor hora/)).toBeInTheDocument();
+    expect(screen.getByText(/Melhor horário/)).toBeInTheDocument();
+    expect(screen.getAllByText('05h30')).toHaveLength(2);
+    expect(screen.getByText(/Outros horários: 07h e 17h/)).toBeInTheDocument();
+    expect(screen.getByText('Condições às 05h30')).toBeInTheDocument();
+    expect(screen.getByText(/Rajadas:/)).toHaveTextContent(/Rajadas: 12,6 km\/h/);
+    expect(screen.getByText(/Período:/)).toHaveTextContent(/Período: 8 s/);
+    expect(screen.getByText('9% de chance')).toBeInTheDocument();
+    expect(screen.getByText(/Volume:/)).toHaveTextContent(/Volume: 0 mm/);
+    expect(screen.getByText('Temperatura')).toBeInTheDocument();
+    expect(screen.getByText(/18,4/)).toHaveTextContent(/18,4 °C/);
+    expect(screen.queryByRole('img', { name: /Evolução das notas/ })).not.toBeInTheDocument();
+    const trend = screen.getByRole('region', { name: 'Notas dos melhores horários' });
+    expect(
+      within(trend)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(['05h309,1', '07h8,9', '17h8,7']);
+    expect(screen.getAllByText('9,1')).toHaveLength(2);
+    const infoButton = screen.getByLabelText('Como a nota é calculada');
+    const details = infoButton.closest('details');
+    const user = userEvent.setup();
+    expect(details).not.toHaveAttribute('open');
+    await user.click(infoButton);
+    expect(details).toHaveAttribute('open');
+    expect(within(details!).getByText(/média das 3 melhores horas/)).toBeInTheDocument();
+    await user.click(infoButton);
+    infoButton.focus();
+    expect(infoButton.tagName).toBe('SUMMARY');
+    expect(infoButton).toHaveFocus();
   });
 });

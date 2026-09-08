@@ -1,0 +1,71 @@
+.planComparison {
+  grid-column: 1 / -1;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  scroll-margin-top: 6.5rem;
+}
+
+.planComparison table {
+  width: 100%;
+  min-width: 46rem;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.planComparison th,
+.planComparison td {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.planComparison th:first-child,
+.planComparison td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 7.5rem;
+  text-align: left;
+  background: var(--color-surface);
+  box-shadow: 1px 0 0 var(--color-border);
+}
+
+.planComparison th:not(:first-child),
+.planComparison td:not(:first-child) {
+  min-width: 6.75rem;
+}
+
+.planComparison thead th {
+  color: var(--color-ocean-950);
+  background: var(--color-sea-100);
+}
+
+.planComparison thead th:first-child {
+  background: var(--color-sea-100);
+}
+
+.planComparison th small {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--color-sea-700);
+  font-size: var(--font-size-xs);
+}
+
+.planComparison tbody tr:last-child th,
+.planComparison tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.freeColumn {
+  background: color-mix(in srgb, var(--color-surface) 82%, var(--color-sea-100));
+}
+
+.planComparison thead .freeColumn {
+  background: color-mix(in srgb, var(--color-sea-100) 70%, var(--color-surface));
+}

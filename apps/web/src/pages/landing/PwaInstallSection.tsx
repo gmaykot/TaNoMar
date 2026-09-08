@@ -66,13 +66,13 @@ export function PwaInstallSection() {
         <span>Aplicativo sem loja</span>
         <h2 id="install-title">Leve o TáNoMar com você.</h2>
         <p>
-          O TáNoMar pode ser instalado diretamente pelo navegador e usado como um aplicativo, sem
-          depender de uma loja.
+          Instale pelo navegador para abrir o TáNoMar direto da tela inicial, sem depender de uma
+          loja.
         </p>
         <ul>
           <li>Funciona no celular, tablet e computador.</li>
-          <li>Pode ganhar um ícone na tela inicial.</li>
-          <li>Abre em uma janela semelhante a um aplicativo.</li>
+          <li>Cria um ícone na tela inicial.</li>
+          <li>Abre em uma janela própria.</li>
           <li>Recebe atualizações pela web.</li>
         </ul>
         <div className={styles.installActions}>
@@ -88,7 +88,7 @@ export function PwaInstallSection() {
       </div>
       <div className={styles.installVisual} aria-hidden="true">
         <div className={styles.installIcon}>
-          <img src="/brand/pwa/icon-192.png" alt="" loading="lazy" />
+          <img src="/brand/pwa/icon-192.png" alt="" width="192" height="192" />
         </div>
         <span>TáNoMar</span>
         <small>Na sua tela inicial</small>

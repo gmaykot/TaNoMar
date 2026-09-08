@@ -94,6 +94,6 @@ export function canCancelRenewal(billing: BillingSubscription | null | undefined
 }
 
 export function cancelRenewalConfirmMessage(accessUntilLabel: string | null) {
-  const until = accessUntilLabel ?? 'o fim do período já pago';
-  return `Cancelar a renovação? Você continua com o plano até ${until}. Depois disso, a conta volta para Free. Não há estorno.`;
+  const until = accessUntilLabel ?? 'o fim da vigência já paga';
+  return `O plano permanece vigente até ${until}. Depois disso, a conta volta para Free. O valor já pago não é estornado.`;
 }

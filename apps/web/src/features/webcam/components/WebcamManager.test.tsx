@@ -35,6 +35,9 @@ describe('WebcamManager', () => {
     const user = userEvent.setup();
     renderWithProviders(<WebcamManager spotId="campeche" admin />);
     expect(screen.getByRole('button', { name: 'Incluir do YouTube' })).toBeInTheDocument();
+    expect(
+      screen.getByText(/A transmissão é de terceiros/),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Incluir do YouTube' }));
     await user.type(
       screen.getByLabelText(/Link da transmissão no YouTube/),

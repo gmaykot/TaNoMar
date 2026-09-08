@@ -109,7 +109,10 @@ export function ComparisonPreview() {
               <strong>
                 {item.place} {item.name}
               </strong>
-              {item.score.toFixed(1).replace('.', ',')}
+              {item.score.toLocaleString('pt-BR', {
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1,
+              })}
             </span>
           ))}
         </div>
