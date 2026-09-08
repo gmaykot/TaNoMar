@@ -1,90 +1,76 @@
-# ADR-004 — Checkout Premium com cartão via Asaas
+# ADR-004 — Checkout de assinatura com cartão via Asaas
 
 ## Status
 
-Proposta.
+Proposta. Alinhada aos planos de `cursor/planos-assinatura-arrais-mestre-capitao-d738`.
 
 ## Contexto
 
-O TáNoMar já diferencia `free` e `premium` em `User.PlanCode`. A página `/premium` descreve os recursos e deixa explícito que ainda não inicia cobrança. Hoje só o admin troca o plano em `PUT /admin/users/{id}/plan`. Não há CPF, cliente de pagamento nem assinatura no modelo.
+A conta nasce em `free`. Planos pagos na interface: **Arrais** (`arrais`), **Mestre** (`premium`) e **Capitão** (`capitao`). O código `premium` permanece estável (Mestre). Recursos qualitativos valem para qualquer plano pago; cotas mudam por plano. `/premium` ainda não cobra. O admin atribui o plano em `PUT /admin/users/{id}/plan`.
 
-A vitrine de parceiros permanece fora disto: o app não vende nem intermedia produto de terceiro (`docs/partners.md`).
+A vitrine de parceiros permanece fora disto (`docs/partners.md`).
 
-A necessidade é cobrar o plano Premium com cartão de crédito, sem o PWA lidar com número do cartão e sem fila externa (um container no Coolify).
+A necessidade é cobrar Arrais, Mestre ou Capitão com cartão, sem o PWA lidar com número do cartão e sem fila externa.
 
 ## Decisão
 
-Integrar o **Asaas Checkout hospedado**, somente cartão, com cobrança **recorrente anual** e 20% de desconto sobre o equivalente a 12 meses.
+Integrar o **Asaas Checkout hospedado**, somente cartão, um checkout por plano, cobrança **recorrente anual** com 20% de desconto sobre 12 meses da tabela daquele plano.
 
 - `billingTypes: ["CREDIT_CARD"]`
 - `chargeTypes: ["RECURRENT"]`
 - `subscription.cycle: "YEARLY"`
-- Preço cobrado: `arredondar(preço_mensal_de_tabela × 12 × 0,80; 2)`
-- A API cria o checkout; o pescador paga na página do Asaas; o plano sobe só depois do webhook.
-- A conta pode **cancelar a recorrência**. Isso chama `DELETE /v3/subscriptions/{id}` no Asaas, **não** chama estorno (`POST /v3/payments/{id}/refund`). O Premium permanece até o fim do período já pago.
+- `POST /billing/checkout` recebe `{ planCode: "arrais" | "premium" | "capitao" }`
+- Preço cobrado: `arredondar(mensal_do_plano × 12 × 0,80; 2)`
+- O plano na conta sobe só depois do webhook, para o `PlanCode` comprado.
+- Cancelar a recorrência chama `DELETE /v3/subscriptions/{id}` e **não** chama `/refund`. O `PlanCode` pago permanece até o fim do período.
 
-Não coletar PAN, CVV nem validade no TáNoMar. Não confirmar pagamento pelo `successUrl`. Não usar a API de cobrança com dados de cartão no backend.
+Não coletar PAN, CVV nem validade no TáNoMar. Não confirmar pagamento pelo `successUrl`.
 
 ## Motivo
 
-O Checkout hospedado entrega a tela de cartão, tokenização e PCI (SAQ A) no Asaas. O PWA só redireciona. O ciclo anual com desconto é a oferta comercial; a recorrência `YEARLY` cobra de novo só no ano seguinte. Cancelar encerra essa renovação e preserva o valor já pago — no Asaas, remover a assinatura não estorna cobranças confirmadas. Pix, boleto, mensal como SKU à parte e parcelamento avulso ficam para depois.
-
-A alternativa de tokenizar no app (`creditCardToken` + `POST /v3/payments`) manteria o pescador na origem, mas exige formulário PCI, 3DS e mais superfície. Não é o primeiro passo.
+Três SKUs no Asaas batem com `PlanRules` (Arrais, Mestre, Capitão). O ciclo anual com desconto é a oferta comercial. Cancelar encerra a renovação e preserva o valor já pago. Pix, boleto, SKU mensal no checkout e proration ficam para depois.
 
 ## Fluxo
 
 ```text
-Pescador em /premium (autenticado, plano free)
+Pescador em /premium escolhe Arrais, Mestre ou Capitão
         │
         ▼
-POST /api/v1/billing/checkout     ← API cria sessão no Asaas
-        │                         (chave só no servidor)
-        ▼
-302 / JSON { checkoutUrl }        ← redireciona para asaas.com/checkoutSession
+POST /api/v1/billing/checkout { planCode }
         │
         ▼
-Pagador informa cartão no Asaas
+redirect → asaas.com/checkoutSession
         │
         ├── cancela / expira → /premium?checkout=cancel|expired
         └── paga
                 │
                 ├── browser → /premium?checkout=success  (só UX)
-                └── Asaas POST /api/v1/webhooks/asaas
-                        CHECKOUT_PAID
-                        SUBSCRIPTION_CREATED
-                        PAYMENT_CONFIRMED
+                └── webhook CHECKOUT_PAID + PAYMENT_CONFIRMED
                                 │
                                 ▼
-                        PlanCode = premium + notificação
+                        PlanCode = arrais | premium | capitao
 ```
 
-Cancelar a renovação (conta autenticada):
+Cancelar a renovação:
 
 ```text
 POST /api/v1/billing/subscription/cancel
         │
         ▼
-DELETE Asaas /v3/subscriptions/{id}   ← para a recorrência
-        │                             (não chama /refund)
-        ▼
-CancelAtPeriodEnd = true
-PlanCode permanece premium até CurrentPeriodEnd
+DELETE Asaas /v3/subscriptions/{id}   (não chama /refund)
         │
         ▼
-Worker no vencimento → PlanCode = free + notificação
+PlanCode permanece o plano pago até CurrentPeriodEnd
+        │
+        ▼
+Worker no vencimento → PlanCode = free
 ```
-
-A fonte da verdade do acesso é o webhook (e o fim do período pago), não o retorno do browser.
 
 ## Consequências
 
-- Novo cliente HTTP na API para `https://api.asaas.com/v3` (sandbox: `https://api-sandbox.asaas.com/v3`).
-- Segredos só no Coolify: chave de API e token do webhook. Nunca `ASAAS_API_KEY` no bundle Vite.
-- CPF/CNPJ e endereço passam a ser dados de faturamento. O Google Sign-In não os fornece; o Asaas pode coletá-los no checkout, e a API guarda o `customer` devolvido.
-- `PlanCode` continua o interruptor de entitlements. Billing não recalcula nota nem altera fórmula.
-- Admin continua podendo promover ou rebaixar. Webhook não rebaixa a conta de bootstrap.
-- Renovação falha (`PAYMENT_OVERDUE`) volta a `free` depois de uma carência curta, com aviso no inbox.
-- `SUBSCRIPTION_DELETED` após cancelamento pelo usuário **não** rebaixa na hora: só marca a recorrência encerrada.
-- Fora da primeira entrega: Pix, SKU mensal no checkout, parcelamento `INSTALLMENT`, split, checkout de parceiros, formulário de cartão no app, botão de estorno.
+- Um item Asaas por plano (nome Arrais, Mestre ou Capitão). `externalReference` liga usuário + `planCode`.
+- Upgrade (tabela maior) no meio do ano: novo checkout do plano destino, paga o anual cheio, assinatura antiga é removida sem estorno. Downgrade só depois do período pago (ou pelo admin).
+- Bootstrap admin permanece Mestre (`premium`) mesmo se um webhook tentar rebaixar.
+- Fora da primeira entrega: Pix, SKU mensal, proration, parcelamento, split, checkout de parceiros, botão de estorno.
 
-Detalhe de contratos, entidades, eventos e variáveis: [billing.md](../billing.md).
+Detalhe: [billing.md](../billing.md).
