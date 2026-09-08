@@ -4,6 +4,7 @@ public sealed class WebcamOptions
 {
     public const string SectionName = "Webcams";
     public const string WindyProviderId = "windy";
+    public const string WindyDisplayName = "Windy";
 
     public string WindyApiKey { get; set; } = string.Empty;
     public string WindyBaseUrl { get; set; } = "https://api.windy.com/webcams/api/v3/";

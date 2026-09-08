@@ -29,7 +29,7 @@ internal static class WebcamTestHarness
     {
         return new WebcamService(
             db,
-            provider,
+            new WebcamProviderCatalog([provider]),
             new MemoryCache(new MemoryCacheOptions()),
             Microsoft.Extensions.Options.Options.Create(options ?? new WebcamOptions { WindyApiKey = "test", SearchRadiusKm = 10, AvailabilityCacheMinutes = 15 }),
             new TestHostEnvironment(),
@@ -60,10 +60,10 @@ internal static class WebcamTestHarness
     }
 
     public static WebcamProviderDetails LiveDetails(string externalId = "123456", string name = "Campeche") =>
-        new(WebcamOptions.WindyProviderId, externalId, name, -27.654, -48.469, true, true, "https://webcams.windy.com/embed/123456/live", "https://images.windy.com/preview.jpg");
+        new(WebcamOptions.WindyProviderId, externalId, name, -27.654, -48.469, true, true, "https://webcams.windy.com/embed/123456/live", "https://images.windy.com/preview.jpg", WebcamOptions.WindyDisplayName);
 
     public static WebcamSearchHit LiveHit(string externalId = "123456", string name = "Campeche", double distance = 1.2) =>
-        new(WebcamOptions.WindyProviderId, externalId, name, -27.654, -48.469, distance, true, true, "https://images.windy.com/preview.jpg");
+        new(WebcamOptions.WindyProviderId, externalId, name, -27.654, -48.469, distance, true, true, "https://images.windy.com/preview.jpg", WebcamOptions.WindyDisplayName);
 
     private static Plan Plan(string code, string name, bool live) => new()
     {
@@ -82,6 +82,7 @@ internal static class WebcamTestHarness
 internal sealed class FakeWebcamProvider : IWebcamProvider
 {
     public string ProviderId => WebcamOptions.WindyProviderId;
+    public string DisplayName => WebcamOptions.WindyDisplayName;
     public bool IsConfigured { get; set; } = true;
     public List<WebcamSearchHit> SearchResults { get; } = [];
     public Dictionary<string, WebcamProviderDetails?> Details { get; } = new(StringComparer.Ordinal);

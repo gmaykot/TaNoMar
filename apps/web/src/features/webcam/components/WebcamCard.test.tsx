@@ -9,6 +9,7 @@ import type { SpotWebcam } from '../types/webcam';
 const live: SpotWebcam = {
   linked: true,
   provider: 'windy',
+  providerDisplayName: 'Windy',
   externalId: '123',
   name: 'Praia do Campeche',
   latitude: -27.65,

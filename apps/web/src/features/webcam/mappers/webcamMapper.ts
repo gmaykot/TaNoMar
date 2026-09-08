@@ -18,7 +18,8 @@ function readBoolean(value: unknown) {
 }
 
 function readProvider(value: unknown): WebcamProviderId | null {
-  return value === 'windy' ? value : null;
+  const provider = readString(value)?.trim();
+  return provider ? provider : null;
 }
 
 function readHttps(value: unknown) {
@@ -38,6 +39,7 @@ export function parseSpotWebcam(value: unknown): SpotWebcam {
     return {
       linked: false,
       provider: null,
+      providerDisplayName: null,
       externalId: null,
       name: null,
       latitude: null,
@@ -60,6 +62,7 @@ export function parseSpotWebcam(value: unknown): SpotWebcam {
   return {
     linked: true,
     provider,
+    providerDisplayName: readString(value.providerDisplayName),
     externalId,
     name,
     latitude: readNumber(value.latitude),
@@ -98,6 +101,7 @@ export function parseWebcamSearch(value: unknown): WebcamSearchItem[] {
     }
     return {
       provider,
+      providerDisplayName: readString(item.providerDisplayName),
       externalId,
       name,
       latitude,

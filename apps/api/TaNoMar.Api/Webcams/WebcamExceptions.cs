@@ -3,7 +3,7 @@ namespace TaNoMar.Api.Webcams;
 internal sealed class WebcamNotConfiguredException : Exception
 {
     public WebcamNotConfiguredException()
-        : base("A chave da API Windy Webcams não está configurada.")
+        : base("O provedor de câmeras ao vivo não está configurado.")
     {
     }
 }

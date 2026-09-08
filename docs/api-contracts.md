@@ -76,7 +76,7 @@ O worker de alertas verifica a previsão de hora em hora, respeita `forecastNoti
 
 ## Câmeras ao vivo
 
-Exigem `modules.liveWebcams` (padrão: plano Capitão). Sem o módulo, `GET /fishing-spots/{id}/webcam` responde `403` e não devolve URL/embed. O frontend vincula só com `{ provider, externalId }`. Detalhes em [features/webcams.md](features/webcams.md).
+Exigem `modules.liveWebcams` (padrão: plano Capitão). Sem o módulo, `GET /fishing-spots/{id}/webcam` responde `403` e não devolve URL/embed. O frontend vincula só com `{ provider, externalId }`. Identidade da câmera: `provider` + `externalId` (hoje `windy`). O DTO pode incluir `providerDisplayName` (`Windy`); a UI ainda não exibe origem. Detalhes em [features/webcams.md](features/webcams.md).
 
 - `GET /fishing-spots/{id}/webcam`: transmissão do local visível. `404` sem câmera.
 - `GET /fishing-spots/{id}/webcams/search`, `POST /fishing-spots/{id}/webcam`, `DELETE /fishing-spots/{id}/webcam`: dono Capitão de Meu Local.

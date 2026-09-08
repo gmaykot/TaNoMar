@@ -65,7 +65,8 @@ internal static class WindyWebcamMapper
             isLive,
             hasPlayer,
             embedUrl,
-            ReadPreview(dto.Images));
+            ReadPreview(dto.Images),
+            WebcamOptions.WindyDisplayName);
     }
 
     public static WebcamSearchHit? ToSearchHit(WindyWebcamDto dto, double originLatitude, double originLongitude)
@@ -81,7 +82,8 @@ internal static class WindyWebcamMapper
             WebcamGeo.DistanceKm(originLatitude, originLongitude, details.Latitude, details.Longitude),
             details.IsLive,
             details.HasPlayer,
-            details.PreviewUrl);
+            details.PreviewUrl,
+            details.ProviderDisplayName);
     }
 
     internal static bool HasLivePlayer(WindyPlayerDto? player)

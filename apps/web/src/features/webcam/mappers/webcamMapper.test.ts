@@ -41,6 +41,7 @@ describe('parseSpotWebcam', () => {
     expect(parseSpotWebcam({ linked: false })).toEqual({
       linked: false,
       provider: null,
+      providerDisplayName: null,
       externalId: null,
       name: null,
       latitude: null,
@@ -73,6 +74,7 @@ describe('parseWebcamSearch', () => {
     ).toEqual([
       {
         provider: 'windy',
+        providerDisplayName: null,
         externalId: '111',
         name: 'Campeche',
         latitude: -27.65,

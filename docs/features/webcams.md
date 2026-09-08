@@ -6,14 +6,26 @@ Feature exclusiva do plano **Capitão**, ligada pelo módulo `liveWebcams` em `P
 
 | Peça | Onde | Papel |
 | --- | --- | --- |
-| `WebcamService` | `apps/api/TaNoMar.Api/Webcams/WebcamService.cs` | Autorização, vínculo 1:1, cache de disponibilidade e DTOs |
-| `IWebcamProvider` | `apps/api/TaNoMar.Api/Webcams/IWebcamProvider.cs` | Abstração de pesquisa e detalhes. Não conhece local nem plano |
+| `WebcamService` | `apps/api/TaNoMar.Api/Webcams/WebcamService.cs` | Autorização, vínculo 1:1, cache de disponibilidade e DTOs. Não fala com a Windy |
+| `WebcamProviderCatalog` | `apps/api/TaNoMar.Api/Webcams/WebcamProviderCatalog.cs` | Resolve o `IWebcamProvider` pelo `Provider` persistido |
+| `IWebcamProvider` | `apps/api/TaNoMar.Api/Webcams/IWebcamProvider.cs` | Pesquisa e detalhes. Não conhece local nem plano |
 | `WindyWebcamProvider` | `apps/api/TaNoMar.Api/Webcams/WindyWebcamProvider.cs` | Única implementação nesta entrega. HTTP para a Windy Webcams API v3 |
-| `FishingSpotWebcam` | `apps/api/TaNoMar.Api/Data/TaNoMarDbContext.cs` | Persistência: `Provider` + `ExternalId`, sem URL como identidade |
+| `FishingSpotWebcam` | `apps/api/TaNoMar.Api/Data/TaNoMarDbContext.cs` | Persistência: `Provider` + `ExternalId`. URL não é identidade |
 | Endpoints | `apps/api/TaNoMar.Api/Webcams/WebcamEndpoints.cs` | Minimal API sob `/api/v1` |
 | UI | `apps/web/src/features/webcam` | Card, player, pesquisa, gestão e convite do Capitão |
 
 O frontend **não** envia URL, embed ou stream. A vinculação envia só `{ provider, externalId }`. O backend consulta o provider de novo antes de gravar.
+
+## Identidade
+
+```text
+Provider + ExternalId
+```
+
+- Windy: `provider = windy`, `externalId` = id da câmera na Windy.
+- URL de embed/stream pode mudar e **não** identifica a câmera.
+
+Metadado opcional de origem: `providerDisplayName`. Na Windy vale `"Windy"`. A UI ainda não precisa exibir.
 
 ## Quem faz o quê
 
@@ -22,9 +34,11 @@ O frontend **não** envia URL, embed ou stream. A vinculação envia só `{ prov
 - **Capitão**: vê a transmissão de um local que já tem câmera válida (`GET /fishing-spots/{id}/webcam`).
 - **Demais planos**: `403` nesse GET. O DTO do local pode trazer `hasLiveWebcam` (booleano, sem URL) para o convite do plano.
 
+Pesquisa e seleção continuam: local → coordenadas → provider de proximidade → resultados → selecionar → vincular. Sem cadastro manual de URL.
+
 ## Provider atual
 
-Windy Webcams API v3.
+Windy Webcams API v3, encapsulada em `WindyWebcamProvider`. A pesquisa automática por proximidade (latitude/longitude do local) é responsabilidade dela.
 
 - Base: `https://api.windy.com/webcams/api/v3/`
 - Auth: header `x-windy-api-key`
@@ -35,6 +49,21 @@ Windy Webcams API v3.
 Só entram câmeras `active` com `player.live` (embed HTTPS). Timelapse (`player.day` sem live) não é oferecido. Preview usa `images.current.preview|thumbnail|icon` quando a API devolve URL HTTPS.
 
 A chave é opcional. Sem `WINDY_WEBCAMS_API_KEY` a API sobe normalmente; a pesquisa responde `503 webcam_unconfigured`.
+
+## Providers futuros (não implementados)
+
+O catálogo aceita novas implementações de `IWebcamProvider` sem migration estrutural do vínculo (`Provider` + `ExternalId` já é genérico).
+
+Previsto, **sem código nesta entrega**:
+
+| Id | Classe | Uso |
+| --- | --- | --- |
+| `windy` | `WindyWebcamProvider` | Pesquisa automática de câmeras próximas (atual) |
+| `partner` | `PartnerWebcamProvider` | Câmeras de parceiros locais |
+| `youtube` | — | Transmissão YouTube |
+| `custom` | — | Fonte própria, ainda via seleção no backend |
+
+Câmeras parceiras poderão vir de pousadas, marinas, lojas de pesca, restaurantes, empresas de monitoramento de praias e redes de webcams. O `PartnerWebcamProvider` devolveria `providerDisplayName` com o nome do parceiro (ex.: "Parceiro XYZ") para a UI mostrar "Câmera fornecida por". **Não implementar agora.**
 
 ## Configuração
 
@@ -48,7 +77,7 @@ Chave: [api.windy.com](https://api.windy.com/) → Webcams API. Não versionar a
 
 ## Teste local do Capitão (sem pagamento)
 
-Em Development, um Admin troca o plano da conta em `/admin/usuarios` para **Capitão** (`capitao`). Isso já existe e não é um bypass de produção.
+Em Development, um Admin troca o plano da conta em `/admin/usuarios` para **Capitão** (`capitao`). Isso já existia e não é um bypass de produção.
 
 ## Teste local de Admin
 

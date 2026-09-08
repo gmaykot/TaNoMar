@@ -13,6 +13,7 @@ internal sealed class WindyWebcamProvider(
 {
     private const string Include = "images,location,player,urls";
     public string ProviderId => WebcamOptions.WindyProviderId;
+    public string DisplayName => WebcamOptions.WindyDisplayName;
     public bool IsConfigured => options.Value.IsConfigured;
 
     public async Task<IReadOnlyList<WebcamSearchHit>> SearchNearbyAsync(

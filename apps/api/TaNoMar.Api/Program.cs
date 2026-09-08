@@ -100,6 +100,7 @@ builder.Services.AddHttpClient<IWebcamProvider, WindyWebcamProvider>((provider, 
     client.Timeout = TimeSpan.FromSeconds(15);
     client.DefaultRequestHeaders.UserAgent.ParseAdd("tanomar/2.0");
 });
+builder.Services.AddScoped<WebcamProviderCatalog>();
 builder.Services.AddScoped<WebcamService>();
 builder.Services.AddTransient<FishingForecastService>();
 builder.Services.AddHostedService<FishingForecastWarmupWorker>();

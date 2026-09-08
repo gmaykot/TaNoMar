@@ -3,6 +3,7 @@ namespace TaNoMar.Api.Webcams;
 internal interface IWebcamProvider
 {
     string ProviderId { get; }
+    string DisplayName { get; }
     bool IsConfigured { get; }
 
     Task<IReadOnlyList<WebcamSearchHit>> SearchNearbyAsync(

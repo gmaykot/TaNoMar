@@ -45,6 +45,8 @@ public sealed class WindyWebcamMapperTests
 
         Assert.Single(hits);
         Assert.Equal("111", hits[0]!.ExternalId);
+        Assert.Equal("windy", hits[0]!.Provider);
+        Assert.Equal("Windy", hits[0]!.ProviderDisplayName);
         Assert.True(hits[0]!.IsLive);
         Assert.Equal("https://images.windy.com/preview.jpg", hits[0]!.PreviewUrl);
     }

@@ -7,7 +7,7 @@ namespace TaNoMar.Api.Webcams;
 
 internal sealed class WebcamService(
     TaNoMarDbContext db,
-    IWebcamProvider provider,
+    WebcamProviderCatalog providers,
     IMemoryCache cache,
     IOptions<WebcamOptions> options,
     IHostEnvironment environment,
@@ -50,8 +50,10 @@ internal sealed class WebcamService(
 
         try
         {
+            var search = providers.NearbySearchProvider;
+            if (search is null) return WebcamHttpResult.NotConfigured();
             var radius = options.Value.EffectiveSearchRadiusKm;
-            var items = await provider.SearchNearbyAsync(spot.Latitude.Value, spot.Longitude.Value, radius, cancellationToken);
+            var items = await search.SearchNearbyAsync(spot.Latitude.Value, spot.Longitude.Value, radius, cancellationToken);
             logger.LogInformation(
                 "WebcamSearch spot={SpotId} latitude={Latitude} longitude={Longitude} usable={Usable}",
                 spot.Slug,
@@ -70,7 +72,8 @@ internal sealed class WebcamService(
                     distanceKm = item.DistanceKm,
                     isLive = item.IsLive,
                     hasPlayer = item.HasPlayer,
-                    previewUrl = item.PreviewUrl
+                    previewUrl = item.PreviewUrl,
+                    providerDisplayName = item.ProviderDisplayName
                 })
             });
         }
@@ -94,7 +97,8 @@ internal sealed class WebcamService(
         var externalId = request.ExternalId?.Trim();
         if (string.IsNullOrWhiteSpace(providerId) || string.IsNullOrWhiteSpace(externalId))
             return WebcamHttpResult.BadRequest("webcam_invalid", "Informe o provedor e o identificador da câmera.");
-        if (!string.Equals(providerId, provider.ProviderId, StringComparison.OrdinalIgnoreCase))
+        var source = providers.Find(providerId);
+        if (source is null)
             return WebcamHttpResult.BadRequest("webcam_unknown_provider", "Este provedor de câmera ainda não está disponível.");
         if (environment.IsDevelopment())
             logger.LogInformation("WebcamLink validating externalId={ExternalId} provider={Provider}", externalId, providerId);
@@ -102,7 +106,7 @@ internal sealed class WebcamService(
         WebcamProviderDetails? details;
         try
         {
-            details = await provider.GetAsync(externalId, cancellationToken);
+            details = await source.GetAsync(externalId, cancellationToken);
         }
         catch (WebcamNotConfiguredException)
         {
@@ -207,24 +211,9 @@ internal sealed class WebcamService(
         {
             try
             {
-                var details = await provider.GetAsync(link.ExternalId, cancellationToken);
-                var usable = details is not null
-                    && string.Equals(details.Provider, link.Provider, StringComparison.OrdinalIgnoreCase)
-                    && details.IsUsable;
-                link.IsAvailable = usable;
-                link.LastAvailabilityCheck = DateTimeOffset.UtcNow;
-                link.UpdatedAt = DateTimeOffset.UtcNow;
-                if (usable)
+                var source = providers.Find(link.Provider);
+                if (source is null)
                 {
-                    link.Name = details!.Name;
-                    link.Latitude = details.Latitude;
-                    link.Longitude = details.Longitude;
-                    RememberPlayer(link, details.EmbedUrl);
-                    embedUrl = details.EmbedUrl;
-                }
-                else
-                {
-                    cache.Remove(PlayerCacheKey(link.Provider, link.ExternalId));
                     embedUrl = null;
                     logger.LogInformation(
                         "WebcamUnavailable spotWebcam={Id} provider={Provider} externalId={ExternalId}",
@@ -232,7 +221,35 @@ internal sealed class WebcamService(
                         link.Provider,
                         link.ExternalId);
                 }
-                await db.SaveChangesAsync(cancellationToken);
+                else
+                {
+                    var details = await source.GetAsync(link.ExternalId, cancellationToken);
+                    var usable = details is not null
+                        && string.Equals(details.Provider, link.Provider, StringComparison.OrdinalIgnoreCase)
+                        && details.IsUsable;
+                    link.IsAvailable = usable;
+                    link.LastAvailabilityCheck = DateTimeOffset.UtcNow;
+                    link.UpdatedAt = DateTimeOffset.UtcNow;
+                    if (usable)
+                    {
+                        link.Name = details!.Name;
+                        link.Latitude = details.Latitude;
+                        link.Longitude = details.Longitude;
+                        RememberPlayer(link, details.EmbedUrl);
+                        embedUrl = details.EmbedUrl;
+                    }
+                    else
+                    {
+                        cache.Remove(PlayerCacheKey(link.Provider, link.ExternalId));
+                        embedUrl = null;
+                        logger.LogInformation(
+                            "WebcamUnavailable spotWebcam={Id} provider={Provider} externalId={ExternalId}",
+                            link.Id,
+                            link.Provider,
+                            link.ExternalId);
+                    }
+                    await db.SaveChangesAsync(cancellationToken);
+                }
             }
             catch (WebcamNotConfiguredException)
             {
@@ -252,6 +269,7 @@ internal sealed class WebcamService(
             provider = link.Provider,
             externalId = link.ExternalId,
             name = link.Name,
+            providerDisplayName = providers.DisplayName(link.Provider),
             latitude = link.Latitude,
             longitude = link.Longitude,
             isAvailable = available,

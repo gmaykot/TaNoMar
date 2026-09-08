@@ -1,7 +1,8 @@
-export type WebcamProviderId = 'windy';
+export type WebcamProviderId = string;
 
 export interface WebcamSearchItem {
   provider: WebcamProviderId;
+  providerDisplayName: string | null;
   externalId: string;
   name: string;
   latitude: number;
@@ -20,6 +21,7 @@ export interface WebcamPlayer {
 export interface SpotWebcam {
   linked: boolean;
   provider: WebcamProviderId | null;
+  providerDisplayName: string | null;
   externalId: string | null;
   name: string | null;
   latitude: number | null;

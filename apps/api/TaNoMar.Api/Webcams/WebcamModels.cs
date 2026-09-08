@@ -9,7 +9,8 @@ internal sealed record WebcamSearchHit(
     double DistanceKm,
     bool IsLive,
     bool HasPlayer,
-    string? PreviewUrl);
+    string? PreviewUrl,
+    string ProviderDisplayName);
 
 internal sealed record WebcamProviderDetails(
     string Provider,
@@ -20,7 +21,8 @@ internal sealed record WebcamProviderDetails(
     bool IsLive,
     bool HasPlayer,
     string? EmbedUrl,
-    string? PreviewUrl)
+    string? PreviewUrl,
+    string ProviderDisplayName)
 {
     public bool IsUsable =>
         !string.IsNullOrWhiteSpace(ExternalId)

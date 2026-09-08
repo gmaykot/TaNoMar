@@ -214,6 +214,11 @@ public sealed class Plan
     public bool CanLiveWebcams { get; set; }
 }
 
+/// <summary>
+/// Câmera vinculada a um local. Identidade: <see cref="Provider"/> + <see cref="ExternalId"/>.
+/// URL de embed/stream não é identidade e não é persistida como fonte da verdade.
+/// Providers: windy (atual). Futuros: partner, youtube, custom.
+/// </summary>
 public sealed class FishingSpotWebcam
 {
     public Guid Id { get; set; } = Guid.NewGuid();

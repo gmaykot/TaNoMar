@@ -252,7 +252,8 @@ public sealed class WebcamServiceTests
             false,
             false,
             null,
-            null);
+            null,
+            WebcamOptions.WindyDisplayName);
         var service = WebcamTestHarness.CreateService(db, provider);
 
         var result = await service.ViewAsync(user, spot.Slug, CancellationToken.None);
@@ -294,6 +295,26 @@ public sealed class WebcamServiceTests
         var result = await service.LinkAsync(admin, spot.Slug, new WebcamLinkRequest("windy", "nao-existe"), asAdmin: true, CancellationToken.None);
 
         Assert.Equal(400, result.Status);
+        Assert.Equal(0, await db.FishingSpotWebcams.CountAsync());
+    }
+
+    [Fact]
+    public async Task Provider_desconhecido_nao_consulta_nem_persiste()
+    {
+        using var db = WebcamTestHarness.CreateDb();
+        var admin = WebcamTestHarness.User(PlanRules.Mestre, "Admin");
+        var spot = WebcamTestHarness.Official();
+        db.Users.Add(admin);
+        db.FishingSpots.Add(spot);
+        await db.SaveChangesAsync();
+        var provider = new FakeWebcamProvider();
+        provider.Details["abc"] = WebcamTestHarness.LiveDetails("abc");
+        var service = WebcamTestHarness.CreateService(db, provider);
+
+        var result = await service.LinkAsync(admin, spot.Slug, new WebcamLinkRequest("youtube", "abc"), asAdmin: true, CancellationToken.None);
+
+        Assert.Equal(400, result.Status);
+        Assert.Equal(0, provider.GetCalls);
         Assert.Equal(0, await db.FishingSpotWebcams.CountAsync());
     }
 
