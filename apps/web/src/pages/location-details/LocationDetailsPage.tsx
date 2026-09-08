@@ -19,7 +19,16 @@ import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { ScoreIndicator } from '@/design-system/components/ScoreIndicator';
 import { forecastPresentation, locationPrimaryMetricKeys } from '@/features/auth/appFocus';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { hasPlanModule, showsAppFocus, SUBSCRIPTION_LOCK_LABEL } from '@/features/auth/types/auth';
+import { WebcamLiveView } from '@/features/webcam/components/WebcamCard';
+import { WebcamManager } from '@/features/webcam/components/WebcamManager';
+import { WebcamPremiumGate } from '@/features/webcam/components/WebcamPremiumGate';
+import {
+  hasLiveWebcams,
+  hasPlanModule,
+  isAdmin,
+  showsAppFocus,
+  SUBSCRIPTION_LOCK_LABEL,
+} from '@/features/auth/types/auth';
 import { CommunityReports } from '@/features/community/components/CommunityReports';
 import { DateSelector } from '@/features/forecast/components/DateSelector';
 import { MarineDetails, MarineDetailsToggle } from '@/features/forecast/components/MarineDetails';
@@ -39,6 +48,10 @@ export function LocationDetailsPage() {
   const locationForecast = useLocationForecast(locationId);
   const mutations = useLocationMutations();
   const canFavorite = (auth.user?.entitlements.maxFavorites ?? 0) > 0;
+  const canWatchWebcams = hasLiveWebcams(auth.user);
+  const canManageWebcams = (location: { isOwner: boolean; visibility: string }) =>
+    isAdmin(auth.user) ||
+    (location.isOwner && location.visibility !== 'official' && canWatchWebcams);
   const presentation = forecastPresentation(
     auth.user?.preferences,
     hasPlanModule(auth.user, 'customMetrics'),
@@ -189,6 +202,13 @@ export function LocationDetailsPage() {
           </Link>
         ) : null}
       </div>
+      {canManageWebcams(location) ? (
+        <WebcamManager spotId={location.id} admin={isAdmin(auth.user)} />
+      ) : location.hasLiveWebcam && canWatchWebcams ? (
+        <WebcamLiveView spotId={location.id} />
+      ) : location.hasLiveWebcam ? (
+        <WebcamPremiumGate />
+      ) : null}
       {mutations.favoriteError ? <p>{mutations.favoriteError}</p> : null}
       {mutations.enabledError ? <p>{mutations.enabledError}</p> : null}
       <DateSelector

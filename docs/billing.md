@@ -14,7 +14,7 @@ Os códigos, cotas e o preço mensal de tabela vêm de `Plans` (`PlanRules`, `/a
 | Mestre | `premium` | R$ 19,90 | R$ 238,80 | **R$ 191,04** | R$ 15,92 | 8 | 10 | 20 | 10 |
 | Capitão | `capitao` | R$ 24,90 | R$ 298,80 | **R$ 239,04** | R$ 19,92 | 8 | 20 | 40 | 20 |
 
-Mar, diário, votos, indicadores e offline valem em qualquer plano pago. O que muda entre eles é cota.
+Mar, diário, votos, indicadores e offline valem em qualquer plano pago. Câmeras ao vivo (`liveWebcams`) ficam no Capitão. O que muda entre Arrais e Mestre é sobretudo cota.
 
 ```text
 preço_anual(plano) = arredondar(mensal_tabela(plano) × 12 × 0,80; 2)

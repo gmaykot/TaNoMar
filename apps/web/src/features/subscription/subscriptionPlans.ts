@@ -61,6 +61,7 @@ export function planFeatureList(plan: PlanCatalog) {
   if (extras.length === 3) items.push('Diário, offline e indicadores');
   if (plan.modules.communityVote) items.push('Confirmar e contestar relatos');
   if (plan.modules.rankingEmphasis) items.push('Ênfase no ranking');
+  if (plan.modules.liveWebcams) items.push('Câmeras ao vivo');
   return items;
 }
 

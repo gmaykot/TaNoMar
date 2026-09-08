@@ -47,7 +47,8 @@ internal static class PlanRules
         offline = plan.CanOffline,
         customMetrics = plan.CanCustomMetrics,
         communityVote = plan.CanCommunityVote,
-        rankingEmphasis = plan.CanRankingEmphasis
+        rankingEmphasis = plan.CanRankingEmphasis,
+        liveWebcams = plan.CanLiveWebcams
     };
 
     public static string? ValidateUpdate(string name, string tagline, int monthlyPriceCents, int sortOrder, int maxForecastDays, int maxFavorites, int maxPersonalSpots, int maxAlerts)
@@ -90,7 +91,8 @@ internal static class PlanRules
         bool canOffline,
         bool canCustomMetrics,
         bool canCommunityVote,
-        bool canRankingEmphasis)
+        bool canRankingEmphasis,
+        bool canLiveWebcams)
     {
         plan.Name = name.Trim();
         plan.Tagline = tagline.Trim();
@@ -108,5 +110,6 @@ internal static class PlanRules
         plan.CanCustomMetrics = canCustomMetrics;
         plan.CanCommunityVote = canCommunityVote;
         plan.CanRankingEmphasis = canRankingEmphasis;
+        plan.CanLiveWebcams = canLiveWebcams;
     }
 }

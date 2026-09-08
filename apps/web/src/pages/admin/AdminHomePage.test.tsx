@@ -4,23 +4,31 @@ import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { AdminHomePage } from './AdminHomePage';
 
-const { setPlatformShowAppFocus, settingsState } = vi.hoisted(() => ({
+const { setPlatformShowAppFocus, setPlatformShowLiveWebcams, settingsState } = vi.hoisted(() => ({
   setPlatformShowAppFocus: vi.fn(() =>
-    Promise.resolve({ showPartners: false, showAppFocus: true }),
+    Promise.resolve({ showPartners: false, showAppFocus: true, showLiveWebcams: true }),
   ),
-  settingsState: { showAppFocus: false },
+  setPlatformShowLiveWebcams: vi.fn(() =>
+    Promise.resolve({ showPartners: false, showAppFocus: false, showLiveWebcams: false }),
+  ),
+  settingsState: { showAppFocus: false, showLiveWebcams: true },
 }));
 
 vi.mock('@/features/partners/hooks/usePartners', () => ({
   platformSettingsQueryKey: ['admin-platform-settings'],
   usePlatformSettings: () => ({
     isPending: false,
-    data: { showPartners: false, showAppFocus: settingsState.showAppFocus },
+    data: {
+      showPartners: false,
+      showAppFocus: settingsState.showAppFocus,
+      showLiveWebcams: settingsState.showLiveWebcams,
+    },
   }),
 }));
 
 vi.mock('@/features/partners/services/partnersService', () => ({
   setPlatformShowAppFocus,
+  setPlatformShowLiveWebcams,
 }));
 
 vi.mock('@/app/layout/saveConfirmationEvents', () => ({
@@ -30,7 +38,9 @@ vi.mock('@/app/layout/saveConfirmationEvents', () => ({
 describe('AdminHomePage', () => {
   beforeEach(() => {
     settingsState.showAppFocus = false;
+    settingsState.showLiveWebcams = true;
     setPlatformShowAppFocus.mockClear();
+    setPlatformShowLiveWebcams.mockClear();
   });
 
   it('abre as áreas administrativas', () => {
@@ -48,6 +58,16 @@ describe('AdminHomePage', () => {
       '/admin/parceiros',
     );
     expect(screen.getByRole('link', { name: /Planos/ })).toHaveAttribute('href', '/admin/planos');
+    expect(screen.getByRole('checkbox', { name: /Mostrar câmeras ao vivo/ })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /Permitir escolha de perfil/ })).not.toBeChecked();
+  });
+
+  it('liga ou desliga câmeras ao vivo', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AdminHomePage />);
+    const toggle = screen.getByRole('checkbox', { name: /Mostrar câmeras ao vivo/ });
+    await user.click(toggle);
+    expect(setPlatformShowLiveWebcams).toHaveBeenCalledWith(false);
   });
 
   it('liga a escolha de perfil pelo admin', async () => {

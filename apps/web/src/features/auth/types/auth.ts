@@ -22,6 +22,7 @@ export interface AuthUser {
   features: {
     showPartners: boolean;
     showAppFocus: boolean;
+    showLiveWebcams?: boolean;
   };
   preferences: {
     region: string;
@@ -36,7 +37,13 @@ export interface AuthUser {
 export type AuthStatus = 'booting' | 'anonymous' | 'authenticated';
 
 export type PlanModule =
-  'marine' | 'diary' | 'offline' | 'customMetrics' | 'communityVote' | 'rankingEmphasis';
+  | 'marine'
+  | 'diary'
+  | 'offline'
+  | 'customMetrics'
+  | 'communityVote'
+  | 'rankingEmphasis'
+  | 'liveWebcams';
 
 export interface PlanModules {
   marine: boolean;
@@ -45,6 +52,7 @@ export interface PlanModules {
   customMetrics: boolean;
   communityVote: boolean;
   rankingEmphasis: boolean;
+  liveWebcams: boolean;
 }
 
 export const SUBSCRIPTION_LOCK_LABEL = 'Assinatura';
@@ -54,12 +62,26 @@ export function isPaidPlan(user: { plan?: { code?: string } | null } | null | un
 }
 
 export function hasPlanModule(
-  user: { plan?: { code?: string } | null; modules?: PlanModules } | null | undefined,
+  user: { plan?: { code?: string } | null; modules?: Partial<PlanModules> } | null | undefined,
   module: PlanModule,
 ) {
   const value = user?.modules?.[module];
   if (typeof value === 'boolean') return value;
+  if (module === 'liveWebcams') return false;
   return isPaidPlan(user);
+}
+
+export function hasLiveWebcams(
+  user:
+    | {
+        plan?: { code?: string } | null;
+        modules?: Partial<PlanModules>;
+        features?: { showLiveWebcams?: boolean };
+      }
+    | null
+    | undefined,
+) {
+  return hasPlanModule(user, 'liveWebcams') && showsLiveWebcams(user);
 }
 
 export function isAdmin(user: Pick<AuthUser, 'role'> | null | undefined) {
@@ -72,4 +94,10 @@ export function showsPartners(user: Pick<AuthUser, 'features'> | null | undefine
 
 export function showsAppFocus(user: Pick<AuthUser, 'features'> | null | undefined) {
   return user?.features.showAppFocus === true;
+}
+
+export function showsLiveWebcams(
+  user: { features?: { showLiveWebcams?: boolean } } | null | undefined,
+) {
+  return user?.features?.showLiveWebcams !== false;
 }

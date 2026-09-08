@@ -2,11 +2,15 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BadgePercent, Handshake, Shield, Users } from 'lucide-react';
 import { showSaveConfirmation } from '@/app/layout/saveConfirmationEvents';
+import { locationsQueryKey } from '@/features/locations/hooks/useLocationMutations';
 import {
   platformSettingsQueryKey,
   usePlatformSettings,
 } from '@/features/partners/hooks/usePartners';
-import { setPlatformShowAppFocus } from '@/features/partners/services/partnersService';
+import {
+  setPlatformShowAppFocus,
+  setPlatformShowLiveWebcams,
+} from '@/features/partners/services/partnersService';
 import formStyles from '@/features/locations/components/spotForm.module.css';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { ApiError } from '@/shared/api/errors';
@@ -25,6 +29,19 @@ export function AdminHomePage() {
         queryClient.invalidateQueries({ queryKey: ['me'] }),
       ]);
       showSaveConfirmation('Configuração de perfil salva.');
+    },
+  });
+  const toggleLiveWebcams = useMutation({
+    mutationFn: (showLiveWebcams: boolean) => setPlatformShowLiveWebcams(showLiveWebcams),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: platformSettingsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: ['me'] }),
+        queryClient.invalidateQueries({ queryKey: ['webcam'] }),
+        queryClient.invalidateQueries({ queryKey: locationsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: ['location-forecast'] }),
+      ]);
+      showSaveConfirmation('Câmeras ao vivo atualizadas.');
     },
   });
 
@@ -52,6 +69,28 @@ export function AdminHomePage() {
           {toggleFocus.error instanceof ApiError
             ? toggleFocus.error.message
             : 'Não foi possível atualizar o perfil.'}
+        </p>
+      ) : null}
+      <label className={formStyles.choice}>
+        <input
+          type="checkbox"
+          checked={settings.data?.showLiveWebcams === true}
+          disabled={settings.isPending || toggleLiveWebcams.isPending}
+          onChange={(event) => toggleLiveWebcams.mutate(event.target.checked)}
+        />
+        <span>
+          Mostrar câmeras ao vivo
+          <small>
+            Quando ligado, o plano Capitão vê as transmissões vinculadas. Admin continua
+            pesquisando e vinculando com a opção desligada.
+          </small>
+        </span>
+      </label>
+      {toggleLiveWebcams.isError ? (
+        <p className={formStyles.error}>
+          {toggleLiveWebcams.error instanceof ApiError
+            ? toggleLiveWebcams.error.message
+            : 'Não foi possível atualizar as câmeras ao vivo.'}
         </p>
       ) : null}
       <section className={adminStyles.shortcuts} aria-label="Áreas administrativas">

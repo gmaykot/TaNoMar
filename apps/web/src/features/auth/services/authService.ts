@@ -74,6 +74,7 @@ export function parseAuthUser(payload: unknown): AuthUser {
   const featuresRecord = isRecord(payload.features) ? payload.features : null;
   const showPartners = featuresRecord?.showPartners === true;
   const showAppFocus = featuresRecord?.showAppFocus === true;
+  const showLiveWebcams = featuresRecord?.showLiveWebcams !== false;
   if (
     !id ||
     !name ||
@@ -100,7 +101,7 @@ export function parseAuthUser(payload: unknown): AuthUser {
     plan: { code: planCode, name: planName },
     entitlements: { maxForecastDays, maxFavorites, maxPersonalSpots, maxAlerts },
     modules: parsePlanModules(payload.modules),
-    features: { showPartners, showAppFocus },
+    features: { showPartners, showAppFocus, showLiveWebcams },
     preferences: { region, windUnit, forecastNotifications, focus, visibleMetrics },
     billing: parseOptionalBilling(payload.billing),
   };
@@ -120,6 +121,7 @@ function parsePlanModules(value: unknown): AuthUser['modules'] {
   const customMetrics = readBoolean(value.customMetrics);
   const communityVote = readBoolean(value.communityVote);
   const rankingEmphasis = readBoolean(value.rankingEmphasis);
+  const liveWebcams = readBoolean(value.liveWebcams);
   if (
     marine === null ||
     diary === null ||
@@ -130,7 +132,15 @@ function parsePlanModules(value: unknown): AuthUser['modules'] {
   ) {
     throw new ContractError('Módulos do plano incompletos.');
   }
-  return { marine, diary, offline, customMetrics, communityVote, rankingEmphasis };
+  return {
+    marine,
+    diary,
+    offline,
+    customMetrics,
+    communityVote,
+    rankingEmphasis,
+    liveWebcams: liveWebcams ?? false,
+  };
 }
 
 export async function loginWithGoogle(credential: string) {

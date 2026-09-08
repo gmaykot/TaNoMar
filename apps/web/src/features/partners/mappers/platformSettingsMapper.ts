@@ -12,5 +12,6 @@ export function parsePlatformSettings(value: unknown): PlatformSettings {
   return {
     showPartners: value.showPartners,
     showAppFocus: value.showAppFocus === true,
+    showLiveWebcams: value.showLiveWebcams !== false,
   };
 }

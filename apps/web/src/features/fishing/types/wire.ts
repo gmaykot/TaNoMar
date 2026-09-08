@@ -76,6 +76,7 @@ export interface WireSpot {
   isInRanking: boolean;
   isApproved: boolean;
   isOwner: boolean;
+  hasLiveWebcam?: boolean;
 }
 
 export interface WireBestHourWindow {

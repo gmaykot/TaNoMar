@@ -11,6 +11,7 @@ function official(
     | 'isInRanking'
     | 'isApproved'
     | 'isOwner'
+    | 'hasLiveWebcam'
     | 'seaOrientationDegrees'
   > & { seaOrientationDegrees?: number },
 ): FishingLocation {
@@ -23,6 +24,7 @@ function official(
     isInRanking: true,
     isApproved: true,
     isOwner: false,
+    hasLiveWebcam: false,
     seaOrientationDegrees: location.seaOrientationDegrees ?? 0,
     ...location,
   };
@@ -168,5 +170,6 @@ export const locationsFixture: FishingLocation[] = [
     isInRanking: true,
     isApproved: true,
     isOwner: true,
+    hasLiveWebcam: false,
   },
 ];

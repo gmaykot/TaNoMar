@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/apps/" />
+  <Folder Name="/apps/api/">
+    <Project Path="apps/api/TaNoMar.Api.Tests/TaNoMar.Api.Tests.csproj" />
+    <Project Path="apps/api/TaNoMar.Api/TaNoMar.Api.csproj" />
+  </Folder>
+</Solution>

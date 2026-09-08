@@ -21,6 +21,7 @@ export interface AdminPlanUpdate {
   canCustomMetrics: boolean;
   canCommunityVote: boolean;
   canRankingEmphasis: boolean;
+  canLiveWebcams: boolean;
 }
 
 export interface AdminPlanInput {
@@ -40,6 +41,7 @@ export interface AdminPlanInput {
   canCustomMetrics: boolean;
   canCommunityVote: boolean;
   canRankingEmphasis: boolean;
+  canLiveWebcams: boolean;
 }
 
 export const planModuleFields = [
@@ -73,6 +75,11 @@ export const planModuleFields = [
     label: 'Ênfase no ranking',
     hint: 'Reordenar o ranking por vento, chuva ou ondas.',
   },
+  {
+    key: 'canLiveWebcams',
+    label: 'Câmeras ao vivo',
+    hint: 'Ver e vincular transmissões próximas aos locais.',
+  },
 ] as const;
 
 export function planRevision(plan: PlanCatalog) {
@@ -95,6 +102,7 @@ export function planRevision(plan: PlanCatalog) {
     plan.modules.customMetrics,
     plan.modules.communityVote,
     plan.modules.rankingEmphasis,
+    plan.modules.liveWebcams,
   ].join('|');
 }
 
@@ -116,6 +124,7 @@ export function planToInput(plan: PlanCatalog): AdminPlanInput {
     canCustomMetrics: plan.modules.customMetrics,
     canCommunityVote: plan.modules.communityVote,
     canRankingEmphasis: plan.modules.rankingEmphasis,
+    canLiveWebcams: plan.modules.liveWebcams,
   };
 }
 
@@ -139,5 +148,6 @@ export function inputToUpdate(input: AdminPlanInput): AdminPlanUpdate | null {
     canCustomMetrics: input.canCustomMetrics,
     canCommunityVote: input.canCommunityVote,
     canRankingEmphasis: input.canRankingEmphasis,
+    canLiveWebcams: input.canLiveWebcams,
   };
 }

@@ -29,6 +29,7 @@ const plan: PlanCatalog = {
     customMetrics: true,
     communityVote: true,
     rankingEmphasis: true,
+    liveWebcams: false,
   },
 };
 
@@ -61,6 +62,12 @@ describe('planFeatureList', () => {
     ]);
   });
 
+  it('inclui câmeras ao vivo quando o módulo está ligado', () => {
+    expect(planFeatureList({ ...plan, modules: { ...plan.modules, liveWebcams: true } })).toContain(
+      'Câmeras ao vivo',
+    );
+  });
+
   it('omite módulos desligados', () => {
     expect(
       planFeatureList({
@@ -72,6 +79,7 @@ describe('planFeatureList', () => {
           customMetrics: false,
           communityVote: false,
           rankingEmphasis: false,
+          liveWebcams: false,
         },
       }),
     ).toEqual([

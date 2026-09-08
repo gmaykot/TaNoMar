@@ -198,6 +198,7 @@ export function mapLocation(spot: WireSpot): FishingLocation {
     isInRanking: spot.isInRanking,
     isApproved: spot.isApproved,
     isOwner: spot.isOwner,
+    hasLiveWebcam: spot.hasLiveWebcam === true,
   };
 }
 

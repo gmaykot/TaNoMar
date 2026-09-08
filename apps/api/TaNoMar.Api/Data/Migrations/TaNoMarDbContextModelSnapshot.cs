@@ -399,6 +399,63 @@ namespace TaNoMar.Api.Data.Migrations
                     b.ToTable("FishingSpots");
                 });
 
+            modelBuilder.Entity("TaNoMar.Api.Data.FishingSpotWebcam", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ExternalId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("FishingSpotId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsAvailable")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("LastAvailabilityCheck")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FishingSpotId")
+                        .IsUnique()
+                        .HasFilter("\"IsActive\" = TRUE");
+
+                    b.HasIndex("FishingSpotId", "Provider", "ExternalId")
+                        .IsUnique();
+
+                    b.ToTable("FishingSpotWebcams");
+                });
+
             modelBuilder.Entity("TaNoMar.Api.Data.ForecastAlert", b =>
                 {
                     b.Property<Guid>("Id")
@@ -587,6 +644,9 @@ namespace TaNoMar.Api.Data.Migrations
                     b.Property<bool>("CanDiary")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("CanLiveWebcams")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("CanMarine")
                         .HasColumnType("boolean");
 
@@ -646,6 +706,7 @@ namespace TaNoMar.Api.Data.Migrations
                             CanCommunityVote = false,
                             CanCustomMetrics = false,
                             CanDiary = false,
+                            CanLiveWebcams = false,
                             CanMarine = false,
                             CanOffline = false,
                             CanRankingEmphasis = false,
@@ -667,6 +728,7 @@ namespace TaNoMar.Api.Data.Migrations
                             CanCommunityVote = true,
                             CanCustomMetrics = true,
                             CanDiary = true,
+                            CanLiveWebcams = false,
                             CanMarine = true,
                             CanOffline = true,
                             CanRankingEmphasis = true,
@@ -688,6 +750,7 @@ namespace TaNoMar.Api.Data.Migrations
                             CanCommunityVote = true,
                             CanCustomMetrics = true,
                             CanDiary = true,
+                            CanLiveWebcams = false,
                             CanMarine = true,
                             CanOffline = true,
                             CanRankingEmphasis = true,
@@ -709,6 +772,7 @@ namespace TaNoMar.Api.Data.Migrations
                             CanCommunityVote = true,
                             CanCustomMetrics = true,
                             CanDiary = true,
+                            CanLiveWebcams = true,
                             CanMarine = true,
                             CanOffline = true,
                             CanRankingEmphasis = true,
@@ -735,6 +799,9 @@ namespace TaNoMar.Api.Data.Migrations
                     b.Property<bool>("ShowAppFocus")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("ShowLiveWebcams")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("ShowPartners")
                         .HasColumnType("boolean");
 
@@ -747,6 +814,7 @@ namespace TaNoMar.Api.Data.Migrations
                         {
                             Id = new Guid("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0010"),
                             ShowAppFocus = false,
+                            ShowLiveWebcams = true,
                             ShowPartners = false
                         });
                 });
@@ -830,11 +898,11 @@ namespace TaNoMar.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("ForecastNotifications")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("Focus")
                         .HasColumnType("text");
+
+                    b.Property<bool>("ForecastNotifications")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Region")
                         .IsRequired()
@@ -857,6 +925,15 @@ namespace TaNoMar.Api.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("UserPreferences");
+                });
+
+            modelBuilder.Entity("TaNoMar.Api.Data.FishingSpotWebcam", b =>
+                {
+                    b.HasOne("TaNoMar.Api.Data.FishingSpot", null)
+                        .WithMany()
+                        .HasForeignKey("FishingSpotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }
