@@ -92,17 +92,31 @@ internal static partial class YouTubeWebcamMapper
     public static string EmbedUrl(string videoId) =>
         $"https://www.youtube.com/embed/{videoId}";
 
-    public static YouTubeVideoDto? ParseVideoList(string json)
+    public static YouTubeVideoDto[] ParseVideos(string json)
     {
         var payload = JsonSerializer.Deserialize<YouTubeListResponse<YouTubeVideoDto>>(json, JsonOptions);
-        return payload?.Items is { Length: > 0 } items ? items[0] : null;
+        return payload?.Items ?? [];
     }
 
-    public static string? ParseSearchVideoId(string json)
+    public static YouTubeVideoDto? ParseVideoList(string json) =>
+        ParseVideos(json) is { Length: > 0 } items ? items[0] : null;
+
+    public static IReadOnlyList<string> ParseSearchVideoIds(string json)
     {
         var payload = JsonSerializer.Deserialize<YouTubeListResponse<YouTubeSearchDto>>(json, JsonOptions);
-        var videoId = payload?.Items is { Length: > 0 } items ? items[0].Id?.VideoId : null;
-        return VideoIdPattern().IsMatch(videoId ?? "") ? videoId : null;
+        if (payload?.Items is null) return [];
+        return payload.Items
+            .Select(item => item.Id?.VideoId)
+            .Where(id => VideoIdPattern().IsMatch(id ?? ""))
+            .Cast<string>()
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    public static string? TryNormalizeChannelId(string? value)
+    {
+        var text = value?.Trim();
+        return ChannelIdPattern().IsMatch(text ?? "") ? text : null;
     }
 
     public static string? ParseChannelId(string json)
@@ -205,6 +219,7 @@ internal sealed class YouTubeVideoDto
 internal sealed class YouTubeSnippetDto
 {
     public string? Title { get; set; }
+    public string? ChannelId { get; set; }
     public string? LiveBroadcastContent { get; set; }
     public YouTubeThumbnailsDto? Thumbnails { get; set; }
 }

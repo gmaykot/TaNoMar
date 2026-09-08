@@ -41,8 +41,8 @@ async function handlePush(event: PushEvent) {
   const payload = parsePushPayload(event.data ? event.data.json() : null);
   await self.registration.showNotification(payload.title, {
     body: payload.body,
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
+    icon: '/brand/pwa/icon-192.png',
+    badge: '/brand/pwa/icon-192.png',
     data: { url: '/app' },
   });
 }

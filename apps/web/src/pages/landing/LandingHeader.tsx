@@ -19,7 +19,7 @@ export function LandingHeader() {
     <header className={styles.header}>
       <div className={styles.headerInner}>
         <a className={styles.brand} href="#inicio" aria-label="Ir para o início da página">
-          <TaNoMarLogo variant="responsive" />
+          <TaNoMarLogo decorative />
         </a>
         <nav className={styles.desktopNavigation} aria-label="Navegação da apresentação">
           {navigation.map((item) => (

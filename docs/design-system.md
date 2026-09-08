@@ -2,7 +2,7 @@
 
 ## Direção
 
-O sistema segue o kit em `docs/brand/tanomar-brand-kit`: oceano profundo para confiança, turquesa para movimento, coral para ação e areia para respiro. A aplicação fala de pesca; ondas e clima são indicadores, não posicionamento de surf.
+O sistema segue o kit em `docs/brand`: oceano profundo para confiança, turquesa para movimento, sol para ação e espuma para respiro. A aplicação fala de pesca; ondas e clima são indicadores, não posicionamento de surf.
 
 ## Tokens
 
@@ -16,7 +16,7 @@ O sistema segue o kit em `docs/brand/tanomar-brand-kit`: oceano profundo para co
 - transições;
 - z-index.
 
-Âncoras: Ocean `#063B4C`, Sea `#42C5BA`, Coral `#FF7448`, Sand `#F3E9D7` e Foam `#F8FBFA`.
+Âncoras: Oceano `#00384A`, Mar `#08BDC7`, Sol `#FF783D` e Espuma `#FAF7EF`. Erro, sucesso e aviso continuam semânticos e não vêm da prancha.
 
 Sora e Caveat são servidas localmente. Caveat não entra em botões, formulários, navegação nem textos funcionais.
 
@@ -31,4 +31,4 @@ Sora e Caveat são servidas localmente. Caveat não entra em botões, formulári
 
 ## Marca
 
-Logos e ícones oficiais em `apps/web/public/brand` e `apps/web/public/icons` vêm do brand kit raster. Os ícones PWA 180/192/512/1024 são gerados a partir de `app-icon-master`. `TaNoMarLogo` usa os PNG horizontais (login e desktop) e o compacto (barra estreita). O símbolo serve a espaços quadrados; ícones de navegação continuam semânticos (Lucide), não o símbolo da marca.
+A fonte aprovada é `docs/brand`. O app serve as cópias em `apps/web/public/brand`. `TaNoMarLogo` usa a horizontal com slogan nas áreas amplas, a versão sem slogan na navbar e o símbolo nos espaços quadrados; em fundo escuro entra a variante branca ou o símbolo para fundo escuro. Ícones de navegação continuam semânticos (Lucide), não o símbolo da marca.

@@ -22,6 +22,7 @@ export function AppRouter() {
                 title="Abrindo o TáNoMar"
                 description="Preparando o aplicativo para você."
                 busy
+                screen
               />
             }
           >

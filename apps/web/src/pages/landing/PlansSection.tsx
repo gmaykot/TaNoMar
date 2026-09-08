@@ -56,12 +56,14 @@ export function PlansSection() {
                   </li>
                 ))}
               </ul>
-              <Link
-                className={plan.featured ? styles.primaryCta : styles.secondaryCta}
-                to={routes.login}
-              >
-                Começar
-              </Link>
+              <footer className={styles.planFooter}>
+                <Link
+                  className={plan.featured ? styles.primaryCta : styles.secondaryCta}
+                  to={routes.login}
+                >
+                  Começar
+                </Link>
+              </footer>
             </Card>
           ))}
         </div>

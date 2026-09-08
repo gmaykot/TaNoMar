@@ -141,7 +141,7 @@ export function WebcamManager({ spotId, admin = false }: WebcamManagerProps) {
               required
             />
             <small>
-              O TáNoMar confirma se a live está no ar antes de vincular. Sem cadastro de URL.
+              Cole o link da live, do canal ou de um vídeo desse canal. Só vinculamos transmissão no ar.
             </small>
           </label>
           <Button type="submit" disabled={webcams.youtubeLookup.isPending || !youtubeQuery.trim()}>
@@ -152,11 +152,11 @@ export function WebcamManager({ spotId, admin = false }: WebcamManagerProps) {
             busy={webcams.youtubeLookup.isPending}
             selectingId={webcams.link.isPending ? webcams.link.variables?.externalId : null}
             error={webcams.youtubeLookupError}
-            heading="Transmissão encontrada"
-            emptyTitle="Essa transmissão não está ao vivo no YouTube."
-            emptyDescription="Cole o link de uma live em andamento."
+            heading="Transmissões encontradas"
+            emptyTitle="Não há transmissão ao vivo neste link."
+            emptyDescription="Cole o link de uma live em andamento, ou o canal, para ver as câmeras no ar."
             busyTitle="Consultando o YouTube..."
-            busyDescription="Confirmando se a transmissão está ao vivo."
+            busyDescription="Confirmando se há transmissão ao vivo."
             onSelect={(item) => {
               webcams.link.mutate(
                 { provider: item.provider, externalId: item.externalId },

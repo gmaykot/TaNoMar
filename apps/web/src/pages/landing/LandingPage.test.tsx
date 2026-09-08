@@ -64,7 +64,16 @@ describe('LandingPage', () => {
     expect(
       screen.getByRole('heading', { name: 'Entenda o mar antes de sair para pescar.' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Mestre' })).toBeInTheDocument();
+    expect(screen.getByRole('banner').querySelector('img')?.getAttribute('src')).toContain(
+      'tanomar-horizontal-slogan',
+    );
+    expect(screen.getAllByText('Enchente').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Preamar').length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole('heading', { name: 'Veja a condição, entenda o contexto e compare.' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Joaquina')).toBeInTheDocument();
+    expect(screen.getByText('Campeche')).toBeInTheDocument();
     expect(screen.getByText('R$ 19,90')).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'Acessar o TáNoMar' })).not.toHaveLength(0);
     screen.getAllByRole('link', { name: 'Acessar o TáNoMar' }).forEach((link) => {

@@ -15,6 +15,7 @@ export function RequireAuth() {
         description="Confirmando se você já está dentro."
         icon={Compass}
         busy
+        screen
       />
     );
   }

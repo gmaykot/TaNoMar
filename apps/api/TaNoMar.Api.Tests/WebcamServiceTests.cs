@@ -444,6 +444,26 @@ public sealed class WebcamServiceTests
     }
 
     [Fact]
+    public async Task Admin_consulta_youtube_sem_live_explica_o_erro()
+    {
+        using var db = WebcamTestHarness.CreateDb();
+        var admin = WebcamTestHarness.User(PlanRules.Mestre, "Admin");
+        var spot = WebcamTestHarness.Official();
+        db.Users.Add(admin);
+        db.FishingSpots.Add(spot);
+        await db.SaveChangesAsync();
+        var youtube = new FakeWebcamProvider(WebcamOptions.YouTubeProviderId, WebcamOptions.YouTubeDisplayName);
+        var service = WebcamTestHarness.CreateService(db, new FakeWebcamProvider(), youtube);
+
+        var result = await service.LookupAsync(admin, spot.Slug, "https://www.youtube.com/watch?v=_dpvB3f0xYg", CancellationToken.None);
+
+        Assert.Equal(400, result.Status);
+        Assert.Equal(1, youtube.LookupCalls);
+        Assert.Contains("webcam_invalid", Body(result));
+        Assert.Contains("live em andamento", Body(result));
+    }
+
+    [Fact]
     public async Task Admin_vincula_camera_do_youtube()
     {
         using var db = WebcamTestHarness.CreateDb();

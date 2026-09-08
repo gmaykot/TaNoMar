@@ -1,29 +1,29 @@
 :root {
-  --color-ocean-950: #063b4c;
-  --color-ocean-900: #0a5166;
-  --color-ocean-700: #1a6f82;
-  --color-ocean-100: #d5e8ec;
-  --color-sea-700: #1b7a74;
-  --color-sea-500: #42c5ba;
-  --color-sea-200: #b5ebe6;
-  --color-sea-100: #e6f8f6;
-  --color-coral-700: #e55a32;
-  --color-coral-500: #ff7448;
-  --color-coral-100: #ffe6dc;
-  --color-sand-500: #e4d6c0;
-  --color-sand-200: #ede3d1;
-  --color-sand-100: #f3e9d7;
-  --color-surface: #f8fbfa;
-  --color-text: #063b4c;
-  --color-text-muted: #59717a;
+  --color-ocean-950: #00384a;
+  --color-ocean-900: #0a4f63;
+  --color-ocean-700: #1a6d82;
+  --color-ocean-100: #d4e6eb;
+  --color-sea-700: #067a80;
+  --color-sea-500: #08bdc7;
+  --color-sea-200: #b3eef1;
+  --color-sea-100: #e6f9fa;
+  --color-coral-700: #e56228;
+  --color-coral-500: #ff783d;
+  --color-coral-100: #ffe8dc;
+  --color-sand-500: #e0d3b8;
+  --color-sand-200: #efe8d4;
+  --color-sand-100: #faf7ef;
+  --color-surface: #faf7ef;
+  --color-text: #00384a;
+  --color-text-muted: #4a6570;
   --color-success: #19836d;
   --color-success-soft: #e2f5ee;
   --color-warning: #a96816;
   --color-warning-soft: #fff0ce;
   --color-danger: #b83d3d;
   --color-danger-soft: #fde6e2;
-  --color-border: rgb(6 59 76 / 12%);
-  --gradient-sea: linear-gradient(135deg, #42c5ba 0%, #68e2da 100%);
+  --color-border: rgb(0 56 74 / 12%);
+  --gradient-sea: linear-gradient(135deg, #08bdc7 0%, #4ed4db 100%);
 
   --font-family: 'Sora Variable', 'Sora', ui-sans-serif, system-ui, sans-serif;
   --font-accent: 'Caveat', cursive;
@@ -51,9 +51,9 @@
   --radius-xl: 2rem;
   --radius-pill: 999px;
 
-  --shadow-sm: 0 8px 24px rgb(6 59 76 / 7%);
-  --shadow-md: 0 12px 30px rgb(6 59 76 / 12%);
-  --shadow-coral: 0 14px 30px rgb(255 116 72 / 30%);
+  --shadow-sm: 0 8px 24px rgb(0 56 74 / 7%);
+  --shadow-md: 0 12px 30px rgb(0 56 74 / 12%);
+  --shadow-coral: 0 14px 30px rgb(255 120 61 / 30%);
 
   --breakpoint-tablet: 48rem;
   --breakpoint-desktop: 64rem;

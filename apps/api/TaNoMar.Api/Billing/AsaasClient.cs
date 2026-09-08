@@ -87,6 +87,7 @@ internal sealed class AsaasCheckoutRequest
     public string ExternalReference { get; set; } = string.Empty;
     public AsaasCallback Callback { get; set; } = new();
     public AsaasItem[] Items { get; set; } = [];
+    public string? Customer { get; set; }
     public AsaasCustomerData? CustomerData { get; set; }
     public AsaasSubscription Subscription { get; set; } = new();
 }

@@ -7,11 +7,16 @@ import { routes } from '@/shared/constants/routes';
 import { AppShell } from './AppShell';
 import { showSaveConfirmation } from './saveConfirmationEvents';
 
+const { install, pwaState } = vi.hoisted(() => ({
+  install: vi.fn(),
+  pwaState: { canInstall: false },
+}));
+
 vi.mock('@/app/hooks/usePwaLifecycle', () => ({
   usePwaLifecycle: () => ({
     online: true,
-    canInstall: false,
-    install: vi.fn(),
+    canInstall: pwaState.canInstall,
+    install,
     showIosInstall: false,
     dismissIosInstall: vi.fn(),
     needRefresh: false,
@@ -73,11 +78,21 @@ function footerNav() {
 
 describe('AppShell', () => {
   beforeEach(() => {
+    pwaState.canInstall = false;
+    install.mockClear();
     vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('mostra a logo com slogan no cabeçalho', () => {
+    renderShell([routes.home]);
+
+    expect(screen.getByRole('banner').querySelector('img')?.getAttribute('src')).toContain(
+      'tanomar-horizontal-slogan',
+    );
   });
 
   it('volta ao topo ao abrir outra página pelo menu inferior', async () => {
@@ -99,6 +114,16 @@ describe('AppShell', () => {
     await user.click(within(footerNav()).getByRole('link', { name: 'Ranking' }));
 
     expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'instant' });
+  });
+
+  it('mostra o botão de instalar no cabeçalho quando o navegador oferece o aplicativo', async () => {
+    pwaState.canInstall = true;
+    const user = userEvent.setup();
+    renderShell([routes.home]);
+
+    await user.click(screen.getByRole('button', { name: 'Instalar' }));
+
+    expect(install).toHaveBeenCalledOnce();
   });
 
   it('mostra a confirmação global de salvamento', async () => {

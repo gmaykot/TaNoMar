@@ -28,12 +28,28 @@ internal sealed class YouTubeWebcamProvider(
         CancellationToken cancellationToken)
     {
         EnsureConfigured();
-        var videoId = YouTubeWebcamMapper.TryParseVideoId(query)
-            ?? await ResolveLiveVideoIdAsync(query, cancellationToken);
-        if (string.IsNullOrWhiteSpace(videoId)) return [];
-        var details = await GetAsync(videoId, latitude, longitude, cancellationToken);
-        if (details is null || !details.IsUsable) return [];
-        return [YouTubeWebcamMapper.ToSearchHit(details, latitude, longitude)];
+        var videoId = YouTubeWebcamMapper.TryParseVideoId(query);
+        if (videoId is not null)
+        {
+            var dto = await FetchVideoAsync(videoId, cancellationToken);
+            var details = YouTubeWebcamMapper.ToDetails(dto, latitude, longitude);
+            if (details?.IsUsable == true)
+                return [YouTubeWebcamMapper.ToSearchHit(details, latitude, longitude)];
+
+            var channelId = YouTubeWebcamMapper.TryNormalizeChannelId(dto?.Snippet?.ChannelId);
+            if (channelId is null) return [];
+            if (environment.IsDevelopment())
+                logger.LogInformation(
+                    "WebcamLookup fallback channel={ChannelId} video={VideoId}",
+                    channelId,
+                    videoId);
+            return await LookupChannelLivesAsync(channelId, latitude, longitude, cancellationToken);
+        }
+
+        var channelIdFromQuery = YouTubeWebcamMapper.TryParseChannelId(query)
+            ?? await ResolveChannelIdAsync(query, cancellationToken);
+        if (string.IsNullOrWhiteSpace(channelIdFromQuery)) return [];
+        return await LookupChannelLivesAsync(channelIdFromQuery, latitude, longitude, cancellationToken);
     }
 
     public Task<WebcamProviderDetails?> GetAsync(string externalId, CancellationToken cancellationToken) =>
@@ -48,43 +64,72 @@ internal sealed class YouTubeWebcamProvider(
         EnsureConfigured();
         var videoId = YouTubeWebcamMapper.TryParseVideoId(externalId);
         if (videoId is null) return null;
-        var path = $"videos?part=snippet,status&id={Uri.EscapeDataString(videoId)}";
-        var payload = await GetStringAsync(path, cancellationToken, allowNotFound: true);
-        if (payload is null) return null;
-        try
-        {
-            var details = YouTubeWebcamMapper.ToDetails(YouTubeWebcamMapper.ParseVideoList(payload), latitude, longitude);
-            if (environment.IsDevelopment())
-                logger.LogInformation(
-                    "WebcamGet provider=youtube externalId={ExternalId} valid={Valid} live={Live} hasPlayer={HasPlayer}",
-                    videoId,
-                    details?.IsUsable == true,
-                    details?.IsLive == true,
-                    details?.HasPlayer == true);
-            return details;
-        }
-        catch (JsonException exception)
-        {
-            logger.LogError(exception, "WebcamProviderError json action=get provider=youtube");
-            throw new WebcamProviderException("Resposta inválida da YouTube Data API.", exception);
-        }
+        var details = YouTubeWebcamMapper.ToDetails(await FetchVideoAsync(videoId, cancellationToken), latitude, longitude);
+        if (environment.IsDevelopment())
+            logger.LogInformation(
+                "WebcamGet provider=youtube externalId={ExternalId} valid={Valid} live={Live} hasPlayer={HasPlayer}",
+                videoId,
+                details?.IsUsable == true,
+                details?.IsLive == true,
+                details?.HasPlayer == true);
+        return details;
     }
 
-    private async Task<string?> ResolveLiveVideoIdAsync(string query, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<WebcamSearchHit>> LookupChannelLivesAsync(
+        string channelId,
+        double latitude,
+        double longitude,
+        CancellationToken cancellationToken)
     {
-        var channelId = YouTubeWebcamMapper.TryParseChannelId(query)
-            ?? await ResolveChannelIdAsync(query, cancellationToken);
-        if (string.IsNullOrWhiteSpace(channelId)) return null;
-        var path = $"search?part=snippet&channelId={Uri.EscapeDataString(channelId)}&eventType=live&type=video&maxResults=1";
+        var videoIds = await SearchChannelLiveIdsAsync(channelId, cancellationToken);
+        if (videoIds.Count == 0) return [];
+        var videos = await FetchVideosAsync(videoIds, cancellationToken);
+        return videos
+            .Select(item => YouTubeWebcamMapper.ToDetails(item, latitude, longitude))
+            .Where(details => details?.IsUsable == true)
+            .Select(details => YouTubeWebcamMapper.ToSearchHit(details!, latitude, longitude))
+            .ToArray();
+    }
+
+    private async Task<IReadOnlyList<string>> SearchChannelLiveIdsAsync(string channelId, CancellationToken cancellationToken)
+    {
+        var limit = Math.Clamp(options.Value.EffectiveSearchLimit, 1, 25);
+        var path = $"search?part=snippet&channelId={Uri.EscapeDataString(channelId)}&eventType=live&type=video&maxResults={limit}";
         var payload = await GetStringAsync(path, cancellationToken, allowNotFound: true);
-        if (payload is null) return null;
+        if (payload is null) return [];
         try
         {
-            return YouTubeWebcamMapper.ParseSearchVideoId(payload);
+            return YouTubeWebcamMapper.ParseSearchVideoIds(payload);
         }
         catch (JsonException exception)
         {
             logger.LogError(exception, "WebcamProviderError json action=search provider=youtube");
+            throw new WebcamProviderException("Resposta inválida da YouTube Data API.", exception);
+        }
+    }
+
+    private async Task<YouTubeVideoDto?> FetchVideoAsync(string videoId, CancellationToken cancellationToken)
+    {
+        var videos = await FetchVideosAsync([videoId], cancellationToken);
+        return videos.Count > 0 ? videos[0] : null;
+    }
+
+    private async Task<IReadOnlyList<YouTubeVideoDto>> FetchVideosAsync(
+        IReadOnlyList<string> videoIds,
+        CancellationToken cancellationToken)
+    {
+        if (videoIds.Count == 0) return [];
+        var ids = string.Join(',', videoIds.Select(Uri.EscapeDataString));
+        var path = $"videos?part=snippet,status&id={ids}";
+        var payload = await GetStringAsync(path, cancellationToken, allowNotFound: true);
+        if (payload is null) return [];
+        try
+        {
+            return YouTubeWebcamMapper.ParseVideos(payload);
+        }
+        catch (JsonException exception)
+        {
+            logger.LogError(exception, "WebcamProviderError json action=get provider=youtube");
             throw new WebcamProviderException("Resposta inválida da YouTube Data API.", exception);
         }
     }

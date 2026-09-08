@@ -13,7 +13,7 @@ O bloco de sessão é carregado sob demanda. Abrir a landing não inicia o refre
 
 ## Conteúdo e fonte de verdade
 
-A landing reutiliza logo, tokens, ícones Lucide, `ScoreIndicator`, `MetricTile` e o comportamento PWA existentes. A demonstração visual é identificada como ilustrativa e representa somente nota, local, melhor horário e métricas já presentes no produto.
+A landing reutiliza logo, tokens, ícones Lucide, `ScoreIndicator`, `MetricTile`, `Sparkline`, `Badge` e o comportamento PWA existentes. Há duas demonstrações ilustrativas: o hero mostra o detalhe de um local com mar e maré; o bloco seguinte mostra o ranking para comparar locais. As duas usam somente nota, janela, maré e métricas já presentes no produto.
 
 Planos são lidos de `GET /api/v1/plans`. O endpoint devolve somente planos pagos habilitados e usa `Plans` como fonte para nome, tagline, preço mensal, destaque, ordem, cotas e módulos. O admin mantém esses dados em `/admin/planos`; a landing não mantém uma cópia de preços ou benefícios. Todos os CTAs comerciais levam a `/entrar` e não iniciam checkout sem sessão.
 

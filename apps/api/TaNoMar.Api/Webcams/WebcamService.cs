@@ -103,7 +103,7 @@ internal sealed class WebcamService(
             {
                 return WebcamHttpResult.BadRequest(
                     "webcam_invalid",
-                    "Essa transmissão não está ao vivo no YouTube.");
+                    "Não há transmissão ao vivo neste link. Cole uma live em andamento ou o canal do YouTube.");
             }
 
             return SearchBody(items);

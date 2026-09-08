@@ -10,6 +10,7 @@ import {
   ValuePropositionSection,
 } from './LandingSections';
 import { PlansSection } from './PlansSection';
+import { ComparisonPreview } from './ComparisonPreview';
 import { ProductPreview } from './ProductPreview';
 import { PwaInstallSection } from './PwaInstallSection';
 import { routes } from '@/shared/constants/routes';
@@ -26,7 +27,7 @@ export function LandingPage() {
         <section className={styles.hero} id="inicio" aria-labelledby="landing-title">
           <div className={styles.heroCopy}>
             <span className={styles.eyebrow}>
-              <FishSymbol size={17} aria-hidden="true" /> Seu parceiro antes de ir ao mar
+              <FishSymbol size={17} aria-hidden="true" /> PESQUE NO MOMENTO CERTO.
             </span>
             <h1 id="landing-title">
               Entenda o mar <span>antes de sair para pescar.</span>
@@ -61,15 +62,15 @@ export function LandingPage() {
             <span>Uma leitura que parece parte do mar</span>
             <h2 id="preview-title">Veja a condição, entenda o contexto e compare.</h2>
             <p>
-              A interface usa a mesma nota, os mesmos indicadores e a mesma identidade visual do
-              aplicativo. Os dados da demonstração são ilustrativos; sua previsão é calculada pela
-              API para os locais e dias disponíveis.
+              O ranking coloca os locais lado a lado com a mesma nota do aplicativo. Os dados da
+              demonstração são ilustrativos; sua previsão é calculada pela API para os locais e dias
+              disponíveis.
             </p>
             <Link className={styles.textLink} to={routes.login}>
               Entrar para ver a previsão <ArrowRight size={17} aria-hidden="true" />
             </Link>
           </div>
-          <ProductPreview />
+          <ComparisonPreview />
         </section>
         <PlansSection />
         <PwaInstallSection />

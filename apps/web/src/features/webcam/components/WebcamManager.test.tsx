@@ -41,6 +41,7 @@ describe('WebcamManager', () => {
       'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
     );
     await user.click(screen.getByRole('button', { name: 'Verificar' }));
+    expect(screen.getByText(/Só vinculamos transmissão no ar/)).toBeInTheDocument();
     expect(youtubeMutate).toHaveBeenCalledWith('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
     expect(linkMutate).not.toHaveBeenCalled();
   });

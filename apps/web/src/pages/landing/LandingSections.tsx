@@ -4,7 +4,6 @@ import {
   ChartNoAxesCombined,
   Clock3,
   Compass,
-  Download,
   FishSymbol,
   Heart,
   ListChecks,
@@ -104,11 +103,6 @@ const features: Array<{ icon: LucideIcon; title: string; description: string }> 
     title: 'Câmeras ao vivo',
     description:
       'Veja transmissões vinculadas quando houver câmera disponível e o plano incluir o recurso.',
-  },
-  {
-    icon: Download,
-    title: 'PWA instalável',
-    description: 'Use no navegador ou instale o TáNoMar diretamente no dispositivo.',
   },
 ];
 

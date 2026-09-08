@@ -91,25 +91,28 @@ export function AppShell() {
         </div>
       )}
       <header className={styles.header}>
-        <NavLink className={styles.brand} to={routes.home} aria-label="Ir para o início">
-          <TaNoMarLogo variant="responsive" />
-        </NavLink>
-        <nav className={styles.desktopNav} aria-label="Navegação principal">
-          {desktopItems.map(({ to, label, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) => (isActive ? styles.active : '')}
-            >
-              {label}
-            </NavLink>
-          ))}
-        </nav>
+        <div className={styles.headerStart}>
+          <NavLink className={styles.brand} to={routes.home} aria-label="Ir para o início">
+            <TaNoMarLogo decorative />
+          </NavLink>
+          <nav className={styles.desktopNav} aria-label="Navegação principal">
+            {desktopItems.map(({ to, label, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                className={({ isActive }) => (isActive ? styles.active : '')}
+              >
+                {label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
         <div className={styles.headerActions}>
           {pwa.canInstall ? (
-            <Button className={styles.install} variant="secondary" onClick={pwa.install}>
-              <Download size={17} aria-hidden="true" /> Instalar
+            <Button className={styles.install} aria-label="Instalar" onClick={pwa.install}>
+              <Download size={18} aria-hidden="true" />
+              <span className={styles.installLabel}>Instalar</span>
             </Button>
           ) : null}
           <NotificationInbox />

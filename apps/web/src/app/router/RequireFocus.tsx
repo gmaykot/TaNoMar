@@ -16,6 +16,7 @@ export function RequireFocus() {
         description="Confirmando o seu foco no aplicativo."
         icon={Compass}
         busy
+        screen
       />
     );
   }

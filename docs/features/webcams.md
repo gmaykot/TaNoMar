@@ -45,7 +45,7 @@ Com a feature desligada no admin (`PlatformSettings.ShowLiveWebcams`, padrão `t
 
 O CRUD admin não depende do interruptor. `GET/PUT /admin/settings` troca `{ showPartners, showLiveWebcams }` sem redeploy. O PUT só altera os campos enviados.
 
-Pesquisa Windy: local → coordenadas → câmeras próximas → selecionar → vincular `{ provider, externalId }`. YouTube (só admin): colar o link da live → a API extrai o id, confirma `liveBroadcastContent = live` e embeddable → a UI seleciona → o POST envia só `{ provider: "youtube", externalId }`. Sem persistir URL.
+Pesquisa Windy: local → coordenadas → câmeras próximas → selecionar → vincular `{ provider, externalId }`. YouTube (só admin): colar o link da live, do canal ou de um vídeo desse canal → a API confirma `liveBroadcastContent = live` e embeddable. Se o vídeo já encerrou, lista as lives atuais do mesmo canal. A UI seleciona → o POST envia só `{ provider: "youtube", externalId }`. Sem persistir URL. Gravação antiga não vira câmera ao vivo.
 
 ## Providers
 
@@ -73,9 +73,10 @@ YouTube Data API v3, encapsulada em `YouTubeWebcamProvider`. Só o admin consult
 - Canal ao vivo: `GET /channels?part=id&forHandle=@handle` e `GET /search?part=snippet&channelId={id}&eventType=live&type=video`
 - Documentação: [developers.google.com/youtube/v3](https://developers.google.com/youtube/v3)
 - Endpoint: `GET /admin/fishing-spots/{id}/webcams/youtube?q=`
-- Aceita `watch`, `youtu.be`, `embed`, `live/{id}`, `@handle/live` e `channel/{id}/live`
-- Só entra transmissão com `liveBroadcastContent = live` e `status.embeddable != false`. Embed: `https://www.youtube.com/embed/{id}`
-- Vídeo comum, live encerrada ou não incorporável: `400 webcam_invalid`
+- Aceita `watch`, `youtu.be`, `embed`, `live/{id}`, `@handle`, `@handle/live` e `channel/{id}/live`
+- Live específica: entra com `liveBroadcastContent = live` e `status.embeddable != false`. Embed: `https://www.youtube.com/embed/{id}`
+- Vídeo encerrado ou canal: lista as lives atuais daquele canal (até 25), cada uma revalidada em `videos.list`
+- Sem live no ar ou não incorporável: `400 webcam_invalid`
 
 A chave é opcional. Sem `YOUTUBE_API_KEY` a API sobe; a consulta admin responde `503 webcam_unconfigured`. Capitão que tenta `POST` com `provider=youtube` recebe `403`.
 

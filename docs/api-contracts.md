@@ -54,7 +54,7 @@ O contrato de métrica é uma união `{ state: "available", value }` ou `{ state
 - `GET /admin/users`, `PUT /admin/users/{id}/plan` e `PUT /admin/users/{id}/active`: só Admin. Lista contas, troca o plano (`free`, `arrais`, `premium` ou `capitao`; `mestre` é aceito como alias de `premium`) e bloqueia ou libera o acesso. Não atribui plano desligado. A conta do bootstrap pode mudar de plano e não é bloqueada; o admin não bloqueia a si mesmo nem o último admin ativo. Bloquear revoga os refresh tokens.
 - `GET /plans`: público. Catálogo comercial dos planos pagos com `enabled = true` (nome, tagline, `monthlyPriceCents`, destaque, ordem, cotas e módulos), na ordem da vitrine. Não devolve contas, cobrança nem dados de usuário.
 - `GET /billing/catalog`: autenticado. Planos pagos habilitados com `annualPriceCents`, `discountPercent`, `enabled` (chave Asaas) e `quotes` de upgrade quando couber.
-- `POST /billing/checkout`: autenticado. Body `{ planCode, cycle: "MONTHLY" | "YEARLY" }`. Devolve `{ checkoutId, checkoutUrl, expiresAt }` ou `503 billing_disabled`.
+- `POST /billing/checkout`: autenticado. Body `{ planCode, cycle: "MONTHLY" | "YEARLY" }`. Devolve `{ checkoutId, checkoutUrl, expiresAt }`, `503 billing_disabled` ou `502 checkout_failed`.
 - `GET /billing/subscription` e `POST /billing/subscription/cancel`: autenticado. Cancelar encerra a recorrência no Asaas **sem** `/refund`; o plano pago segue até `accessUntil`.
 - `POST /webhooks/asaas`: público. Valida o header `asaas-access-token` (`ASAAS_WEBHOOK_TOKEN`). Sem JWT.
 - `GET /admin/plans` e `PUT /admin/plans/{code}`: só Admin. Lista os quatro códigos (`free`, `arrais`, `premium`, `capitao`) com `enabled` e `activeUserCount` (contas `IsActive`). Atualiza nome (até 40), tagline (até 160), `monthlyPriceCents` (0–999900), ordem (0–99), destaque, `enabled`, cotas e flags de módulo. O código não muda. Marcar `featured` tira o destaque dos demais. Desligar um plano exige zero contas ativas nele; o Free não desliga. Plano desligado some da vitrine e não recebe contas novas. Sem criação nem exclusão de plano. Mudar o preço atualiza só a cobrança **futura** no Asaas.
@@ -80,8 +80,8 @@ Exigem `modules.liveWebcams` (padrão: plano Capitão). Sem o módulo, `GET /fis
 
 - `GET /fishing-spots/{id}/webcam`: transmissão do local visível. O DTO inclui `previewUrl` (miniatura HTTPS) e, para quem pode assistir, `player.embedUrl`. `404` sem câmera. Feature desligada no admin: `403 feature_disabled`, sem URL.
 - `GET /fishing-spots/{id}/webcams/search`, `POST /fishing-spots/{id}/webcam`, `DELETE /fishing-spots/{id}/webcam`: dono Capitão de Meu Local, com a feature ligada. O POST aceita só Windy; `provider=youtube` responde `403`.
-- `GET /admin/fishing-spots/{id}/webcam`, `GET /admin/fishing-spots/{id}/webcams/search`, `GET /admin/fishing-spots/{id}/webcams/youtube?q=`, `POST /admin/fishing-spots/{id}/webcam`, `DELETE /admin/fishing-spots/{id}/webcam`: Admin, qualquer local, mesmo com a feature desligada. O `q` do YouTube é o link da live; a resposta usa o mesmo DTO da pesquisa. O POST envia `{ provider, externalId }`.
-- Pesquisa sem chave Windy ou consulta YouTube sem chave: `503 webcam_unconfigured`. Provider fora: `502 webcam_provider_unavailable`. Live do YouTube inválida ou encerrada: `400 webcam_invalid`.
+- `GET /admin/fishing-spots/{id}/webcam`, `GET /admin/fishing-spots/{id}/webcams/search`, `GET /admin/fishing-spots/{id}/webcams/youtube?q=`, `POST /admin/fishing-spots/{id}/webcam`, `DELETE /admin/fishing-spots/{id}/webcam`: Admin, qualquer local, mesmo com a feature desligada. O `q` do YouTube é o link da live, do canal ou de um vídeo desse canal; a resposta usa o mesmo DTO da pesquisa. O POST envia `{ provider, externalId }`.
+- Pesquisa sem chave Windy ou consulta YouTube sem chave: `503 webcam_unconfigured`. Provider fora: `502 webcam_provider_unavailable`. Sem live no ar ou não incorporável: `400 webcam_invalid`.
 
 ## Implantação
 

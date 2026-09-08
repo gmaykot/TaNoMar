@@ -88,7 +88,7 @@ export function PwaInstallSection() {
       </div>
       <div className={styles.installVisual} aria-hidden="true">
         <div className={styles.installIcon}>
-          <img src="/icons/icon-192.png" alt="" loading="lazy" />
+          <img src="/brand/pwa/icon-192.png" alt="" loading="lazy" />
         </div>
         <span>TáNoMar</span>
         <small>Na sua tela inicial</small>

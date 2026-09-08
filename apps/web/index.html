@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#063B4C" />
+    <meta name="theme-color" content="#00384A" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="TáNoMar" />
@@ -20,18 +20,18 @@
       content="Compare as condições do mar, vento, ondas, maré e melhores horários para planejar sua pescaria com mais informação."
     />
     <meta id="landing-og-url" property="og:url" content="/" />
-    <meta id="landing-og-image" property="og:image" content="/icons/icon-1024.png" />
+    <meta id="landing-og-image" property="og:image" content="/brand/pwa/icon-1024.png" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="TáNoMar — Entenda o mar antes de pescar" />
     <meta
       name="twitter:description"
       content="Compare as condições do mar, vento, ondas, maré e melhores horários para planejar sua pescaria com mais informação."
     />
-    <meta id="landing-twitter-image" name="twitter:image" content="/icons/icon-1024.png" />
+    <meta id="landing-twitter-image" name="twitter:image" content="/brand/pwa/icon-1024.png" />
     <link id="landing-canonical" rel="canonical" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png" />
-    <link rel="apple-touch-icon" href="/icons/icon-180.png" />
+    <link rel="icon" href="/brand/favicons/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicons/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/brand/pwa/apple-touch-icon.png" />
     <link
       rel="apple-touch-startup-image"
       media="screen and (device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
@@ -106,14 +106,14 @@
         "applicationCategory": "LifestyleApplication",
         "operatingSystem": "Android, iOS, Windows, macOS, Linux",
         "url": "/",
-        "image": "/icons/icon-1024.png"
+        "image": "/brand/pwa/icon-1024.png"
       }
     </script>
     <script>
       (() => {
         const canonical = new URL('/', window.location.href);
         canonical.hostname = canonical.hostname.replace(/^www\./i, '');
-        const image = new URL('/icons/icon-1024.png', canonical);
+        const image = new URL('/brand/pwa/icon-1024.png', canonical);
         document.getElementById('landing-canonical').href = canonical.href;
         document.getElementById('landing-og-url').content = canonical.href;
         document.getElementById('landing-og-image').content = image.href;

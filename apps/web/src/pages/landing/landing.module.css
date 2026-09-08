@@ -48,6 +48,7 @@
 .brand {
   display: inline-flex;
   min-width: 0;
+  max-width: calc(100% - 3.5rem);
 }
 
 .desktopNavigation,
@@ -235,7 +236,7 @@
   width: 100%;
   max-width: 43rem;
   min-width: 0;
-  padding: var(--space-5) var(--space-3) var(--space-8) 0;
+  padding: var(--space-5) var(--space-3) var(--space-12) 0;
   isolation: isolate;
 }
 
@@ -350,6 +351,85 @@
   gap: var(--space-2);
 }
 
+.previewMarine {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.previewMarineEyebrow {
+  margin: 0;
+  color: var(--color-sea-200);
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.previewSea {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.previewSeaCard,
+.previewTide {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 9%);
+}
+
+.previewTide {
+  padding-right: 6.75rem;
+}
+
+.previewSeaCard > div,
+.previewTide > div {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.previewSeaCard > div span,
+.previewTide > div span,
+.previewSeaCard > div small,
+.previewTide > div small,
+.previewTide li span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: rgb(255 255 255 / 62%);
+  font-size: 0.62rem;
+}
+
+.previewSeaCard > div strong,
+.previewTide > div strong,
+.previewTide li strong {
+  color: white;
+  font-size: var(--font-size-sm);
+}
+
+.previewTide ul {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.previewTide li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.previewTideUpcoming strong,
+.previewTideUpcoming span {
+  color: var(--color-sea-200);
+}
+
 .previewDisclaimer {
   display: block;
 }
@@ -409,6 +489,183 @@
   background: var(--color-ocean-950);
   font-size: 0.85rem;
   font-weight: 800;
+}
+
+.comparisonPreview {
+  position: relative;
+  width: 100%;
+  max-width: 43rem;
+  min-width: 0;
+  padding: var(--space-5) 0 var(--space-12) var(--space-3);
+  isolation: isolate;
+}
+
+.comparisonPreview::before {
+  position: absolute;
+  inset: 8% 12% 0 0;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-coral-500) 28%, transparent),
+    transparent 68%
+  );
+  content: '';
+  filter: blur(12px);
+}
+
+.comparisonDesktop {
+  overflow: hidden;
+  border: 0.45rem solid var(--color-ocean-950);
+  border-radius: var(--radius-lg);
+  background: var(--color-ocean-950);
+  box-shadow: var(--shadow-md);
+  transform: perspective(65rem) rotateY(3deg) rotateX(1deg);
+}
+
+.comparisonContent {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  color: var(--color-ocean-950);
+  background:
+    radial-gradient(
+      circle at 8% 0%,
+      color-mix(in srgb, var(--color-sea-500) 22%, transparent),
+      transparent 14rem
+    ),
+    var(--color-sand-100);
+}
+
+.comparisonContent .previewLabel {
+  color: var(--color-sea-700);
+}
+
+.comparisonDays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.comparisonDays span {
+  display: inline-flex;
+  min-height: 1.85rem;
+  align-items: center;
+  padding: 0.2rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-ocean-700);
+  background: var(--color-surface);
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+}
+
+.comparisonDayActive {
+  color: white;
+  background: var(--color-ocean-950);
+  border-color: var(--color-ocean-950);
+}
+
+.comparisonList {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.comparisonItem {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+}
+
+.comparisonItemLead {
+  border-color: var(--color-sea-500);
+  box-shadow: var(--shadow-sm);
+}
+
+.comparisonPlace {
+  color: var(--color-sea-700);
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+}
+
+.comparisonItem div {
+  min-width: 0;
+  display: grid;
+  justify-items: start;
+  gap: 0.2rem;
+}
+
+.comparisonItem strong {
+  color: var(--color-ocean-950);
+  font-size: var(--font-size-sm);
+  letter-spacing: -0.03em;
+}
+
+.comparisonItem p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.62rem;
+}
+
+.comparisonDisclaimer {
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+}
+
+.comparisonPhone {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 8.5rem;
+  min-height: 13rem;
+  padding: 0.5rem;
+  border: 0.35rem solid var(--color-ocean-950);
+  border-radius: 1.6rem;
+  color: var(--color-ocean-950);
+  background: var(--color-ocean-950);
+  box-shadow: var(--shadow-md);
+  animation: device-float 5s ease-in-out infinite;
+}
+
+.comparisonPhone .phoneContent {
+  gap: 0.35rem;
+  color: white;
+  background: color-mix(in srgb, var(--color-ocean-950) 70%, var(--color-sea-700));
+}
+
+.comparisonPhone .phoneContent small,
+.comparisonPhone .phoneContent span {
+  color: rgb(255 255 255 / 72%);
+}
+
+.comparisonPhoneRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-1);
+  padding: 0.28rem 0;
+  border-top: 1px solid rgb(255 255 255 / 14%);
+  font-size: 0.52rem;
+}
+
+.comparisonPhoneRow strong {
+  min-width: 0;
+  overflow: hidden;
+  color: white;
+  font-size: 0.55rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @keyframes device-float {
@@ -601,8 +858,9 @@
 }
 
 .planCard {
-  display: grid;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   gap: var(--space-3);
   padding: var(--space-6);
 }
@@ -657,8 +915,9 @@
 
 .planFeatures {
   display: grid;
+  flex: 1 1 auto;
   gap: var(--space-2);
-  margin: 0 0 var(--space-3);
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -677,10 +936,14 @@
   color: var(--color-success);
 }
 
-.planCard > .primaryCta,
-.planCard > .secondaryCta {
-  align-self: end;
+.planFooter {
   margin-top: auto;
+  padding-top: var(--space-2);
+}
+
+.planFooter > .primaryCta,
+.planFooter > .secondaryCta {
+  width: 100%;
 }
 
 .installSection {
@@ -951,6 +1214,10 @@
 
   .installActions > * {
     flex: 0 1 auto;
+  }
+
+  .comparisonContent {
+    padding-left: 6.75rem;
   }
 }
 

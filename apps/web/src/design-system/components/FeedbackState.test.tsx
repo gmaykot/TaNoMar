@@ -14,4 +14,17 @@ describe('FeedbackState', () => {
 
     expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'false');
   });
+
+  it('centraliza o estado de abertura na tela', () => {
+    render(
+      <FeedbackState
+        title="Abrindo o TáNoMar"
+        description="Preparando o aplicativo para você."
+        busy
+        screen
+      />,
+    );
+
+    expect(screen.getByRole('status').parentElement).toHaveAttribute('data-layout', 'screen');
+  });
 });

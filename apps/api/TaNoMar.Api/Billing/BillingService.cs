@@ -93,39 +93,47 @@ internal sealed class BillingService(
         var saoPaulo = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
         var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTime.UtcNow, saoPaulo));
         var originBase = origin.TrimEnd('/');
-        var created = await asaas.CreateCheckoutAsync(new AsaasCheckoutRequest
+        var existingCustomer = await db.BillingCustomers.AsNoTracking()
+            .SingleOrDefaultAsync(item => item.UserId == user.Id, cancellationToken);
+        AsaasCheckoutCreated created;
+        try
         {
-            MinutesToExpire = BillingOptions.CheckoutMinutesToExpire,
-            ExternalReference = BillingPricing.ExternalReference(user.Id, normalizedPlan, normalizedCycle),
-            Callback = new AsaasCallback
+            created = await asaas.CreateCheckoutAsync(new AsaasCheckoutRequest
             {
-                SuccessUrl = $"{originBase}/premium?checkout=success",
-                CancelUrl = $"{originBase}/premium?checkout=cancel",
-                ExpiredUrl = $"{originBase}/premium?checkout=expired"
-            },
-            Items =
-            [
-                new AsaasItem
+                MinutesToExpire = BillingOptions.CheckoutMinutesToExpire,
+                ExternalReference = BillingPricing.ExternalReference(user.Id, normalizedPlan, normalizedCycle),
+                Callback = new AsaasCallback
                 {
-                    Name = $"TáNoMar {plan.Name}",
-                    Description = normalizedCycle == BillingPricing.Yearly
-                        ? "Assinatura anual com 20% de desconto"
-                        : "Assinatura mensal",
-                    Quantity = 1,
-                    Value = BillingPricing.Reais(firstCharge)
+                    SuccessUrl = $"{originBase}/premium?checkout=success",
+                    CancelUrl = $"{originBase}/premium?checkout=cancel",
+                    ExpiredUrl = $"{originBase}/premium?checkout=expired"
+                },
+                Items =
+                [
+                    new AsaasItem
+                    {
+                        Name = $"TáNoMar {plan.Name}",
+                        Description = normalizedCycle == BillingPricing.Yearly
+                            ? "Assinatura anual com 20% de desconto"
+                            : "Assinatura mensal",
+                        Quantity = 1,
+                        Value = BillingPricing.Reais(firstCharge)
+                    }
+                ],
+                Customer = string.IsNullOrWhiteSpace(existingCustomer?.AsaasCustomerId)
+                    ? null
+                    : existingCustomer.AsaasCustomerId,
+                Subscription = new AsaasSubscription
+                {
+                    Cycle = normalizedCycle,
+                    NextDueDate = today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
                 }
-            ],
-            CustomerData = new AsaasCustomerData
-            {
-                Name = user.Name,
-                Email = user.Email
-            },
-            Subscription = new AsaasSubscription
-            {
-                Cycle = normalizedCycle,
-                NextDueDate = today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
-            }
-        }, cancellationToken);
+            }, cancellationToken);
+        }
+        catch (InvalidOperationException)
+        {
+            return Results.Json(new { code = "checkout_failed", detail = "Não foi possível abrir o pagamento. Tente de novo em instantes." }, statusCode: 502);
+        }
 
         var pending = new BillingSubscription
         {

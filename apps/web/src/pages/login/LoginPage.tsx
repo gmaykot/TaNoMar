@@ -22,6 +22,7 @@ export function LoginPage() {
         title="Abrindo sua sessão"
         description="Confirmando se você já está dentro."
         busy
+        screen
       />
     );
   }

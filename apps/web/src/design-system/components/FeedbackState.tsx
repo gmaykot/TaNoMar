@@ -8,6 +8,7 @@ interface FeedbackStateProps {
   description: string;
   icon?: LucideIcon;
   busy?: boolean;
+  screen?: boolean;
   action?: ReactNode;
 }
 
@@ -16,9 +17,10 @@ export function FeedbackState({
   description,
   icon: Icon = Anchor,
   busy = false,
+  screen = false,
   action,
 }: FeedbackStateProps) {
-  return (
+  const content = (
     <div className={`${styles.feedback} ${busy ? styles.busy : ''}`} role="status" aria-busy={busy}>
       <span className={styles.feedbackMark}>
         {busy ? (
@@ -39,6 +41,13 @@ export function FeedbackState({
           <i />
         </span>
       ) : null}
+    </div>
+  );
+
+  if (!screen) return content;
+  return (
+    <div className={styles.screen} data-layout="screen">
+      {content}
     </div>
   );
 }

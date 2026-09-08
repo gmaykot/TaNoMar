@@ -68,6 +68,8 @@ Anual (Mestre, tabela vigente no contrato):
 
 Mensal usa o mesmo payload com `"cycle": "MONTHLY"`, `value` da tabela mensal e `externalReference` `…:MONTHLY`.
 
+Não envia `customerData`. Nome, CPF, telefone e endereço ficam na tela hospedada do Asaas. Se já existir `BillingCustomer.AsaasCustomerId`, o checkout manda só `customer`. `customerData` incompleto (só nome e e-mail) faz o Asaas responder 400.
+
 `endDate` fica de fora para renovar até o pescador cancelar. O `successUrl` só mostra “estamos confirmando”. `GET /me` continua `free` (ou o plano anterior) até `PAYMENT_CONFIRMED` / `CHECKOUT_PAID`.
 
 No **upgrade**, o `items[].value` da primeira cobrança é o valor proporcional (abaixo). A recorrência **não** pode ficar nesse valor reduzido: depois do pagamento ela vai para `RecurringPrice` (anual ou mensal de catálogo na hora do upgrade). Renovação futura acompanha o catálogo.
@@ -146,7 +148,8 @@ Base `/api/v1`. Autenticados, exceto o webhook.
 - **upgrade** (tabela maior, ou mensal→anual do mesmo plano): permitido; `PlanCode` novo no `PAYMENT_CONFIRMED`; primeira parcela proporcional; `RecurringPrice` do destino = catálogo da hora (a renovação seguinte pode acompanhar tabela nova); assinatura antiga removida **sem** `/refund`;
 - **downgrade** (tabela menor ou anual→mensal no meio do período): recusa (`plan_downgrade_period`);
 - recusa checkout `ACTIVE` não expirado do mesmo usuário, `planCode` e `cycle`;
-- a chave Asaas nunca sai da API.
+- a chave Asaas nunca sai da API;
+- falha no Asaas responde `502` (`checkout_failed`).
 
 `GET /billing/catalog`:
 

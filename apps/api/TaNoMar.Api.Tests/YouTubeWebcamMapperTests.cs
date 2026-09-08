@@ -8,6 +8,7 @@ public sealed class YouTubeWebcamMapperTests
     [Theory]
     [InlineData("dQw4w9WgXcQ", "dQw4w9WgXcQ")]
     [InlineData("https://www.youtube.com/watch?v=dQw4w9WgXcQ", "dQw4w9WgXcQ")]
+    [InlineData("https://www.youtube.com/watch?v=_dpvB3f0xYg", "_dpvB3f0xYg")]
     [InlineData("https://youtu.be/dQw4w9WgXcQ?si=abc", "dQw4w9WgXcQ")]
     [InlineData("https://www.youtube.com/live/dQw4w9WgXcQ", "dQw4w9WgXcQ")]
     [InlineData("https://www.youtube.com/embed/dQw4w9WgXcQ", "dQw4w9WgXcQ")]
@@ -75,5 +76,51 @@ public sealed class YouTubeWebcamMapperTests
         Assert.Equal("YouTube", liveDetails.ProviderDisplayName);
         Assert.Equal("https://www.youtube.com/embed/dQw4w9WgXcQ", liveDetails.EmbedUrl);
         Assert.False(vodDetails!.IsUsable);
+    }
+
+    [Fact]
+    public void Extrai_varias_lives_da_busca_e_do_canal()
+    {
+        const string search = """
+            {
+              "items": [
+                { "id": { "videoId": "aAYoeHSIeYI" } },
+                { "id": { "videoId": "6Z72ptU1NyY" } },
+                { "id": { "videoId": "invalido" } }
+              ]
+            }
+            """;
+        const string videos = """
+            {
+              "items": [
+                {
+                  "id": "aAYoeHSIeYI",
+                  "snippet": {
+                    "title": "Ponte Hercílio Luz",
+                    "channelId": "UCtrwK-DOZGcQo9p1VwIkDZw",
+                    "liveBroadcastContent": "live"
+                  },
+                  "status": { "embeddable": true }
+                },
+                {
+                  "id": "6Z72ptU1NyY",
+                  "snippet": {
+                    "title": "Mix Florianópolis",
+                    "channelId": "UCtrwK-DOZGcQo9p1VwIkDZw",
+                    "liveBroadcastContent": "none"
+                  },
+                  "status": { "embeddable": true }
+                }
+              ]
+            }
+            """;
+
+        Assert.Equal(["aAYoeHSIeYI", "6Z72ptU1NyY"], YouTubeWebcamMapper.ParseSearchVideoIds(search));
+        Assert.Equal("UCtrwK-DOZGcQo9p1VwIkDZw", YouTubeWebcamMapper.TryNormalizeChannelId("UCtrwK-DOZGcQo9p1VwIkDZw"));
+        var parsed = YouTubeWebcamMapper.ParseVideos(videos);
+        Assert.Equal(2, parsed.Length);
+        Assert.Equal("UCtrwK-DOZGcQo9p1VwIkDZw", parsed[0].Snippet?.ChannelId);
+        Assert.True(YouTubeWebcamMapper.ToDetails(parsed[0], -27.65, -48.46)!.IsUsable);
+        Assert.False(YouTubeWebcamMapper.ToDetails(parsed[1], -27.65, -48.46)!.IsUsable);
     }
 }
