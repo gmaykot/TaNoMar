@@ -42,8 +42,11 @@
 
 .identity {
   display: grid;
-  gap: 0.15rem;
+  gap: 0.2rem;
+  margin-bottom: var(--space-1);
   padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-sea-100);
 }
 
 .identity strong {
@@ -52,11 +55,29 @@
   overflow-wrap: anywhere;
 }
 
-.identity span,
-.identity small {
+.identity > span:not(.planBadge) {
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
   overflow-wrap: anywhere;
+}
+
+.planBadge {
+  display: inline-flex;
+  justify-self: start;
+  min-height: 1.5rem;
+  align-items: center;
+  margin-top: var(--space-1);
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-pill);
+  color: var(--color-ocean-700);
+  background: var(--color-sand-100);
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+}
+
+.planPaid {
+  color: var(--color-ocean-950);
+  background: var(--color-sea-200);
 }
 
 .item {

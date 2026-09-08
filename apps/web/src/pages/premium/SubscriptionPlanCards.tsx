@@ -34,11 +34,14 @@ export function SubscriptionPlanCards({
         return (
           <Card
             as="article"
-            className={`${premiumStyles.planCard} ${plan.featured ? premiumStyles.planCardFeatured : ''}`}
+            className={`${premiumStyles.planCard} ${plan.featured ? premiumStyles.planCardFeatured : ''} ${isCurrent ? premiumStyles.planCardCurrent : ''}`}
             key={plan.code}
             aria-labelledby={`plan-${plan.code}-title`}
+            aria-current={isCurrent ? 'true' : undefined}
           >
-            {plan.featured ? (
+            {isCurrent ? (
+              <span className={premiumStyles.planBadge}>Seu plano atual</span>
+            ) : plan.featured ? (
               <span className={premiumStyles.planBadge}>Mais escolhido</span>
             ) : (
               <span className={premiumStyles.planBadgeSpacer} aria-hidden="true" />
@@ -61,7 +64,11 @@ export function SubscriptionPlanCards({
               ))}
             </ul>
             <p className={premiumStyles.planStatus}>
-              {isCurrent ? 'Seu plano atual' : isPaid ? 'Disponível na conta' : 'Cobrança em breve'}
+              {isCurrent
+                ? 'Compare os demais planos'
+                : isPaid
+                  ? 'Disponível na conta'
+                  : 'Cobrança em breve'}
             </p>
           </Card>
         );

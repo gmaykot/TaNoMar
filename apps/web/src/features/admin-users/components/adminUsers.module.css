@@ -87,6 +87,11 @@
   background: var(--color-sea-200);
 }
 
+.chipBootstrap {
+  color: var(--color-ocean-950);
+  background: var(--color-sand-200);
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;

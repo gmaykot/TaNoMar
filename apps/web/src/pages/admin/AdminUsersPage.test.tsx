@@ -36,8 +36,8 @@ vi.mock('@/features/admin-users/services/adminUsersService', () => ({
         plan: { code: 'premium', name: 'Mestre' },
         createdAt: '2026-09-01T12:00:00+00:00',
         isSelf: true,
-        protection: 'self',
-        canChangePlan: true,
+        protection: 'bootstrap',
+        canChangePlan: false,
         canDeactivate: false,
       },
       {
@@ -75,6 +75,7 @@ describe('AdminUsersPage', () => {
 
     expect(await screen.findByText('2 contas encontradas')).toBeInTheDocument();
     expect(screen.getByText('Ana Costa')).toBeInTheDocument();
+    expect(screen.getByText('Conta inicial')).toBeInTheDocument();
     expect(screen.getByText('Beto Lima')).toBeInTheDocument();
 
     await user.type(screen.getByRole('searchbox', { name: 'Buscar usuários' }), 'beto');

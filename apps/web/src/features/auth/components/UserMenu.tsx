@@ -1,8 +1,8 @@
-import { BookOpen, LogOut, Settings, Shield } from 'lucide-react';
+import { BookOpen, LogOut, Settings, Shield, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { isAdmin } from '../types/auth';
+import { isAdmin, isPaidPlan } from '../types/auth';
 import { routes } from '@/shared/constants/routes';
 import styles from './userMenu.module.css';
 
@@ -60,8 +60,19 @@ export function UserMenu() {
           <div className={styles.identity}>
             <strong>{user.name}</strong>
             <span>{user.email}</span>
-            <small>Plano {user.plan.name}</small>
+            <span className={`${styles.planBadge} ${isPaidPlan(user) ? styles.planPaid : ''}`}>
+              Plano {user.plan.name}
+            </span>
           </div>
+          <NavLink
+            role="menuitem"
+            to={routes.premium}
+            className={({ isActive }) => `${styles.item} ${isActive ? styles.active : ''}`}
+            onClick={close}
+          >
+            <Sparkles size={17} aria-hidden="true" />
+            {isPaidPlan(user) ? 'Mudar plano' : 'Conhecer os planos'}
+          </NavLink>
           <NavLink
             role="menuitem"
             to={routes.account}

@@ -110,6 +110,8 @@ describe('PremiumPage', () => {
     renderWithProviders(<PremiumPage />);
 
     expect(await screen.findByText(/Você já é assinante · Mestre/)).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: 'Mestre' })).toHaveAttribute('aria-current', 'true');
     expect(screen.getByText('Seu plano atual')).toBeInTheDocument();
+    expect(screen.getByText('Compare os demais planos')).toBeInTheDocument();
   });
 });

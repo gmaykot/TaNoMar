@@ -109,12 +109,14 @@ export function AccountPage() {
         </dl>
       </Card>
 
-      {!isPaidPlan(user) ? (
-        <Link className={accountStyles.premiumCallout} to={routes.premium}>
-          <strong>Conhecer os planos</strong>
-          <small>Arrais, Mestre ou Capitão: mais contexto para planejar a saída.</small>
-        </Link>
-      ) : null}
+      <Link className={accountStyles.premiumCallout} to={routes.premium}>
+        <strong>{isPaidPlan(user) ? 'Mudar plano' : 'Conhecer os planos'}</strong>
+        <small>
+          {isPaidPlan(user)
+            ? 'Compare Arrais, Mestre e Capitão e escolha outro comando.'
+            : 'Arrais, Mestre ou Capitão: mais contexto para planejar a saída.'}
+        </small>
+      </Link>
 
       <section className={accountStyles.accountSection} aria-labelledby="account-preferences">
         <h2 id="account-preferences">Preferências</h2>

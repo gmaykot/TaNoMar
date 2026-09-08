@@ -200,6 +200,12 @@
   box-shadow: var(--shadow-md);
 }
 
+.planCardCurrent {
+  border: 2px solid var(--color-ocean-950);
+  background: color-mix(in srgb, var(--color-sea-100) 70%, var(--color-surface));
+  box-shadow: var(--shadow-md);
+}
+
 .planBadge,
 .planBadgeSpacer {
   display: inline-flex;

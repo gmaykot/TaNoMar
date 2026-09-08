@@ -66,6 +66,9 @@ export function AdminUserCard({
               {user.isActive ? 'Ativo' : 'Bloqueado'}
             </span>
             {user.isSelf ? <span className={`${styles.chip} ${styles.chipSelf}`}>Você</span> : null}
+            {user.protection === 'bootstrap' ? (
+              <span className={`${styles.chip} ${styles.chipBootstrap}`}>Conta inicial</span>
+            ) : null}
             <span className={styles.chip}>Desde {formatCreatedAt(user.createdAt)}</span>
           </div>
         </div>
