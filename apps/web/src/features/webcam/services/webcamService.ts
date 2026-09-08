@@ -24,6 +24,16 @@ export async function searchSpotWebcams(
   return parseWebcamSearch(await apiRequest(webcamPath(spotId, admin, '/webcams/search')));
 }
 
+export async function lookupYouTubeWebcam(
+  spotId: string,
+  query: string,
+): Promise<WebcamSearchItem[]> {
+  const q = new URLSearchParams({ q: query.trim() });
+  return parseWebcamSearch(
+    await apiRequest(`${webcamPath(spotId, true, '/webcams/youtube')}?${q.toString()}`),
+  );
+}
+
 export async function linkSpotWebcam(
   spotId: string,
   input: WebcamLinkInput,

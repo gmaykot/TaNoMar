@@ -34,4 +34,4 @@ A área comercial se chama **Assinatura**. Os planos pagos são **Arrais**, **Me
 
 O foco do aplicativo (`pescador`, `surfista` ou `ambos`) é preferência de apresentação e só existe se o admin ligar `features.showAppFocus`. Desligado, o padrão é pesca e a escolha some. Não recalcule a nota nem mude o ranking por causa do foco: só mostre ou oculte blocos e indicadores. Surfista não vê comunidade nem envio de alerta de previsão. Sem foco escolhido e com a flag ligada, a web interrompe o primeiro acesso em `/comecar`.
 
-Câmeras ao vivo usam `hasLiveWebcams(user)` (`modules.liveWebcams` e `features.showLiveWebcams`). Não compare `plan.code === 'capitao'` na interface.
+Câmeras ao vivo usam `hasLiveWebcams(user)` (`modules.liveWebcams` e `features.showLiveWebcams`). Não compare `plan.code === 'capitao'` na interface. Só o admin inclui live do YouTube; a web envia o link na consulta e o POST de vínculo leva só `{ provider, externalId }`.

@@ -2,7 +2,7 @@ namespace TaNoMar.Api.Webcams;
 
 /// <summary>
 /// Resolve o provider pelo identificador persistido. A pesquisa por proximidade
-/// continua na Windy; Partner/YouTube/Custom entram aqui depois, sem reescrever o vínculo.
+/// continua na Windy; o admin consulta o YouTube por link. Partner/Custom entram depois.
 /// </summary>
 internal sealed class WebcamProviderCatalog(IEnumerable<IWebcamProvider> providers)
 {
@@ -16,6 +16,8 @@ internal sealed class WebcamProviderCatalog(IEnumerable<IWebcamProvider> provide
     }
 
     public IWebcamProvider? NearbySearchProvider => Find(WebcamOptions.WindyProviderId);
+
+    public IWebcamProvider? YouTubeProvider => Find(WebcamOptions.YouTubeProviderId);
 
     public string DisplayName(string? providerId)
     {

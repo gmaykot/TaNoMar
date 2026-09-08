@@ -25,13 +25,17 @@ internal static class WebcamTestHarness
         return db;
     }
 
-    public static WebcamService CreateService(TaNoMarDbContext db, IWebcamProvider provider, WebcamOptions? options = null)
+    public static WebcamService CreateService(TaNoMarDbContext db, params IWebcamProvider[] providers) =>
+        CreateService(db, null, providers);
+
+    public static WebcamService CreateService(TaNoMarDbContext db, WebcamOptions? options, params IWebcamProvider[] providers)
     {
+        var sources = providers.Length == 0 ? [new FakeWebcamProvider()] : providers;
         return new WebcamService(
             db,
-            new WebcamProviderCatalog([provider]),
+            new WebcamProviderCatalog(sources),
             new MemoryCache(new MemoryCacheOptions()),
-            Microsoft.Extensions.Options.Options.Create(options ?? new WebcamOptions { WindyApiKey = "test", SearchRadiusKm = 10, AvailabilityCacheMinutes = 15 }),
+            Microsoft.Extensions.Options.Options.Create(options ?? new WebcamOptions { WindyApiKey = "test", YouTubeApiKey = "test", SearchRadiusKm = 10, AvailabilityCacheMinutes = 15 }),
             new TestHostEnvironment(),
             NullLogger<WebcamService>.Instance);
     }
@@ -62,8 +66,14 @@ internal static class WebcamTestHarness
     public static WebcamProviderDetails LiveDetails(string externalId = "123456", string name = "Campeche") =>
         new(WebcamOptions.WindyProviderId, externalId, name, -27.654, -48.469, true, true, "https://webcams.windy.com/embed/123456/live", "https://images.windy.com/preview.jpg", WebcamOptions.WindyDisplayName);
 
+    public static WebcamProviderDetails YouTubeLiveDetails(string externalId = "dQw4w9WgXcQ", string name = "Campeche ao vivo") =>
+        new(WebcamOptions.YouTubeProviderId, externalId, name, -27.654, -48.469, true, true, YouTubeWebcamMapper.EmbedUrl(externalId), "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg", WebcamOptions.YouTubeDisplayName);
+
     public static WebcamSearchHit LiveHit(string externalId = "123456", string name = "Campeche", double distance = 1.2) =>
         new(WebcamOptions.WindyProviderId, externalId, name, -27.654, -48.469, distance, true, true, "https://images.windy.com/preview.jpg", WebcamOptions.WindyDisplayName);
+
+    public static WebcamSearchHit YouTubeHit(string externalId = "dQw4w9WgXcQ", string name = "Campeche ao vivo") =>
+        new(WebcamOptions.YouTubeProviderId, externalId, name, -27.654, -48.469, 0, true, true, "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg", WebcamOptions.YouTubeDisplayName);
 
     private static Plan Plan(string code, string name, bool live) => new()
     {
@@ -81,15 +91,25 @@ internal static class WebcamTestHarness
 
 internal sealed class FakeWebcamProvider : IWebcamProvider
 {
-    public string ProviderId => WebcamOptions.WindyProviderId;
-    public string DisplayName => WebcamOptions.WindyDisplayName;
+    public FakeWebcamProvider(string providerId = WebcamOptions.WindyProviderId, string displayName = WebcamOptions.WindyDisplayName)
+    {
+        ProviderId = providerId;
+        DisplayName = displayName;
+    }
+
+    public string ProviderId { get; }
+    public string DisplayName { get; }
     public bool IsConfigured { get; set; } = true;
     public List<WebcamSearchHit> SearchResults { get; } = [];
+    public List<WebcamSearchHit> LookupResults { get; } = [];
     public Dictionary<string, WebcamProviderDetails?> Details { get; } = new(StringComparer.Ordinal);
     public Exception? SearchError { get; set; }
+    public Exception? LookupError { get; set; }
     public Exception? GetError { get; set; }
     public int SearchCalls { get; private set; }
+    public int LookupCalls { get; private set; }
     public int GetCalls { get; private set; }
+    public string? LastLookupQuery { get; private set; }
 
     public Task<IReadOnlyList<WebcamSearchHit>> SearchNearbyAsync(
         double latitude,
@@ -101,6 +121,19 @@ internal sealed class FakeWebcamProvider : IWebcamProvider
         if (!IsConfigured) throw new WebcamNotConfiguredException();
         if (SearchError is not null) throw SearchError;
         return Task.FromResult<IReadOnlyList<WebcamSearchHit>>(SearchResults);
+    }
+
+    public Task<IReadOnlyList<WebcamSearchHit>> LookupAsync(
+        string query,
+        double latitude,
+        double longitude,
+        CancellationToken cancellationToken)
+    {
+        LookupCalls++;
+        LastLookupQuery = query;
+        if (!IsConfigured) throw new WebcamNotConfiguredException();
+        if (LookupError is not null) throw LookupError;
+        return Task.FromResult<IReadOnlyList<WebcamSearchHit>>(LookupResults);
     }
 
     public Task<WebcamProviderDetails?> GetAsync(string externalId, CancellationToken cancellationToken)

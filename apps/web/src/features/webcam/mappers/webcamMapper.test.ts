@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { ContractError } from '@/shared/api/errors';
-import { formatDistanceKm, parseSpotWebcam, parseWebcamSearch } from './webcamMapper';
+import {
+  formatDistanceKm,
+  parseSpotWebcam,
+  parseWebcamSearch,
+  webcamSearchCaption,
+} from './webcamMapper';
 
 describe('parseSpotWebcam', () => {
   it('aceita câmera vinculada com embed https', () => {
@@ -95,5 +100,24 @@ describe('parseWebcamSearch', () => {
 describe('formatDistanceKm', () => {
   it('formata em português', () => {
     expect(formatDistanceKm(1.2)).toBe('1,2 km');
+  });
+});
+
+describe('webcamSearchCaption', () => {
+  it('mostra YouTube em vez da distância', () => {
+    expect(
+      webcamSearchCaption({
+        provider: 'youtube',
+        providerDisplayName: 'YouTube',
+        externalId: 'dQw4w9WgXcQ',
+        name: 'Campeche ao vivo',
+        latitude: -27.65,
+        longitude: -48.46,
+        distanceKm: 0,
+        isLive: true,
+        hasPlayer: true,
+        previewUrl: null,
+      }),
+    ).toBe('YouTube');
   });
 });

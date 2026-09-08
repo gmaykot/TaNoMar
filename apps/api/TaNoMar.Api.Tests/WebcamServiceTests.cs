@@ -311,7 +311,7 @@ public sealed class WebcamServiceTests
         provider.Details["abc"] = WebcamTestHarness.LiveDetails("abc");
         var service = WebcamTestHarness.CreateService(db, provider);
 
-        var result = await service.LinkAsync(admin, spot.Slug, new WebcamLinkRequest("youtube", "abc"), asAdmin: true, CancellationToken.None);
+        var result = await service.LinkAsync(admin, spot.Slug, new WebcamLinkRequest("partner", "abc"), asAdmin: true, CancellationToken.None);
 
         Assert.Equal(400, result.Status);
         Assert.Equal(0, provider.GetCalls);
@@ -417,6 +417,165 @@ public sealed class WebcamServiceTests
 
         Assert.Equal(503, result.Status);
         Assert.Contains("webcam_unconfigured", Body(result));
+    }
+
+    [Fact]
+    public async Task Admin_consulta_transmissao_do_youtube()
+    {
+        using var db = WebcamTestHarness.CreateDb();
+        var admin = WebcamTestHarness.User(PlanRules.Mestre, "Admin");
+        var spot = WebcamTestHarness.Official();
+        db.Users.Add(admin);
+        db.FishingSpots.Add(spot);
+        await db.SaveChangesAsync();
+        var youtube = new FakeWebcamProvider(WebcamOptions.YouTubeProviderId, WebcamOptions.YouTubeDisplayName);
+        youtube.LookupResults.Add(WebcamTestHarness.YouTubeHit());
+        youtube.Details["dQw4w9WgXcQ"] = WebcamTestHarness.YouTubeLiveDetails();
+        var service = WebcamTestHarness.CreateService(db, new FakeWebcamProvider(), youtube);
+
+        var result = await service.LookupAsync(admin, spot.Slug, "https://www.youtube.com/watch?v=dQw4w9WgXcQ", CancellationToken.None);
+
+        Assert.Equal(200, result.Status);
+        Assert.Equal(1, youtube.LookupCalls);
+        Assert.Contains("dQw4w9WgXcQ", Body(result));
+        Assert.Contains("youtube", Body(result));
+    }
+
+    [Fact]
+    public async Task Admin_vincula_camera_do_youtube()
+    {
+        using var db = WebcamTestHarness.CreateDb();
+        var admin = WebcamTestHarness.User(PlanRules.Mestre, "Admin");
+        var spot = WebcamTestHarness.Official();
+        db.Users.Add(admin);
+        db.FishingSpots.Add(spot);
+        await db.SaveChangesAsync();
+        var youtube = new FakeWebcamProvider(WebcamOptions.YouTubeProviderId, WebcamOptions.YouTubeDisplayName);
+        youtube.Details["dQw4w9WgXcQ"] = WebcamTestHarness.YouTubeLiveDetails();
+        var service = WebcamTestHarness.CreateService(db, new FakeWebcamProvider(), youtube);
+
+        var result = await service.LinkAsync(admin, spot.Slug, new WebcamLinkRequest("youtube", "dQw4w9WgXcQ"), asAdmin: true, CancellationToken.None);
+
+        Assert.Equal(200, result.Status);
+        Assert.Equal(1, await db.FishingSpotWebcams.CountAsync(item => item.IsActive && item.Provider == "youtube"));
+        Assert.Contains("embedUrl", Body(result));
+    }
+
+    [Fact]
+    public async Task Capitao_nao_vincula_youtube()
+    {
+        using var db = WebcamTestHarness.CreateDb();
+        var user = WebcamTestHarness.User(PlanRules.Capitao);
+        var spot = WebcamTestHarness.Personal(user, "meu-local");
+        db.Users.Add(user);
+        db.FishingSpots.Add(spot);
+        await db.SaveChangesAsync();
+        var youtube = new FakeWebcamProvider(WebcamOptions.YouTubeProviderId, WebcamOptions.YouTubeDisplayName);
+        youtube.Details["dQw4w9WgXcQ"] = WebcamTestHarness.YouTubeLiveDetails();
+        var service = WebcamTestHarness.CreateService(db, new FakeWebcamProvider(), youtube);
+
+        var result = await service.LinkAsync(user, spot.Slug, new WebcamLinkRequest("youtube", "dQw4w9WgXcQ"), asAdmin: false, CancellationToken.None);
+
+        Assert.Equal(403, result.Status);
+        Assert.Equal(0, youtube.GetCalls);
+        Assert.Equal(0, await db.FishingSpotWebcams.CountAsync());
+        Assert.DoesNotContain("embedUrl", Body(result));
+    }
+
+    [Fact]
+    public async Task Usuario_nao_consulta_youtube()
+    {
+        using var db = WebcamTestHarness.CreateDb();
+        var user = WebcamTestHarness.User(PlanRules.Capitao);
+        var spot = WebcamTestHarness.Personal(user, "meu-local");
+        db.Users.Add(user);
+        db.FishingSpots.Add(spot);
+        await db.SaveChangesAsync();
+        var youtube = new FakeWebcamProvider(WebcamOptions.YouTubeProviderId, WebcamOptions.YouTubeDisplayName);
+        youtube.LookupResults.Add(WebcamTestHarness.YouTubeHit());
+        var service = WebcamTestHarness.CreateService(db, new FakeWebcamProvider(), youtube);
+
+        var result = await service.LookupAsync(user, spot.Slug, "https://youtu.be/dQw4w9WgXcQ", CancellationToken.None);
+
+        Assert.Equal(403, result.Status);
+        Assert.Equal(0, youtube.LookupCalls);
+    }
+
+    [Fact]
+    public async Task Youtube_fora_do_ar_nao_quebra_consulta()
+    {
+        using var db = WebcamTestHarness.CreateDb();
+        var admin = WebcamTestHarness.User(PlanRules.Mestre, "Admin");
+        var spot = WebcamTestHarness.Official();
+        db.Users.Add(admin);
+        db.FishingSpots.Add(spot);
+        await db.SaveChangesAsync();
+        var youtube = new FakeWebcamProvider(WebcamOptions.YouTubeProviderId, WebcamOptions.YouTubeDisplayName)
+        {
+            LookupError = new WebcamProviderException("down")
+        };
+        var service = WebcamTestHarness.CreateService(db, youtube);
+
+        var result = await service.LookupAsync(admin, spot.Slug, "https://youtu.be/dQw4w9WgXcQ", CancellationToken.None);
+
+        Assert.Equal(502, result.Status);
+        Assert.Contains("webcam_provider_unavailable", Body(result));
+    }
+
+    [Fact]
+    public async Task Youtube_nao_configurado_nao_quebra_consulta()
+    {
+        using var db = WebcamTestHarness.CreateDb();
+        var admin = WebcamTestHarness.User(PlanRules.Mestre, "Admin");
+        var spot = WebcamTestHarness.Official();
+        db.Users.Add(admin);
+        db.FishingSpots.Add(spot);
+        await db.SaveChangesAsync();
+        var youtube = new FakeWebcamProvider(WebcamOptions.YouTubeProviderId, WebcamOptions.YouTubeDisplayName) { IsConfigured = false };
+        var service = WebcamTestHarness.CreateService(db, youtube);
+
+        var result = await service.LookupAsync(admin, spot.Slug, "https://youtu.be/dQw4w9WgXcQ", CancellationToken.None);
+
+        Assert.Equal(503, result.Status);
+        Assert.Contains("webcam_unconfigured", Body(result));
+    }
+
+    [Fact]
+    public async Task Youtube_vod_nao_e_vinculado()
+    {
+        using var db = WebcamTestHarness.CreateDb();
+        var admin = WebcamTestHarness.User(PlanRules.Mestre, "Admin");
+        var spot = WebcamTestHarness.Official();
+        db.Users.Add(admin);
+        db.FishingSpots.Add(spot);
+        await db.SaveChangesAsync();
+        var youtube = new FakeWebcamProvider(WebcamOptions.YouTubeProviderId, WebcamOptions.YouTubeDisplayName);
+        youtube.Details["dQw4w9WgXcQ"] = WebcamTestHarness.YouTubeLiveDetails() with { IsLive = false };
+        var service = WebcamTestHarness.CreateService(db, youtube);
+
+        var result = await service.LinkAsync(admin, spot.Slug, new WebcamLinkRequest("youtube", "dQw4w9WgXcQ"), asAdmin: true, CancellationToken.None);
+
+        Assert.Equal(400, result.Status);
+        Assert.Equal(0, await db.FishingSpotWebcams.CountAsync());
+    }
+
+    [Fact]
+    public async Task Link_invalido_do_youtube_nao_consulta_provider()
+    {
+        using var db = WebcamTestHarness.CreateDb();
+        var admin = WebcamTestHarness.User(PlanRules.Mestre, "Admin");
+        var spot = WebcamTestHarness.Official();
+        db.Users.Add(admin);
+        db.FishingSpots.Add(spot);
+        await db.SaveChangesAsync();
+        var youtube = new FakeWebcamProvider(WebcamOptions.YouTubeProviderId, WebcamOptions.YouTubeDisplayName);
+        var service = WebcamTestHarness.CreateService(db, youtube);
+
+        var result = await service.LookupAsync(admin, spot.Slug, "https://example.com/watch?v=dQw4w9WgXcQ", CancellationToken.None);
+
+        Assert.Equal(400, result.Status);
+        Assert.Equal(0, youtube.LookupCalls);
+        Assert.Contains("webcam_invalid", Body(result));
     }
 
     private static string Body(WebcamHttpResult result) =>

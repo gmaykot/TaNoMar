@@ -117,3 +117,8 @@ export function parseWebcamSearch(value: unknown): WebcamSearchItem[] {
 export function formatDistanceKm(distanceKm: number) {
   return `${distanceKm.toFixed(1).replace('.', ',')} km`;
 }
+
+export function webcamSearchCaption(item: WebcamSearchItem) {
+  if (item.provider === 'youtube') return item.providerDisplayName ?? 'YouTube';
+  return formatDistanceKm(item.distanceKm);
+}

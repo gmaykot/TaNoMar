@@ -8,8 +8,9 @@ Feature exclusiva do plano **Capitão**, ligada pelo módulo `liveWebcams` em `P
 | --- | --- | --- |
 | `WebcamService` | `apps/api/TaNoMar.Api/Webcams/WebcamService.cs` | Autorização, vínculo 1:1, cache de disponibilidade e DTOs. Não fala com a Windy |
 | `WebcamProviderCatalog` | `apps/api/TaNoMar.Api/Webcams/WebcamProviderCatalog.cs` | Resolve o `IWebcamProvider` pelo `Provider` persistido |
-| `IWebcamProvider` | `apps/api/TaNoMar.Api/Webcams/IWebcamProvider.cs` | Pesquisa e detalhes. Não conhece local nem plano |
-| `WindyWebcamProvider` | `apps/api/TaNoMar.Api/Webcams/WindyWebcamProvider.cs` | Única implementação nesta entrega. HTTP para a Windy Webcams API v3 |
+| `IWebcamProvider` | `apps/api/TaNoMar.Api/Webcams/IWebcamProvider.cs` | Pesquisa, lookup e detalhes. Não conhece local nem plano |
+| `WindyWebcamProvider` | `apps/api/TaNoMar.Api/Webcams/WindyWebcamProvider.cs` | HTTP para a Windy Webcams API v3 (proximidade) |
+| `YouTubeWebcamProvider` | `apps/api/TaNoMar.Api/Webcams/YouTubeWebcamProvider.cs` | HTTP para a YouTube Data API v3 (admin, por link) |
 | `FishingSpotWebcam` | `apps/api/TaNoMar.Api/Data/TaNoMarDbContext.cs` | Persistência: `Provider` + `ExternalId`. URL não é identidade |
 | Endpoints | `apps/api/TaNoMar.Api/Webcams/WebcamEndpoints.cs` | Minimal API sob `/api/v1` |
 | UI | `apps/web/src/features/webcam` | Card, player, pesquisa, gestão e convite do Capitão |
@@ -23,14 +24,15 @@ Provider + ExternalId
 ```
 
 - Windy: `provider = windy`, `externalId` = id da câmera na Windy.
+- YouTube: `provider = youtube`, `externalId` = id do vídeo na YouTube Data API.
 - URL de embed/stream pode mudar e **não** identifica a câmera.
 
-Metadado opcional de origem: `providerDisplayName`. Na Windy vale `"Windy"`. A UI ainda não precisa exibir.
+Metadado opcional de origem: `providerDisplayName`. Windy vale `"Windy"`; YouTube vale `"YouTube"`.
 
 ## Quem faz o quê
 
-- **Admin**: pesquisa, seleciona, troca e remove a câmera de qualquer local (`/admin/fishing-spots/{id}/…`). Liga ou desliga a feature em `/admin` (`Mostrar câmeras ao vivo`).
-- **Capitão dono de Meu Local** (local pessoal, `OwnerUserId` = usuário autenticado): o mesmo fluxo em `/fishing-spots/{id}/…`, se a feature estiver ligada.
+- **Admin**: pesquisa Windy por proximidade, consulta live do YouTube pelo link, seleciona, troca e remove a câmera de qualquer local (`/admin/fishing-spots/{id}/…`). Liga ou desliga a feature em `/admin` (`Mostrar câmeras ao vivo`).
+- **Capitão dono de Meu Local** (local pessoal, `OwnerUserId` = usuário autenticado): pesquisa Windy e vincula em `/fishing-spots/{id}/…`, se a feature estiver ligada. Não vincula YouTube.
 - **Capitão**: vê a transmissão de um local que já tem câmera válida (`GET /fishing-spots/{id}/webcam`), se a feature estiver ligada.
 - **Demais planos**: `403` nesse GET. O DTO do local pode trazer `hasLiveWebcam` (booleano, sem URL) para o convite do plano.
 
@@ -43,9 +45,11 @@ Com a feature desligada no admin (`PlatformSettings.ShowLiveWebcams`, padrão `t
 
 O CRUD admin não depende do interruptor. `GET/PUT /admin/settings` troca `{ showPartners, showLiveWebcams }` sem redeploy. O PUT só altera os campos enviados.
 
-Pesquisa e seleção continuam: local → coordenadas → provider de proximidade → resultados → selecionar → vincular. Sem cadastro manual de URL.
+Pesquisa Windy: local → coordenadas → câmeras próximas → selecionar → vincular `{ provider, externalId }`. YouTube (só admin): colar o link da live → a API extrai o id, confirma `liveBroadcastContent = live` e embeddable → a UI seleciona → o POST envia só `{ provider: "youtube", externalId }`. Sem persistir URL.
 
-## Provider atual
+## Providers
+
+### Windy (proximidade)
 
 Windy Webcams API v3, encapsulada em `WindyWebcamProvider`. A pesquisa automática por proximidade (latitude/longitude do local) é responsabilidade dela.
 
@@ -59,6 +63,22 @@ Só entram câmeras `active` com `player.live` (embed HTTPS). Timelapse (`player
 
 A chave é opcional. Sem `WINDY_WEBCAMS_API_KEY` a API sobe normalmente; a pesquisa responde `503 webcam_unconfigured`.
 
+### YouTube (admin)
+
+YouTube Data API v3, encapsulada em `YouTubeWebcamProvider`. Só o admin consulta e vincula.
+
+- Base: `https://www.googleapis.com/youtube/v3/`
+- Auth: query `key`
+- Detalhe: `GET /videos?part=snippet,status&id={videoId}`
+- Canal ao vivo: `GET /channels?part=id&forHandle=@handle` e `GET /search?part=snippet&channelId={id}&eventType=live&type=video`
+- Documentação: [developers.google.com/youtube/v3](https://developers.google.com/youtube/v3)
+- Endpoint: `GET /admin/fishing-spots/{id}/webcams/youtube?q=`
+- Aceita `watch`, `youtu.be`, `embed`, `live/{id}`, `@handle/live` e `channel/{id}/live`
+- Só entra transmissão com `liveBroadcastContent = live` e `status.embeddable != false`. Embed: `https://www.youtube.com/embed/{id}`
+- Vídeo comum, live encerrada ou não incorporável: `400 webcam_invalid`
+
+A chave é opcional. Sem `YOUTUBE_API_KEY` a API sobe; a consulta admin responde `503 webcam_unconfigured`. Capitão que tenta `POST` com `provider=youtube` recebe `403`.
+
 ## Providers futuros (não implementados)
 
 O catálogo aceita novas implementações de `IWebcamProvider` sem migration estrutural do vínculo (`Provider` + `ExternalId` já é genérico).
@@ -67,9 +87,7 @@ Previsto, **sem código nesta entrega**:
 
 | Id | Classe | Uso |
 | --- | --- | --- |
-| `windy` | `WindyWebcamProvider` | Pesquisa automática de câmeras próximas (atual) |
 | `partner` | `PartnerWebcamProvider` | Câmeras de parceiros locais |
-| `youtube` | — | Transmissão YouTube |
 | `custom` | — | Fonte própria, ainda via seleção no backend |
 
 Câmeras parceiras poderão vir de pousadas, marinas, lojas de pesca, restaurantes, empresas de monitoramento de praias e redes de webcams. O `PartnerWebcamProvider` devolveria `providerDisplayName` com o nome do parceiro (ex.: "Parceiro XYZ") para a UI mostrar "Câmera fornecida por". **Não implementar agora.**
@@ -78,11 +96,12 @@ Câmeras parceiras poderão vir de pousadas, marinas, lojas de pesca, restaurant
 
 ```bash
 WINDY_WEBCAMS_API_KEY=
+YOUTUBE_API_KEY=
 Webcams__SearchRadiusKm=10
 Webcams__AvailabilityCacheMinutes=15
 ```
 
-Chave: [api.windy.com](https://api.windy.com/) → Webcams API. Não versionar a chave.
+Chave Windy: [api.windy.com](https://api.windy.com/) → Webcams API. Chave YouTube: Google Cloud → YouTube Data API v3. Não versionar as chaves.
 
 ## Teste local do Capitão (sem pagamento)
 

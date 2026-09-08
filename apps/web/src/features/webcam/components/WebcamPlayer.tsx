@@ -11,8 +11,9 @@ export function WebcamPlayer({ title, embedUrl }: WebcamPlayerProps) {
       <iframe
         title={`Câmera ao vivo: ${title}`}
         src={embedUrl}
-        allow="fullscreen"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
         referrerPolicy="strict-origin-when-cross-origin"
+        allowFullScreen
         loading="lazy"
       />
     </div>

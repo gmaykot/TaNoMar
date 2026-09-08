@@ -5,6 +5,7 @@ import { locationsQueryKey } from '@/features/locations/hooks/useLocationMutatio
 import {
   getSpotWebcam,
   linkSpotWebcam,
+  lookupYouTubeWebcam,
   searchSpotWebcams,
   unlinkSpotWebcam,
 } from '../services/webcamService';
@@ -50,6 +51,9 @@ export function useSpotWebcam(
   const search = useMutation({
     mutationFn: () => searchSpotWebcams(spotId, admin),
   });
+  const youtubeLookup = useMutation({
+    mutationFn: (query: string) => lookupYouTubeWebcam(spotId, query),
+  });
   const link = useMutation({
     mutationFn: (input: WebcamLinkInput) => linkSpotWebcam(spotId, input, admin),
     onSuccess: async () => {
@@ -68,10 +72,17 @@ export function useSpotWebcam(
   return {
     webcam,
     search,
+    youtubeLookup,
     link,
     unlink,
     searchError: search.isError
       ? providerErrorMessage(search.error, 'Não foi possível consultar as câmeras agora.')
+      : null,
+    youtubeLookupError: youtubeLookup.isError
+      ? providerErrorMessage(
+          youtubeLookup.error,
+          'Não foi possível consultar essa transmissão do YouTube.',
+        )
       : null,
     linkError: link.isError
       ? providerErrorMessage(link.error, 'Não foi possível vincular a câmera.')

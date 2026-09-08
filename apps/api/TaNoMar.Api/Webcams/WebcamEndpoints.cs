@@ -81,6 +81,19 @@ internal static class WebcamEndpoints
             return (await webcams.SearchAsync(user, id, asAdmin: true, cancellationToken)).ToResult();
         }).RequireAuthorization().RequireRateLimiting("webcams");
 
+        api.MapGet("/admin/fishing-spots/{id}/webcams/youtube", async (
+            string id,
+            string? q,
+            ClaimsPrincipal principal,
+            TaNoMarDbContext db,
+            WebcamService webcams,
+            CancellationToken cancellationToken) =>
+        {
+            var user = await CurrentUserAsync(principal, db, cancellationToken);
+            if (user is null) return Results.Unauthorized();
+            return (await webcams.LookupAsync(user, id, q, cancellationToken)).ToResult();
+        }).RequireAuthorization().RequireRateLimiting("webcams");
+
         api.MapPost("/admin/fishing-spots/{id}/webcam", async (
             string id,
             WebcamLinkRequest request,

@@ -76,12 +76,12 @@ O worker de alertas verifica a previsão de hora em hora, respeita `forecastNoti
 
 ## Câmeras ao vivo
 
-Exigem `modules.liveWebcams` (padrão: plano Capitão). Sem o módulo, `GET /fishing-spots/{id}/webcam` responde `403` e não devolve URL/embed. O frontend vincula só com `{ provider, externalId }`. Identidade da câmera: `provider` + `externalId` (hoje `windy`). O DTO pode incluir `providerDisplayName` (`Windy`); a UI ainda não exibe origem. Detalhes em [features/webcams.md](features/webcams.md).
+Exigem `modules.liveWebcams` (padrão: plano Capitão). Sem o módulo, `GET /fishing-spots/{id}/webcam` responde `403` e não devolve URL/embed. O frontend vincula só com `{ provider, externalId }`. Identidade da câmera: `provider` + `externalId` (`windy` ou `youtube`). O DTO pode incluir `providerDisplayName` (`Windy` ou `YouTube`). Detalhes em [features/webcams.md](features/webcams.md).
 
 - `GET /fishing-spots/{id}/webcam`: transmissão do local visível. `404` sem câmera. Feature desligada no admin: `403 feature_disabled`, sem URL.
-- `GET /fishing-spots/{id}/webcams/search`, `POST /fishing-spots/{id}/webcam`, `DELETE /fishing-spots/{id}/webcam`: dono Capitão de Meu Local, com a feature ligada.
-- `GET /admin/fishing-spots/{id}/webcam`, `GET /admin/fishing-spots/{id}/webcams/search`, `POST /admin/fishing-spots/{id}/webcam`, `DELETE /admin/fishing-spots/{id}/webcam`: Admin, qualquer local, mesmo com a feature desligada.
-- Pesquisa sem chave Windy: `503 webcam_unconfigured`. Provider fora: `502 webcam_provider_unavailable`.
+- `GET /fishing-spots/{id}/webcams/search`, `POST /fishing-spots/{id}/webcam`, `DELETE /fishing-spots/{id}/webcam`: dono Capitão de Meu Local, com a feature ligada. O POST aceita só Windy; `provider=youtube` responde `403`.
+- `GET /admin/fishing-spots/{id}/webcam`, `GET /admin/fishing-spots/{id}/webcams/search`, `GET /admin/fishing-spots/{id}/webcams/youtube?q=`, `POST /admin/fishing-spots/{id}/webcam`, `DELETE /admin/fishing-spots/{id}/webcam`: Admin, qualquer local, mesmo com a feature desligada. O `q` do YouTube é o link da live; a resposta usa o mesmo DTO da pesquisa. O POST envia `{ provider, externalId }`.
+- Pesquisa sem chave Windy ou consulta YouTube sem chave: `503 webcam_unconfigured`. Provider fora: `502 webcam_provider_unavailable`. Live do YouTube inválida ou encerrada: `400 webcam_invalid`.
 
 ## Implantação
 

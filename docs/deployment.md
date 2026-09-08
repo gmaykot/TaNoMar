@@ -70,7 +70,8 @@ Alterações no frontend exigem **rebuild da imagem inteira** (web + API). Isso 
 | `VAPID_SUBJECT` | `TaNoMar__VapidSubject` | Contato VAPID (`mailto:` ou URL HTTPS). |
 | `TABUA_MARE_API_KEY` | `Fishing:TabuaMareApiKey` | Chave opcional da Tábua de Maré API. Sem ela vale o limite anônimo (16 req/min). |
 | `GEOAPIFY_API_KEY` | `Fishing:GeoapifyApiKey` | Chave da Autocomplete API da Geoapify no cadastro de locais. Sem ela a busca devolve lista vazia e o formulário continua em texto livre. |
-| `WINDY_WEBCAMS_API_KEY` | `Webcams:WindyApiKey` | Chave da Windy Webcams API v3. Sem ela o app sobe; a pesquisa de câmeras responde `503`. |
+| `WINDY_WEBCAMS_API_KEY` | `Webcams:WindyApiKey` | Chave da Windy Webcams API v3. Sem ela o app sobe; a pesquisa de câmeras próximas responde `503`. |
+| `YOUTUBE_API_KEY` | `Webcams:YouTubeApiKey` | Chave da YouTube Data API v3. Sem ela o app sobe; a consulta admin de live no YouTube responde `503`. |
 | `Webcams__SearchRadiusKm` | `Webcams:SearchRadiusKm` | Raio da pesquisa (km), padrão `10`, máximo `250`. |
 | `Webcams__AvailabilityCacheMinutes` | `Webcams:AvailabilityCacheMinutes` | Intervalo do cache de disponibilidade/embed, padrão `15`. |
 | `ASAAS_API_KEY` | `Billing:AsaasApiKey` | Chave da API Asaas (`access_token`). Sem ela o checkout responde `503` e `/premium` permanece vitrine. |

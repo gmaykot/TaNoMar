@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Video } from 'lucide-react';
 import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
@@ -17,6 +17,8 @@ interface WebcamManagerProps {
 export function WebcamManager({ spotId, admin = false }: WebcamManagerProps) {
   const webcams = useSpotWebcam(spotId, { admin, enabled: Boolean(spotId) });
   const [searching, setSearching] = useState(false);
+  const [youtubeOpen, setYoutubeOpen] = useState(false);
+  const [youtubeQuery, setYoutubeQuery] = useState('');
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [playerOpen, setPlayerOpen] = useState(false);
   const linked = webcams.webcam.data?.linked === true ? webcams.webcam.data : null;
@@ -24,8 +26,21 @@ export function WebcamManager({ spotId, admin = false }: WebcamManagerProps) {
 
   function startSearch() {
     if (webcams.search.isPending) return;
+    setYoutubeOpen(false);
     setSearching(true);
     webcams.search.mutate();
+  }
+
+  function startYouTube() {
+    setSearching(false);
+    setYoutubeOpen(true);
+  }
+
+  function lookupYouTube(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const query = youtubeQuery.trim();
+    if (!query || webcams.youtubeLookup.isPending) return;
+    webcams.youtubeLookup.mutate(query);
   }
 
   if (webcams.webcam.isPending) {
@@ -75,6 +90,11 @@ export function WebcamManager({ spotId, admin = false }: WebcamManagerProps) {
         <Button type="button" onClick={startSearch} disabled={webcams.search.isPending}>
           {linked ? 'Trocar câmera' : 'Procurar câmera próxima'}
         </Button>
+        {admin ? (
+          <Button type="button" variant="secondary" onClick={startYouTube}>
+            Incluir do YouTube
+          </Button>
+        ) : null}
         {linked ? (
           <Button type="button" variant="quiet" onClick={() => setConfirmRemove(true)}>
             Remover
@@ -97,6 +117,50 @@ export function WebcamManager({ spotId, admin = false }: WebcamManagerProps) {
             );
           }}
         />
+      ) : null}
+      {admin && youtubeOpen ? (
+        <form className={styles.lookup} onSubmit={lookupYouTube}>
+          <label className={styles.lookupField}>
+            <span>Link da transmissão no YouTube</span>
+            <input
+              type="text"
+              inputMode="url"
+              autoComplete="off"
+              placeholder="https://www.youtube.com/watch?v=…"
+              value={youtubeQuery}
+              onChange={(event) => setYoutubeQuery(event.target.value)}
+              required
+            />
+            <small>
+              O TáNoMar confirma se a live está no ar antes de vincular. Sem cadastro de URL.
+            </small>
+          </label>
+          <Button type="submit" disabled={webcams.youtubeLookup.isPending || !youtubeQuery.trim()}>
+            {webcams.youtubeLookup.isPending ? 'Verificando...' : 'Verificar'}
+          </Button>
+          <WebcamSearch
+            items={webcams.youtubeLookup.data}
+            busy={webcams.youtubeLookup.isPending}
+            selectingId={webcams.link.isPending ? webcams.link.variables?.externalId : null}
+            error={webcams.youtubeLookupError}
+            heading="Transmissão encontrada"
+            emptyTitle="Essa transmissão não está ao vivo no YouTube."
+            emptyDescription="Cole o link de uma live em andamento."
+            busyTitle="Consultando o YouTube..."
+            busyDescription="Confirmando se a transmissão está ao vivo."
+            onSelect={(item) => {
+              webcams.link.mutate(
+                { provider: item.provider, externalId: item.externalId },
+                {
+                  onSuccess: () => {
+                    setYoutubeOpen(false);
+                    setYoutubeQuery('');
+                  },
+                },
+              );
+            }}
+          />
+        </form>
       ) : null}
       {confirmRemove ? (
         <ConfirmDrawer

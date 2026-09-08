@@ -65,22 +65,7 @@ internal sealed class WebcamService(
                 spot.Latitude,
                 spot.Longitude,
                 items.Count);
-            return WebcamHttpResult.Ok(new
-            {
-                items = items.Select(item => new
-                {
-                    provider = item.Provider,
-                    externalId = item.ExternalId,
-                    name = item.Name,
-                    latitude = item.Latitude,
-                    longitude = item.Longitude,
-                    distanceKm = item.DistanceKm,
-                    isLive = item.IsLive,
-                    hasPlayer = item.HasPlayer,
-                    previewUrl = item.PreviewUrl,
-                    providerDisplayName = item.ProviderDisplayName
-                })
-            });
+            return SearchBody(items);
         }
         catch (WebcamNotConfiguredException)
         {
@@ -89,6 +74,47 @@ internal sealed class WebcamService(
         catch (WebcamProviderException exception)
         {
             logger.LogError(exception, "WebcamProviderError action=search spot={SpotId}", spot.Slug);
+            return WebcamHttpResult.ProviderUnavailable();
+        }
+    }
+
+    public async Task<WebcamHttpResult> LookupAsync(User user, string spotId, string? query, CancellationToken cancellationToken)
+    {
+        var (spot, failure) = await AuthorizeManageAsync(user, spotId, asAdmin: true, requireLiveWebcams: false, cancellationToken);
+        if (failure is not null) return failure;
+        var text = query?.Trim() ?? string.Empty;
+        if (text.Length is 0 or > WebcamOptions.LookupQueryMaxLength
+            || !YouTubeWebcamMapper.LooksLikeYouTubeQuery(text))
+        {
+            return WebcamHttpResult.BadRequest(
+                "webcam_invalid",
+                "Cole o link da transmissão ao vivo no YouTube.");
+        }
+
+        try
+        {
+            var source = providers.YouTubeProvider;
+            if (source is null) return WebcamHttpResult.BadRequest("webcam_unknown_provider", "Este provedor de câmera ainda não está disponível.");
+            var latitude = spot!.Latitude ?? 0;
+            var longitude = spot.Longitude ?? 0;
+            var items = await source.LookupAsync(text, latitude, longitude, cancellationToken);
+            logger.LogInformation("WebcamLookup spot={SpotId} provider=youtube usable={Usable}", spot.Slug, items.Count);
+            if (items.Count == 0)
+            {
+                return WebcamHttpResult.BadRequest(
+                    "webcam_invalid",
+                    "Essa transmissão não está ao vivo no YouTube.");
+            }
+
+            return SearchBody(items);
+        }
+        catch (WebcamNotConfiguredException)
+        {
+            return WebcamHttpResult.NotConfigured();
+        }
+        catch (WebcamProviderException exception)
+        {
+            logger.LogError(exception, "WebcamProviderError action=lookup spot={SpotId}", spot!.Slug);
             return WebcamHttpResult.ProviderUnavailable();
         }
     }
@@ -102,6 +128,11 @@ internal sealed class WebcamService(
         var externalId = request.ExternalId?.Trim();
         if (string.IsNullOrWhiteSpace(providerId) || string.IsNullOrWhiteSpace(externalId))
             return WebcamHttpResult.BadRequest("webcam_invalid", "Informe o provedor e o identificador da câmera.");
+        if (!asAdmin && string.Equals(providerId, WebcamOptions.YouTubeProviderId, StringComparison.OrdinalIgnoreCase))
+        {
+            logger.LogInformation("UnauthorizedWebcamAccess user={UserId} spot={SpotId} action=youtube", user.Id, target.Slug);
+            return WebcamHttpResult.Forbidden("forbidden", "Só o administrador vincula câmeras do YouTube.");
+        }
         var source = providers.Find(providerId);
         if (source is null)
             return WebcamHttpResult.BadRequest("webcam_unknown_provider", "Este provedor de câmera ainda não está disponível.");
@@ -346,6 +377,24 @@ internal sealed class WebcamService(
 
     private Task<Plan> PlanAsync(User user, CancellationToken cancellationToken) =>
         db.Plans.SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
+
+    private static WebcamHttpResult SearchBody(IEnumerable<WebcamSearchHit> items) =>
+        WebcamHttpResult.Ok(new
+        {
+            items = items.Select(item => new
+            {
+                provider = item.Provider,
+                externalId = item.ExternalId,
+                name = item.Name,
+                latitude = item.Latitude,
+                longitude = item.Longitude,
+                distanceKm = item.DistanceKm,
+                isLive = item.IsLive,
+                hasPlayer = item.HasPlayer,
+                previewUrl = item.PreviewUrl,
+                providerDisplayName = item.ProviderDisplayName
+            })
+        });
 
     private static WebcamHttpResult ForbiddenPlan() =>
         WebcamHttpResult.Forbidden(

@@ -130,6 +130,38 @@
   font-weight: 750;
 }
 
+.lookup {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.lookupField {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.lookupField span {
+  color: var(--color-ocean-700);
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+}
+
+.lookupField input {
+  min-height: 2.9rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.lookupField small {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+
 .error {
   margin: 0;
   color: var(--color-danger);

@@ -223,7 +223,7 @@ public sealed class Plan
 /// <summary>
 /// Câmera vinculada a um local. Identidade: <see cref="Provider"/> + <see cref="ExternalId"/>.
 /// URL de embed/stream não é identidade e não é persistida como fonte da verdade.
-/// Providers: windy (atual). Futuros: partner, youtube, custom.
+/// Providers: windy (pesquisa próxima) e youtube (admin, por link). Futuros: partner, custom.
 /// </summary>
 public sealed class FishingSpotWebcam
 {

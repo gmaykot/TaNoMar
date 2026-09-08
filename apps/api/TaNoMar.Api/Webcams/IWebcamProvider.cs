@@ -12,6 +12,12 @@ internal interface IWebcamProvider
         double radiusKm,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<WebcamSearchHit>> LookupAsync(
+        string query,
+        double latitude,
+        double longitude,
+        CancellationToken cancellationToken);
+
     Task<WebcamProviderDetails?> GetAsync(
         string externalId,
         CancellationToken cancellationToken);

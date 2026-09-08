@@ -53,15 +53,16 @@ Para desenvolvimento local, execute React e .NET diretamente nos dois terminais 
 
 ## Live Webcams
 
-Provider atual: **Windy Webcams API v3**. Plano: **Capitão**. Feature: `liveWebcams`.
+Providers: **Windy Webcams API v3** (proximidade) e **YouTube Data API v3** (admin, por link da live). Plano: **Capitão**. Feature: `liveWebcams`.
 
-A chave é opcional. Sem ela o TáNoMar sobe; só a pesquisa de câmeras fica indisponível.
+As chaves são opcionais. Sem elas o TáNoMar sobe; só a pesquisa Windy ou a consulta YouTube fica indisponível.
 
-1. Crie a chave em [api.windy.com](https://api.windy.com/) (Webcams API).
-2. Exporte no terminal da API (não commite a chave):
+1. Windy: crie a chave em [api.windy.com](https://api.windy.com/) (Webcams API). YouTube: ative a YouTube Data API v3 no Google Cloud.
+2. Exporte no terminal da API (não commite as chaves):
 
 ```bash
 export WINDY_WEBCAMS_API_KEY=SUA_CHAVE
+export YOUTUBE_API_KEY=SUA_CHAVE
 export Webcams__SearchRadiusKm=10
 export Webcams__AvailabilityCacheMinutes=15
 ```
@@ -70,7 +71,7 @@ export Webcams__AvailabilityCacheMinutes=15
 4. Login Google. Admin: `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_GOOGLE_SUBJECT`.
 5. Capitão sem pagamento: em Development, um Admin troca o plano da conta em `/admin/usuarios` para Capitão.
 6. Em `/admin`, ligue **Mostrar câmeras ao vivo** (padrão: ligado).
-7. Admin abre um local → Procurar câmera próxima → Selecionar. Capitão abre o local → Ver câmera ao vivo.
+7. Admin abre um local → Procurar câmera próxima **ou** Incluir do YouTube → Selecionar. Capitão abre o local → Ver câmera ao vivo.
 
 Guia completo: [docs/features/webcams.md](docs/features/webcams.md).
 

@@ -58,6 +58,13 @@ internal sealed class WindyWebcamProvider(
         }
     }
 
+    public Task<IReadOnlyList<WebcamSearchHit>> LookupAsync(
+        string query,
+        double latitude,
+        double longitude,
+        CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<WebcamSearchHit>>([]);
+
     public async Task<WebcamProviderDetails?> GetAsync(string externalId, CancellationToken cancellationToken)
     {
         EnsureConfigured();

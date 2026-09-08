@@ -58,6 +58,8 @@ builder.Services.PostConfigure<WebcamOptions>(options =>
 {
     if (string.IsNullOrWhiteSpace(options.WindyApiKey))
         options.WindyApiKey = builder.Configuration["WINDY_WEBCAMS_API_KEY"] ?? string.Empty;
+    if (string.IsNullOrWhiteSpace(options.YouTubeApiKey))
+        options.YouTubeApiKey = builder.Configuration["YOUTUBE_API_KEY"] ?? string.Empty;
 });
 builder.Services.AddDbContext<TaNoMarDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 builder.Services.AddScoped<AuthTokenService>();
@@ -89,7 +91,7 @@ builder.Services.AddHttpClient<AsaasClient>((provider, client) =>
     client.DefaultRequestHeaders.UserAgent.ParseAdd("tanomar/2.0");
 });
 builder.Services.AddScoped<BillingService>();
-builder.Services.AddHttpClient<IWebcamProvider, WindyWebcamProvider>((provider, client) =>
+builder.Services.AddHttpClient<WindyWebcamProvider>((provider, client) =>
 {
     var webcams = provider.GetRequiredService<IOptions<WebcamOptions>>().Value;
     var baseUrl = string.IsNullOrWhiteSpace(webcams.WindyBaseUrl)
@@ -100,6 +102,19 @@ builder.Services.AddHttpClient<IWebcamProvider, WindyWebcamProvider>((provider, 
     client.Timeout = TimeSpan.FromSeconds(15);
     client.DefaultRequestHeaders.UserAgent.ParseAdd("tanomar/2.0");
 });
+builder.Services.AddHttpClient<YouTubeWebcamProvider>((provider, client) =>
+{
+    var webcams = provider.GetRequiredService<IOptions<WebcamOptions>>().Value;
+    var baseUrl = string.IsNullOrWhiteSpace(webcams.YouTubeBaseUrl)
+        ? "https://www.googleapis.com/youtube/v3/"
+        : webcams.YouTubeBaseUrl.Trim();
+    if (!baseUrl.EndsWith('/')) baseUrl += "/";
+    client.BaseAddress = new Uri(baseUrl);
+    client.Timeout = TimeSpan.FromSeconds(15);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("tanomar/2.0");
+});
+builder.Services.AddTransient<IWebcamProvider>(provider => provider.GetRequiredService<WindyWebcamProvider>());
+builder.Services.AddTransient<IWebcamProvider>(provider => provider.GetRequiredService<YouTubeWebcamProvider>());
 builder.Services.AddScoped<WebcamProviderCatalog>();
 builder.Services.AddScoped<WebcamService>();
 builder.Services.AddTransient<FishingForecastService>();
@@ -164,7 +179,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
     var webcamOptions = app.Services.GetRequiredService<IOptions<WebcamOptions>>().Value;
-    app.Logger.LogInformation("Windy configurado: {Configured}", webcamOptions.IsConfigured ? "Sim" : "Não");
+    app.Logger.LogInformation("Windy configurado: {Configured}", webcamOptions.IsWindyConfigured ? "Sim" : "Não");
+    app.Logger.LogInformation("YouTube configurado: {Configured}", webcamOptions.IsYouTubeConfigured ? "Sim" : "Não");
 }
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok", at = DateTimeOffset.UtcNow }));
