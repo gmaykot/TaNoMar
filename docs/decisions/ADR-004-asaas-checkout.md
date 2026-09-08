@@ -14,22 +14,23 @@ A necessidade é cobrar Arrais, Mestre ou Capitão com cartão, sem o PWA lidar 
 
 ## Decisão
 
-Integrar o **Asaas Checkout hospedado**, somente cartão, um checkout por plano e ciclo (`MONTHLY` ou `YEARLY`). O anual tem 20% de desconto sobre 12 meses da tabela vigente **no momento do contrato**.
+Integrar o **Asaas Checkout hospedado**, somente cartão, um checkout por plano e ciclo (`MONTHLY` ou `YEARLY`). O anual tem 20% de desconto sobre 12 meses da tabela vigente **naquela cobrança**.
 
 - `billingTypes: ["CREDIT_CARD"]`
 - `chargeTypes: ["RECURRENT"]`
 - `POST /billing/checkout` recebe `{ planCode, cycle: "MONTHLY" | "YEARLY" }`
-- Anual cobrado: `arredondar(mensal_tabela × 12 × 0,80; 2)` na data da contratação; esse valor **fica congelado** na assinatura (`RecurringPrice`)
-- Mensal cobrado: tabela vigente; se o preço do plano mudar, a **próxima** cobrança mensal usa o novo valor
-- Mudar a tabela **não** altera anual já contratado nem a renovação anual desse contrato
-- **Upgrade** (tabela maior) começa na hora. A primeira cobrança tem desconto proporcional. Recorrência futura: anual congelado no catálogo da hora do upgrade, ou mensal acompanhando a tabela
+- Anual cobrado: `arredondar(mensal_tabela × 12 × 0,80; 2)` na data da cobrança
+- O período anual **já pago** não ganha cobrança extra se a tabela mudar no meio
+- A **renovação** anual usa o catálogo vigente (novo anual com −20%)
+- Mensal: se o preço mudar, a **próxima** fatura usa o novo valor
+- **Upgrade** (tabela maior) começa na hora. A primeira cobrança tem desconto proporcional. Sem estorno no cartão antigo
 - Cancelar a recorrência chama `DELETE /v3/subscriptions/{id}` e **não** chama `/refund`. O plano pago permanece até o fim do período
 
 Não coletar PAN, CVV nem validade no TáNoMar. Não confirmar pagamento pelo `successUrl`.
 
 ## Motivo
 
-Três SKUs no Asaas batem com `PlanRules`. Quem fecha o anual leva o preço daquele contrato até cancelar — reajuste de tabela não reescreve o que já foi assinado. Quem paga o mês acompanha a tabela na fatura seguinte. No upgrade, o comando novo vale na hora e o restante vira desconto na primeira parcela, sem estorno no cartão.
+Três SKUs no Asaas batem com `PlanRules`. Reajuste no meio do ano **não cobra a diferença** do período já pago. A renovação anual e a próxima fatura mensal usam a tabela nova. No upgrade, o comando novo vale na hora e o restante vira desconto na primeira parcela, sem estorno no cartão.
 
 ## Fluxo
 
@@ -63,7 +64,7 @@ primeira cobrança = anual(Mestre) − crédito dos dias restantes
         ▼
 paga no Asaas → PlanCode = premium na hora
 assinatura antiga DELETE sem /refund
-renovação daqui a 1 ano = anual **contratado** do Mestre (congelado)
+renovação daqui a 1 ano = anual de **catálogo** vigente
 ```
 
 Reajuste de tabela:
@@ -71,8 +72,9 @@ Reajuste de tabela:
 ```text
 ASAAS_*_MONTHLY_PRICE muda
         │
-        ├── YEARLY ativo → RecurringPrice intacto; Asaas não é atualizado
-        └── MONTHLY ativo → próxima fatura = tabela nova (PUT no Asaas)
+        ├── YEARLY vigente → não cobra a diferença agora
+        │                     renovação = novo anual de catálogo (PUT só a cobrança futura)
+        └── MONTHLY → próxima fatura = tabela nova
 ```
 
 Cancelar a renovação:
@@ -93,7 +95,7 @@ Worker no vencimento → PlanCode = free
 ## Consequências
 
 - Um item Asaas por plano e ciclo. `externalReference` liga usuário + `planCode` + `cycle`.
-- Preço anual contratado é imutável naquela assinatura, inclusive na renovação. Preço mensal vigente incide na próxima cobrança.
+- Preço do período já pago não é complementado nem estornado se a tabela mudar no meio. Renovação anual e próxima fatura mensal usam o catálogo novo.
 - Upgrade no meio do período: plano novo na hora; primeira parcela proporcional; sem estorno. Downgrade só depois do período pago (ou pelo admin).
 - Bootstrap admin permanece Mestre (`premium`) mesmo se um webhook tentar rebaixar.
 - Fora da primeira entrega: Pix, parcelamento, split, checkout de parceiros, botão de estorno.
