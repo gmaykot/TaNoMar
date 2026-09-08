@@ -22,13 +22,14 @@ Integrar o **Asaas Checkout hospedado**, somente cartão, um checkout por plano,
 - `POST /billing/checkout` recebe `{ planCode: "arrais" | "premium" | "capitao" }`
 - Preço cobrado: `arredondar(mensal_do_plano × 12 × 0,80; 2)`
 - O plano na conta sobe só depois do webhook, para o `PlanCode` comprado.
+- **Upgrade** (tabela maior) começa na hora. A primeira cobrança é `anual_novo − crédito_proporcional` dos dias que ainda restavam no plano atual. A renovação seguinte cobra o anual cheio do plano novo. Não há estorno no cartão da assinatura antiga.
 - Cancelar a recorrência chama `DELETE /v3/subscriptions/{id}` e **não** chama `/refund`. O `PlanCode` pago permanece até o fim do período.
 
 Não coletar PAN, CVV nem validade no TáNoMar. Não confirmar pagamento pelo `successUrl`.
 
 ## Motivo
 
-Três SKUs no Asaas batem com `PlanRules` (Arrais, Mestre, Capitão). O ciclo anual com desconto é a oferta comercial. Cancelar encerra a renovação e preserva o valor já pago. Pix, boleto, SKU mensal no checkout e proration ficam para depois.
+Três SKUs no Asaas batem com `PlanRules` (Arrais, Mestre, Capitão). O ciclo anual com desconto é a oferta comercial. No upgrade, o comando novo vale na hora e o que já foi pago vira desconto na primeira parcela — sem devolver dinheiro no cartão. Cancelar encerra a renovação e preserva o valor já pago. Pix, boleto e SKU mensal no checkout ficam para depois.
 
 ## Fluxo
 
@@ -51,6 +52,20 @@ redirect → asaas.com/checkoutSession
                         PlanCode = arrais | premium | capitao
 ```
 
+Upgrade (ex.: Arrais → Mestre), ainda com período pago:
+
+```text
+POST /billing/checkout { planCode: "premium" }
+        │
+        ▼
+primeira cobrança = anual(Mestre) − crédito dos dias restantes
+        │
+        ▼
+paga no Asaas → PlanCode = premium na hora
+assinatura antiga DELETE sem /refund
+renovação daqui a 1 ano = anual cheio do Mestre
+```
+
 Cancelar a renovação:
 
 ```text
@@ -69,8 +84,8 @@ Worker no vencimento → PlanCode = free
 ## Consequências
 
 - Um item Asaas por plano (nome Arrais, Mestre ou Capitão). `externalReference` liga usuário + `planCode`.
-- Upgrade (tabela maior) no meio do ano: novo checkout do plano destino, paga o anual cheio, assinatura antiga é removida sem estorno. Downgrade só depois do período pago (ou pelo admin).
+- Upgrade no meio do ano: plano novo na hora; primeira parcela com desconto proporcional; recorrência futura no valor cheio. Downgrade só depois do período pago (ou pelo admin).
 - Bootstrap admin permanece Mestre (`premium`) mesmo se um webhook tentar rebaixar.
-- Fora da primeira entrega: Pix, SKU mensal, proration, parcelamento, split, checkout de parceiros, botão de estorno.
+- Fora da primeira entrega: Pix, SKU mensal, parcelamento, split, checkout de parceiros, botão de estorno.
 
 Detalhe: [billing.md](../billing.md).

@@ -46,7 +46,7 @@ Localmente, web e API são processos independentes: Vite executa o React em HTTP
 
 A sessão usa Google Sign-In. O access token fica só em memória; o refresh token segue no cookie HttpOnly `tanomar_refresh`. Endpoints autenticados não entram no cache do service worker.
 
-Cobrança da assinatura (proposta): Checkout hospedado do Asaas, só cartão, um SKU anual por plano (Arrais, Mestre, Capitão) com 20% de desconto sobre 12 meses. Cancelar a recorrência não estorna; o acesso segue até o fim do período pago. Ver [billing.md](billing.md) e [ADR-004](decisions/ADR-004-asaas-checkout.md).
+Cobrança da assinatura (proposta): Checkout hospedado do Asaas, só cartão, um SKU anual por plano (Arrais, Mestre, Capitão) com 20% de desconto sobre 12 meses. Upgrade começa na hora com desconto proporcional na primeira cobrança. Cancelar a recorrência não estorna; o acesso segue até o fim do período pago. Ver [billing.md](billing.md) e [ADR-004](decisions/ADR-004-asaas-checkout.md).
 
 ## Produção
 

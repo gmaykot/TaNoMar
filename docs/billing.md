@@ -66,6 +66,34 @@ Documentação: [Asaas Checkout](https://docs.asaas.com/docs/checkout-asaas), [c
 
 `endDate` fica de fora para renovar até o pescador cancelar. O `successUrl` só mostra “estamos confirmando”. `GET /me` continua `free` (ou o plano anterior) até `PAYMENT_CONFIRMED` / `CHECKOUT_PAID`.
 
+No **upgrade**, o `items[].value` da primeira cobrança é o valor proporcional (abaixo). A recorrência anual **não** pode ficar nesse valor reduzido.
+
+## Upgrade com desconto proporcional
+
+Upgrade = destino com tabela mensal **maior** (Arrais → Mestre → Capitão). O `PlanCode` novo vale **na hora** do `PAYMENT_CONFIRMED`. Não há estorno no cartão da assinatura antiga: o que ainda restava vira desconto na primeira parcela do plano novo.
+
+```text
+dias_periodo    = max(1, dias corridos de PeriodStart até CurrentPeriodEnd)
+dias_restantes  = max(0, dias corridos de agora até CurrentPeriodEnd)
+crédito         = arredondar(anual_atual × dias_restantes / dias_periodo; 2)
+primeira_parcela = arredondar(max(0,01; anual_novo − crédito); 2)
+renovação       = anual_novo
+CurrentPeriodEnd do plano novo = agora + 1 ano
+```
+
+Exemplo: Arrais anual R$ 143,04, 100 dias usados, 265 restantes, período de 365 dias.
+
+| | Valor |
+| --- | --- |
+| Crédito (265/365 de R$ 143,04) | R$ 103,85 |
+| Anual Mestre | R$ 191,04 |
+| **Paga hoje** | **R$ 87,19** |
+| Próxima renovação (daqui a 1 ano) | R$ 191,04 |
+
+O checkout hospedado cobra `primeira_parcela`. Se o Asaas gravar esse valor na assinatura `YEARLY`, a API **atualiza** `PUT /v3/subscriptions/{id}` para `anual_novo` com `updatePendingPayments: false` assim que chegar `SUBSCRIPTION_CREATED`, para a renovação não sair barata. A assinatura antiga é `DELETE` **sem** `/refund`.
+
+Assinatura `canceled` com `accessUntil` no futuro ainda gera crédito: o ano foi pago.
+
 ## Papel de cada lado
 
 ```text
@@ -86,8 +114,8 @@ Base `/api/v1`. Autenticados, exceto o webhook.
 
 | Método | Rota | Papel |
 | --- | --- | --- |
-| `GET` | `/billing/catalog` | Três planos: código, nome, tabela, anual, `discountPercent: 20`, `cycle: "YEARLY"` |
-| `POST` | `/billing/checkout` | Body `{ planCode }`. Cria (ou reusa) checkout anual daquele plano |
+| `GET` | `/billing/catalog` | Três planos +, se autenticado e houver período pago, `quote` de upgrade por destino |
+| `POST` | `/billing/checkout` | Body `{ planCode }`. Primeira cobrança cheia ou proporcional no upgrade |
 | `GET` | `/billing/subscription` | Estado da assinatura da conta |
 | `POST` | `/billing/subscription/cancel` | Encerra a recorrência; **não estorna**; o plano pago segue até o fim do período |
 | `POST` | `/webhooks/asaas` | Público. Valida `asaas-access-token`. Sem JWT |
@@ -96,7 +124,7 @@ Base `/api/v1`. Autenticados, exceto o webhook.
 
 - exige sessão válida, conta ativa e `planCode` em `arrais` | `premium` | `capitao` (`mestre` normaliza para `premium`);
 - recusa o **mesmo** plano se já há assinatura `active` ou período pago vigente;
-- **upgrade** (tabela mensal maior) no meio do ano: permitido; cobra o anual cheio do destino; remove a assinatura antiga no Asaas **sem** `/refund`; o `PlanCode` novo vale no `PAYMENT_CONFIRMED`;
+- **upgrade** (tabela mensal maior) no meio do ano: permitido; `PlanCode` novo no `PAYMENT_CONFIRMED`; primeira parcela = `anual_novo − crédito proporcional`; recorrência futura = anual cheio; assinatura antiga removida **sem** `/refund`;
 - **downgrade** no meio do ano: recusa (`plan_downgrade_period`); o pescador cancela a renovação e, no vencimento, assina o plano menor;
 - recusa checkout `ACTIVE` não expirado do mesmo usuário e mesmo `planCode`;
 - a chave Asaas nunca sai da API.
@@ -109,11 +137,25 @@ Base `/api/v1`. Autenticados, exceto o webhook.
   "cycle": "YEARLY",
   "plans": [
     { "code": "arrais", "name": "Arrais", "monthlyListPrice": 14.90, "annualPrice": 143.04 },
-    { "code": "premium", "name": "Mestre", "monthlyListPrice": 19.90, "annualPrice": 191.04 },
-    { "code": "capitao", "name": "Capitão", "monthlyListPrice": 24.90, "annualPrice": 239.04 }
+    {
+      "code": "premium",
+      "name": "Mestre",
+      "monthlyListPrice": 19.90,
+      "annualPrice": 191.04,
+      "quote": {
+        "kind": "upgrade",
+        "remainingDays": 265,
+        "credit": 103.85,
+        "firstCharge": 87.19,
+        "renewalPrice": 191.04
+      }
+    },
+    { "code": "capitao", "name": "Capitão", "monthlyListPrice": 24.90, "annualPrice": 239.04, "quote": { "kind": "upgrade", "remainingDays": 265, "credit": 103.85, "firstCharge": 135.19, "renewalPrice": 239.04 } }
   ]
 }
 ```
+
+`quote` só aparece nos planos de tabela maior que o atual, com período pago vigente. Sem assinatura, não vai `quote` e a primeira cobrança é o anual cheio.
 
 `GET /billing/subscription` e o bloco em `GET /me`:
 
@@ -180,7 +222,9 @@ Três tabelas novas. `Users.PlanCode` não some: continua o que a previsão e os
 - `AsaasSubscriptionId`
 - `Status` (`pending_checkout`, `active`, `past_due`, `canceled`)
 - `Cycle` (`YEARLY`)
-- `Price` (anual cobrado daquele plano)
+- `Price` (valor da **primeira** cobrança: anual cheio ou proporcional no upgrade)
+- `RecurringPrice` (anual cheio que a renovação deve cobrar)
+- `PeriodStart`
 - `CurrentPeriodEnd`
 - `CancelAtPeriodEnd`
 - `ExternalReference` (`userId:planCode`)
@@ -205,9 +249,9 @@ Token próprio em `asaas-access-token`, **diferente** da API key. Sem token vál
 | `CHECKOUT_CREATED` | Auditoria |
 | `CHECKOUT_PAID` | Liga checkout à assinatura; se `PAYMENT_CONFIRMED` ainda não chegou, pode aplicar o `PlanCode` do item |
 | `CHECKOUT_CANCELED` / `CHECKOUT_EXPIRED` | Marca o checkout; o pescador gera outro |
-| `SUBSCRIPTION_CREATED` | Grava `sub_…`; `externalReference` reconcilia usuário e plano |
+| `SUBSCRIPTION_CREATED` | Grava `sub_…`; no upgrade, `PUT` da assinatura para `RecurringPrice` (anual cheio) sem alterar a cobrança já paga; `DELETE` da assinatura antiga sem `/refund` |
 | `SUBSCRIPTION_INACTIVATED` / `SUBSCRIPTION_DELETED` | Se `CancelAtPeriodEnd`, só confirma o fim da recorrência. Senão, carência e depois `free` |
-| `PAYMENT_CONFIRMED` | `PlanCode` do item (`arrais` / `premium` / `capitao`), `status = active`, `CurrentPeriodEnd` anual, notificação “Seu plano agora é {nome}.” |
+| `PAYMENT_CONFIRMED` | `PlanCode` do item na **hora**; `PeriodStart = agora`; `CurrentPeriodEnd = agora + 1 ano`; notificação “Seu plano agora é {nome}.” |
 | `PAYMENT_OVERDUE` | `past_due`; inbox avisa; carência (ex.: 3 dias) antes de `free` |
 | `PAYMENT_REFUNDED` / `PAYMENT_CHARGEBACK_REQUESTED` | Rebaixa na hora |
 
@@ -237,7 +281,7 @@ O webhook no painel Asaas aponta para `https://<domínio>/api/v1/webhooks/asaas`
 
 ## Frontend
 
-- `/premium`: os cards de Arrais, Mestre e Capitão passam a mostrar anual, equivalente mensal e selo “20% de desconto”. Com billing ligado, o CTA do card envia `planCode`. Sem chave, permanece “A cobrança ainda não começa por aqui.”
+- `/premium`: os cards mostram anual, equivalente mensal e selo “20% de desconto”. No upgrade, o CTA usa `quote.firstCharge` (“Pagar R$ 87,19 hoje · desconto proporcional”) e deixa claro que o plano novo começa na hora e a renovação segue o anual cheio. Sem chave, permanece “A cobrança ainda não começa por aqui.”
 - Retornos `?checkout=success|cancel|expired`: copy local; o plano vem de `GET /me`.
 - Conta: plano atual, “Cancelar renovação” com texto de que **não há estorno** e a data de acesso. Depois, “Renovação cancelada · {nome} até {data}”.
 - Upgrade: CTA só nos cards de tabela maior. Downgrade: copy apontando para o cancelamento e a nova assinatura após o vencimento.
@@ -258,7 +302,7 @@ Vocabulário: na interface, **Arrais**, **Mestre** e **Capitão**. “Assinatura
 - Pix
 - Boleto
 - SKU mensal no checkout
-- Proration / crédito de dias não usados no upgrade
+- Proration / crédito no **downgrade** (só no upgrade)
 - Parcelamento `INSTALLMENT`
 - Split e checkout de parceiros
 - Formulário de cartão no PWA
@@ -272,5 +316,5 @@ Vocabulário: na interface, **Arrais**, **Mestre** e **Capitão**. “Assinatura
 2. `GET /billing/catalog` e `POST /billing/checkout { planCode }`, alinhados a `PlanRules`.
 3. Aplicar `arrais` / `premium` / `capitao` nos eventos da tabela acima.
 4. Cancelamento sem refund, worker de `CurrentPeriodEnd` e copy na Conta.
-5. Upgrade sem estorno (remove assinatura antiga, cobra o anual do destino).
-6. Sandbox ponta a ponta nos três planos (pagar, cancelar, conferir que não há estorno); só então chave de produção no Coolify.
+5. Upgrade: crédito proporcional na primeira parcela, plano novo na hora, `PUT` da recorrência para o anual cheio, `DELETE` da assinatura antiga sem refund.
+6. Sandbox ponta a ponta nos três planos e um upgrade Arrais→Mestre no meio do período (conferir valor cobrado, cotas na hora e renovação futura cheia); só então chave de produção no Coolify.
