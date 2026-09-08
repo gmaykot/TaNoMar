@@ -221,7 +221,9 @@ export function LocationDetailsPage() {
             : activeDay.forecast.bestHours.map((hour) => <strong key={hour}>{hour}</strong>)}
         </div>
         {metricsHourCaption(activeDay.forecast.metricsHour) ? (
-          <p className={styles.metricCaption}>{metricsHourCaption(activeDay.forecast.metricsHour)}</p>
+          <p className={styles.metricCaption}>
+            {metricsHourCaption(activeDay.forecast.metricsHour)}
+          </p>
         ) : null}
         <MetricGrid
           metrics={activeDay.forecast.metrics}

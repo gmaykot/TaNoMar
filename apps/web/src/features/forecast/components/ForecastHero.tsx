@@ -54,13 +54,9 @@ export function ForecastHero({
           <div className={styles.window}>
             <Clock3 size={18} aria-hidden="true" />
             Melhor hora{' '}
-            <strong>
-              {forecast.metricsHour ?? forecast.bestHours[0] ?? forecast.bestWindow}
-            </strong>
+            <strong>{forecast.metricsHour ?? forecast.bestHours[0] ?? forecast.bestWindow}</strong>
           </div>
-          {otherHoursLabel ? (
-            <p className={styles.windowExtra}>Também {otherHoursLabel}</p>
-          ) : null}
+          {otherHoursLabel ? <p className={styles.windowExtra}>Também {otherHoursLabel}</p> : null}
         </div>
         <ScoreIndicator score={forecast.score} classification={forecast.classification} />
       </div>
@@ -69,7 +65,9 @@ export function ForecastHero({
       ) : null}
       {forecast.highlights?.length ? (
         <ul className={styles.heroHighlights} aria-label="Por que este local foi recomendado">
-          {forecast.highlights.map((highlight) => <li key={highlight}>{highlight}</li>)}
+          {forecast.highlights.map((highlight) => (
+            <li key={highlight}>{highlight}</li>
+          ))}
         </ul>
       ) : null}
       {metricsCaption ? <p className={styles.metricCaption}>{metricsCaption}</p> : null}
