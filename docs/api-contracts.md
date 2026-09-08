@@ -12,7 +12,7 @@ Base: `/api/v1`. Implementação em `apps/api/TaNoMar.Api`.
 
 O access token é JWT Bearer e fica só em memória no frontend. O refresh token permanece no cookie `tanomar_refresh`. A web entra em `/entrar` com Google Identity Services, tenta refresh na abertura e encerra a sessão após um 401 sem cookie válido.
 
-`BOOTSTRAP_ADMIN_EMAIL` e `BOOTSTRAP_ADMIN_GOOGLE_SUBJECT` promovem o usuário correspondente a Admin com plano Mestre (`premium`) no login Google e de novo em `GET /me`. O subject é a claim `sub` do token Google, não o e-mail. Usuários novos entram no plano Free.
+`BOOTSTRAP_ADMIN_EMAIL` e `BOOTSTRAP_ADMIN_GOOGLE_SUBJECT` promovem o usuário correspondente a Admin no login Google e de novo em `GET /me`. No primeiro login essa conta entra no plano Mestre (`premium`); depois o admin pode trocar o plano. O subject é a claim `sub` do token Google, não o e-mail. Usuários novos entram no plano Free.
 
 Planos pagos na interface: **Arrais** (`arrais`), **Mestre** (`premium`) e **Capitão** (`capitao`). O código `premium` permanece estável para contas já assinantes. Preço (centavos), texto de apoio, destaque, ordem, disponibilidade, cotas e módulos ficam em `Plans` e o admin edita em `/admin/planos`. `GET /plans` devolve os planos pagos com `enabled = true`. A API aplica as flags de módulo nos gates; cotas continuam em `entitlements`.
 
@@ -51,7 +51,7 @@ O contrato de métrica é uma união `{ state: "available", value }` ou `{ state
 - `DELETE /community/reports/{id}`: o autor apaga o próprio relato e os votos ligados.
 - `POST /community/reports/{id}/confirm` e `/contest`: um voto por usuário, só com `modules.communityVote`. Free vê e cria relatos; o autor não vota no próprio. Sem o módulo a API responde `400` (`plan_required`).
 - `GET /admin/fishing-spots/pending`, `POST /admin/fishing-spots/{id}/approve` e `/reject`: só Admin. Recusar devolve o ponto para `private` e notifica o dono.
-- `GET /admin/users`, `PUT /admin/users/{id}/plan` e `PUT /admin/users/{id}/active`: só Admin. Lista contas, troca o plano (`free`, `arrais`, `premium` ou `capitao`; `mestre` é aceito como alias de `premium`) e bloqueia ou libera o acesso. Não atribui plano desligado. A conta do bootstrap permanece no Mestre e não é bloqueada; o admin não bloqueia a si mesmo nem o último admin ativo. Bloquear revoga os refresh tokens.
+- `GET /admin/users`, `PUT /admin/users/{id}/plan` e `PUT /admin/users/{id}/active`: só Admin. Lista contas, troca o plano (`free`, `arrais`, `premium` ou `capitao`; `mestre` é aceito como alias de `premium`) e bloqueia ou libera o acesso. Não atribui plano desligado. A conta do bootstrap pode mudar de plano e não é bloqueada; o admin não bloqueia a si mesmo nem o último admin ativo. Bloquear revoga os refresh tokens.
 - `GET /plans`: autenticado. Catálogo comercial dos planos pagos com `enabled = true` (nome, tagline, `monthlyPriceCents`, destaque, ordem, cotas e módulos), na ordem da vitrine.
 - `GET /billing/catalog`: autenticado. Planos pagos habilitados com `annualPriceCents`, `discountPercent`, `enabled` (chave Asaas) e `quotes` de upgrade quando couber.
 - `POST /billing/checkout`: autenticado. Body `{ planCode, cycle: "MONTHLY" | "YEARLY" }`. Devolve `{ checkoutId, checkoutUrl, expiresAt }` ou `503 billing_disabled`.

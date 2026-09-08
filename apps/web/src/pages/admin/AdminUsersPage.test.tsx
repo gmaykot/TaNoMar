@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
@@ -37,7 +37,7 @@ vi.mock('@/features/admin-users/services/adminUsersService', () => ({
         createdAt: '2026-09-01T12:00:00+00:00',
         isSelf: true,
         protection: 'bootstrap',
-        canChangePlan: false,
+        canChangePlan: true,
         canDeactivate: false,
       },
       {
@@ -69,6 +69,10 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
 }));
 
 describe('AdminUsersPage', () => {
+  beforeEach(() => {
+    setAdminUserPlan.mockClear();
+  });
+
   it('lista contas e filtra por nome sem acento', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AdminUsersPage />);
@@ -90,5 +94,14 @@ describe('AdminUsersPage', () => {
     expect(beto).toBeTruthy();
     await user.click(within(beto as HTMLElement).getByRole('button', { name: 'Mestre' }));
     expect(setAdminUserPlan).toHaveBeenCalledWith('user-2', 'premium');
+  });
+
+  it('permite mudar o plano da conta inicial', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AdminUsersPage />);
+    const ana = (await screen.findByText('Ana Costa')).closest('article');
+    expect(ana).toBeTruthy();
+    await user.click(within(ana as HTMLElement).getByRole('button', { name: 'Capitão' }));
+    expect(setAdminUserPlan).toHaveBeenCalledWith('user-1', 'capitao');
   });
 });

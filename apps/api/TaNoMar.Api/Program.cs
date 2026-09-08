@@ -156,6 +156,7 @@ api.MapPost("/auth/google", async (GoogleLoginRequest request, TaNoMarDbContext 
         return Results.Unauthorized();
     }
     var user = await db.Users.SingleOrDefaultAsync(item => item.GoogleSubject == payload.Subject, cancellationToken);
+    var created = user is null;
     if (user is null)
     {
         user = new User { GoogleSubject = payload.Subject, Name = payload.Name ?? payload.Email, Email = payload.Email, PictureUrl = payload.Picture };
@@ -167,7 +168,7 @@ api.MapPost("/auth/google", async (GoogleLoginRequest request, TaNoMarDbContext 
         user.Email = payload.Email;
         user.PictureUrl = payload.Picture;
     }
-    ApplyBootstrapAdmin(user, payload.Email, payload.Subject, options.Value);
+    ApplyBootstrapAdmin(user, payload.Email, payload.Subject, options.Value, assignDefaultPlan: created);
     if (!user.IsActive) return Results.Forbid();
     var refresh = tokens.CreateRefreshToken();
     db.RefreshTokens.Add(new RefreshToken { UserId = user.Id, TokenHash = tokens.HashRefreshToken(refresh), ExpiresAt = DateTimeOffset.UtcNow.AddDays(options.Value.RefreshTokenDays) });
@@ -429,8 +430,6 @@ api.MapPut("/admin/users/{id:guid}/plan", async (Guid id, AdminPlanRequest reque
     if (planCode is null) return Results.BadRequest(new { code = "invalid_plan", detail = "Use o plano free, arrais, premium ou capitao." });
     var target = await db.Users.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
     if (target is null) return Results.NotFound();
-    if (MatchesBootstrapAdmin(target.Email, target.GoogleSubject, options.Value))
-        return Results.Conflict(new { code = "bootstrap_locked", detail = "A conta inicial do bootstrap permanece no plano Mestre." });
     var plan = await db.Plans.SingleAsync(item => item.Code == planCode, cancellationToken);
     if (!plan.IsEnabled)
         return Results.Conflict(new { code = "plan_disabled", detail = "Esse plano está desligado." });
@@ -1101,11 +1100,11 @@ static object AdminUserDto(User item, Plan plan, User actor, TaNoMarOptions opti
         createdAt = item.CreatedAt,
         isSelf = item.Id == actor.Id,
         protection,
-        canChangePlan = protection != "bootstrap",
+        canChangePlan = true,
         canDeactivate = protection is null
     };
 }
-static bool ApplyBootstrapAdmin(User user, string? email, string? googleSubject, TaNoMarOptions options)
+static bool ApplyBootstrapAdmin(User user, string? email, string? googleSubject, TaNoMarOptions options, bool assignDefaultPlan = false)
 {
     if (!MatchesBootstrapAdmin(email, googleSubject, options)) return false;
     var changed = false;
@@ -1114,7 +1113,7 @@ static bool ApplyBootstrapAdmin(User user, string? email, string? googleSubject,
         user.Role = "Admin";
         changed = true;
     }
-    if (!string.Equals(user.PlanCode, PlanRules.Mestre, StringComparison.Ordinal))
+    if (assignDefaultPlan && !string.Equals(user.PlanCode, PlanRules.Mestre, StringComparison.Ordinal))
     {
         user.PlanCode = PlanRules.Mestre;
         changed = true;
