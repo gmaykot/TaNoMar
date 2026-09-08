@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Route, Routes } from 'react-router-dom';
-import { screen } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { forecastFixture } from '@/features/forecast/fixtures/forecast';
 import { locationsFixture } from '@/features/locations/fixtures/locations';
@@ -117,6 +117,23 @@ vi.mock('@/features/locations/services/locationsService', () => ({
   rejectLocation: vi.fn(),
 }));
 
+function renderLocation(path = '/locais/pantano_do_sul') {
+  return renderWithProviders(
+    <Routes>
+      <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
+    </Routes>,
+    [path],
+  );
+}
+
+function visibleDaySlide() {
+  const slide = screen
+    .getByLabelText('Previsão por dia')
+    .querySelector<HTMLElement>('[data-snap-key]:not([aria-hidden="true"])');
+  expect(slide).not.toBeNull();
+  return slide!;
+}
+
 describe('LocationDetailsPage', () => {
   beforeEach(() => {
     authState.maxFavorites = 20;
@@ -126,29 +143,21 @@ describe('LocationDetailsPage', () => {
   });
 
   it('mostra estado amigável para local inexistente', async () => {
-    renderWithProviders(
-      <Routes>
-        <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
-      </Routes>,
-      ['/locais/nao-existe'],
-    );
+    renderLocation('/locais/nao-existe');
     expect(await screen.findByText('Local não encontrado')).toBeInTheDocument();
   });
 
   it('mostra clima do ar no card e mar só depois de abrir', async () => {
     const user = userEvent.setup();
-    renderWithProviders(
-      <Routes>
-        <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
-      </Routes>,
-      ['/locais/pantano_do_sul'],
-    );
-    expect(await screen.findByText('Vento')).toBeInTheDocument();
-    expect(screen.getByText('Chuva')).toBeInTheDocument();
-    expect(screen.queryByText('Ondas')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Maré')).not.toBeInTheDocument();
+    renderLocation();
+    expect(await screen.findByLabelText('Previsão por dia')).toBeInTheDocument();
+    const slide = within(visibleDaySlide());
+    expect(await slide.findByText('Vento')).toBeInTheDocument();
+    expect(slide.getByText('Chuva')).toBeInTheDocument();
+    expect(slide.queryByText('Ondas')).not.toBeInTheDocument();
+    expect(slide.queryByLabelText('Maré')).not.toBeInTheDocument();
 
-    await user.click(screen.getByText('Mar e maré'));
+    await user.click(slide.getByText('Mar e maré'));
     expect(await screen.findByRole('heading', { name: 'Mar' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Maré e pressão' })).toBeInTheDocument();
     expect(screen.getByText('Enchente')).toBeInTheDocument();
@@ -160,29 +169,20 @@ describe('LocationDetailsPage', () => {
   it('no foco surfista abre o mar e esconde a nota de pesca', async () => {
     authState.focus = 'surfista';
     authState.showAppFocus = true;
-    renderWithProviders(
-      <Routes>
-        <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
-      </Routes>,
-      ['/locais/pantano_do_sul'],
-    );
+    renderLocation();
 
     expect(await screen.findByRole('heading', { name: 'Mar' })).toBeInTheDocument();
     expect(screen.queryByLabelText(/Nota /)).not.toBeInTheDocument();
-    expect(screen.queryByText('Chuva')).not.toBeInTheDocument();
-    expect(screen.getByText('Swell')).toBeInTheDocument();
+    const slide = within(visibleDaySlide());
+    expect(slide.queryByText('Chuva')).not.toBeInTheDocument();
+    expect(slide.getByText('Swell')).toBeInTheDocument();
     expect(screen.queryByText('Nenhum relato ativo')).not.toBeInTheDocument();
     expect(screen.queryByText('Enviar relato')).not.toBeInTheDocument();
   });
 
   it('bloqueia favoritar no plano Free com cadeado Premium', async () => {
     authState.maxFavorites = 0;
-    renderWithProviders(
-      <Routes>
-        <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
-      </Routes>,
-      ['/locais/pantano_do_sul'],
-    );
+    renderLocation();
     const favorite = await screen.findByRole('button', {
       name: 'Favoritar bloqueado no plano atual',
     });
@@ -195,12 +195,7 @@ describe('LocationDetailsPage', () => {
     if (!location) throw new Error('fixture pantano_do_sul ausente');
     location.hasLiveWebcam = true;
     try {
-      renderWithProviders(
-        <Routes>
-          <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
-        </Routes>,
-        ['/locais/pantano_do_sul'],
-      );
+      renderLocation();
       expect(await screen.findByText('Recurso do plano Capitão')).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Ver câmera ao vivo' })).not.toBeInTheDocument();
     } finally {
@@ -212,68 +207,68 @@ describe('LocationDetailsPage', () => {
     const location = locationsFixture.find((item) => item.id === 'pantano_do_sul');
     if (!location) throw new Error('fixture pantano_do_sul ausente');
     location.isOwner = true;
+    location.visibility = 'shared';
 
     try {
-      renderWithProviders(
-        <Routes>
-          <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
-        </Routes>,
-        ['/locais/pantano_do_sul'],
-      );
+      renderLocation();
 
       expect(await screen.findByText('Meu local')).toBeInTheDocument();
+      expect(screen.queryByText('Compartilhado')).not.toBeInTheDocument();
     } finally {
       location.isOwner = false;
+      location.visibility = 'official';
+    }
+  });
+
+  it('mostra o selo Compartilhado quando o local é da comunidade', async () => {
+    const location = locationsFixture.find((item) => item.id === 'pantano_do_sul');
+    if (!location) throw new Error('fixture pantano_do_sul ausente');
+    location.visibility = 'shared';
+
+    try {
+      renderLocation();
+
+      expect(await screen.findByText('Compartilhado')).toBeInTheDocument();
+      expect(screen.queryByText('Meu local')).not.toBeInTheDocument();
+    } finally {
+      location.visibility = 'official';
     }
   });
 
   it('mostra o controle para usar o local nas previsões', async () => {
-    renderWithProviders(
-      <Routes>
-        <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
-      </Routes>,
-      ['/locais/pantano_do_sul'],
-    );
+    renderLocation();
     const enabled = await screen.findByRole('button', { name: 'Nas previsões' });
     expect(enabled).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('permite trocar o dia arrastando o carrossel nos detalhes', async () => {
-    renderWithProviders(
-      <Routes>
-        <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
-      </Routes>,
-      ['/locais/pantano_do_sul'],
-    );
+    renderLocation();
+    expect(await screen.findByRole('heading', { name: '05:30–08:00' })).toBeInTheDocument();
 
-    const selector = await screen.findByLabelText('Selecionar dia da previsão');
-    expect(selector).toHaveAttribute('aria-roledescription', 'carrossel');
-    const days = [...selector.querySelectorAll<HTMLElement>('[data-snap-key]')];
-    Object.defineProperty(selector, 'clientWidth', { configurable: true, value: 320 });
-    Object.defineProperty(selector, 'scrollLeft', {
+    const track = screen.getByLabelText('Previsão por dia');
+    const slides = [...track.querySelectorAll<HTMLElement>('[data-snap-key]')];
+    Object.defineProperty(track, 'clientWidth', { configurable: true, value: 320 });
+    Object.defineProperty(track, 'scrollLeft', {
       configurable: true,
       writable: true,
       value: 320,
     });
-    days.forEach((day, index) => {
+    slides.forEach((day, index) => {
       Object.defineProperty(day, 'offsetLeft', { configurable: true, value: index * 320 });
       Object.defineProperty(day, 'offsetWidth', { configurable: true, value: 320 });
     });
 
-    selector.dispatchEvent(new Event('scrollend'));
-    selector.dispatchEvent(new Event('scroll'));
+    track.dispatchEvent(new Event('scrollend'));
+    track.dispatchEvent(new Event('scroll'));
 
-    expect(await screen.findByRole('heading', { name: '16:30–19:00' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '16:30–19:00' })).toBeInTheDocument();
+    });
   });
 
   it('planeja a saída com a melhor janela do dia selecionado', async () => {
     const user = userEvent.setup();
-    renderWithProviders(
-      <Routes>
-        <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
-      </Routes>,
-      ['/locais/pantano_do_sul?data=2026-09-06'],
-    );
+    renderLocation('/locais/pantano_do_sul?data=2026-09-06');
 
     await user.click(await screen.findByRole('button', { name: 'Planejar saída' }));
 

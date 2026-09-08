@@ -194,8 +194,12 @@ describe('AccountPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<AccountPage />);
 
+    expect(screen.getByRole('link', { name: /Gerenciar assinatura/ })).toHaveAttribute(
+      'href',
+      '/premium#assinatura',
+    );
     await user.click(screen.getByRole('button', { name: 'Cancelar renovação' }));
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('Não há estorno'));
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('volta para Free'));
     expect(cancelSubscription).toHaveBeenCalledTimes(1);
   });
 });

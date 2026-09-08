@@ -341,6 +341,11 @@
   line-height: 1.4;
 }
 
+.planHint a {
+  color: var(--color-ocean-700);
+  font-weight: 750;
+}
+
 .checkoutBanner,
 .checkoutError {
   margin: 0;

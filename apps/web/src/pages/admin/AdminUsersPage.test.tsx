@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { AdminUsersPage } from './AdminUsersPage';
 
-const { setAdminUserPlan, setAdminUserActive } = vi.hoisted(() => ({
+const { setAdminUserPlan, setAdminUserActive, setAdminUserRole } = vi.hoisted(() => ({
   setAdminUserPlan: vi.fn(() =>
     Promise.resolve({
       id: 'user-2',
@@ -19,6 +19,7 @@ const { setAdminUserPlan, setAdminUserActive } = vi.hoisted(() => ({
       protection: null,
       canChangePlan: true,
       canDeactivate: true,
+      canChangeRole: true,
     }),
   ),
   setAdminUserActive: vi.fn(() =>
@@ -35,6 +36,24 @@ const { setAdminUserPlan, setAdminUserActive } = vi.hoisted(() => ({
       protection: null,
       canChangePlan: true,
       canDeactivate: true,
+      canChangeRole: true,
+    }),
+  ),
+  setAdminUserRole: vi.fn(() =>
+    Promise.resolve({
+      id: 'user-3',
+      name: 'Cida Souza',
+      email: 'cida@example.com',
+      pictureUrl: null,
+      role: 'User',
+      isActive: true,
+      plan: { code: 'premium', name: 'Mestre' },
+      createdAt: '2026-09-03T12:00:00+00:00',
+      isSelf: false,
+      protection: null,
+      canChangePlan: true,
+      canDeactivate: true,
+      canChangeRole: true,
     }),
   ),
 }));
@@ -55,6 +74,7 @@ vi.mock('@/features/admin-users/services/adminUsersService', () => ({
         protection: 'bootstrap',
         canChangePlan: true,
         canDeactivate: false,
+        canChangeRole: false,
       },
       {
         id: 'user-2',
@@ -69,10 +89,27 @@ vi.mock('@/features/admin-users/services/adminUsersService', () => ({
         protection: null,
         canChangePlan: true,
         canDeactivate: true,
+        canChangeRole: true,
+      },
+      {
+        id: 'user-3',
+        name: 'Cida Souza',
+        email: 'cida@example.com',
+        pictureUrl: null,
+        role: 'Admin',
+        isActive: true,
+        plan: { code: 'premium', name: 'Mestre' },
+        createdAt: '2026-09-03T12:00:00+00:00',
+        isSelf: false,
+        protection: null,
+        canChangePlan: true,
+        canDeactivate: true,
+        canChangeRole: true,
       },
     ]),
   setAdminUserPlan,
   setAdminUserActive,
+  setAdminUserRole,
 }));
 
 vi.mock('@/features/auth/hooks/useAuth', () => ({
@@ -88,13 +125,14 @@ describe('AdminUsersPage', () => {
   beforeEach(() => {
     setAdminUserPlan.mockClear();
     setAdminUserActive.mockClear();
+    setAdminUserRole.mockClear();
   });
 
   it('lista contas e filtra por nome sem acento', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AdminUsersPage />);
 
-    expect(await screen.findByText('2 contas encontradas')).toBeInTheDocument();
+    expect(await screen.findByText('3 contas encontradas')).toBeInTheDocument();
     expect(screen.getByText('Ana Costa')).toBeInTheDocument();
     expect(screen.getByText('Conta inicial')).toBeInTheDocument();
     expect(screen.getByText('Beto Lima')).toBeInTheDocument();
@@ -152,5 +190,38 @@ describe('AdminUsersPage', () => {
     expect(screen.getByRole('dialog', { name: 'Bloquear conta' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Confirmar bloqueio' }));
     expect(setAdminUserActive).toHaveBeenCalledWith('user-2', false);
+  });
+
+  it('rebaixa outro admin depois da confirmação', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AdminUsersPage />);
+    const cida = (await screen.findByText('Cida Souza')).closest('article');
+    expect(cida).toBeTruthy();
+    await user.click(within(cida as HTMLElement).getByRole('button', { name: 'Rebaixar' }));
+    expect(setAdminUserRole).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Rebaixar admin' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Confirmar rebaixamento' }));
+    expect(setAdminUserRole).toHaveBeenCalledWith('user-3', 'User');
+  });
+
+  it('promove um usuário a admin depois da confirmação', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AdminUsersPage />);
+    const beto = (await screen.findByText('Beto Lima')).closest('article');
+    expect(beto).toBeTruthy();
+    await user.click(within(beto as HTMLElement).getByRole('button', { name: 'Tornar admin' }));
+    expect(setAdminUserRole).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Tornar admin' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Confirmar cargo' }));
+    expect(setAdminUserRole).toHaveBeenCalledWith('user-2', 'Admin');
+  });
+
+  it('não oferece rebaixar a própria conta inicial', async () => {
+    renderWithProviders(<AdminUsersPage />);
+    const ana = (await screen.findByText('Ana Costa')).closest('article');
+    expect(ana).toBeTruthy();
+    expect(
+      within(ana as HTMLElement).queryByRole('button', { name: 'Rebaixar' }),
+    ).not.toBeInTheDocument();
   });
 });

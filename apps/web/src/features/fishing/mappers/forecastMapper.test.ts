@@ -105,11 +105,12 @@ describe('forecastMapper', () => {
       classification: 'excellent',
       bestWindow: '05:00, 06:00 e 17:00',
       isOwner: true,
+      visibility: 'official',
       metricsHour: '05:00',
       windOrigin: 'terra',
       scoreBreakdown: 'Média das 3 melhores horas · 05:00 9,3 · 06:00 9,1 · 17:00 8,9',
     });
-    expect(forecast.days[1]?.ranking[0]).toMatchObject({ isOwner: false });
+    expect(forecast.days[1]?.ranking[0]).toMatchObject({ isOwner: false, visibility: 'official' });
     expect(forecast.days[1]?.ranking[0]?.scoreBreakdown).toBe('');
     expect(forecast.days[1]?.ranking[0]?.metricsHour).toBe('06:00');
   });

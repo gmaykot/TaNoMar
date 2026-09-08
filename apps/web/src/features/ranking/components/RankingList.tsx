@@ -7,7 +7,7 @@ import type { FishingMetricKey, ForecastRankingItem } from '@/features/fishing/t
 import { MetricGrid } from '@/features/forecast/components/MetricGrid';
 import { formatWindMetric } from '@/features/forecast/utils/formatWindMetric';
 import { metricsHourCaption } from '@/features/fishing/utils/scoreBreakdown';
-import { OwnerBadge } from '@/features/locations/components/OwnerBadge';
+import { LocationStampFor } from '@/features/locations/components/LocationStamp';
 import { rankingMetricKeys } from '../rankingEmphasis';
 import styles from './ranking.module.css';
 
@@ -51,7 +51,7 @@ export function RankingList({
         const EmphasisIcon = emphasisKey ? emphasisIcons[emphasisKey] : undefined;
         return (
           <Card as="article" className={styles.item} key={item.locationId}>
-            {item.isOwner ? <OwnerBadge /> : null}
+            <LocationStampFor isOwner={item.isOwner} visibility={item.visibility} />
             <div className={styles.summary}>
               <span className={styles.position} aria-label={`${index + startAt}º lugar`}>
                 {String(index + startAt).padStart(2, '0')}

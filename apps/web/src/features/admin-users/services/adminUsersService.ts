@@ -23,3 +23,12 @@ export async function setAdminUserActive(id: string, isActive: boolean): Promise
     }),
   );
 }
+
+export async function setAdminUserRole(id: string, role: 'Admin' | 'User'): Promise<AdminUser> {
+  return parseAdminUser(
+    await apiRequest(`/admin/users/${encodeURIComponent(id)}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    }),
+  );
+}

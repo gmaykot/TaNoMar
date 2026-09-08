@@ -53,6 +53,7 @@ export interface ForecastRankingItem {
   highlights?: string[];
   metrics: FishingMetric[];
   isOwner: boolean;
+  visibility: 'official' | 'shared' | 'private';
 }
 
 export interface ForecastDay {

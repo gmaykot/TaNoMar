@@ -28,6 +28,7 @@ interface AdminUserCardProps {
   enabledPlanCodes?: ReadonlySet<string> | null;
   onPlanChange: (planCode: AdminPlanCode) => void;
   onActiveChange: (isActive: boolean) => void;
+  onRoleChange: (role: 'Admin' | 'User') => void;
 }
 
 export function AdminUserCard({
@@ -37,6 +38,7 @@ export function AdminUserCard({
   enabledPlanCodes = null,
   onPlanChange,
   onActiveChange,
+  onRoleChange,
 }: AdminUserCardProps) {
   const initials = user.name.trim().charAt(0).toUpperCase() || 'T';
   const protectionText = user.protection ? protectionLabel[user.protection] : null;
@@ -93,6 +95,26 @@ export function AdminUserCard({
             {plan.label}
           </Button>
         ))}
+        {user.canChangeRole && user.role === 'Admin' ? (
+          <Button
+            type="button"
+            variant="quiet"
+            disabled={pending}
+            onClick={() => onRoleChange('User')}
+          >
+            Rebaixar
+          </Button>
+        ) : null}
+        {user.canChangeRole && user.role !== 'Admin' ? (
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={pending}
+            onClick={() => onRoleChange('Admin')}
+          >
+            Tornar admin
+          </Button>
+        ) : null}
         {user.isActive ? (
           <Button
             type="button"

@@ -20,6 +20,7 @@ import { isPaidPlan } from '@/features/auth/types/auth';
 import { useBillingCatalog } from '@/features/billing/hooks/useBillingCatalog';
 import { useBillingCheckout } from '@/features/billing/hooks/useBillingCheckout';
 import type { BillingCycle } from '@/features/billing/billing';
+import { SubscriptionBillingCard } from '@/features/billing/components/SubscriptionBillingCard';
 import { ApiError } from '@/shared/api/errors';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { SubscriptionPlanCards } from '@/pages/premium/SubscriptionPlanCards';
@@ -116,9 +117,10 @@ export function PremiumPage() {
         : null;
 
   useEffect(() => {
-    if (catalog.isSuccess && location.hash === '#planos') {
-      document.getElementById('planos')?.scrollIntoView({ block: 'start' });
-    }
+    if (!catalog.isSuccess) return;
+    const id =
+      location.hash === '#planos' || location.hash === '#assinatura' ? location.hash.slice(1) : '';
+    if (id) document.getElementById(id)?.scrollIntoView({ block: 'start' });
   }, [catalog.isSuccess, location.hash]);
 
   function handleCheckout(planCode: string, cycle: BillingCycle) {
@@ -170,6 +172,7 @@ export function PremiumPage() {
           {checkoutError}
         </p>
       ) : null}
+      <SubscriptionBillingCard planName={currentPlanName} billing={auth.user?.billing} />
       <section className={premiumStyles.hero} aria-labelledby="premium-hero-title">
         <div className={premiumStyles.heroCopy}>
           <span className={premiumStyles.heroEyebrow}>
@@ -221,6 +224,7 @@ export function PremiumPage() {
         currentPlanCode={auth.user?.plan.code}
         currentCycle={auth.user?.billing?.cycle}
         currentStatus={auth.user?.billing?.status}
+        cancelAtPeriodEnd={auth.user?.billing?.cancelAtPeriodEnd === true}
         billingEnabled={billing?.enabled === true}
         pendingKey={pendingKey}
         onCheckout={handleCheckout}
@@ -252,7 +256,7 @@ export function PremiumPage() {
         </div>
         <p>
           {billing?.enabled
-            ? 'O TáNoMar não vê o número do cartão. Cancelar a renovação não estorna o período já pago. Se a tabela mudar no meio do ciclo, a diferença não é cobrada agora — a renovação usa o preço novo.'
+            ? 'O TáNoMar não vê o número do cartão. Cancelar a renovação não estorna o período já pago: você usa o plano até o fim do mês ou do ano contratado e depois volta para Free. Se a tabela mudar no meio do ciclo, a diferença não é cobrada agora — a renovação usa o preço novo.'
             : 'Arrais, Mestre e Capitão já podem ser liberados pelo administrador. A cobrança automática ainda está sendo configurada pela equipe do TáNoMar e esta página não inicia pagamento nem cria assinatura sozinha.'}
         </p>
         <Link className={styles.backLink} to={routes.about}>

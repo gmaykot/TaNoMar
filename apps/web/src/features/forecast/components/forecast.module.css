@@ -119,6 +119,7 @@
   background: color-mix(in srgb, var(--color-surface) 88%, var(--color-sand-100));
   text-align: center;
   cursor: pointer;
+  touch-action: pan-x;
 }
 
 .dayRail button:first-of-type:not(.dateSelected) {
@@ -252,11 +253,11 @@
   gap: var(--space-3);
 }
 
-.hero:has([data-owner-badge]) .heroTopline {
-  padding-right: 6.5rem;
+.hero:has([data-location-stamp]) .heroTopline {
+  padding-right: 8rem;
 }
 
-.hero [data-owner-badge] {
+.hero [data-location-stamp] {
   right: var(--space-1);
 }
 

@@ -599,6 +599,36 @@ api.MapPut("/admin/users/{id:guid}/active", async (Guid id, AdminActiveRequest r
     return Results.Ok(AdminUserDto(target, plan, actor, options.Value, activeAdmins));
 }).RequireAuthorization();
 
+api.MapPut("/admin/users/{id:guid}/role", async (Guid id, AdminRoleRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, NotificationRealtimeHub hub, WebPushQueue push, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
+{
+    var (actor, failure) = await AdminActorAsync(principal, db, cancellationToken);
+    if (failure is not null) return failure;
+    if (!MatchesBootstrapAdmin(actor!.Email, actor.GoogleSubject, options.Value))
+        return Results.Conflict(new { code = "bootstrap_required", detail = "Só a conta inicial pode alterar o cargo de admin." });
+    var role = NormalizeAssignableRole(request.Role);
+    if (role is null) return Results.BadRequest(new { code = "invalid_role", detail = "Use o cargo Admin ou User." });
+    var target = await db.Users.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+    if (target is null) return Results.NotFound();
+    if (target.Id == actor.Id)
+        return Results.Conflict(new { code = "self_locked", detail = "Você não pode alterar o próprio cargo." });
+    if (MatchesBootstrapAdmin(target.Email, target.GoogleSubject, options.Value))
+        return Results.Conflict(new { code = "bootstrap_locked", detail = "A conta inicial não pode ter o cargo alterado." });
+    if (!string.Equals(target.Role, role, StringComparison.Ordinal))
+    {
+        target.Role = role;
+        var title = "Cargo atualizado";
+        var body = string.Equals(role, "Admin", StringComparison.Ordinal)
+            ? "Você agora é admin do TáNoMar."
+            : "Você não é mais admin do TáNoMar.";
+        AddNotification(db, target.Id, title, body);
+        await db.SaveChangesAsync(cancellationToken);
+        DispatchCreated(hub, push, target.Id, title, body);
+    }
+    var plan = await db.Plans.SingleAsync(item => item.Code == target.PlanCode, cancellationToken);
+    var activeAdmins = await db.Users.CountAsync(item => item.IsActive && item.Role == "Admin", cancellationToken);
+    return Results.Ok(AdminUserDto(target, plan, actor, options.Value, activeAdmins));
+}).RequireAuthorization();
+
 api.MapGet("/partners", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
@@ -863,12 +893,13 @@ api.MapGet("/forecasts/ranking", async (string? emphasis, ClaimsPrincipal princi
     visibleSpots = visibleSpots.Where(spot => SpotRules.IsInPreferredRegion(spot, preferredRegions)).ToList();
     var enabledSlugs = visibleSpots.Where(spot => SpotRules.IsEnabledForUser(spot, enabledSettings)).Select(spot => spot.Slug).ToHashSet();
     var ownerSlugs = await OwnerSpotSlugsAsync(db, user.Id, cancellationToken);
+    var visibilities = SpotVisibilities(visibleSpots);
     var days = new List<object>();
     for (var day = 0; day < plan.MaxForecastDays; day++)
     {
         var forecast = await fishing.GetAsync(day, cancellationToken, user.Id, enabledSlugs);
         var ordered = forecast with { Ranking = FishingRankingEmphasis.Order(forecast.Ranking, parsedEmphasis) };
-        days.Add(ForecastDayDto(ordered, plan.CanMarine, ownerSlugs));
+        days.Add(ForecastDayDto(ordered, plan.CanMarine, ownerSlugs, visibilities));
     }
     return Results.Ok(new { generatedAt = DateTimeOffset.UtcNow, availableFrom = DateOnly.FromDateTime(DateTime.UtcNow), availableTo = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(plan.MaxForecastDays - 1)), days });
 }).RequireAuthorization();
@@ -886,7 +917,7 @@ api.MapGet("/fishing-spots/{id}/forecast", async (string id, ClaimsPrincipal pri
     {
         var forecast = await fishing.GetAsync(day, cancellationToken, user.Id);
         var filtered = forecast with { Ranking = forecast.Ranking.Where(item => item.Id == spot.Slug).ToList() };
-        result.Add(ForecastDayDto(filtered, plan.CanMarine, OwnerSpotIds([spot], user)));
+        result.Add(ForecastDayDto(filtered, plan.CanMarine, OwnerSpotIds([spot], user), SpotVisibilities([spot])));
     }
     return Results.Ok(new { spotId = spot.Slug, days = result });
 }).RequireAuthorization();
@@ -1159,8 +1190,19 @@ static object AdminUserDto(User item, Plan plan, User actor, TaNoMarOptions opti
         isSelf = item.Id == actor.Id,
         protection,
         canChangePlan = true,
-        canDeactivate = protection is null
+        canDeactivate = protection is null,
+        canChangeRole = CanChangeAdminRole(actor, item, options)
     };
+}
+static bool CanChangeAdminRole(User actor, User target, TaNoMarOptions options) =>
+    MatchesBootstrapAdmin(actor.Email, actor.GoogleSubject, options)
+    && actor.Id != target.Id
+    && !MatchesBootstrapAdmin(target.Email, target.GoogleSubject, options);
+static string? NormalizeAssignableRole(string? role)
+{
+    if (string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase)) return "Admin";
+    if (string.Equals(role, "User", StringComparison.OrdinalIgnoreCase)) return "User";
+    return null;
 }
 static bool ApplyBootstrapAdmin(User user, string? email, string? googleSubject, TaNoMarOptions options, bool assignDefaultPlan = false)
 {
@@ -1428,9 +1470,11 @@ static async Task<IResult> VoteReportAsync(Guid id, string kind, ClaimsPrincipal
 }
 static HashSet<string> OwnerSpotIds(IEnumerable<FishingSpot> spots, User user) =>
     spots.Where(spot => SpotRules.Owns(spot, user)).Select(spot => spot.Slug).ToHashSet(StringComparer.Ordinal);
+static Dictionary<string, string> SpotVisibilities(IEnumerable<FishingSpot> spots) =>
+    spots.ToDictionary(spot => spot.Slug, spot => spot.Visibility, StringComparer.Ordinal);
 static Task<HashSet<string>> OwnerSpotSlugsAsync(TaNoMarDbContext db, Guid userId, CancellationToken cancellationToken) =>
     db.FishingSpots.AsNoTracking().Where(spot => spot.OwnerUserId == userId).Select(spot => spot.Slug).ToHashSetAsync(StringComparer.Ordinal, cancellationToken);
-static object ForecastDayDto(FishingForecast forecast, bool paid, HashSet<string>? ownerSpotIds = null) => new { date = forecast.Date, ranking = forecast.Ranking.Select(item => ForecastItemDto(item, paid, ownerSpotIds)).ToList(), unavailableSpotIds = forecast.Errors.Select(error => error.Location).ToList() };
+static object ForecastDayDto(FishingForecast forecast, bool paid, HashSet<string>? ownerSpotIds = null, IReadOnlyDictionary<string, string>? visibilities = null) => new { date = forecast.Date, ranking = forecast.Ranking.Select(item => ForecastItemDto(item, paid, ownerSpotIds, visibilities)).ToList(), unavailableSpotIds = forecast.Errors.Select(error => error.Location).ToList() };
 static object MarineLockedDto(string spotId, DateOnly date)
 {
     object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = PlanRules.RequiredPlanLabel };
@@ -1554,7 +1598,7 @@ static object TideTable(
         }
     };
 }
-static object ForecastItemDto(FishingLocationForecast item, bool paid, HashSet<string>? ownerSpotIds = null)
+static object ForecastItemDto(FishingLocationForecast item, bool paid, HashSet<string>? ownerSpotIds = null, IReadOnlyDictionary<string, string>? visibilities = null)
 {
     var hour = item.BestHour;
     object Available(object value) => new { state = "available", value };
@@ -1567,6 +1611,7 @@ static object ForecastItemDto(FishingLocationForecast item, bool paid, HashSet<s
         spotId = item.Id,
         spotName = item.Location,
         isOwner = ownerSpotIds is not null && ownerSpotIds.Contains(item.Id),
+        visibility = visibilities is not null && visibilities.TryGetValue(item.Id, out var visibilityValue) ? visibilityValue : "official",
         score = Available(item.Score),
         classification = Available(classification),
         bestHours = Available(item.BestHours.Select(best => best.Time).ToArray()),
@@ -1758,6 +1803,7 @@ record AdminPlanConfigRequest(
     bool CanRankingEmphasis,
     bool CanLiveWebcams);
 record AdminActiveRequest(bool IsActive);
+record AdminRoleRequest(string Role);
 record PartnerOfferRequest(string Title, string? Description, string? PriceLabel, DateTimeOffset? EndsAt, int? SortOrder);
 record PartnerRequest(string? Slug, string Name, string Category, string? Tagline, string? About, string? City, string? WhatsApp, string? Instagram, string? Website, string? MapsUrl, string? CoverImageUrl, bool IsPublished, bool IsFeatured, int SortOrder, PartnerOfferRequest[]? Offers);
 record PlatformSettingsRequest(bool? ShowPartners, bool? ShowAppFocus, bool? ShowLiveWebcams);

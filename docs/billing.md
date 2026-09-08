@@ -119,8 +119,7 @@ Assinatura `canceled` com `accessUntil` no futuro ainda gera crédito: o períod
 
 ```text
 apps/web                         /premium escolhe plano e ciclo (mês ou ano)
-                                 POST /billing/checkout { planCode, cycle }
-                                 Conta → cancelar renovação
+                                 Conta e Assinatura → cancelar renovação
 apps/api                         cria checkout do plano, aplica PlanCode no webhook
                                  cancela recorrência sem refund
 Asaas                            tela de cartão, token, cobrança, webhooks
@@ -313,7 +312,7 @@ O webhook no painel Asaas aponta para `https://<domínio>/api/v1/webhooks/asaas`
 
 - `/premium`: cada card oferece **mês** (tabela) e **ano** (−20%). No upgrade, o CTA usa `quotes[].firstChargeCents` e deixa claro que o plano novo começa na hora. Se a tabela mudar no meio do anual, a Conta mostra o valor deste período e o da renovação, sem cobrar a diferença agora. Sem chave, permanece “A cobrança ainda não começa por aqui.”
 - Retornos `?checkout=success|cancel|expired`: copy local; o plano vem de `GET /me`.
-- Conta: plano atual, “Cancelar renovação” com texto de que **não há estorno** e a data de acesso. Depois, “Renovação cancelada · {nome} até {data}”.
+- Conta e Assinatura (`/premium#assinatura`): plano atual, “Cancelar renovação” com texto de que **não há estorno**, a data de acesso e a volta para Free no fim do período (mês ou ano). Depois, “Renovação cancelada · {nome} até {data}”. O atalho da Conta para quem já assina é “Gerenciar assinatura”.
 - Upgrade: CTA só nos cards de tabela maior. Downgrade: copy apontando para o cancelamento e a nova assinatura após o vencimento.
 - Components não falam com o Asaas. Page → hook → `billingService` → `/api/v1`.
 

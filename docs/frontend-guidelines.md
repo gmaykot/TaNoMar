@@ -30,6 +30,8 @@ Use alias `@/` para imports entre domínios e imports relativos dentro da mesma 
 
 Na interface, o ponto de pesca se chama **local** (plural **locais**): navegação, títulos, formulários, erros e atalhos. Não use “pesqueiro” nem “praia” para nomear essa entidade. “Praia aberta”, “praia semiaberta” e “águas protegidas” ficam só no perfil costeiro. Identificadores de contrato (`fishing-spots`, `praia_aberta`) não mudam.
 
+O carimbo **Meu local** aparece só para o dono. Em local compartilhado, a comunidade vê **Compartilhado**; o dono continua vendo **Meu local**.
+
 A área comercial se chama **Assinatura**. Os planos pagos são **Arrais**, **Mestre** e **Capitão**. Não use “Premium” nem “Assinante” como nome do produto: assinante é quem já tem um plano pago. O código estável do Mestre continua `premium`. Bloqueios de recurso usam o rótulo **Assinatura**. Preço, cotas, módulos e disponibilidade são configurados pelo admin em `/admin/planos`; a tela `/premium` lê o catálogo em `GET /billing/catalog`. Um plano só desliga se não houver conta ativa nele.
 
 O foco do aplicativo (`pescador`, `surfista` ou `ambos`) é preferência de apresentação e só existe se o admin ligar `features.showAppFocus`. Desligado, o padrão é pesca e a escolha some. Não recalcule a nota nem mude o ranking por causa do foco: só mostre ou oculte blocos e indicadores. Surfista não vê comunidade nem envio de alerta de previsão. Sem foco escolhido e com a flag ligada, a web interrompe o primeiro acesso em `/comecar`.

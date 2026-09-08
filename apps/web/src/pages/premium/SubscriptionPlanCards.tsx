@@ -43,6 +43,7 @@ export function SubscriptionPlanCards({
   currentPlanCode,
   currentCycle,
   currentStatus,
+  cancelAtPeriodEnd = false,
   billingEnabled,
   pendingKey,
   onCheckout,
@@ -51,6 +52,7 @@ export function SubscriptionPlanCards({
   currentPlanCode?: string;
   currentCycle?: BillingCycle | null;
   currentStatus?: BillingStatus | null;
+  cancelAtPeriodEnd?: boolean;
   billingEnabled: boolean;
   pendingKey?: string | null;
   onCheckout?: (planCode: string, cycle: BillingCycle) => void;
@@ -181,11 +183,23 @@ export function SubscriptionPlanCards({
                 !isBillingUpgrade(currentPlanCode, currentCycle, plan.code, 'YEARLY') &&
                 currentPlanCode !== plan.code ? (
                   <p className={premiumStyles.planHint}>
-                    Para mudar para este plano, cancele a renovação na Conta. A troca fica
-                    disponível no fim do período já pago.
+                    Para mudar para este plano, <a href="#assinatura">cancele a renovação</a>. A
+                    troca fica disponível no fim do período já pago.
                   </p>
                 ) : null}
               </div>
+            ) : null}
+            {isCurrent && billingEnabled && hasPaidPeriod ? (
+              <p className={premiumStyles.planHint}>
+                {cancelAtPeriodEnd ? (
+                  'Renovação cancelada. Você usa o plano até o fim do período já pago e depois volta para Free.'
+                ) : (
+                  <>
+                    Para voltar ao Free, <a href="#assinatura">cancele a renovação</a>. Você usa o
+                    plano até o fim do período já pago.
+                  </>
+                )}
+              </p>
             ) : null}
           </Card>
         );

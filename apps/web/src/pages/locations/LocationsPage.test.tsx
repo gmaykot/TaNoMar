@@ -72,6 +72,23 @@ describe('LocationsPage', () => {
     expect(screen.getAllByText('Meu local')).toHaveLength(1);
   });
 
+  it('marca o local compartilhado da comunidade com o selo Compartilhado', async () => {
+    const location = locationsFixture.find((item) => item.id === 'campeche');
+    if (!location) throw new Error('fixture campeche ausente');
+    location.visibility = 'shared';
+
+    try {
+      renderWithProviders(<LocationsPage />);
+
+      expect(await screen.findByRole('heading', { name: 'Campeche' })).toBeInTheDocument();
+      expect(screen.getByText('Compartilhado')).toBeInTheDocument();
+      expect(screen.getByText('Meu local')).toBeInTheDocument();
+      expect(screen.getAllByText('Meu local')).toHaveLength(1);
+    } finally {
+      location.visibility = 'official';
+    }
+  });
+
   it('bloqueia favoritar no plano Free com cadeado Premium', async () => {
     authState.maxPersonalSpots = 0;
     authState.maxFavorites = 0;

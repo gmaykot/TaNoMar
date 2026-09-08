@@ -44,30 +44,6 @@
   color: var(--color-text-muted);
 }
 
-.billingCard {
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-5);
-}
-
-.billingCard p {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  line-height: 1.45;
-}
-
-.billingCard strong {
-  color: var(--color-ocean-950);
-}
-
-.billingError {
-  margin: 0;
-  color: var(--color-ocean-950);
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-}
-
 .stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

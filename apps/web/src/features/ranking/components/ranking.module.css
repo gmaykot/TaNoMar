@@ -52,6 +52,10 @@
   overflow: visible;
 }
 
+.item:has([data-location-stamp]) {
+  padding-top: calc(var(--space-4) + 0.15rem);
+}
+
 .item:has(.hit:focus-visible) {
   outline: 3px solid var(--color-coral-500);
   outline-offset: 3px;

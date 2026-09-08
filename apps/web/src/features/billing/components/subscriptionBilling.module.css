@@ -1,0 +1,37 @@
+.card {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  scroll-margin-top: var(--space-6);
+}
+
+.card h2 {
+  margin: 0;
+  color: var(--color-ocean-950);
+  font-size: var(--font-size-lg);
+  letter-spacing: -0.03em;
+}
+
+.card p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-ocean-950);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.plansLink {
+  display: flex;
+  width: fit-content;
+  min-height: 2.75rem;
+  align-items: center;
+  color: var(--color-ocean-700);
+  font-size: var(--font-size-sm);
+  font-weight: 750;
+}

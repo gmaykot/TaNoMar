@@ -259,8 +259,8 @@
     var(--color-ocean-950);
 }
 
-.locationHero:has([data-owner-badge]) .locationIntro {
-  padding-right: 6.5rem;
+.locationHero:has([data-location-stamp]) .locationIntro {
+  padding-right: 8rem;
 }
 
 .locationIntro span {

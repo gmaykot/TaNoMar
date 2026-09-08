@@ -66,12 +66,12 @@ export function UserMenu() {
           </div>
           <NavLink
             role="menuitem"
-            to={isPaidPlan(user) ? `${routes.premium}#planos` : routes.premium}
+            to={isPaidPlan(user) ? `${routes.premium}#assinatura` : routes.premium}
             className={({ isActive }) => `${styles.item} ${isActive ? styles.active : ''}`}
             onClick={close}
           >
             <Sparkles size={17} aria-hidden="true" />
-            {isPaidPlan(user) ? 'Mudar plano' : 'Conhecer os planos'}
+            {isPaidPlan(user) ? 'Assinatura' : 'Conhecer os planos'}
           </NavLink>
           <NavLink
             role="menuitem"

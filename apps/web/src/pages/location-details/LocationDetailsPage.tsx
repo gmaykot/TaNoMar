@@ -30,12 +30,12 @@ import {
   SUBSCRIPTION_LOCK_LABEL,
 } from '@/features/auth/types/auth';
 import { CommunityReports } from '@/features/community/components/CommunityReports';
-import { DateSelector } from '@/features/forecast/components/DateSelector';
+import { DayCarousel } from '@/features/forecast/components/DayCarousel';
 import { MarineDetails, MarineDetailsToggle } from '@/features/forecast/components/MarineDetails';
 import { MetricGrid } from '@/features/forecast/components/MetricGrid';
 import { useLocationForecast } from '@/features/forecast/hooks/useForecast';
 import { formatScore, metricsHourCaption } from '@/features/fishing/utils/scoreBreakdown';
-import { OwnerBadge } from '@/features/locations/components/OwnerBadge';
+import { LocationStampFor } from '@/features/locations/components/LocationStamp';
 import { useLocationMutations } from '@/features/locations/hooks/useLocationMutations';
 import { saveTripPlan } from '@/features/diary/diaryStorage';
 import { routes } from '@/shared/constants/routes';
@@ -109,7 +109,7 @@ export function LocationDetailsPage() {
         <ArrowLeft size={18} aria-hidden="true" /> Voltar aos locais
       </Link>
       <section className={styles.locationHero}>
-        {location.isOwner ? <OwnerBadge /> : null}
+        <LocationStampFor isOwner={location.isOwner} visibility={location.visibility} />
         <div className={styles.locationIntro}>
           <span>
             <MapPin size={16} aria-hidden="true" /> {location.region}
@@ -211,58 +211,56 @@ export function LocationDetailsPage() {
       ) : null}
       {mutations.favoriteError ? <p>{mutations.favoriteError}</p> : null}
       {mutations.enabledError ? <p>{mutations.enabledError}</p> : null}
-      <DateSelector
-        days={days.map((day) => ({ ...day, ranking: [day.forecast] }))}
-        selectedDate={activeDate}
-        onSelect={setSelectedDate}
-        variant="carousel"
-      />
-      <Card as="section" className={styles.detailCard} elevated>
-        {presentation.showFishingScore ? (
-          <>
-            <div className={styles.detailSummary}>
-              <div>
-                <span className={styles.detailEyebrow}>Melhor janela</span>
-                <h2>{activeDay.forecast.bestWindow}</h2>
-                <Badge classification={activeDay.forecast.classification} />
-                {activeDay.forecast.scoreBreakdown ? (
-                  <p className={styles.scoreBreakdown}>{activeDay.forecast.scoreBreakdown}</p>
-                ) : null}
-              </div>
-              <ScoreIndicator
-                score={activeDay.forecast.score}
-                classification={activeDay.forecast.classification}
-              />
-            </div>
-            <div className={styles.bestHours}>
-              <CalendarDays size={17} aria-hidden="true" />
-              <span>Horários em destaque:</span>
-              {activeDay.forecast.hourWindows.length > 0
-                ? activeDay.forecast.hourWindows.map((hour) => (
-                    <strong key={hour.time}>
-                      {hour.time} {formatScore(hour.score)}
-                    </strong>
-                  ))
-                : activeDay.forecast.bestHours.map((hour) => <strong key={hour}>{hour}</strong>)}
-            </div>
-          </>
-        ) : null}
-        {metricsHourCaption(activeDay.forecast.metricsHour) ? (
-          <p className={styles.metricCaption}>
-            {metricsHourCaption(activeDay.forecast.metricsHour)}
-          </p>
-        ) : null}
-        <MetricGrid
-          metrics={activeDay.forecast.metrics}
-          keys={locationPrimaryMetricKeys(presentation.focus).filter(
-            (key) => !visibleMetricKeys || visibleMetricKeys.includes(key),
-          )}
-          windUnit={auth.user?.preferences.windUnit}
-        />
-        <MarineDetailsToggle open={marineOpen} onToggle={setMarineOpen}>
-          {marineOpen ? <MarineDetails locationId={location.id} date={activeDate} /> : null}
-        </MarineDetailsToggle>
-      </Card>
+      <DayCarousel days={days} selectedDate={activeDate} onSelect={setSelectedDate}>
+        {(day) => (
+          <Card as="section" className={styles.detailCard} elevated>
+            {presentation.showFishingScore ? (
+              <>
+                <div className={styles.detailSummary}>
+                  <div>
+                    <span className={styles.detailEyebrow}>Melhor janela</span>
+                    <h2>{day.forecast.bestWindow}</h2>
+                    <Badge classification={day.forecast.classification} />
+                    {day.forecast.scoreBreakdown ? (
+                      <p className={styles.scoreBreakdown}>{day.forecast.scoreBreakdown}</p>
+                    ) : null}
+                  </div>
+                  <ScoreIndicator
+                    score={day.forecast.score}
+                    classification={day.forecast.classification}
+                  />
+                </div>
+                <div className={styles.bestHours}>
+                  <CalendarDays size={17} aria-hidden="true" />
+                  <span>Horários em destaque:</span>
+                  {day.forecast.hourWindows.length > 0
+                    ? day.forecast.hourWindows.map((hour) => (
+                        <strong key={hour.time}>
+                          {hour.time} {formatScore(hour.score)}
+                        </strong>
+                      ))
+                    : day.forecast.bestHours.map((hour) => <strong key={hour}>{hour}</strong>)}
+                </div>
+              </>
+            ) : null}
+            {metricsHourCaption(day.forecast.metricsHour) ? (
+              <p className={styles.metricCaption}>{metricsHourCaption(day.forecast.metricsHour)}</p>
+            ) : null}
+            <MetricGrid
+              metrics={day.forecast.metrics}
+              keys={locationPrimaryMetricKeys(presentation.focus).filter(
+                (key) => !visibleMetricKeys || visibleMetricKeys.includes(key),
+              )}
+              windUnit={auth.user?.preferences.windUnit}
+            />
+            <MarineDetailsToggle open={marineOpen} onToggle={setMarineOpen}>
+              {marineOpen && day.date === activeDate ? (
+                <MarineDetails locationId={location.id} date={day.date} />
+              ) : null}
+            </MarineDetailsToggle>
+          </Card>
+        )}
+      </DayCarousel>
       {presentation.showCommunity ? (
         <CommunityReports
           spotId={location.id}

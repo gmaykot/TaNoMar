@@ -142,6 +142,32 @@ describe('RankingPage', () => {
     expect(await screen.findByRole('heading', { name: 'Molhe da Barra' })).toBeInTheDocument();
     expect(screen.getByText('Meu local')).toBeInTheDocument();
     expect(screen.getAllByText('Meu local')).toHaveLength(1);
+    expect(screen.queryByText('Compartilhado')).not.toBeInTheDocument();
+  });
+
+  it('marca o local compartilhado da comunidade com o selo Compartilhado', async () => {
+    const shared = {
+      ...forecastFixture,
+      days: forecastFixture.days.map((day, index) =>
+        index === 0
+          ? {
+              ...day,
+              ranking: day.ranking.map((item) =>
+                item.locationId === 'pantano_do_sul'
+                  ? { ...item, isOwner: false, visibility: 'shared' as const }
+                  : item,
+              ),
+            }
+          : day,
+      ),
+    };
+    getForecast.mockResolvedValue(shared);
+    renderWithProviders(<RankingPage />, ['/ranking']);
+
+    expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
+    expect(screen.getByText('Compartilhado')).toBeInTheDocument();
+    expect(screen.getByText('Meu local')).toBeInTheDocument();
+    expect(screen.getAllByText('Meu local')).toHaveLength(1);
   });
 
   it('mostra condições do mar no foco surfista', async () => {

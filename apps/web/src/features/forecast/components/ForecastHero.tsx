@@ -4,7 +4,7 @@ import { Badge } from '@/design-system/components/Badge';
 import { ScoreIndicator } from '@/design-system/components/ScoreIndicator';
 import type { FishingMetricKey, ForecastRankingItem } from '@/features/fishing/types/fishing';
 import { metricsHourCaption } from '@/features/fishing/utils/scoreBreakdown';
-import { OwnerBadge } from '@/features/locations/components/OwnerBadge';
+import { LocationStampFor } from '@/features/locations/components/LocationStamp';
 import { MetricGrid } from './MetricGrid';
 import styles from './forecast.module.css';
 
@@ -39,7 +39,7 @@ export function ForecastHero({
   const metricsCaption = metricsHourCaption(forecast.metricsHour);
   return (
     <article className={styles.hero}>
-      {forecast.isOwner ? <OwnerBadge /> : null}
+      <LocationStampFor isOwner={forecast.isOwner} visibility={forecast.visibility} />
       <div className={styles.heroDecor} aria-hidden="true">
         <div className={styles.heroGlow} />
       </div>

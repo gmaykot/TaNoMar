@@ -21,12 +21,9 @@ import {
   showsPartners,
   SUBSCRIPTION_LOCK_LABEL,
 } from '@/features/auth/types/auth';
-import { formatBillingDate } from '@/features/billing/billing';
-import { useCancelBillingSubscription } from '@/features/billing/hooks/useBillingCheckout';
+import { SubscriptionBillingCard } from '@/features/billing/components/SubscriptionBillingCard';
 import { useLocations } from '@/features/locations/hooks/useLocations';
-import { formatBrlFromCents } from '@/features/subscription/subscriptionPlans';
 import { PageHeader } from '@/pages/shared/PageHeader';
-import { ApiError } from '@/shared/api/errors';
 import { routes } from '@/shared/constants/routes';
 import accountStyles from './account.module.css';
 import styles from '@/pages/shared/pages.module.css';
@@ -86,6 +83,8 @@ export function AccountPage() {
   const canFavorite = (user?.entitlements.maxFavorites ?? 0) > 0;
   const ownedCount = locations.data?.filter((item) => item.isOwner).length ?? 0;
   const favoriteCount = locations.data?.filter((item) => item.isFavorite).length ?? 0;
+  const paid = isPaidPlan(user);
+  const billingEnabled = user?.billing?.enabled === true;
 
   return (
     <div className={styles.page}>
@@ -113,16 +112,22 @@ export function AccountPage() {
         </dl>
       </Card>
 
-      <BillingSummary />
+      <SubscriptionBillingCard planName={user?.plan.name} billing={user?.billing} showPlansLink />
 
       <Link
         className={accountStyles.premiumCallout}
-        to={isPaidPlan(user) ? `${routes.premium}#planos` : routes.premium}
+        to={
+          paid ? `${routes.premium}${billingEnabled ? '#assinatura' : '#planos'}` : routes.premium
+        }
       >
-        <strong>{isPaidPlan(user) ? 'Mudar plano' : 'Conhecer os planos'}</strong>
+        <strong>
+          {paid ? (billingEnabled ? 'Gerenciar assinatura' : 'Mudar plano') : 'Conhecer os planos'}
+        </strong>
         <small>
-          {isPaidPlan(user)
-            ? 'Compare Arrais, Mestre e Capitão e escolha outro comando.'
+          {paid
+            ? billingEnabled
+              ? 'Troque de plano ou cancele a renovação para voltar ao Free no fim do período.'
+              : 'Compare Arrais, Mestre e Capitão e escolha outro comando.'
             : 'Arrais, Mestre ou Capitão: mais contexto para planejar a saída.'}
         </small>
       </Link>
@@ -214,75 +219,5 @@ export function AccountPage() {
         Sair
       </Button>
     </div>
-  );
-}
-
-function formatReais(value: number | null | undefined) {
-  if (value === null || value === undefined) return null;
-  return formatBrlFromCents(Math.round(value * 100));
-}
-
-function BillingSummary() {
-  const auth = useAuth();
-  const cancel = useCancelBillingSubscription();
-  const billing = auth.user?.billing;
-  if (!billing?.enabled) return null;
-  const accessUntil = formatBillingDate(billing.accessUntil);
-  const contracted = formatReais(billing.contractedPrice);
-  const renewal = formatReais(billing.renewalPrice);
-  const canCancel =
-    (billing.status === 'active' || billing.status === 'past_due') && !billing.cancelAtPeriodEnd;
-  const cancelError =
-    cancel.error instanceof ApiError
-      ? cancel.error.message
-      : cancel.isError
-        ? 'Não foi possível cancelar a renovação.'
-        : null;
-
-  function handleCancel() {
-    const until = accessUntil ?? 'o fim do período já pago';
-    if (
-      !window.confirm(
-        `Cancelar a renovação? Você continua com o plano até ${until}. Não há estorno.`,
-      )
-    ) {
-      return;
-    }
-    cancel.mutate();
-  }
-
-  if (billing.status === 'inactive' && !isPaidPlan(auth.user)) return null;
-
-  return (
-    <Card className={accountStyles.billingCard}>
-      <strong>Assinatura</strong>
-      {billing.status === 'pending' ? (
-        <p>Há um pagamento em aberto. Conclua ou gere outro checkout na página de Assinatura.</p>
-      ) : null}
-      {billing.status === 'past_due' ? (
-        <p>A renovação está atrasada. Atualize o pagamento para manter o plano.</p>
-      ) : null}
-      {billing.cancelAtPeriodEnd && accessUntil ? (
-        <p>
-          Renovação cancelada · {auth.user?.plan.name} até {accessUntil}. Não há estorno.
-        </p>
-      ) : null}
-      {canCancel && accessUntil ? <p>Acesso do período atual até {accessUntil}.</p> : null}
-      {contracted && renewal && contracted !== renewal ? (
-        <p>
-          Neste período você pagou {contracted}. A renovação será {renewal}. A diferença não é
-          cobrada agora.
-        </p>
-      ) : null}
-      {cancelError ? <p className={accountStyles.billingError}>{cancelError}</p> : null}
-      {canCancel ? (
-        <Button variant="secondary" onClick={handleCancel} disabled={cancel.isPending}>
-          {cancel.isPending ? 'Cancelando…' : 'Cancelar renovação'}
-        </Button>
-      ) : null}
-      <Link className={styles.backLink} to={routes.premium}>
-        Ver planos
-      </Link>
-    </Card>
   );
 }

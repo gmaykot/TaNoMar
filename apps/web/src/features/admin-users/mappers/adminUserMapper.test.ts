@@ -15,6 +15,7 @@ const sample = {
   protection: null,
   canChangePlan: true,
   canDeactivate: true,
+  canChangeRole: false,
 };
 
 describe('parseAdminUser', () => {
@@ -29,6 +30,12 @@ describe('parseAdminUser', () => {
 
   it('rejeita payload incompleto', () => {
     expect(() => parseAdminUser({ ...sample, email: 1 })).toThrow(ContractError);
+  });
+
+  it('rejeita usuário sem canChangeRole', () => {
+    const incomplete = { ...sample };
+    delete (incomplete as { canChangeRole?: boolean }).canChangeRole;
+    expect(() => parseAdminUser(incomplete)).toThrow(ContractError);
   });
 });
 

@@ -18,9 +18,25 @@ describe('enrichForecastOwnership', () => {
 
     const owned = forecast.days[0]?.ranking.find((item) => item.locationId === 'molhe-da-barra');
     expect(owned?.isOwner).toBe(true);
+    expect(owned?.visibility).toBe('private');
     expect(forecast.days[0]?.ranking.find((item) => item.locationId === 'pantano_do_sul')?.isOwner).toBe(
       false,
     );
+  });
+
+  it('marca visibilidade compartilhada nos itens de ranking', () => {
+    const locations = locationsFixture.map((location) =>
+      location.id === 'pantano_do_sul'
+        ? { ...location, visibility: 'shared' as const, isOwner: false }
+        : location,
+    );
+    const forecast = enrichForecastOwnership(forecastFixture, locations);
+    expect(
+      forecast.days[0]?.ranking.find((item) => item.locationId === 'pantano_do_sul')?.visibility,
+    ).toBe('shared');
+    expect(
+      forecast.days[0]?.ranking.find((item) => item.locationId === 'molhe-da-barra')?.isOwner,
+    ).toBe(true);
   });
 
   it('mantém a previsão quando não há locais do usuário', () => {

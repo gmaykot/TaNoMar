@@ -1,21 +1,31 @@
 import type { KeyboardEvent, ReactNode } from 'react';
-import type { ForecastDay } from '@/features/fishing/types/fishing';
 import { useSnapCarousel } from '../hooks/useSnapCarousel';
 import styles from './forecast.module.css';
 
-interface DayCarouselProps {
-  days: ForecastDay[];
-  selectedDate: string;
-  onSelect: (date: string) => void;
-  children: (day: ForecastDay) => ReactNode;
+interface DayCarouselItem {
+  date: string;
+  label: string;
+  shortLabel: string;
 }
 
-function neighbor(days: ForecastDay[], date: string, offset: number) {
+interface DayCarouselProps<T extends DayCarouselItem> {
+  days: T[];
+  selectedDate: string;
+  onSelect: (date: string) => void;
+  children: (day: T) => ReactNode;
+}
+
+function neighbor<T extends DayCarouselItem>(days: T[], date: string, offset: number) {
   const index = days.findIndex((item) => item.date === date);
   return index < 0 ? undefined : days[index + offset];
 }
 
-export function DayCarousel({ days, selectedDate, onSelect, children }: DayCarouselProps) {
+export function DayCarousel<T extends DayCarouselItem>({
+  days,
+  selectedDate,
+  onSelect,
+  children,
+}: DayCarouselProps<T>) {
   const { ref } = useSnapCarousel({ selectedKey: selectedDate, onSelect });
 
   const onDayKeyDown = (event: KeyboardEvent<HTMLButtonElement>, date: string) => {

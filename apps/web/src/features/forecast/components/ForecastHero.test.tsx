@@ -10,11 +10,12 @@ describe('ForecastHero', () => {
 
     render(
       <MemoryRouter>
-        <ForecastHero forecast={{ ...forecast, isOwner: true }} />
+        <ForecastHero forecast={{ ...forecast, isOwner: true, visibility: 'shared' }} />
       </MemoryRouter>,
     );
 
     expect(screen.getByText('Meu local')).toBeInTheDocument();
+    expect(screen.queryByText('Compartilhado')).not.toBeInTheDocument();
   });
 
   it('omite o selo quando o destaque não é do usuário', () => {
@@ -27,6 +28,21 @@ describe('ForecastHero', () => {
       </MemoryRouter>,
     );
 
+    expect(screen.queryByText('Meu local')).not.toBeInTheDocument();
+    expect(screen.queryByText('Compartilhado')).not.toBeInTheDocument();
+  });
+
+  it('mostra o selo Compartilhado quando o destaque é da comunidade', () => {
+    const forecast = forecastFixture.days[0]?.ranking[0];
+    if (!forecast) throw new Error('fixture de ranking ausente');
+
+    render(
+      <MemoryRouter>
+        <ForecastHero forecast={{ ...forecast, isOwner: false, visibility: 'shared' }} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Compartilhado')).toBeInTheDocument();
     expect(screen.queryByText('Meu local')).not.toBeInTheDocument();
   });
 

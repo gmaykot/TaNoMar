@@ -255,6 +255,7 @@ describe('HomePage', () => {
     expect(screen.getByText('Meu local')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
     expect(screen.getAllByText('Meu local')).toHaveLength(1);
+    expect(screen.queryByText('Compartilhado')).not.toBeInTheDocument();
   });
 
   it('no foco surfista esconde a nota e prioriza o mar', async () => {

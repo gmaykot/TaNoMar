@@ -13,7 +13,7 @@ import { Link } from 'react-router-dom';
 import { Card } from '@/design-system/components/Card';
 import { IconButton } from '@/design-system/components/IconButton';
 import type { FishingLocation } from '@/features/fishing/types/fishing';
-import { OwnerBadge } from './OwnerBadge';
+import { LocationStampFor } from './LocationStamp';
 import styles from './locations.module.css';
 
 const profileVisual = {
@@ -56,7 +56,7 @@ export function LocationCard({
           <MapPin size={15} aria-hidden="true" /> {location.region}, {location.city}
         </p>
       </div>
-      {location.isOwner ? <OwnerBadge /> : null}
+      <LocationStampFor isOwner={location.isOwner} visibility={location.visibility} />
       {onToggleEnabled || onToggleFavorite ? (
         <div className={styles.actions}>
           {onToggleEnabled ? (

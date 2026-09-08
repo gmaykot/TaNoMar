@@ -12,6 +12,7 @@ import { useAdminPlans } from '@/features/admin-plans/hooks/useAdminPlans';
 import {
   setAdminUserActive,
   setAdminUserPlan,
+  setAdminUserRole,
 } from '@/features/admin-users/services/adminUsersService';
 import type { AdminPlanCode } from '@/features/admin-users/types/adminUser';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -26,7 +27,8 @@ type Filter = 'all' | 'paid' | 'free' | 'blocked';
 
 type PendingAccountChange =
   | { kind: 'plan'; id: string; name: string; planCode: AdminPlanCode; planName: string }
-  | { kind: 'active'; id: string; name: string; isActive: boolean };
+  | { kind: 'active'; id: string; name: string; isActive: boolean }
+  | { kind: 'role'; id: string; name: string; role: 'Admin' | 'User' };
 
 const planLabel: Record<AdminPlanCode, string> = {
   free: 'Free',
@@ -48,6 +50,20 @@ function accountChangeCopy(change: PendingAccountChange) {
       title: 'Mudar plano',
       description: `Alterar o plano de ${change.name} para ${change.planName}? A conta passa a usar as cotas e os recursos desse plano.`,
       confirmLabel: 'Confirmar plano',
+    };
+  }
+  if (change.kind === 'role') {
+    if (change.role === 'Admin') {
+      return {
+        title: 'Tornar admin',
+        description: `Tornar ${change.name} admin? A conta passa a acessar a administração.`,
+        confirmLabel: 'Confirmar cargo',
+      };
+    }
+    return {
+      title: 'Rebaixar admin',
+      description: `Rebaixar ${change.name}? A conta deixa de ser admin e volta a ser usuário.`,
+      confirmLabel: 'Confirmar rebaixamento',
     };
   }
   if (change.isActive) {
@@ -141,6 +157,28 @@ export function AdminUsersPage() {
     onSettled: () => setPendingId(null),
   });
 
+  const roleMutation = useMutation({
+    mutationFn: ({ id, role }: { id: string; role: 'Admin' | 'User' }) =>
+      setAdminUserRole(id, role),
+    onMutate: ({ id }) => {
+      setPendingId(id);
+      setErrorById((current) => ({ ...current, [id]: '' }));
+    },
+    onSuccess: async (user) => {
+      await refresh(user.id);
+      showSaveConfirmation('Cargo da conta salvo.');
+      setPendingChange(null);
+    },
+    onError: (error, { id }) => {
+      setErrorById((current) => ({
+        ...current,
+        [id]: error instanceof ApiError ? error.message : 'Não foi possível alterar o cargo.',
+      }));
+      setPendingChange(null);
+    },
+    onSettled: () => setPendingId(null),
+  });
+
   if (users.isPending) {
     return (
       <FeedbackState
@@ -161,7 +199,7 @@ export function AdminUsersPage() {
   }
 
   const confirmation = pendingChange ? accountChangeCopy(pendingChange) : null;
-  const changeBusy = planMutation.isPending || activeMutation.isPending;
+  const changeBusy = planMutation.isPending || activeMutation.isPending || roleMutation.isPending;
 
   return (
     <div className={styles.page}>
@@ -172,7 +210,7 @@ export function AdminUsersPage() {
       <PageHeader
         eyebrow="Administração"
         title="Quem pode pescar no app."
-        description="Plano, liberação e bloqueio de contas."
+        description="Plano, cargo, liberação e bloqueio de contas. Só a conta inicial altera o cargo de admin."
       />
       <SearchField
         label="Buscar usuários"
@@ -227,6 +265,14 @@ export function AdminUsersPage() {
                   isActive,
                 })
               }
+              onRoleChange={(role) =>
+                setPendingChange({
+                  kind: 'role',
+                  id: user.id,
+                  name: user.name,
+                  role,
+                })
+              }
             />
           ))}
         </div>
@@ -243,6 +289,10 @@ export function AdminUsersPage() {
           onConfirm={() => {
             if (pendingChange.kind === 'plan') {
               planMutation.mutate({ id: pendingChange.id, planCode: pendingChange.planCode });
+              return;
+            }
+            if (pendingChange.kind === 'role') {
+              roleMutation.mutate({ id: pendingChange.id, role: pendingChange.role });
               return;
             }
             activeMutation.mutate({ id: pendingChange.id, isActive: pendingChange.isActive });

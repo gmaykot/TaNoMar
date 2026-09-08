@@ -103,6 +103,10 @@ function mapWindOrigin(value: string | null | undefined): WindOrigin | null {
   return value === 'terra' || value === 'mar' || value === 'cruzado' ? value : null;
 }
 
+function mapVisibility(value: string | null | undefined): FishingLocation['visibility'] {
+  return value === 'shared' || value === 'private' ? value : 'official';
+}
+
 function mapMetric(
   key: FishingMetric['key'],
   label: string,
@@ -135,6 +139,7 @@ export function mapForecastItem(item: WireForecastItem): ForecastRankingItem {
     locationName: item.spotName,
     score: requireAvailable(item.score, 'Nota'),
     isOwner: item.isOwner,
+    visibility: mapVisibility(item.visibility),
     classification: mapClassification(requireAvailable(item.classification, 'Classificação')),
     bestWindow: mapBestWindow(hours),
     bestHours: hours,
@@ -187,8 +192,7 @@ export function mapLocation(spot: WireSpot): FishingLocation {
     region: spot.region,
     description: spot.description,
     type: spot.type,
-    visibility:
-      spot.visibility === 'shared' || spot.visibility === 'private' ? spot.visibility : 'official',
+    visibility: mapVisibility(spot.visibility),
     profile,
     latitude: spot.latitude ?? 0,
     longitude: spot.longitude ?? 0,

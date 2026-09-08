@@ -79,15 +79,29 @@ const catalog: BillingCatalog = {
   ],
 };
 
-const { authState, billingState, startCheckout } = vi.hoisted(() => ({
+const { authState, billingState, startCheckout, cancelSubscription } = vi.hoisted(() => ({
   authState: {
     user: { plan: { code: 'free', name: 'Free' } } as {
       plan: { code: string; name: string };
-      billing?: { status: string; cycle: string | null; enabled: boolean };
+      billing?: {
+        status: string;
+        planCode: string | null;
+        cycle: string | null;
+        catalogMonthlyPrice: number | null;
+        catalogAnnualPrice: number | null;
+        contractedPrice: number | null;
+        renewalPrice: number | null;
+        discountPercent: number;
+        renewsAt: string | null;
+        accessUntil: string | null;
+        cancelAtPeriodEnd: boolean;
+        enabled: boolean;
+      };
     },
   },
   billingState: { enabled: false },
   startCheckout: vi.fn(),
+  cancelSubscription: vi.fn(),
 }));
 
 const scrollIntoView = vi.fn();
@@ -109,7 +123,7 @@ vi.mock('@/features/billing/services/billingService', () => ({
     }),
   startBillingCheckout: (...args: unknown[]) => startCheckout(...args),
   getBillingSubscription: vi.fn(),
-  cancelBillingSubscription: vi.fn(),
+  cancelBillingSubscription: (...args: unknown[]) => cancelSubscription(...args),
 }));
 
 describe('PremiumPage', () => {
@@ -117,6 +131,7 @@ describe('PremiumPage', () => {
     authState.user = { plan: { code: 'free', name: 'Free' } };
     billingState.enabled = false;
     startCheckout.mockReset();
+    cancelSubscription.mockReset();
     scrollIntoView.mockReset();
   });
 
@@ -155,7 +170,20 @@ describe('PremiumPage', () => {
   it('não oferece checkout para o plano atual sem assinatura ativa', async () => {
     authState.user = {
       plan: { code: 'premium', name: 'Mestre' },
-      billing: { status: 'inactive', cycle: null, enabled: true },
+      billing: {
+        status: 'inactive',
+        planCode: null,
+        cycle: null,
+        catalogMonthlyPrice: null,
+        catalogAnnualPrice: null,
+        contractedPrice: null,
+        renewalPrice: null,
+        discountPercent: 20,
+        renewsAt: null,
+        accessUntil: null,
+        cancelAtPeriodEnd: false,
+        enabled: true,
+      },
     };
     billingState.enabled = true;
     renderWithProviders(<PremiumPage />);
@@ -208,6 +236,45 @@ describe('PremiumPage', () => {
 
     await screen.findByRole('table', { name: 'Comparação dos planos' });
     await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' }));
+  });
+
+  it('mostra o cancelamento da renovação para voltar ao Free no fim do período', async () => {
+    billingState.enabled = true;
+    authState.user = {
+      plan: { code: 'premium', name: 'Mestre' },
+      billing: {
+        status: 'active',
+        planCode: 'premium',
+        cycle: 'YEARLY',
+        catalogMonthlyPrice: 19.9,
+        catalogAnnualPrice: 191.04,
+        contractedPrice: 191.04,
+        renewalPrice: 191.04,
+        discountPercent: 20,
+        renewsAt: '2027-09-08T00:00:00.000Z',
+        accessUntil: '2027-09-08T00:00:00.000Z',
+        cancelAtPeriodEnd: false,
+        enabled: true,
+      },
+    };
+    cancelSubscription.mockResolvedValue({
+      ...authState.user.billing,
+      status: 'canceled',
+      cancelAtPeriodEnd: true,
+      renewsAt: null,
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const user = userEvent.setup();
+    renderWithProviders(<PremiumPage />, ['/premium#assinatura']);
+
+    expect(await screen.findByRole('heading', { name: 'Sua assinatura' })).toBeInTheDocument();
+    expect(screen.getByText(/conta passa para Free/)).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: 'Mestre' })).toHaveTextContent(
+      /cancele a renovação/,
+    );
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' }));
+    await user.click(screen.getByRole('button', { name: 'Cancelar renovação' }));
+    expect(cancelSubscription).toHaveBeenCalledTimes(1);
   });
 
   it('explica o retorno do checkout sem promover o plano localmente', async () => {

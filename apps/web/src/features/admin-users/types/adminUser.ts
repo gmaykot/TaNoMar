@@ -17,4 +17,5 @@ export interface AdminUser {
   protection: AdminProtection | null;
   canChangePlan: boolean;
   canDeactivate: boolean;
+  canChangeRole: boolean;
 }

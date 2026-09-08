@@ -88,6 +88,7 @@ export interface WireForecastItem {
   spotId: string;
   spotName: string;
   isOwner: boolean;
+  visibility: string;
   score: WireMetric<number>;
   classification: WireMetric<string>;
   bestHours: WireMetric<string[]>;

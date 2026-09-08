@@ -59,7 +59,7 @@
   }
 }
 
-.ownerBadge {
+.locationStamp {
   position: absolute;
   top: -0.45rem;
   right: var(--space-1);
@@ -77,6 +77,10 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   transform: rotate(7deg);
+}
+
+.sharedStamp {
+  background: var(--color-ocean-700);
 }
 
 .content h2 {

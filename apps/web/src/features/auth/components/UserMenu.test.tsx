@@ -41,7 +41,7 @@ describe('UserMenu', () => {
     logout.mockClear();
   });
 
-  it('destaca a conta e oferece mudar de plano', async () => {
+  it('destaca a conta e oferece a assinatura', async () => {
     const user = userEvent.setup();
     renderWithProviders(<UserMenu />);
 
@@ -51,9 +51,9 @@ describe('UserMenu', () => {
     expect(screen.getByText('Ana')).toBeInTheDocument();
     expect(screen.getByText('ana@example.com')).toBeInTheDocument();
     expect(screen.getByText('Plano Mestre')).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: 'Mudar plano' })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: 'Assinatura' })).toHaveAttribute(
       'href',
-      '/premium#planos',
+      '/premium#assinatura',
     );
     expect(screen.getByRole('menuitem', { name: 'Conta' })).toHaveAttribute('href', '/conta');
     expect(screen.getByRole('menuitem', { name: 'Sobre' })).toHaveAttribute('href', '/sobre');

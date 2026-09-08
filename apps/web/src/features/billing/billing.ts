@@ -79,3 +79,21 @@ export function formatBillingDate(value: string | null | undefined) {
   if (Number.isNaN(date.getTime())) return null;
   return date.toLocaleDateString('pt-BR');
 }
+
+export function billingCycleLabel(cycle: BillingCycle | null | undefined) {
+  if (cycle === 'YEARLY') return 'anual';
+  if (cycle === 'MONTHLY') return 'mensal';
+  return null;
+}
+
+export function canCancelRenewal(billing: BillingSubscription | null | undefined) {
+  if (!billing?.enabled) return false;
+  return (
+    (billing.status === 'active' || billing.status === 'past_due') && !billing.cancelAtPeriodEnd
+  );
+}
+
+export function cancelRenewalConfirmMessage(accessUntilLabel: string | null) {
+  const until = accessUntilLabel ?? 'o fim do período já pago';
+  return `Cancelar a renovação? Você continua com o plano até ${until}. Depois disso, a conta volta para Free. Não há estorno.`;
+}
