@@ -46,6 +46,7 @@ builder.Services.PostConfigure<BillingOptions>(options =>
 {
     if (string.IsNullOrWhiteSpace(options.AsaasApiKey))
         options.AsaasApiKey = builder.Configuration["ASAAS_API_KEY"] ?? string.Empty;
+    options.AsaasApiKey = BillingOptions.NormalizeApiKey(options.AsaasApiKey);
     if (string.IsNullOrWhiteSpace(options.AsaasBaseUrl))
         options.AsaasBaseUrl = builder.Configuration["ASAAS_BASE_URL"] ?? "https://api.asaas.com/v3";
     if (string.IsNullOrWhiteSpace(options.AsaasWebhookToken))

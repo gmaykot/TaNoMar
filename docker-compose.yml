@@ -22,6 +22,7 @@ services:
       Webcams__YouTubeApiKey: ${YOUTUBE_API_KEY:-}
       Webcams__SearchRadiusKm: ${Webcams__SearchRadiusKm:-10}
       Webcams__AvailabilityCacheMinutes: ${Webcams__AvailabilityCacheMinutes:-15}
+      # A chave Asaas começa com $aact_. No Coolify cole sem o $ (aact_prod_...), senão o Compose esvazia o valor.
       Billing__AsaasApiKey: ${ASAAS_API_KEY:-}
       Billing__AsaasBaseUrl: ${ASAAS_BASE_URL:-https://api.asaas.com/v3}
       Billing__AsaasWebhookToken: ${ASAAS_WEBHOOK_TOKEN:-}

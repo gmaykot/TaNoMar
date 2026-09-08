@@ -83,8 +83,8 @@ A landing define o domínio raiz como canônico: ao abrir por `www`, o `canonica
 | `YOUTUBE_API_KEY` | `Webcams:YouTubeApiKey` | Chave da YouTube Data API v3. Sem ela o app sobe; a consulta admin de live no YouTube responde `503`. |
 | `Webcams__SearchRadiusKm` | `Webcams:SearchRadiusKm` | Raio da pesquisa (km), padrão `10`, máximo `250`. |
 | `Webcams__AvailabilityCacheMinutes` | `Webcams:AvailabilityCacheMinutes` | Intervalo do cache de disponibilidade/embed, padrão `15`. |
-| `ASAAS_API_KEY` | `Billing:AsaasApiKey` | Chave da API Asaas (`access_token`). Sem ela o checkout responde `503` e `/premium` permanece vitrine. |
-| `ASAAS_BASE_URL` | `Billing:AsaasBaseUrl` | Produção `https://api.asaas.com/v3`; sandbox `https://api-sandbox.asaas.com/v3`. |
+| `ASAAS_API_KEY` | `Billing:AsaasApiKey` | Chave da API Asaas. Sem ela o checkout some e `/premium` permanece vitrine. No Coolify cole **sem o `$` inicial** (`aact_prod_...`): o Compose trata `$aact_...` como variável e envia a chave vazia. A API recoloca o `$`. |
+| `ASAAS_BASE_URL` | `Billing:AsaasBaseUrl` | Produção `https://api.asaas.com/v3`; sandbox `https://api-sandbox.asaas.com/v3`. O compose já usa produção se a variável faltar. |
 | `ASAAS_WEBHOOK_TOKEN` | `Billing:AsaasWebhookToken` | Token do header `asaas-access-token`. Diferente da API key. |
 | `PUBLIC_APP_ORIGIN` | `Billing:PublicAppOrigin` | Origem HTTPS dos callbacks do checkout (`/premium?checkout=`). |
 
@@ -149,3 +149,5 @@ docker build -f apps/api/TaNoMar.Api/Dockerfile -t tanomar \
 **PWA carrega mas API falha** — normalmente variável de ambiente ausente (`JWT_KEY` ou connection string).
 
 **Sessões não persistem após redeploy** — confirme que o volume `tanomar-data` está ativo no Coolify.
+
+**Assinatura sem botão de checkout** — `GET /billing/catalog` vem com `enabled: false` quando `ASAAS_API_KEY` não chegou na API. No Coolify as quatro variáveis são `ASAAS_API_KEY`, `ASAAS_BASE_URL`, `ASAAS_WEBHOOK_TOKEN` e `PUBLIC_APP_ORIGIN`. A chave deve ir **sem** o `$` (`aact_prod_...`). Depois, redeploy.

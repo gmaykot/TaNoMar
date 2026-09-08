@@ -16,4 +16,16 @@ public sealed class BillingOptions
 
     public bool IsSandbox =>
         AsaasBaseUrl.Contains("sandbox", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Docker Compose interpola `$` no `.env`. No Coolify a chave pode ir sem o prefixo `$`;
+    /// a API recoloca `$aact_` antes de chamar o Asaas.
+    /// </summary>
+    public static string NormalizeApiKey(string? value)
+    {
+        var key = value?.Trim() ?? string.Empty;
+        if (key.StartsWith("aact_", StringComparison.Ordinal))
+            return "$" + key;
+        return key;
+    }
 }

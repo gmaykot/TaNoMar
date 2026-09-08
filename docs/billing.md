@@ -300,7 +300,7 @@ Somente runtime da API. Prefixo `TaNoMar__` / variáveis Coolify.
 
 | Variável | Uso |
 | --- | --- |
-| `ASAAS_API_KEY` | `access_token` das chamadas à API |
+| `ASAAS_API_KEY` | `access_token` das chamadas à API. No Coolify/Docker, cole sem o `$` inicial (`aact_prod_...`); o Compose interpola `$aact_` e esvazia a chave. |
 | `ASAAS_BASE_URL` | Produção `https://api.asaas.com/v3`; sandbox `https://api-sandbox.asaas.com/v3` |
 | `ASAAS_WEBHOOK_TOKEN` | Valor esperado em `asaas-access-token` |
 | `PUBLIC_APP_ORIGIN` | Origem HTTPS para `callback.*` |
