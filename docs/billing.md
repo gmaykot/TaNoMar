@@ -312,8 +312,8 @@ Somente runtime da API. Prefixo `TaNoMar__` / variáveis Coolify.
 | `ASAAS_API_KEY` | `access_token` das chamadas à API |
 | `ASAAS_BASE_URL` | Produção `https://api.asaas.com/v3`; sandbox `https://api-sandbox.asaas.com/v3` |
 | `ASAAS_WEBHOOK_TOKEN` | Valor esperado em `asaas-access-token` |
-| `ASAAS_ARRAIS_MONTHLY_PRICE` | Tabela Arrais (padrão `14.90`) |
-| `ASAAS_MESTRE_MONTHLY_PRICE` | Tabela Mestre (padrão `19.90`) |
+| `ASAAS_ARRAIS_MONTHLY_PRICE` | Tabela Arrais (padrão `14.90`). Catálogo |
+| `ASAAS_MESTRE_MONTHLY_PRICE` | Tabela Mestre (padrão `19.90`). Catálogo |
 | `ASAAS_CAPITAO_MONTHLY_PRICE` | Tabela Capitão (padrão `24.90`). Catálogo; não reescreve anual já contratado |
 | `PUBLIC_APP_ORIGIN` | Origem HTTPS para `callback.*` |
 
