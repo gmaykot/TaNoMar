@@ -78,7 +78,7 @@ function MarineMetricCard({ item }: { item: MarineSeries }) {
         <strong>{item.current}</strong>
         <small>
           {item.locked
-            ? 'Premium'
+            ? item.current
             : [item.range, item.direction, item.detail].filter(Boolean).join(' · ')}
         </small>
       </header>
@@ -109,7 +109,7 @@ function TideCard({ tide }: { tide: MarineTide }) {
           <Anchor size={16} aria-hidden="true" /> Maré
         </span>
         <strong>{tide.current}</strong>
-        <small>{tide.locked ? 'Premium' : tide.unavailable ? '—' : tide.phase}</small>
+        <small>{tide.locked ? tide.current : tide.unavailable ? '—' : tide.phase}</small>
       </header>
       {tide.extremes.length > 0 ? (
         <ul>

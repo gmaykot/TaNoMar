@@ -82,7 +82,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
       role: 'User',
       plan: {
         code: authState.maxFavorites > 0 ? 'premium' : 'free',
-        name: authState.maxFavorites > 0 ? 'Premium' : 'Free',
+        name: authState.maxFavorites > 0 ? 'Mestre' : 'Free',
       },
       entitlements: {
         maxForecastDays: 8,
@@ -160,7 +160,7 @@ describe('LocationDetailsPage', () => {
       name: 'Favoritar bloqueado no plano atual',
     });
     expect(favorite).toBeDisabled();
-    expect(favorite).toHaveTextContent('Premium');
+    expect(favorite).toHaveTextContent('Assinatura');
   });
 
   it('mostra o selo Meu local quando o usuário é dono', async () => {

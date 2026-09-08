@@ -26,7 +26,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
       role: 'User',
       plan: {
         code: authState.planCode,
-        name: authState.planCode === 'premium' ? 'Premium' : 'Free',
+        name: authState.planCode === 'premium' ? 'Mestre' : 'Free',
       },
       entitlements: {
         maxForecastDays: authState.planCode === 'premium' ? 8 : 3,
@@ -140,9 +140,9 @@ describe('RankingPage', () => {
     expect(
       await screen.findByRole('heading', { name: 'Os melhores locais, em ordem.' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Vento, disponível no Premium' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Chuva, disponível no Premium' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Ondas, disponível no Premium' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Vento, disponível na assinatura' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Chuva, disponível na assinatura' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Ondas, disponível na assinatura' })).toBeDisabled();
     expect(getForecast).toHaveBeenCalledWith(undefined);
   });
 });

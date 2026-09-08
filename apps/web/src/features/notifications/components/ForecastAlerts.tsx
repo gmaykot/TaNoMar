@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { isPaidPlan } from '@/features/auth/types/auth';
 import { useLocations } from '@/features/locations/hooks/useLocations';
 import formStyles from '@/features/locations/components/spotForm.module.css';
 import accountStyles from '@/pages/account/account.module.css';
@@ -21,13 +22,13 @@ export function ForecastAlerts() {
   const auth = useAuth();
   const locations = useLocations();
   const queryClient = useQueryClient();
-  const premium = auth.user?.plan.code === 'premium';
+  const paid = isPaidPlan(auth.user);
   const available = locations.data?.filter((item) => item.isEnabled) ?? [];
   const [spotId, setSpotId] = useState('');
   const [minimumScore, setMinimumScore] = useState(8);
   const [leadHours, setLeadHours] = useState(24);
   const [error, setError] = useState<string | null>(null);
-  const alerts = useQuery({ queryKey, queryFn: getForecastAlerts, enabled: premium });
+  const alerts = useQuery({ queryKey, queryFn: getForecastAlerts, enabled: paid });
   const create = useMutation({
     mutationFn: createForecastAlert,
     onSuccess: async () => {
@@ -47,14 +48,14 @@ export function ForecastAlerts() {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey }),
   });
 
-  if (!premium) {
+  if (!paid) {
     return (
       <Card className={accountStyles.formCard}>
         <div className={accountStyles.formHeader}>
           <h2>
             <Lock size={17} aria-hidden="true" /> Alertas de oportunidade
           </h2>
-          <p>Premium: escolha um local, uma nota mínima e a antecedência do aviso.</p>
+          <p>Assinatura: escolha um local, uma nota mínima e a antecedência do aviso.</p>
         </div>
       </Card>
     );

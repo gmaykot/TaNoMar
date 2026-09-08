@@ -42,7 +42,9 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
 
         modelBuilder.Entity<Plan>().HasData(
             new Plan { Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0001"), Code = "free", Name = "Free", MaxForecastDays = 3, MaxFavorites = 0, MaxPersonalSpots = 0, MaxAlerts = 0 },
-            new Plan { Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0002"), Code = "premium", Name = "Premium", MaxForecastDays = 8, MaxFavorites = 20, MaxPersonalSpots = 10, MaxAlerts = 10 });
+            new Plan { Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0003"), Code = "arrais", Name = "Arrais", MaxForecastDays = 5, MaxFavorites = 10, MaxPersonalSpots = 5, MaxAlerts = 5 },
+            new Plan { Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0002"), Code = "premium", Name = "Mestre", MaxForecastDays = 8, MaxFavorites = 20, MaxPersonalSpots = 10, MaxAlerts = 10 },
+            new Plan { Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0004"), Code = "capitao", Name = "Capitão", MaxForecastDays = 8, MaxFavorites = 40, MaxPersonalSpots = 20, MaxAlerts = 20 });
         modelBuilder.Entity<PlatformSettings>().HasData(
             new PlatformSettings { Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0010"), ShowPartners = false });
 

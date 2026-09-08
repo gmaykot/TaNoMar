@@ -9,7 +9,7 @@ function available<T>(value: T) {
 }
 
 function locked() {
-  return { state: 'locked' as const, reason: 'plan_required', requiredPlan: 'Premium' };
+  return { state: 'locked' as const, reason: 'plan_required', requiredPlan: 'Assinatura' };
 }
 
 const rankingWire = {
@@ -105,7 +105,7 @@ describe('forecastMapper', () => {
   it('marca métricas premium como locked', () => {
     const item = mapForecastItem(parseRankingForecast(rankingWire).days[0]!.ranking[0]!);
     const waves = item.metrics.find((metric) => metric.key === 'waves');
-    expect(waves).toMatchObject({ value: 'Premium', locked: true, detail: 'Premium' });
+    expect(waves).toMatchObject({ value: 'Assinatura', locked: true, detail: 'Assinatura' });
   });
 
   it('mapeia o perfil do local', () => {
@@ -187,7 +187,7 @@ describe('forecastMapper', () => {
       current: '0.70 m',
       direction: 'Leste',
     });
-    expect(marine.series[3]).toMatchObject({ locked: true, current: 'Premium' });
+    expect(marine.series[3]).toMatchObject({ locked: true, current: 'Assinatura' });
     expect(marine.series[4]).toMatchObject({
       label: 'Pressão',
       current: '1018 hPa',

@@ -19,7 +19,7 @@ Não existe runtime cache de API nesta etapa:
 - somente endpoints públicos aprovados podem receber regra allowlist explícita;
 - TTL, expiração e comportamento offline devem ser documentados e testados por endpoint.
 
-O usuário Premium pode salvar uma cópia explícita da previsão exibida no armazenamento local do aparelho.
+O usuário da assinatura pode salvar uma cópia explícita da previsão exibida no armazenamento local do aparelho.
 Essa cópia é privada, não substitui a API e mostra um aviso quando é usada sem conexão durante a sessão
 autenticada; o usuário deve salvar novamente para atualizar a previsão. Ela não inclui respostas
 autenticadas no service worker nem mantém a sessão após um reload offline.

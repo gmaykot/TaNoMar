@@ -29,3 +29,5 @@ Prefira props explícitas, arquivos pequenos e HTML semântico. Não crie `Helpe
 Use alias `@/` para imports entre domínios e imports relativos dentro da mesma pasta. Nomes devem expressar o domínio: `forecastService`, não `DataService`.
 
 Na interface, o ponto de pesca se chama **local** (plural **locais**): navegação, títulos, formulários, erros e atalhos. Não use “pesqueiro” nem “praia” para nomear essa entidade. “Praia aberta”, “praia semiaberta” e “águas protegidas” ficam só no perfil costeiro. Identificadores de contrato (`fishing-spots`, `praia_aberta`) não mudam.
+
+A área comercial se chama **Assinatura**. Os planos pagos são **Arrais**, **Mestre** e **Capitão**. Não use “Premium” nem “Assinante” como nome do produto: assinante é quem já tem um plano pago. O código estável do Mestre continua `premium`. Bloqueios de recurso usam o rótulo **Assinatura**.

@@ -11,17 +11,19 @@ import {
   setAdminUserActive,
   setAdminUserPlan,
 } from '@/features/admin-users/services/adminUsersService';
+import type { AdminPlanCode } from '@/features/admin-users/types/adminUser';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { isPaidPlan } from '@/features/auth/types/auth';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { ApiError } from '@/shared/api/errors';
 import { routes } from '@/shared/constants/routes';
 import { normalizeText } from '@/shared/utils/normalizeText';
 import styles from '@/pages/shared/pages.module.css';
 
-type Filter = 'all' | 'premium' | 'free' | 'blocked';
+type Filter = 'all' | 'paid' | 'free' | 'blocked';
 
 function filterLabel(filter: Filter) {
-  if (filter === 'premium') return 'Premium';
+  if (filter === 'paid') return 'Assinantes';
   if (filter === 'free') return 'Free';
   if (filter === 'blocked') return 'Bloqueados';
   return 'Todos';
@@ -40,7 +42,7 @@ export function AdminUsersPage() {
     if (!users.data) return [];
     const term = normalizeText(search.trim());
     return users.data.filter((user) => {
-      if (filter === 'premium' && user.plan.code !== 'premium') return false;
+      if (filter === 'paid' && !isPaidPlan(user)) return false;
       if (filter === 'free' && user.plan.code !== 'free') return false;
       if (filter === 'blocked' && user.isActive) return false;
       if (!term) return true;
@@ -56,7 +58,7 @@ export function AdminUsersPage() {
   }
 
   const planMutation = useMutation({
-    mutationFn: ({ id, planCode }: { id: string; planCode: 'free' | 'premium' }) =>
+    mutationFn: ({ id, planCode }: { id: string; planCode: AdminPlanCode }) =>
       setAdminUserPlan(id, planCode),
     onMutate: ({ id }) => {
       setPendingId(id);
@@ -132,7 +134,7 @@ export function AdminUsersPage() {
         onChange={setSearch}
       />
       <div className={styles.filters} role="group" aria-label="Filtrar usuários">
-        {(['all', 'premium', 'free', 'blocked'] as const).map((item) => (
+        {(['all', 'paid', 'free', 'blocked'] as const).map((item) => (
           <button
             key={item}
             type="button"

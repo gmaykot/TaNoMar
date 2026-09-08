@@ -48,4 +48,10 @@ describe('RequirePremium', () => {
     expect(screen.getByText('diário')).toBeInTheDocument();
     expect(screen.queryByText('premium')).not.toBeInTheDocument();
   });
+
+  it('libera o Diário para Arrais e Capitão', () => {
+    authState.user = { plan: { code: 'arrais' } };
+    renderRoute();
+    expect(screen.getByText('diário')).toBeInTheDocument();
+  });
 });

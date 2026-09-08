@@ -23,10 +23,10 @@ export function NewLocationPage() {
           <ArrowLeft size={18} aria-hidden="true" /> Voltar aos locais
         </Link>
         <div className={formStyles.paywall}>
-          <strong>Locais pessoais são Premium</strong>
+          <strong>Locais pessoais são da assinatura</strong>
           <p>
-            No plano gratuito você consulta o mapa TáNoMar. O Premium libera até 10 locais privados
-            ou para a comunidade.
+            No plano gratuito você consulta o mapa TáNoMar. A assinatura libera locais privados ou
+            para a comunidade, conforme o plano escolhido.
           </p>
         </div>
       </div>

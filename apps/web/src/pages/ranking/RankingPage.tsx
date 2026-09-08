@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { Button } from '@/design-system/components/Button';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { isPaidPlan } from '@/features/auth/types/auth';
 import { DayCarousel } from '@/features/forecast/components/DayCarousel';
 import { useForecast } from '@/features/forecast/hooks/useForecast';
 import { RankingEmphasisFilters } from '@/features/ranking/components/RankingEmphasisFilters';
@@ -22,9 +23,9 @@ export function RankingPage() {
   const auth = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedDate, setSelectedDate] = useState('');
-  const premium = auth.user?.plan.code === 'premium';
-  const visibleMetricKeys = premium ? auth.user?.preferences.visibleMetrics : undefined;
-  const emphasis = parseRankingEmphasis(searchParams.get('enfase'), premium);
+  const paid = isPaidPlan(auth.user);
+  const visibleMetricKeys = paid ? auth.user?.preferences.visibleMetrics : undefined;
+  const emphasis = parseRankingEmphasis(searchParams.get('enfase'), paid);
   const forecast = useForecast(rankingEmphasisParam(emphasis));
 
   function setEmphasis(next: RankingEmphasis) {
@@ -54,7 +55,11 @@ export function RankingPage() {
       <FeedbackState
         title="Ranking indisponível"
         description="Não foi possível carregar o ranking."
-        action={<Button variant="secondary" onClick={() => void forecast.refetch()}>Tentar novamente</Button>}
+        action={
+          <Button variant="secondary" onClick={() => void forecast.refetch()}>
+            Tentar novamente
+          </Button>
+        }
       />
     );
 
@@ -66,7 +71,7 @@ export function RankingPage() {
         title="Os melhores locais, em ordem."
         description="Só os locais que você habilitou, em ordem."
       />
-      <RankingEmphasisFilters emphasis={emphasis} premium={premium} onChange={setEmphasis} />
+      <RankingEmphasisFilters emphasis={emphasis} premium={paid} onChange={setEmphasis} />
       <DayCarousel days={forecast.data.days} selectedDate={activeDate} onSelect={setSelectedDate}>
         {(day) => (
           <>

@@ -85,7 +85,7 @@ export function AboutPage() {
           Relatos de condição duram 12 horas. Relatos de perigo duram 24 horas. Qualquer pescador no
           app vê e relata — com um atalho (deu peixe, mar bom, mar ruim ou perigo) ou escrevendo o
           que viu. O envio e a exclusão pedem confirmação. Cada pessoa só envia o mesmo relato uma
-          vez por dia no mesmo local. Confirmar ou contestar é Premium. Os relatos ativos aparecem
+          vez por dia no mesmo local. Confirmar ou contestar exige assinatura. Os relatos ativos aparecem
           no sino com quem relatou e quando. O autor pode apagar o próprio relato.
         </p>
       </Card>

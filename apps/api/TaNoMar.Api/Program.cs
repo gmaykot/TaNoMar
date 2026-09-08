@@ -342,12 +342,12 @@ api.MapPut("/admin/users/{id:guid}/plan", async (Guid id, AdminPlanRequest reque
 {
     var (actor, failure) = await AdminActorAsync(principal, db, cancellationToken);
     if (failure is not null) return failure;
-    var planCode = request.PlanCode?.Trim().ToLowerInvariant();
-    if (planCode is not ("free" or "premium")) return Results.BadRequest(new { code = "invalid_plan", detail = "Use o plano free ou premium." });
+    var planCode = PlanRules.NormalizeAssignable(request.PlanCode);
+    if (planCode is null) return Results.BadRequest(new { code = "invalid_plan", detail = "Use o plano free, arrais, premium ou capitao." });
     var target = await db.Users.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
     if (target is null) return Results.NotFound();
     if (MatchesBootstrapAdmin(target.Email, target.GoogleSubject, options.Value))
-        return Results.Conflict(new { code = "bootstrap_locked", detail = "A conta inicial do bootstrap permanece Premium." });
+        return Results.Conflict(new { code = "bootstrap_locked", detail = "A conta inicial do bootstrap permanece no plano Mestre." });
     var plan = await db.Plans.SingleAsync(item => item.Code == planCode, cancellationToken);
     if (!string.Equals(target.PlanCode, plan.Code, StringComparison.Ordinal))
     {
@@ -514,8 +514,8 @@ api.MapPut("/me/preferences", async (PreferencesRequest request, ClaimsPrincipal
     preferences.ForecastNotifications = request.ForecastNotifications ?? preferences.ForecastNotifications;
     if (request.VisibleMetrics is not null)
     {
-        if (!string.Equals(user.PlanCode, "premium", StringComparison.Ordinal))
-            return Results.BadRequest(new { code = "plan_required", detail = "Personalizar os indicadores exige o plano Premium.", requiredPlan = "Premium" });
+        if (!PlanRules.IsPaid(user.PlanCode))
+            return Results.BadRequest(new { code = "plan_required", detail = "Personalizar os indicadores exige uma assinatura.", requiredPlan = PlanRules.RequiredPlanLabel });
         if (request.VisibleMetrics.Any(metric => !IsVisibleMetric(metric)))
             return Results.BadRequest(new { code = "invalid_metrics", detail = "Um ou mais indicadores são inválidos." });
         preferences.VisibleMetrics = string.Join(
@@ -552,7 +552,7 @@ api.MapPost("/me/alerts", async (ForecastAlertRequest request, ClaimsPrincipal p
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
     var plan = await db.Plans.AsNoTracking().SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
-    if (plan.MaxAlerts <= 0) return Results.BadRequest(new { code = "plan_required", detail = "Alertas de previsão exigem o plano Premium.", requiredPlan = "Premium" });
+    if (plan.MaxAlerts <= 0) return Results.BadRequest(new { code = "plan_required", detail = "Alertas de previsão exigem uma assinatura.", requiredPlan = PlanRules.RequiredPlanLabel });
     if (request.MinimumScore is < 0 or > 10 || request.LeadHours is < 1 or > 168)
         return Results.BadRequest(new { code = "invalid_alert", detail = "Informe uma nota entre 0 e 10 e antecedência entre 1 e 168 horas." });
     var spot = await db.FishingSpots.SingleOrDefaultAsync(item => item.Slug == request.SpotId, cancellationToken);
@@ -643,9 +643,9 @@ api.MapGet("/forecasts/ranking", async (string? emphasis, ClaimsPrincipal princi
     if (!FishingRankingEmphasis.TryParse(emphasis, out var parsedEmphasis))
         return Results.BadRequest(new { detail = "Ênfase inválida. Use wind, wind-more, rain, rain-more, waves ou waves-less." });
     var plan = await db.Plans.SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
-    var premium = plan.Code == "premium";
-    if (FishingRankingEmphasis.RequiresPremium(parsedEmphasis) && !premium)
-        return Results.BadRequest(new { code = "plan_required", detail = "Reordenar o ranking exige o plano Premium.", requiredPlan = "Premium" });
+    var paid = PlanRules.IsPaid(plan.Code);
+    if (FishingRankingEmphasis.RequiresPremium(parsedEmphasis) && !paid)
+        return Results.BadRequest(new { code = "plan_required", detail = "Reordenar o ranking exige uma assinatura.", requiredPlan = PlanRules.RequiredPlanLabel });
     var enabledSettings = await EnabledSettingsAsync(db, user.Id, cancellationToken);
     var preferredRegions = await PreferredRegionsAsync(db, user.Id, cancellationToken);
     var visibleSpots = await db.FishingSpots.AsNoTracking()
@@ -659,7 +659,7 @@ api.MapGet("/forecasts/ranking", async (string? emphasis, ClaimsPrincipal princi
     {
         var forecast = await fishing.GetAsync(day, cancellationToken, user.Id, enabledSlugs);
         var ordered = forecast with { Ranking = FishingRankingEmphasis.Order(forecast.Ranking, parsedEmphasis) };
-        days.Add(ForecastDayDto(ordered, premium, ownerSlugs));
+        days.Add(ForecastDayDto(ordered, paid, ownerSlugs));
     }
     return Results.Ok(new { generatedAt = DateTimeOffset.UtcNow, availableFrom = DateOnly.FromDateTime(DateTime.UtcNow), availableTo = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(plan.MaxForecastDays - 1)), days });
 }).RequireAuthorization();
@@ -677,7 +677,7 @@ api.MapGet("/fishing-spots/{id}/forecast", async (string id, ClaimsPrincipal pri
     {
         var forecast = await fishing.GetAsync(day, cancellationToken, user.Id);
         var filtered = forecast with { Ranking = forecast.Ranking.Where(item => item.Id == spot.Slug).ToList() };
-        result.Add(ForecastDayDto(filtered, plan.Code == "premium", OwnerSpotIds([spot], user)));
+        result.Add(ForecastDayDto(filtered, PlanRules.IsPaid(plan.Code), OwnerSpotIds([spot], user)));
     }
     return Results.Ok(new { spotId = spot.Slug, days = result });
 }).RequireAuthorization();
@@ -693,8 +693,8 @@ api.MapGet("/fishing-spots/{id}/marine", async (string id, DateOnly? date, Claim
     var targetDate = date ?? fishing.Today();
     var dayOffset = targetDate.DayNumber - fishing.Today().DayNumber;
     if (dayOffset < 0 || dayOffset >= plan.MaxForecastDays) return Results.BadRequest(new { detail = "Data fora da janela do plano." });
-    var premium = plan.Code == "premium";
-    if (!premium) return Results.Ok(MarineLockedDto(spot.Slug, targetDate));
+    var paid = PlanRules.IsPaid(plan.Code);
+    if (!paid) return Results.Ok(MarineLockedDto(spot.Slug, targetDate));
     var location = new FishingLocation
     {
         Id = spot.Slug,
@@ -963,9 +963,9 @@ static bool ApplyBootstrapAdmin(User user, string? email, string? googleSubject,
         user.Role = "Admin";
         changed = true;
     }
-    if (!string.Equals(user.PlanCode, "premium", StringComparison.Ordinal))
+    if (!string.Equals(user.PlanCode, PlanRules.Mestre, StringComparison.Ordinal))
     {
-        user.PlanCode = "premium";
+        user.PlanCode = PlanRules.Mestre;
         changed = true;
     }
     return changed;
@@ -1147,8 +1147,8 @@ static async Task<IResult> VoteReportAsync(Guid id, string kind, ClaimsPrincipal
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
-    if (!string.Equals(user.PlanCode, "premium", StringComparison.Ordinal))
-        return Results.BadRequest(new { code = "plan_required", detail = "Confirmar ou contestar um relato exige o plano Premium.", requiredPlan = "Premium" });
+    if (!PlanRules.IsPaid(user.PlanCode))
+        return Results.BadRequest(new { code = "plan_required", detail = "Confirmar ou contestar um relato exige uma assinatura.", requiredPlan = PlanRules.RequiredPlanLabel });
     var report = await db.CommunityReports.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
     if (report is null || report.ExpiresAt <= DateTimeOffset.UtcNow) return Results.NotFound();
     var spot = await db.FishingSpots.SingleOrDefaultAsync(item => item.Id == report.FishingSpotId, cancellationToken);
@@ -1177,10 +1177,10 @@ static HashSet<string> OwnerSpotIds(IEnumerable<FishingSpot> spots, User user) =
     spots.Where(spot => SpotRules.Owns(spot, user)).Select(spot => spot.Slug).ToHashSet(StringComparer.Ordinal);
 static Task<HashSet<string>> OwnerSpotSlugsAsync(TaNoMarDbContext db, Guid userId, CancellationToken cancellationToken) =>
     db.FishingSpots.AsNoTracking().Where(spot => spot.OwnerUserId == userId).Select(spot => spot.Slug).ToHashSetAsync(StringComparer.Ordinal, cancellationToken);
-static object ForecastDayDto(FishingForecast forecast, bool premium, HashSet<string>? ownerSpotIds = null) => new { date = forecast.Date, ranking = forecast.Ranking.Select(item => ForecastItemDto(item, premium, ownerSpotIds)).ToList(), unavailableSpotIds = forecast.Errors.Select(error => error.Location).ToList() };
+static object ForecastDayDto(FishingForecast forecast, bool paid, HashSet<string>? ownerSpotIds = null) => new { date = forecast.Date, ranking = forecast.Ranking.Select(item => ForecastItemDto(item, paid, ownerSpotIds)).ToList(), unavailableSpotIds = forecast.Errors.Select(error => error.Location).ToList() };
 static object MarineLockedDto(string spotId, DateOnly date)
 {
-    object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = "Premium" };
+    object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = PlanRules.RequiredPlanLabel };
     return new { spotId, date, waves = Locked(), wavePeriod = Locked(), swell = Locked(), waterTemperature = Locked(), atmosphericPressure = Locked(), tide = Locked() };
 }
 static object MarineDto(string spotId, DateOnly date, FishingLocationForecast forecast, object tide)
@@ -1301,14 +1301,14 @@ static object TideTable(
         }
     };
 }
-static object ForecastItemDto(FishingLocationForecast item, bool premium, HashSet<string>? ownerSpotIds = null)
+static object ForecastItemDto(FishingLocationForecast item, bool paid, HashSet<string>? ownerSpotIds = null)
 {
     var hour = item.BestHour;
     object Available(object value) => new { state = "available", value };
-    object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = "Premium" };
+    object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = PlanRules.RequiredPlanLabel };
     var classification = item.Score >= 8.5 ? "Excelente" : item.Score >= 7 ? "Muito bom" : item.Score >= 5 ? "Regular" : "Difícil";
     var highlights = ForecastHighlights(hour);
-    return new { spotId = item.Id, spotName = item.Location, isOwner = ownerSpotIds is not null && ownerSpotIds.Contains(item.Id), score = Available(item.Score), classification = Available(classification), bestHours = Available(item.BestHours.Select(best => best.Time).ToArray()), highlights, wind = Available(hour is null ? "n/d" : $"{hour.WindSpeedKmh:0.#} km/h {hour.WindDirection}"), gusts = Available(hour is null ? "n/d" : $"{hour.WindGustKmh:0.#} km/h"), waves = premium ? Available(hour?.WaveMeters.ToString("0.00") + " m") : Locked(), wavePeriod = premium ? Available(hour?.WavePeriodSeconds.ToString("0.#") + " s") : Locked(), swell = premium ? Available(hour?.SwellMeters.ToString("0.00") + " m") : Locked(), rain = Available(hour is null ? "n/d" : $"{hour.RainMm:0.#} mm ({hour.RainProbability}%)"), airTemperature = Available(hour is null ? "n/d" : $"{hour.AirTemperatureC:0.#} °C"), waterTemperature = premium ? Available(hour?.WaterTemperatureC.ToString("0.#") + " °C") : Locked() };
+    return new { spotId = item.Id, spotName = item.Location, isOwner = ownerSpotIds is not null && ownerSpotIds.Contains(item.Id), score = Available(item.Score), classification = Available(classification), bestHours = Available(item.BestHours.Select(best => best.Time).ToArray()), highlights, wind = Available(hour is null ? "n/d" : $"{hour.WindSpeedKmh:0.#} km/h {hour.WindDirection}"), gusts = Available(hour is null ? "n/d" : $"{hour.WindGustKmh:0.#} km/h"), waves = paid ? Available(hour?.WaveMeters.ToString("0.00") + " m") : Locked(), wavePeriod = paid ? Available(hour?.WavePeriodSeconds.ToString("0.#") + " s") : Locked(), swell = paid ? Available(hour?.SwellMeters.ToString("0.00") + " m") : Locked(), rain = Available(hour is null ? "n/d" : $"{hour.RainMm:0.#} mm ({hour.RainProbability}%)"), airTemperature = Available(hour is null ? "n/d" : $"{hour.AirTemperatureC:0.#} °C"), waterTemperature = paid ? Available(hour?.WaterTemperatureC.ToString("0.#") + " °C") : Locked() };
 }
 
 static string[] ForecastHighlights(FishingHourForecast? hour)

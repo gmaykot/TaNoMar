@@ -29,6 +29,12 @@ export interface AuthUser {
 
 export type AuthStatus = 'booting' | 'anonymous' | 'authenticated';
 
+export const SUBSCRIPTION_LOCK_LABEL = 'Assinatura';
+
+export function isPaidPlan(user: { plan?: { code?: string } | null } | null | undefined) {
+  return Boolean(user?.plan?.code && user.plan.code !== 'free');
+}
+
 export function isAdmin(user: Pick<AuthUser, 'role'> | null | undefined) {
   return user?.role === 'Admin';
 }

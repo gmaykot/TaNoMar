@@ -60,7 +60,7 @@ Alterações no frontend exigem **rebuild da imagem inteira** (web + API). Isso 
 
 | Variável | Destino | Uso |
 | --- | --- | --- |
-| `BOOTSTRAP_ADMIN_EMAIL` | `TaNoMar__BootstrapAdminEmail` | E-mail do admin inicial (role Admin + plano Premium) |
+| `BOOTSTRAP_ADMIN_EMAIL` | `TaNoMar__BootstrapAdminEmail` | E-mail do admin inicial (role Admin + plano Mestre) |
 | `BOOTSTRAP_ADMIN_GOOGLE_SUBJECT` | `TaNoMar__BootstrapAdminGoogleSubject` | Claim `sub` do Google do admin inicial — não é o e-mail |
 | `Fishing__WarmupEnabled` | `Fishing:WarmupEnabled` | Worker que aquece previsão (padrão `true`) |
 | `Fishing__WarmupIntervalHours` | `Fishing:WarmupIntervalHours` | Intervalo entre ciclos do worker (padrão `3`) |

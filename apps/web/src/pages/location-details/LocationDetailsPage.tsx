@@ -18,6 +18,7 @@ import { Card } from '@/design-system/components/Card';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { ScoreIndicator } from '@/design-system/components/ScoreIndicator';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { isPaidPlan, SUBSCRIPTION_LOCK_LABEL } from '@/features/auth/types/auth';
 import { CommunityReports } from '@/features/community/components/CommunityReports';
 import { DateSelector } from '@/features/forecast/components/DateSelector';
 import { MarineDetails, MarineDetailsToggle } from '@/features/forecast/components/MarineDetails';
@@ -37,8 +38,9 @@ export function LocationDetailsPage() {
   const locationForecast = useLocationForecast(locationId);
   const mutations = useLocationMutations();
   const canFavorite = (auth.user?.entitlements.maxFavorites ?? 0) > 0;
-  const visibleMetricKeys =
-    auth.user?.plan.code === 'premium' ? auth.user.preferences.visibleMetrics : undefined;
+  const visibleMetricKeys = isPaidPlan(auth.user)
+    ? auth.user?.preferences.visibleMetrics
+    : undefined;
   const [selectedDate, setSelectedDate] = useState(() => searchParams.get('data') ?? '');
   const [marineOpen, setMarineOpen] = useState(false);
   const [planned, setPlanned] = useState(false);
@@ -172,7 +174,7 @@ export function LocationDetailsPage() {
             />
           )}
           {!canFavorite && !location.isFavorite
-            ? 'Premium'
+            ? SUBSCRIPTION_LOCK_LABEL
             : location.isFavorite
               ? 'Favorito'
               : 'Favoritar'}
@@ -227,7 +229,7 @@ export function LocationDetailsPage() {
           location.visibility === 'official' ||
           (location.visibility === 'shared' && location.isApproved)
         }
-        canVote={auth.user?.plan.code === 'premium'}
+        canVote={isPaidPlan(auth.user)}
       />
     </div>
   );

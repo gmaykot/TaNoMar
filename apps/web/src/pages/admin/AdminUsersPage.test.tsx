@@ -13,7 +13,7 @@ const { setAdminUserPlan } = vi.hoisted(() => ({
       pictureUrl: null,
       role: 'User',
       isActive: true,
-      plan: { code: 'premium', name: 'Premium' },
+      plan: { code: 'premium', name: 'Mestre' },
       createdAt: '2026-09-05T12:00:00+00:00',
       isSelf: false,
       protection: null,
@@ -33,7 +33,7 @@ vi.mock('@/features/admin-users/services/adminUsersService', () => ({
         pictureUrl: null,
         role: 'Admin',
         isActive: true,
-        plan: { code: 'premium', name: 'Premium' },
+        plan: { code: 'premium', name: 'Mestre' },
         createdAt: '2026-09-01T12:00:00+00:00',
         isSelf: true,
         protection: 'self',
@@ -82,12 +82,12 @@ describe('AdminUsersPage', () => {
     expect(screen.queryByText('Ana Costa')).not.toBeInTheDocument();
   });
 
-  it('promove um usuário para Premium', async () => {
+  it('promove um usuário para Mestre', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AdminUsersPage />);
     const beto = (await screen.findByText('Beto Lima')).closest('article');
     expect(beto).toBeTruthy();
-    await user.click(within(beto as HTMLElement).getByRole('button', { name: 'Premium' }));
+    await user.click(within(beto as HTMLElement).getByRole('button', { name: 'Mestre' }));
     expect(setAdminUserPlan).toHaveBeenCalledWith('user-2', 'premium');
   });
 });

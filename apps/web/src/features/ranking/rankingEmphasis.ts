@@ -125,7 +125,7 @@ export function rankingEmphasisControlLabel(
   current: RankingEmphasis,
   locked = false,
 ) {
-  if (locked) return `${metricLabel[metric]}, disponível no Premium`;
+  if (locked) return `${metricLabel[metric]}, disponível na assinatura`;
   const active = rankingEmphasisMetric(current) === metric;
   if (!active) {
     return `${metricLabel[metric]}. Toque para ordenar com ${directionPhrase[defaultByMetric[metric]]}.`;

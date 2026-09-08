@@ -1,13 +1,19 @@
 import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
-import type { AdminUser } from '../types/adminUser';
+import type { AdminPlanCode, AdminUser } from '../types/adminUser';
 import styles from './adminUsers.module.css';
 
 const protectionLabel = {
   self: 'Você não pode bloquear a própria conta.',
-  bootstrap: 'A conta inicial do bootstrap permanece Premium e ativa.',
+  bootstrap: 'A conta inicial do bootstrap permanece no plano Mestre e ativa.',
   last_admin: 'Mantenha pelo menos um admin ativo.',
 } as const;
+
+const paidPlans = [
+  { code: 'arrais', label: 'Arrais' },
+  { code: 'premium', label: 'Mestre' },
+  { code: 'capitao', label: 'Capitão' },
+] as const;
 
 function formatCreatedAt(value: string) {
   const date = new Date(value);
@@ -19,7 +25,7 @@ interface AdminUserCardProps {
   user: AdminUser;
   pending?: boolean;
   error?: string | null;
-  onPlanChange: (planCode: 'free' | 'premium') => void;
+  onPlanChange: (planCode: AdminPlanCode) => void;
   onActiveChange: (isActive: boolean) => void;
 }
 
@@ -65,14 +71,17 @@ export function AdminUserCard({
         >
           Free
         </Button>
-        <Button
-          type="button"
-          variant={user.plan.code === 'premium' ? 'primary' : 'secondary'}
-          disabled={pending || !user.canChangePlan || user.plan.code === 'premium'}
-          onClick={() => onPlanChange('premium')}
-        >
-          Premium
-        </Button>
+        {paidPlans.map((plan) => (
+          <Button
+            key={plan.code}
+            type="button"
+            variant={user.plan.code === plan.code ? 'primary' : 'secondary'}
+            disabled={pending || !user.canChangePlan || user.plan.code === plan.code}
+            onClick={() => onPlanChange(plan.code)}
+          >
+            {plan.label}
+          </Button>
+        ))}
         {user.isActive ? (
           <Button
             type="button"

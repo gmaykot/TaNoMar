@@ -14,7 +14,12 @@ import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { isAdmin, showsPartners } from '@/features/auth/types/auth';
+import {
+  isAdmin,
+  isPaidPlan,
+  showsPartners,
+  SUBSCRIPTION_LOCK_LABEL,
+} from '@/features/auth/types/auth';
 import { useLocations } from '@/features/locations/hooks/useLocations';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { routes } from '@/shared/constants/routes';
@@ -41,7 +46,7 @@ function AccountShortcut({
       </span>
       <div>
         <strong>{title}</strong>
-        <small>{locked ? 'Premium' : description}</small>
+        <small>{locked ? SUBSCRIPTION_LOCK_LABEL : description}</small>
       </div>
       {!locked ? (
         <ChevronRight className={accountStyles.shortcutChevron} size={18} aria-hidden="true" />
@@ -103,10 +108,10 @@ export function AccountPage() {
         </dl>
       </Card>
 
-      {user?.plan.code !== 'premium' ? (
+      {!isPaidPlan(user) ? (
         <Link className={accountStyles.premiumCallout} to={routes.premium}>
-          <strong>Conhecer o Premium</strong>
-          <small>Veja os recursos disponíveis para planejar melhor sua saída.</small>
+          <strong>Conhecer os planos</strong>
+          <small>Arrais, Mestre ou Capitão: mais contexto para planejar a saída.</small>
         </Link>
       ) : null}
 
@@ -174,7 +179,7 @@ export function AccountPage() {
             icon={BookOpen}
             title="Diário de pesca"
             description="Guarde o resultado das suas saídas neste aparelho."
-            locked={user?.plan.code !== 'premium'}
+            locked={!isPaidPlan(user)}
           />
         </div>
       </section>
