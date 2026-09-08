@@ -31,6 +31,17 @@ internal static class FishingScoreCalculator
         return Math.Round(Math.Clamp(score, 0.0, 10.0), 1, MidpointRounding.ToEven);
     }
 
+    public static string WindOrigin(double windFrom, double seaOrientation)
+    {
+        var onshoreDifference = AngularDifference(windFrom, seaOrientation);
+        var offshoreDirection = (seaOrientation + 180) % 360;
+        var offshoreDifference = AngularDifference(windFrom, offshoreDirection);
+
+        if (offshoreDifference <= 80) return "terra";
+        if (onshoreDifference <= 80) return "mar";
+        return "cruzado";
+    }
+
     private static double AngularDifference(double a, double b)
         => Math.Abs((a - b + 540) % 360 - 180);
 

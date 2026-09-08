@@ -1389,17 +1389,41 @@ static object ForecastItemDto(FishingLocationForecast item, bool paid, HashSet<s
     object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = PlanRules.RequiredPlanLabel };
     var classification = item.Score >= 8.5 ? "Excelente" : item.Score >= 7 ? "Muito bom" : item.Score >= 5 ? "Regular" : "Difícil";
     var highlights = ForecastHighlights(hour);
-    return new { spotId = item.Id, spotName = item.Location, isOwner = ownerSpotIds is not null && ownerSpotIds.Contains(item.Id), score = Available(item.Score), classification = Available(classification), bestHours = Available(item.BestHours.Select(best => best.Time).ToArray()), highlights, wind = Available(hour is null ? "n/d" : $"{hour.WindSpeedKmh:0.#} km/h {hour.WindDirection}"), gusts = Available(hour is null ? "n/d" : $"{hour.WindGustKmh:0.#} km/h"), waves = paid ? Available(hour?.WaveMeters.ToString("0.00") + " m") : Locked(), wavePeriod = paid ? Available(hour?.WavePeriodSeconds.ToString("0.#") + " s") : Locked(), swell = paid ? Available(hour?.SwellMeters.ToString("0.00") + " m") : Locked(), rain = Available(hour is null ? "n/d" : $"{hour.RainMm:0.#} mm ({hour.RainProbability}%)"), airTemperature = Available(hour is null ? "n/d" : $"{hour.AirTemperatureC:0.#} °C"), waterTemperature = paid ? Available(hour?.WaterTemperatureC.ToString("0.#") + " °C") : Locked() };
+    var windOrigin = string.IsNullOrEmpty(hour?.WindOrigin) ? null : hour.WindOrigin;
+    return new
+    {
+        spotId = item.Id,
+        spotName = item.Location,
+        isOwner = ownerSpotIds is not null && ownerSpotIds.Contains(item.Id),
+        score = Available(item.Score),
+        classification = Available(classification),
+        bestHours = Available(item.BestHours.Select(best => best.Time).ToArray()),
+        bestHourWindows = Available(item.BestHours.Select(best => new { time = best.Time, score = best.Score }).ToArray()),
+        metricsHour = hour?.Time,
+        windOrigin,
+        highlights,
+        wind = Available(hour is null ? "n/d" : $"{hour.WindSpeedKmh:0.#} km/h {hour.WindDirection}"),
+        gusts = Available(hour is null ? "n/d" : $"{hour.WindGustKmh:0.#} km/h"),
+        waves = paid ? Available(hour?.WaveMeters.ToString("0.00") + " m") : Locked(),
+        wavePeriod = paid ? Available(hour?.WavePeriodSeconds.ToString("0.#") + " s") : Locked(),
+        swell = paid ? Available(hour?.SwellMeters.ToString("0.00") + " m") : Locked(),
+        rain = Available(hour is null ? "n/d" : $"{hour.RainMm:0.#} mm ({hour.RainProbability}%)"),
+        airTemperature = Available(hour is null ? "n/d" : $"{hour.AirTemperatureC:0.#} °C"),
+        waterTemperature = paid ? Available(hour?.WaterTemperatureC.ToString("0.#") + " °C") : Locked()
+    };
 }
 
 static string[] ForecastHighlights(FishingHourForecast? hour)
 {
     if (hour is null) return [];
     var highlights = new List<string>();
+    if (hour.WindOrigin == "terra") highlights.Add("Vento de terra");
+    else if (hour.WindOrigin == "mar") highlights.Add("Vento do mar");
+    else if (hour.WindOrigin == "cruzado") highlights.Add("Vento cruzado");
     if (hour.WindSpeedKmh <= 15) highlights.Add("Vento leve");
     if (hour.RainProbability <= 20) highlights.Add("Pouca chance de chuva");
     if (hour.WaveMeters <= 1.2) highlights.Add("Ondas moderadas");
-    return highlights.Count > 0 ? highlights.Take(2).ToArray() : ["Condições equilibradas"];
+    return highlights.Count > 0 ? highlights.Take(3).ToArray() : ["Condições equilibradas"];
 }
 
 static double DistanceMeters(double lat1, double lon1, double lat2, double lon2)

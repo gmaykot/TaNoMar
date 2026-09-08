@@ -77,7 +77,7 @@ export function HomePage() {
       <PageHeader
         eyebrow="Decisão de pesca"
         title="Onde vale pescar hoje?"
-        description="Condições no melhor momento."
+        description="Melhor média do dia."
       />
       {!isPaid ? (
         <Link className={styles.premiumBanner} to={routes.premium}>

@@ -70,7 +70,7 @@ export function RankingPage() {
       <PageHeader
         eyebrow="Visão comparativa"
         title="Os melhores locais, em ordem."
-        description="Só os locais que você habilitou, em ordem."
+        description="Ordem pela média das 3 melhores horas."
       />
       <RankingEmphasisFilters emphasis={emphasis} premium={canEmphasis} onChange={setEmphasis} />
       <DayCarousel days={forecast.data.days} selectedDate={activeDate} onSelect={setSelectedDate}>

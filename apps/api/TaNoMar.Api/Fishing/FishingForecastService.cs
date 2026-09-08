@@ -316,7 +316,8 @@ internal sealed class FishingForecastService
                 CompassDirection(waveDirection),
                 CompassDirection(swellDirection),
                 seaLevel is null ? null : Round(seaLevel.Value, 2),
-                Round(pressure, 0)));
+                Round(pressure, 0),
+                FishingScoreCalculator.WindOrigin(windDirection, location.SeaOrientationDegrees)));
         }
 
         var bestHours = rows

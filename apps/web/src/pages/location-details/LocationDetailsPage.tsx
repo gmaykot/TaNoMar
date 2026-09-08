@@ -25,6 +25,7 @@ import { MarineDetails, MarineDetailsToggle } from '@/features/forecast/componen
 import { MetricGrid } from '@/features/forecast/components/MetricGrid';
 import { useLocationForecast } from '@/features/forecast/hooks/useForecast';
 import type { FishingMetricKey } from '@/features/fishing/types/fishing';
+import { formatScore, metricsHourCaption } from '@/features/fishing/utils/scoreBreakdown';
 import { OwnerBadge } from '@/features/locations/components/OwnerBadge';
 import { useLocationMutations } from '@/features/locations/hooks/useLocationMutations';
 import { saveTripPlan } from '@/features/diary/diaryStorage';
@@ -199,6 +200,9 @@ export function LocationDetailsPage() {
             <span className={styles.detailEyebrow}>Melhor janela</span>
             <h2>{activeDay.forecast.bestWindow}</h2>
             <Badge classification={activeDay.forecast.classification} />
+            {activeDay.forecast.scoreBreakdown ? (
+              <p className={styles.scoreBreakdown}>{activeDay.forecast.scoreBreakdown}</p>
+            ) : null}
           </div>
           <ScoreIndicator
             score={activeDay.forecast.score}
@@ -208,10 +212,17 @@ export function LocationDetailsPage() {
         <div className={styles.bestHours}>
           <CalendarDays size={17} aria-hidden="true" />
           <span>Horários em destaque:</span>
-          {activeDay.forecast.bestHours.map((hour) => (
-            <strong key={hour}>{hour}</strong>
-          ))}
+          {activeDay.forecast.hourWindows.length > 0
+            ? activeDay.forecast.hourWindows.map((hour) => (
+                <strong key={hour.time}>
+                  {hour.time} {formatScore(hour.score)}
+                </strong>
+              ))
+            : activeDay.forecast.bestHours.map((hour) => <strong key={hour}>{hour}</strong>)}
         </div>
+        {metricsHourCaption(activeDay.forecast.metricsHour) ? (
+          <p className={styles.metricCaption}>{metricsHourCaption(activeDay.forecast.metricsHour)}</p>
+        ) : null}
         <MetricGrid
           metrics={activeDay.forecast.metrics}
           keys={(['wind', 'gusts', 'rain', 'air-temperature'] as FishingMetricKey[]).filter(

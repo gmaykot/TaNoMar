@@ -32,6 +32,13 @@ export interface FishingMetric {
 export type ForecastRankingEmphasis =
   'wind' | 'wind-more' | 'rain' | 'rain-more' | 'waves' | 'waves-less';
 
+export type WindOrigin = 'terra' | 'mar' | 'cruzado';
+
+export interface ForecastHourWindow {
+  time: string;
+  score: number;
+}
+
 export interface ForecastRankingItem {
   locationId: string;
   locationName: string;
@@ -39,6 +46,10 @@ export interface ForecastRankingItem {
   classification: FishingClassification;
   bestWindow: string;
   bestHours: string[];
+  hourWindows: ForecastHourWindow[];
+  scoreBreakdown: string;
+  metricsHour: string | null;
+  windOrigin: WindOrigin | null;
   highlights?: string[];
   metrics: FishingMetric[];
   isOwner: boolean;

@@ -4,11 +4,13 @@ import type {
   FishingLocation,
   FishingMetric,
   ForecastDay,
+  ForecastHourWindow,
   ForecastRankingItem,
   LocationForecast,
   MarineDetails,
   MarineSeries,
   MarineTide,
+  WindOrigin,
 } from '../types/fishing';
 import type {
   WireForecastDay,
@@ -23,6 +25,7 @@ import type {
   WireTideValue,
 } from '../types/wire';
 import { ContractError } from '@/shared/api/errors';
+import { formatScoreBreakdown, windOriginLabel } from '../utils/scoreBreakdown';
 
 const TIME_ZONE = 'America/Sao_Paulo';
 
@@ -91,6 +94,15 @@ function mapBestWindow(hours: string[]) {
   return `${ordered.slice(0, -1).join(', ')} e ${ordered[ordered.length - 1]}`;
 }
 
+function mapHourWindows(item: WireForecastItem): ForecastHourWindow[] {
+  if (!item.bestHourWindows || item.bestHourWindows.state !== 'available') return [];
+  return item.bestHourWindows.value;
+}
+
+function mapWindOrigin(value: string | null | undefined): WindOrigin | null {
+  return value === 'terra' || value === 'mar' || value === 'cruzado' ? value : null;
+}
+
 function mapMetric(
   key: FishingMetric['key'],
   label: string,
@@ -116,6 +128,8 @@ function requireAvailable<T>(metric: WireMetric<T>, label: string) {
 
 export function mapForecastItem(item: WireForecastItem): ForecastRankingItem {
   const hours = requireAvailable(item.bestHours, 'Horários');
+  const hourWindows = mapHourWindows(item);
+  const windOrigin = mapWindOrigin(item.windOrigin);
   return {
     locationId: item.spotId,
     locationName: item.spotName,
@@ -124,11 +138,15 @@ export function mapForecastItem(item: WireForecastItem): ForecastRankingItem {
     classification: mapClassification(requireAvailable(item.classification, 'Classificação')),
     bestWindow: mapBestWindow(hours),
     bestHours: hours,
+    hourWindows,
+    scoreBreakdown: formatScoreBreakdown(hourWindows),
+    metricsHour: item.metricsHour ?? hours[0] ?? null,
+    windOrigin,
     highlights: Array.isArray(item.highlights)
       ? item.highlights.filter((highlight): highlight is string => typeof highlight === 'string')
       : [],
     metrics: [
-      mapMetric('wind', 'Vento', item.wind),
+      mapMetric('wind', 'Vento', item.wind, windOriginLabel(windOrigin) ?? undefined),
       mapMetric('gusts', 'Rajadas', item.gusts),
       mapMetric('waves', 'Ondas', item.waves),
       mapMetric('wave-period', 'Período', item.wavePeriod),

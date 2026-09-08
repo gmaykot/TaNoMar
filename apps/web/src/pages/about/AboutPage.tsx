@@ -40,6 +40,11 @@ export function AboutPage() {
           é a média das 3 melhores horas entre 5h e 20h. O aplicativo não refaz essa conta no
           celular.
         </p>
+        <p>
+          O número do card é essa média, e o ranking segue ela. Vento, onda e chuva mostrados são da
+          melhor hora da janela — não da média. Vento de terra (offshore) vale mais que vento do
+          mar. Maré, swell, pressão e temperatura da água aparecem no detalhe e não entram na nota.
+        </p>
         <p>A nota de cada hora soma estes fatores:</p>
         <ul>
           <li>Vento — 25%. Vento fraco a moderado ajuda; acima de 30 km/h a nota cai forte.</li>
@@ -58,7 +63,7 @@ export function AboutPage() {
         <p>
           Depois entram os cortes: rajada forte, volume de chuva, vento extremo com rajada e onda
           acima de 2,2 m. A chuva usa o pior entre dois modelos do Open-Meteo, para não suavizar um
-          temporal. Maré, swell e temperatura da água aparecem no detalhe, mas não entram na nota.
+          temporal.
         </p>
         <p>A classificação sai dessa nota:</p>
         <ul>
