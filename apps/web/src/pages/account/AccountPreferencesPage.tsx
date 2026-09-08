@@ -8,7 +8,12 @@ import { Card } from '@/design-system/components/Card';
 import { focusChoices, type AppFocus } from '@/features/auth/appFocus';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { updatePreferences } from '@/features/auth/services/preferencesService';
-import { hasPlanModule, SUBSCRIPTION_LOCK_LABEL, type AuthUser } from '@/features/auth/types/auth';
+import {
+  hasPlanModule,
+  showsAppFocus,
+  SUBSCRIPTION_LOCK_LABEL,
+  type AuthUser,
+} from '@/features/auth/types/auth';
 import { fishingMetricKeys, type FishingMetricKey } from '@/features/fishing/types/fishing';
 import { RegionPicker } from '@/features/locations/components/RegionPicker';
 import formStyles from '@/features/locations/components/spotForm.module.css';
@@ -40,6 +45,7 @@ export function AccountPreferencesPage() {
   const queryClient = useQueryClient();
   const user = auth.user;
   const canCustomizeMetrics = hasPlanModule(user, 'customMetrics');
+  const canChooseFocus = showsAppFocus(user);
   const [regions, setRegions] = useState(() =>
     parseRegions(user?.preferences.region ?? 'Florianópolis'),
   );
@@ -72,7 +78,7 @@ export function AccountPreferencesPage() {
               region: serializeRegions(regions),
               windUnit,
               forecastNotifications: user?.preferences.forecastNotifications ?? true,
-              focus,
+              focus: canChooseFocus ? focus : (user?.preferences.focus ?? null),
               ...(canCustomizeMetrics ? { visibleMetrics } : {}),
             })
               .then(async (preferences) => {
@@ -92,37 +98,39 @@ export function AccountPreferencesPage() {
               .finally(() => setPending(false));
           }}
         >
-          <section className={accountStyles.preferenceGroup} aria-labelledby="focus-preferences">
-            <div className={accountStyles.preferenceHeading}>
-              <h2 id="focus-preferences">Foco do aplicativo</h2>
-              <p>Isso só mostra ou oculta informações. A nota de pesca não muda.</p>
-            </div>
-            <div
-              className={accountStyles.metricChoices}
-              role="group"
-              aria-label="Foco do aplicativo"
-            >
-              {focusChoices.map((choice) => (
-                <label
-                  className={`${formStyles.choice} ${accountStyles.metricChoice}`}
-                  key={choice.id}
-                >
-                  <input
-                    type="radio"
-                    name="app-focus"
-                    value={choice.id}
-                    aria-label={choice.title}
-                    checked={focus === choice.id}
-                    onChange={() => setFocus(choice.id)}
-                  />
-                  <span>
-                    <strong>{choice.title}</strong>
-                    <small>{choice.description}</small>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </section>
+          {canChooseFocus ? (
+            <section className={accountStyles.preferenceGroup} aria-labelledby="focus-preferences">
+              <div className={accountStyles.preferenceHeading}>
+                <h2 id="focus-preferences">Foco do aplicativo</h2>
+                <p>Isso só mostra ou oculta informações. A nota de pesca não muda.</p>
+              </div>
+              <div
+                className={accountStyles.metricChoices}
+                role="group"
+                aria-label="Foco do aplicativo"
+              >
+                {focusChoices.map((choice) => (
+                  <label
+                    className={`${formStyles.choice} ${accountStyles.metricChoice}`}
+                    key={choice.id}
+                  >
+                    <input
+                      type="radio"
+                      name="app-focus"
+                      value={choice.id}
+                      aria-label={choice.title}
+                      checked={focus === choice.id}
+                      onChange={() => setFocus(choice.id)}
+                    />
+                    <span>
+                      <strong>{choice.title}</strong>
+                      <small>{choice.description}</small>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </section>
+          ) : null}
           <section className={accountStyles.preferenceGroup} aria-labelledby="region-preferences">
             <div className={accountStyles.preferenceHeading}>
               <h2 id="region-preferences">Regiões acompanhadas</h2>

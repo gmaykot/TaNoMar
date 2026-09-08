@@ -70,6 +70,7 @@ vi.mock('@/features/community/services/communityService', () => ({
 const authState = vi.hoisted(() => ({
   maxFavorites: 20,
   focus: null as string | null,
+  showAppFocus: false,
 }));
 
 vi.mock('@/features/auth/hooks/useAuth', () => ({
@@ -91,7 +92,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
         maxPersonalSpots: authState.maxFavorites > 0 ? 10 : 0,
         maxAlerts: 10,
       },
-      features: { showPartners: false },
+      features: { showPartners: false, showAppFocus: authState.showAppFocus },
       preferences: {
         region: 'Florianópolis',
         windUnit: 'kmh',
@@ -120,6 +121,7 @@ describe('LocationDetailsPage', () => {
   beforeEach(() => {
     authState.maxFavorites = 20;
     authState.focus = null;
+    authState.showAppFocus = false;
     localStorage.clear();
   });
 
@@ -157,6 +159,7 @@ describe('LocationDetailsPage', () => {
 
   it('no foco surfista abre o mar e esconde a nota de pesca', async () => {
     authState.focus = 'surfista';
+    authState.showAppFocus = true;
     renderWithProviders(
       <Routes>
         <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
@@ -168,6 +171,8 @@ describe('LocationDetailsPage', () => {
     expect(screen.queryByLabelText(/Nota /)).not.toBeInTheDocument();
     expect(screen.queryByText('Chuva')).not.toBeInTheDocument();
     expect(screen.getByText('Swell')).toBeInTheDocument();
+    expect(screen.queryByText('Nenhum relato ativo')).not.toBeInTheDocument();
+    expect(screen.queryByText('Enviar relato')).not.toBeInTheDocument();
   });
 
   it('bloqueia favoritar no plano Free com cadeado Premium', async () => {

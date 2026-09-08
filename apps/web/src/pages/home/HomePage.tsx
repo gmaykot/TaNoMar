@@ -5,7 +5,12 @@ import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { Button } from '@/design-system/components/Button';
 import { forecastPresentation } from '@/features/auth/appFocus';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { hasPlanModule, isPaidPlan, showsPartners } from '@/features/auth/types/auth';
+import {
+  hasPlanModule,
+  isPaidPlan,
+  showsAppFocus,
+  showsPartners,
+} from '@/features/auth/types/auth';
 import { DayCarousel } from '@/features/forecast/components/DayCarousel';
 import { ForecastHero } from '@/features/forecast/components/ForecastHero';
 import { useForecast } from '@/features/forecast/hooks/useForecast';
@@ -36,7 +41,11 @@ export function HomePage() {
   const isPaid = isPaidPlan(auth.user);
   const canCustomizeMetrics = hasPlanModule(auth.user, 'customMetrics');
   const canSaveOffline = hasPlanModule(auth.user, 'offline');
-  const presentation = forecastPresentation(auth.user?.preferences, canCustomizeMetrics);
+  const presentation = forecastPresentation(
+    auth.user?.preferences,
+    canCustomizeMetrics,
+    showsAppFocus(auth.user),
+  );
   const visibleMetricKeys = presentation.visibleMetricKeys;
 
   const data = forecast.data ?? (canSaveOffline && forecast.isError ? offlineForecast : undefined);

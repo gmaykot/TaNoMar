@@ -24,6 +24,22 @@ export function hasChosenAppFocus(focus: AppFocus | null | undefined): focus is 
   return isAppFocus(focus);
 }
 
+export function effectiveFocus(
+  focus: AppFocus | null | undefined,
+  showAppFocus: boolean,
+): AppFocus {
+  if (!showAppFocus) return 'pescador';
+  return isAppFocus(focus) ? focus : 'pescador';
+}
+
+export function showsCommunity(focus: AppFocus | null | undefined) {
+  return focus !== 'surfista';
+}
+
+export function showsForecastAlerts(focus: AppFocus | null | undefined) {
+  return focus !== 'surfista';
+}
+
 export function resolveVisibleMetricKeys(
   focus: AppFocus | null | undefined,
   customMetrics?: FishingMetricKey[],
@@ -101,8 +117,9 @@ export function forecastPresentation(
     | null
     | undefined,
   canCustomizeMetrics: boolean,
+  showAppFocus = false,
 ) {
-  const focus = preferences?.focus ?? null;
+  const focus = effectiveFocus(preferences?.focus, showAppFocus);
   return {
     focus,
     visibleMetricKeys: resolveVisibleMetricKeys(
@@ -110,6 +127,8 @@ export function forecastPresentation(
       canCustomizeMetrics ? preferences?.visibleMetrics : undefined,
     ),
     showFishingScore: showsFishingScore(focus),
+    showCommunity: showsCommunity(focus),
+    showForecastAlerts: showsForecastAlerts(focus),
     preferMarineDetails: prefersMarineDetails(focus),
     home: homeCopy(focus),
     ranking: rankingCopy(focus),

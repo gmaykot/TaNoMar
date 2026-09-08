@@ -7,7 +7,7 @@ import { AccountPreferencesPage } from './AccountPreferencesPage';
 const { showSaveConfirmation, updatePreferences, authState } = vi.hoisted(() => ({
   showSaveConfirmation: vi.fn(),
   updatePreferences: vi.fn((preferences: unknown) => Promise.resolve(preferences)),
-  authState: { premium: true },
+  authState: { premium: true, showAppFocus: true },
 }));
 
 vi.mock('@/app/layout/saveConfirmationEvents', () => ({ showSaveConfirmation }));
@@ -32,7 +32,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
         maxPersonalSpots: authState.premium ? 10 : 0,
         maxAlerts: authState.premium ? 10 : 0,
       },
-      features: { showPartners: false },
+      features: { showPartners: false, showAppFocus: authState.showAppFocus },
       preferences: { region: 'Florianópolis', windUnit: 'kmh', forecastNotifications: true },
     },
     loginWithGoogle: vi.fn(),
@@ -43,6 +43,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
 describe('AccountPreferencesPage', () => {
   beforeEach(() => {
     authState.premium = true;
+    authState.showAppFocus = true;
     updatePreferences.mockClear();
     showSaveConfirmation.mockClear();
   });
@@ -91,6 +92,12 @@ describe('AccountPreferencesPage', () => {
         }),
       );
     });
+  });
+
+  it('esconde a escolha de foco quando o admin desliga', () => {
+    authState.showAppFocus = false;
+    renderWithProviders(<AccountPreferencesPage />);
+    expect(screen.queryByRole('group', { name: 'Foco do aplicativo' })).not.toBeInTheDocument();
   });
 
   it('mantém os indicadores bloqueados no plano Free', () => {

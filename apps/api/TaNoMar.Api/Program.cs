@@ -641,7 +641,7 @@ api.MapGet("/admin/settings", async (ClaimsPrincipal principal, TaNoMarDbContext
 {
     var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
     if (failure is not null) return failure;
-    return Results.Ok(new { showPartners = await ShowPartnersEnabledAsync(db, cancellationToken) });
+    return Results.Ok(await PlatformSettingsDtoAsync(db, cancellationToken));
 }).RequireAuthorization();
 
 api.MapPut("/admin/settings", async (PlatformSettingsRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
@@ -649,9 +649,10 @@ api.MapPut("/admin/settings", async (PlatformSettingsRequest request, ClaimsPrin
     var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
     if (failure is not null) return failure;
     var settings = await db.PlatformSettings.SingleAsync(cancellationToken);
-    settings.ShowPartners = request.ShowPartners;
+    if (request.ShowPartners is not null) settings.ShowPartners = request.ShowPartners.Value;
+    if (request.ShowAppFocus is not null) settings.ShowAppFocus = request.ShowAppFocus.Value;
     await db.SaveChangesAsync(cancellationToken);
-    return Results.Ok(new { showPartners = settings.ShowPartners });
+    return Results.Ok(await PlatformSettingsDtoAsync(db, cancellationToken));
 }).RequireAuthorization();
 
 api.MapPut("/me/preferences", async (PreferencesRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
@@ -1137,6 +1138,20 @@ static async Task<bool> ShowPartnersEnabledAsync(TaNoMarDbContext db, Cancellati
     var settings = await db.PlatformSettings.AsNoTracking().SingleOrDefaultAsync(cancellationToken);
     return settings?.ShowPartners == true;
 }
+static async Task<bool> ShowAppFocusEnabledAsync(TaNoMarDbContext db, CancellationToken cancellationToken)
+{
+    var settings = await db.PlatformSettings.AsNoTracking().SingleOrDefaultAsync(cancellationToken);
+    return settings?.ShowAppFocus == true;
+}
+static async Task<object> PlatformSettingsDtoAsync(TaNoMarDbContext db, CancellationToken cancellationToken)
+{
+    var settings = await db.PlatformSettings.AsNoTracking().SingleOrDefaultAsync(cancellationToken);
+    return new
+    {
+        showPartners = settings?.ShowPartners == true,
+        showAppFocus = settings?.ShowAppFocus == true
+    };
+}
 
 static async Task<object> UserDtoAsync(User user, TaNoMarDbContext db, BillingService billing, CancellationToken cancellationToken)
 {
@@ -1153,7 +1168,11 @@ static async Task<object> UserDtoAsync(User user, TaNoMarDbContext db, BillingSe
         plan = new { code = plan.Code, name = plan.Name },
         entitlements = new { maxForecastDays = plan.MaxForecastDays, maxFavorites = plan.MaxFavorites, maxPersonalSpots = plan.MaxPersonalSpots, maxAlerts = plan.MaxAlerts },
         modules = PlanRules.ModulesDto(plan),
-        features = new { showPartners = await ShowPartnersEnabledAsync(db, cancellationToken) },
+        features = new
+        {
+            showPartners = await ShowPartnersEnabledAsync(db, cancellationToken),
+            showAppFocus = await ShowAppFocusEnabledAsync(db, cancellationToken)
+        },
         preferences = new
         {
             region = preferences?.Region ?? "Florianópolis",
@@ -1669,4 +1688,4 @@ record AdminPlanConfigRequest(
 record AdminActiveRequest(bool IsActive);
 record PartnerOfferRequest(string Title, string? Description, string? PriceLabel, DateTimeOffset? EndsAt, int? SortOrder);
 record PartnerRequest(string? Slug, string Name, string Category, string? Tagline, string? About, string? City, string? WhatsApp, string? Instagram, string? Website, string? MapsUrl, string? CoverImageUrl, bool IsPublished, bool IsFeatured, int SortOrder, PartnerOfferRequest[]? Offers);
-record PlatformSettingsRequest(bool ShowPartners);
+record PlatformSettingsRequest(bool? ShowPartners, bool? ShowAppFocus);

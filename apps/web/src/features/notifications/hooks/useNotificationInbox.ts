@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { forecastPresentation } from '@/features/auth/appFocus';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { hasPlanModule } from '@/features/auth/types/auth';
+import { hasPlanModule, showsAppFocus } from '@/features/auth/types/auth';
 import {
   confirmReport,
   contestReport,
@@ -23,6 +24,11 @@ export function useNotificationInbox(open: boolean) {
   const auth = useAuth();
   const queryClient = useQueryClient();
   const authenticated = auth.status === 'authenticated';
+  const showCommunity = forecastPresentation(
+    auth.user?.preferences,
+    false,
+    showsAppFocus(auth.user),
+  ).showCommunity;
 
   const unreadQuery = useQuery({
     queryKey: notificationsUnreadQueryKey,
@@ -43,7 +49,7 @@ export function useNotificationInbox(open: boolean) {
   const reportsQuery = useQuery({
     queryKey: communityReportsQueryKey,
     queryFn: () => getReports(),
-    enabled: authenticated,
+    enabled: authenticated && showCommunity,
     staleTime: 30 * 1000,
     refetchInterval: authenticated ? 2 * 60 * 1000 : false,
     refetchOnWindowFocus: true,
@@ -98,7 +104,7 @@ export function useNotificationInbox(open: boolean) {
     },
   });
 
-  const reports = reportsQuery.data ?? [];
+  const reports = showCommunity ? (reportsQuery.data ?? []) : [];
   const pendingReports = reports.some((report) => !report.isMine && report.myVote == null);
 
   return {
@@ -106,8 +112,8 @@ export function useNotificationInbox(open: boolean) {
     reports,
     canVote: hasPlanModule(auth.user, 'communityVote'),
     unread: (unreadQuery.data?.unread ?? false) || pendingReports,
-    listPending: (open && listQuery.isPending) || reportsQuery.isPending,
-    listError: (open && listQuery.isError) || reportsQuery.isError,
+    listPending: (open && listQuery.isPending) || (showCommunity && reportsQuery.isPending),
+    listError: (open && listQuery.isError) || (showCommunity && reportsQuery.isError),
     refetchList: async () => {
       await Promise.all([listQuery.refetch(), reportsQuery.refetch()]);
     },

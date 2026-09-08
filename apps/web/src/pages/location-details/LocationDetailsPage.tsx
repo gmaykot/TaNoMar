@@ -19,7 +19,7 @@ import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { ScoreIndicator } from '@/design-system/components/ScoreIndicator';
 import { forecastPresentation, locationPrimaryMetricKeys } from '@/features/auth/appFocus';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { hasPlanModule, SUBSCRIPTION_LOCK_LABEL } from '@/features/auth/types/auth';
+import { hasPlanModule, showsAppFocus, SUBSCRIPTION_LOCK_LABEL } from '@/features/auth/types/auth';
 import { CommunityReports } from '@/features/community/components/CommunityReports';
 import { DateSelector } from '@/features/forecast/components/DateSelector';
 import { MarineDetails, MarineDetailsToggle } from '@/features/forecast/components/MarineDetails';
@@ -42,6 +42,7 @@ export function LocationDetailsPage() {
   const presentation = forecastPresentation(
     auth.user?.preferences,
     hasPlanModule(auth.user, 'customMetrics'),
+    showsAppFocus(auth.user),
   );
   const visibleMetricKeys = presentation.visibleMetricKeys;
   const [selectedDate, setSelectedDate] = useState(() => searchParams.get('data') ?? '');
@@ -242,14 +243,16 @@ export function LocationDetailsPage() {
           {marineOpen ? <MarineDetails locationId={location.id} date={activeDate} /> : null}
         </MarineDetailsToggle>
       </Card>
-      <CommunityReports
-        spotId={location.id}
-        canReport={
-          location.visibility === 'official' ||
-          (location.visibility === 'shared' && location.isApproved)
-        }
-        canVote={hasPlanModule(auth.user, 'communityVote')}
-      />
+      {presentation.showCommunity ? (
+        <CommunityReports
+          spotId={location.id}
+          canReport={
+            location.visibility === 'official' ||
+            (location.visibility === 'shared' && location.isApproved)
+          }
+          canVote={hasPlanModule(auth.user, 'communityVote')}
+        />
+      ) : null}
     </div>
   );
 }

@@ -7,7 +7,11 @@ import { RankingPage } from './RankingPage';
 
 const { getForecast, authState } = vi.hoisted(() => ({
   getForecast: vi.fn(() => Promise.resolve(forecastFixture)),
-  authState: { planCode: 'premium' as 'free' | 'premium' },
+  authState: {
+    planCode: 'premium' as 'free' | 'premium',
+    focus: null as string | null,
+    showAppFocus: false,
+  },
 }));
 
 vi.mock('@/features/forecast/services/forecastService', () => ({
@@ -34,8 +38,13 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
         maxPersonalSpots: 10,
         maxAlerts: 10,
       },
-      features: { showPartners: false },
-      preferences: { region: 'Florianópolis', windUnit: 'kmh', forecastNotifications: true },
+      features: { showPartners: false, showAppFocus: authState.showAppFocus },
+      preferences: {
+        region: 'Florianópolis',
+        windUnit: 'kmh',
+        forecastNotifications: true,
+        focus: authState.focus,
+      },
     },
     loginWithGoogle: vi.fn(),
     logout: vi.fn(),
@@ -45,6 +54,8 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
 describe('RankingPage', () => {
   beforeEach(() => {
     authState.planCode = 'premium';
+    authState.focus = null;
+    authState.showAppFocus = false;
     getForecast.mockClear();
     getForecast.mockResolvedValue(forecastFixture);
   });
@@ -131,6 +142,20 @@ describe('RankingPage', () => {
     expect(await screen.findByRole('heading', { name: 'Molhe da Barra' })).toBeInTheDocument();
     expect(screen.getByText('Meu local')).toBeInTheDocument();
     expect(screen.getAllByText('Meu local')).toHaveLength(1);
+  });
+
+  it('mostra condições do mar no foco surfista', async () => {
+    authState.focus = 'surfista';
+    authState.showAppFocus = true;
+    renderWithProviders(<RankingPage />, ['/ranking']);
+
+    expect(
+      await screen.findByRole('heading', { name: 'Os seus locais, lado a lado.' }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/Ondas/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Swell/).length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText(/Nota /)).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /Abrir local/ }).length).toBeGreaterThan(0);
   });
 
   it('bloqueia a ênfase no plano Free', async () => {

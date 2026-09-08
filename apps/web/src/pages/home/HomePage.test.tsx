@@ -11,6 +11,7 @@ const { authState, forecastState } = vi.hoisted(() => ({
     showPartners: false,
     visibleMetrics: undefined as string[] | undefined,
     focus: null as string | null,
+    showAppFocus: false,
   },
   forecastState: { error: false },
 }));
@@ -40,7 +41,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
         maxPersonalSpots: 10,
         maxAlerts: 10,
       },
-      features: { showPartners: authState.showPartners },
+      features: { showPartners: authState.showPartners, showAppFocus: authState.showAppFocus },
       preferences: {
         region: 'Florianópolis',
         windUnit: 'kmh',
@@ -104,6 +105,7 @@ describe('HomePage', () => {
     authState.showPartners = false;
     authState.visibleMetrics = undefined;
     authState.focus = null;
+    authState.showAppFocus = false;
     forecastState.error = false;
     localStorage.removeItem('tanomar.offline-forecast.v1');
   });
@@ -257,6 +259,7 @@ describe('HomePage', () => {
 
   it('no foco surfista esconde a nota e prioriza o mar', async () => {
     authState.focus = 'surfista';
+    authState.showAppFocus = true;
     renderWithProviders(<HomePage />);
 
     const heading = await screen.findByRole('heading', { name: 'Como está o mar hoje?' });

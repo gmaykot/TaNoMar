@@ -7,7 +7,7 @@ import { Button } from '@/design-system/components/Button';
 import { focusChoices, hasChosenAppFocus, type AppFocus } from '@/features/auth/appFocus';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { updatePreferences } from '@/features/auth/services/preferencesService';
-import type { AuthUser } from '@/features/auth/types/auth';
+import { showsAppFocus, type AuthUser } from '@/features/auth/types/auth';
 import { routes } from '@/shared/constants/routes';
 import styles from './focusOnboarding.module.css';
 
@@ -26,7 +26,7 @@ export function FocusOnboardingPage() {
   const [error, setError] = useState<string | null>(null);
 
   if (auth.userLoading) return null;
-  if (hasChosenAppFocus(user?.preferences.focus)) {
+  if (!showsAppFocus(user) || hasChosenAppFocus(user?.preferences.focus)) {
     return <Navigate to={routes.home} replace />;
   }
 

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  effectiveFocus,
   hasChosenAppFocus,
   homeCopy,
   locationPrimaryMetricKeys,
   resolveVisibleMetricKeys,
+  showsCommunity,
   showsFishingScore,
 } from './appFocus';
 
@@ -44,6 +46,13 @@ describe('appFocus', () => {
       'swell',
     ]);
     expect(homeCopy('surfista').title).toBe('Como está o mar hoje?');
+  });
+
+  it('força pesca quando a escolha de perfil está desligada', () => {
+    expect(effectiveFocus('surfista', false)).toBe('pescador');
+    expect(effectiveFocus(null, false)).toBe('pescador');
+    expect(effectiveFocus('surfista', true)).toBe('surfista');
+    expect(showsCommunity('surfista')).toBe(false);
   });
 
   it('intersecta o foco com os indicadores personalizados', () => {

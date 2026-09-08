@@ -28,7 +28,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
         maxPersonalSpots: 0,
         maxAlerts: 0,
       },
-      features: { showPartners: false },
+      features: { showPartners: false, showAppFocus: true },
       preferences: {
         region: 'Florianópolis',
         windUnit: 'kmh',

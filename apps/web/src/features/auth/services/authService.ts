@@ -73,6 +73,7 @@ export function parseAuthUser(payload: unknown): AuthUser {
   const focus = parseAppFocus(preferencesRecord?.focus);
   const featuresRecord = isRecord(payload.features) ? payload.features : null;
   const showPartners = featuresRecord?.showPartners === true;
+  const showAppFocus = featuresRecord?.showAppFocus === true;
   if (
     !id ||
     !name ||
@@ -99,7 +100,7 @@ export function parseAuthUser(payload: unknown): AuthUser {
     plan: { code: planCode, name: planName },
     entitlements: { maxForecastDays, maxFavorites, maxPersonalSpots, maxAlerts },
     modules: parsePlanModules(payload.modules),
-    features: { showPartners },
+    features: { showPartners, showAppFocus },
     preferences: { region, windUnit, forecastNotifications, focus, visibleMetrics },
     billing: parseOptionalBilling(payload.billing),
   };

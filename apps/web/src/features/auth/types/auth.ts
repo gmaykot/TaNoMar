@@ -21,6 +21,7 @@ export interface AuthUser {
   modules?: PlanModules;
   features: {
     showPartners: boolean;
+    showAppFocus: boolean;
   };
   preferences: {
     region: string;
@@ -67,4 +68,8 @@ export function isAdmin(user: Pick<AuthUser, 'role'> | null | undefined) {
 
 export function showsPartners(user: Pick<AuthUser, 'features'> | null | undefined) {
   return user?.features.showPartners === true;
+}
+
+export function showsAppFocus(user: Pick<AuthUser, 'features'> | null | undefined) {
+  return user?.features.showAppFocus === true;
 }

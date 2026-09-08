@@ -69,6 +69,9 @@ export function RankingList({
                 {showFishingScore && item.scoreBreakdown ? (
                   <p className={styles.scoreBreakdown}>{item.scoreBreakdown}</p>
                 ) : null}
+                {!showFishingScore ? (
+                  <p className={styles.emphasis}>{marineSummary(item, metricKeys, windUnit)}</p>
+                ) : null}
                 {emphasisMetric ? (
                   <p className={styles.emphasis}>
                     {EmphasisIcon ? <EmphasisIcon size={15} aria-hidden="true" /> : null}
@@ -84,21 +87,52 @@ export function RankingList({
                 />
               ) : null}
             </div>
-            <details className={styles.details}>
-              <summary>
-                Ver condições <ChevronDown size={17} aria-hidden="true" />
-              </summary>
-              {metricsHourCaption(item.metricsHour) ? (
-                <p className={styles.metricCaption}>{metricsHourCaption(item.metricsHour)}</p>
-              ) : null}
-              <MetricGrid metrics={item.metrics} keys={metricKeys} windUnit={windUnit} />
-              <Link className={styles.locationLink} to={`/locais/${item.locationId}`}>
-                <MapPin size={16} aria-hidden="true" /> Abrir local
-              </Link>
-            </details>
+            {showFishingScore ? (
+              <details className={styles.details}>
+                <summary>
+                  Ver condições <ChevronDown size={17} aria-hidden="true" />
+                </summary>
+                {metricsHourCaption(item.metricsHour) ? (
+                  <p className={styles.metricCaption}>{metricsHourCaption(item.metricsHour)}</p>
+                ) : null}
+                <MetricGrid metrics={item.metrics} keys={metricKeys} windUnit={windUnit} />
+                <Link className={styles.locationLink} to={`/locais/${item.locationId}`}>
+                  <MapPin size={16} aria-hidden="true" /> Abrir local
+                </Link>
+              </details>
+            ) : (
+              <div className={styles.marineBlock}>
+                {metricsHourCaption(item.metricsHour) ? (
+                  <p className={styles.metricCaption}>{metricsHourCaption(item.metricsHour)}</p>
+                ) : null}
+                <MetricGrid
+                  metrics={item.metrics}
+                  keys={metricKeys}
+                  limit={4}
+                  windUnit={windUnit}
+                />
+                <Link className={styles.locationLink} to={`/locais/${item.locationId}`}>
+                  <MapPin size={16} aria-hidden="true" /> Abrir local
+                </Link>
+              </div>
+            )}
           </Card>
         );
       })}
     </div>
   );
+}
+
+function marineSummary(
+  item: ForecastRankingItem,
+  keys: FishingMetricKey[] | undefined,
+  windUnit?: string,
+) {
+  const preferred: FishingMetricKey[] = ['waves', 'wave-period', 'swell', 'wind'];
+  const selected = preferred.filter((key) => !keys || keys.includes(key));
+  const parts = selected.flatMap((key) => {
+    const metric = item.metrics.find((itemMetric) => itemMetric.key === key);
+    return metric ? [`${metric.label} ${formatWindMetric(metric, windUnit)}`] : [];
+  });
+  return parts.join(' · ') || 'Condições do mar';
 }

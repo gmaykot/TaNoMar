@@ -5,7 +5,7 @@ import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { Button } from '@/design-system/components/Button';
 import { forecastPresentation } from '@/features/auth/appFocus';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { hasPlanModule } from '@/features/auth/types/auth';
+import { hasPlanModule, showsAppFocus } from '@/features/auth/types/auth';
 import { DayCarousel } from '@/features/forecast/components/DayCarousel';
 import { useForecast } from '@/features/forecast/hooks/useForecast';
 import { RankingEmphasisFilters } from '@/features/ranking/components/RankingEmphasisFilters';
@@ -26,7 +26,11 @@ export function RankingPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const canCustomizeMetrics = hasPlanModule(auth.user, 'customMetrics');
   const canEmphasis = hasPlanModule(auth.user, 'rankingEmphasis');
-  const presentation = forecastPresentation(auth.user?.preferences, canCustomizeMetrics);
+  const presentation = forecastPresentation(
+    auth.user?.preferences,
+    canCustomizeMetrics,
+    showsAppFocus(auth.user),
+  );
   const visibleMetricKeys = presentation.visibleMetricKeys;
   const emphasis = parseRankingEmphasis(searchParams.get('enfase'), canEmphasis);
   const forecast = useForecast(rankingEmphasisParam(emphasis));

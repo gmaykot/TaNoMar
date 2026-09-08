@@ -3,6 +3,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { hasChosenAppFocus } from '@/features/auth/appFocus';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { showsAppFocus } from '@/features/auth/types/auth';
 import { routes } from '@/shared/constants/routes';
 
 export function RequireFocus() {
@@ -19,7 +20,7 @@ export function RequireFocus() {
     );
   }
 
-  if (!hasChosenAppFocus(auth.user?.preferences.focus)) {
+  if (showsAppFocus(auth.user) && !hasChosenAppFocus(auth.user?.preferences.focus)) {
     return <Navigate to={routes.onboarding} replace />;
   }
 
