@@ -20,9 +20,9 @@ Mar, diário, votos, indicadores e offline valem em qualquer plano pago. O que m
 preço_anual(plano) = arredondar(mensal_tabela(plano) × 12 × 0,80; 2)
 ```
 
-O percentual 20% é regra de produto. Só os três preços mensais de tabela são configuráveis; o anual deriva da fórmula.
+O percentual 20% é regra de produto. Só os três preços mensais de tabela são configuráveis; o anual **de catálogo** deriva da fórmula. O anual **já contratado** não usa essa fórmula de novo.
 
-A oferta cobrada é **um ano por plano**. O `/mês` da vitrine é tabela; não abre checkout mensal.
+Há dois ciclos de checkout: **mensal** (tabela) e **anual** (−20%). Mudar a tabela vale para assinantes **mensais** na próxima fatura. Quem já fechou o ano continua no `RecurringPrice` da contratação, inclusive nas renovações anuais desse contrato.
 
 ## Por que Checkout hospedado
 
@@ -34,16 +34,18 @@ A oferta cobrada é **um ano por plano**. O `/mês` da vitrine é tabela; não a
 
 Documentação: [Asaas Checkout](https://docs.asaas.com/docs/checkout-asaas), [cartão](https://docs.asaas.com/docs/checkout-para-cart%C3%A3o-de-cr%C3%A9dito), [assinatura](https://docs.asaas.com/docs/checkout-com-assinatura-recorrente).
 
-## Checkout anual
+## Checkout (mensal ou anual)
 
-`DETACHED` cobraria uma vez e exigiria outro checkout no vencimento. `INSTALLMENT` parcela uma compra. O checkout usa `RECURRENT` + `YEARLY`, com o item e o valor do plano escolhido.
+`DETACHED` cobraria uma vez e exigiria outro checkout no vencimento. `INSTALLMENT` parcela uma compra. O checkout usa `RECURRENT` com `MONTHLY` ou `YEARLY`.
+
+Anual (Mestre, tabela vigente no contrato):
 
 ```json
 {
   "billingTypes": ["CREDIT_CARD"],
   "chargeTypes": ["RECURRENT"],
   "minutesToExpire": 60,
-  "externalReference": "<userId>:<planCode>",
+  "externalReference": "<userId>:<planCode>:YEARLY",
   "callback": {
     "successUrl": "https://<origem>/premium?checkout=success",
     "cancelUrl": "https://<origem>/premium?checkout=cancel",
@@ -64,9 +66,24 @@ Documentação: [Asaas Checkout](https://docs.asaas.com/docs/checkout-asaas), [c
 }
 ```
 
+Mensal usa o mesmo payload com `"cycle": "MONTHLY"`, `value` da tabela mensal e `externalReference` `…:MONTHLY`.
+
 `endDate` fica de fora para renovar até o pescador cancelar. O `successUrl` só mostra “estamos confirmando”. `GET /me` continua `free` (ou o plano anterior) até `PAYMENT_CONFIRMED` / `CHECKOUT_PAID`.
 
-No **upgrade**, o `items[].value` da primeira cobrança é o valor proporcional (abaixo). A recorrência anual **não** pode ficar nesse valor reduzido.
+No **upgrade**, o `items[].value` da primeira cobrança é o valor proporcional (abaixo). A recorrência **não** pode ficar nesse valor reduzido: depois do pagamento ela vai para `RecurringPrice` (anual congelado do catálogo da hora do upgrade, ou mensal da tabela vigente).
+
+## Reajuste de tabela
+
+A tabela (`ASAAS_*_MONTHLY_PRICE`) é o preço de **catálogo**. Não é o preço do contrato anual.
+
+| Ciclo da assinatura ativa | O que acontece se a tabela mudar |
+| --- | --- |
+| `YEARLY` | Nada. `RecurringPrice` e o valor no Asaas permanecem os da contratação. A renovação anual cobra o mesmo. Catálogo novo só vale para **novo** contrato anual (ou upgrade). |
+| `MONTHLY` | Incide na **próxima** fatura. A API faz `PUT /v3/subscriptions/{id}` com o mensal novo (`updatePendingPayments` só da cobrança futura). O mês já pago não é complementado nem estornado. |
+
+Não existe recálculo retroativo. Não chama `/refund` por reajuste.
+
+Conta mostra os dois números quando diferirem: “Você paga R$ 191,04/ano (contratado)” vs catálogo “R$ 210,24/ano”.
 
 ## Upgrade com desconto proporcional
 
@@ -75,10 +92,10 @@ Upgrade = destino com tabela mensal **maior** (Arrais → Mestre → Capitão). 
 ```text
 dias_periodo    = max(1, dias corridos de PeriodStart até CurrentPeriodEnd)
 dias_restantes  = max(0, dias corridos de agora até CurrentPeriodEnd)
-crédito         = arredondar(anual_atual × dias_restantes / dias_periodo; 2)
-primeira_parcela = arredondar(max(0,01; anual_novo − crédito); 2)
-renovação       = anual_novo
-CurrentPeriodEnd do plano novo = agora + 1 ano
+crédito         = arredondar(preço_contratado_atual × dias_restantes / dias_periodo; 2)
+primeira_parcela = arredondar(max(0,01; preço_catálogo_novo − crédito); 2)
+renovação       = se YEARLY: anual de catálogo **na hora do upgrade** (congela); se MONTHLY: tabela vigente daqui pra frente
+CurrentPeriodEnd do plano novo = agora + 1 ano (YEARLY) ou + 1 mês (MONTHLY)
 ```
 
 Exemplo: Arrais anual R$ 143,04, 100 dias usados, 265 restantes, período de 365 dias.
@@ -90,15 +107,17 @@ Exemplo: Arrais anual R$ 143,04, 100 dias usados, 265 restantes, período de 365
 | **Paga hoje** | **R$ 87,19** |
 | Próxima renovação (daqui a 1 ano) | R$ 191,04 |
 
-O checkout hospedado cobra `primeira_parcela`. Se o Asaas gravar esse valor na assinatura `YEARLY`, a API **atualiza** `PUT /v3/subscriptions/{id}` para `anual_novo` com `updatePendingPayments: false` assim que chegar `SUBSCRIPTION_CREATED`, para a renovação não sair barata. A assinatura antiga é `DELETE` **sem** `/refund`.
+O crédito usa o **valor contratado** do plano atual (não o catálogo, se o anual foi congelado). O destino usa o **catálogo vigente**. Upgrade mensal→anual do mesmo plano é permitido (ciclo maior); anual→mensal no meio do período não.
 
-Assinatura `canceled` com `accessUntil` no futuro ainda gera crédito: o ano foi pago.
+O checkout hospedado cobra `primeira_parcela`. Em seguida a API grava `RecurringPrice` no Asaas (`PUT`, sem mexer na cobrança já paga) e faz `DELETE` da assinatura antiga **sem** `/refund`.
+
+Assinatura `canceled` com `accessUntil` no futuro ainda gera crédito: o período foi pago.
 
 ## Papel de cada lado
 
 ```text
-apps/web                         /premium escolhe Arrais, Mestre ou Capitão
-                                 POST /billing/checkout { planCode }
+apps/web                         /premium escolhe plano e ciclo (mês ou ano)
+                                 POST /billing/checkout { planCode, cycle }
                                  Conta → cancelar renovação
 apps/api                         cria checkout do plano, aplica PlanCode no webhook
                                  cancela recorrência sem refund
@@ -114,19 +133,19 @@ Base `/api/v1`. Autenticados, exceto o webhook.
 
 | Método | Rota | Papel |
 | --- | --- | --- |
-| `GET` | `/billing/catalog` | Três planos +, se autenticado e houver período pago, `quote` de upgrade por destino |
-| `POST` | `/billing/checkout` | Body `{ planCode }`. Primeira cobrança cheia ou proporcional no upgrade |
+| `GET` | `/billing/catalog` | Três planos com tabela mensal, anual de catálogo e, se couber, `quote` de upgrade |
+| `POST` | `/billing/checkout` | Body `{ planCode, cycle: "MONTHLY" \| "YEARLY" }` |
 | `GET` | `/billing/subscription` | Estado da assinatura da conta |
 | `POST` | `/billing/subscription/cancel` | Encerra a recorrência; **não estorna**; o plano pago segue até o fim do período |
 | `POST` | `/webhooks/asaas` | Público. Valida `asaas-access-token`. Sem JWT |
 
 `POST /billing/checkout`:
 
-- exige sessão válida, conta ativa e `planCode` em `arrais` | `premium` | `capitao` (`mestre` normaliza para `premium`);
-- recusa o **mesmo** plano se já há assinatura `active` ou período pago vigente;
-- **upgrade** (tabela mensal maior) no meio do ano: permitido; `PlanCode` novo no `PAYMENT_CONFIRMED`; primeira parcela = `anual_novo − crédito proporcional`; recorrência futura = anual cheio; assinatura antiga removida **sem** `/refund`;
-- **downgrade** no meio do ano: recusa (`plan_downgrade_period`); o pescador cancela a renovação e, no vencimento, assina o plano menor;
-- recusa checkout `ACTIVE` não expirado do mesmo usuário e mesmo `planCode`;
+- exige sessão válida, conta ativa, `planCode` em `arrais` | `premium` | `capitao` (`mestre` → `premium`) e `cycle` em `MONTHLY` | `YEARLY`;
+- recusa o **mesmo** plano e **mesmo** ciclo se já há assinatura `active` ou período pago vigente;
+- **upgrade** (tabela maior, ou mensal→anual do mesmo plano): permitido; `PlanCode` novo no `PAYMENT_CONFIRMED`; primeira parcela proporcional; `RecurringPrice` do destino anual congela o catálogo da hora; assinatura antiga removida **sem** `/refund`;
+- **downgrade** (tabela menor ou anual→mensal no meio do período): recusa (`plan_downgrade_period`);
+- recusa checkout `ACTIVE` não expirado do mesmo usuário, `planCode` e `cycle`;
 - a chave Asaas nunca sai da API.
 
 `GET /billing/catalog`:
@@ -134,9 +153,13 @@ Base `/api/v1`. Autenticados, exceto o webhook.
 ```json
 {
   "discountPercent": 20,
-  "cycle": "YEARLY",
   "plans": [
-    { "code": "arrais", "name": "Arrais", "monthlyListPrice": 14.90, "annualPrice": 143.04 },
+    {
+      "code": "arrais",
+      "name": "Arrais",
+      "monthlyListPrice": 14.90,
+      "annualPrice": 143.04
+    },
     {
       "code": "premium",
       "name": "Mestre",
@@ -144,36 +167,54 @@ Base `/api/v1`. Autenticados, exceto o webhook.
       "annualPrice": 191.04,
       "quote": {
         "kind": "upgrade",
+        "cycle": "YEARLY",
         "remainingDays": 265,
         "credit": 103.85,
         "firstCharge": 87.19,
         "renewalPrice": 191.04
       }
     },
-    { "code": "capitao", "name": "Capitão", "monthlyListPrice": 24.90, "annualPrice": 239.04, "quote": { "kind": "upgrade", "remainingDays": 265, "credit": 103.85, "firstCharge": 135.19, "renewalPrice": 239.04 } }
+    {
+      "code": "capitao",
+      "name": "Capitão",
+      "monthlyListPrice": 24.90,
+      "annualPrice": 239.04,
+      "quote": {
+        "kind": "upgrade",
+        "cycle": "YEARLY",
+        "remainingDays": 265,
+        "credit": 103.85,
+        "firstCharge": 135.19,
+        "renewalPrice": 239.04
+      }
+    }
   ]
 }
 ```
 
-`quote` só aparece nos planos de tabela maior que o atual, com período pago vigente. Sem assinatura, não vai `quote` e a primeira cobrança é o anual cheio.
+`quote` só aparece nos destinos permitidos, com período pago vigente. Sem assinatura, a primeira cobrança é o preço de catálogo do ciclo escolhido (`monthlyListPrice` ou `annualPrice`).
 
 `GET /billing/subscription` e o bloco em `GET /me`:
 
 ```json
 {
   "billing": {
-    "status": "inactive",
-    "planCode": null,
+    "status": "active",
+    "planCode": "premium",
     "cycle": "YEARLY",
-    "monthlyListPrice": null,
-    "annualPrice": null,
+    "catalogMonthlyPrice": 19.90,
+    "catalogAnnualPrice": 191.04,
+    "contractedPrice": 191.04,
+    "priceFrozen": true,
     "discountPercent": 20,
-    "renewsAt": null,
-    "accessUntil": null,
+    "renewsAt": "2027-09-08",
+    "accessUntil": "2027-09-08",
     "cancelAtPeriodEnd": false
   }
 }
 ```
+
+`priceFrozen` é `true` no anual (reajuste de tabela não mexe). No mensal é `false`: `contractedPrice` acompanha `catalogMonthlyPrice` na próxima fatura.
 
 | `status` | Significado |
 | --- | --- |
@@ -187,7 +228,7 @@ Ausente ou `inactive` = comportamento atual da conta.
 
 ## Cancelamento da recorrência (sem estorno)
 
-Cancelar **para a renovação**. O valor do ano já pago não volta. Não existe botão de reembolso.
+Cancelar **para a renovação**. O valor do período já pago não volta. Não existe botão de reembolso.
 
 `POST /billing/subscription/cancel`:
 
@@ -221,13 +262,14 @@ Três tabelas novas. `Users.PlanCode` não some: continua o que a previsão e os
 - `AsaasCheckoutId`
 - `AsaasSubscriptionId`
 - `Status` (`pending_checkout`, `active`, `past_due`, `canceled`)
-- `Cycle` (`YEARLY`)
-- `Price` (valor da **primeira** cobrança: anual cheio ou proporcional no upgrade)
-- `RecurringPrice` (anual cheio que a renovação deve cobrar)
+- `Cycle` (`MONTHLY` ou `YEARLY`)
+- `Price` (valor da **primeira** cobrança)
+- `RecurringPrice` (o que a renovação cobra: congelado se `YEARLY`; alinhado à tabela se `MONTHLY`)
+- `PriceFrozen` (`true` no anual contratado)
 - `PeriodStart`
-- `CurrentPeriodEnd`
+- `CurrentPeriodEnd` (agora + 1 mês ou + 1 ano, conforme o ciclo)
 - `CancelAtPeriodEnd`
-- `ExternalReference` (`userId:planCode`)
+- `ExternalReference` (`userId:planCode:cycle`)
 
 **BillingWebhookEvent**
 
@@ -249,9 +291,9 @@ Token próprio em `asaas-access-token`, **diferente** da API key. Sem token vál
 | `CHECKOUT_CREATED` | Auditoria |
 | `CHECKOUT_PAID` | Liga checkout à assinatura; se `PAYMENT_CONFIRMED` ainda não chegou, pode aplicar o `PlanCode` do item |
 | `CHECKOUT_CANCELED` / `CHECKOUT_EXPIRED` | Marca o checkout; o pescador gera outro |
-| `SUBSCRIPTION_CREATED` | Grava `sub_…`; no upgrade, `PUT` da assinatura para `RecurringPrice` (anual cheio) sem alterar a cobrança já paga; `DELETE` da assinatura antiga sem `/refund` |
+| `SUBSCRIPTION_CREATED` | Grava `sub_…`; no upgrade, `PUT` para `RecurringPrice` sem alterar a cobrança já paga; `DELETE` da assinatura antiga sem `/refund` |
 | `SUBSCRIPTION_INACTIVATED` / `SUBSCRIPTION_DELETED` | Se `CancelAtPeriodEnd`, só confirma o fim da recorrência. Senão, carência e depois `free` |
-| `PAYMENT_CONFIRMED` | `PlanCode` do item na **hora**; `PeriodStart = agora`; `CurrentPeriodEnd = agora + 1 ano`; notificação “Seu plano agora é {nome}.” |
+| `PAYMENT_CONFIRMED` | `PlanCode` do item na **hora**; `PeriodStart = agora`; `CurrentPeriodEnd` = +1 mês ou +1 ano; notificação “Seu plano agora é {nome}.” |
 | `PAYMENT_OVERDUE` | `past_due`; inbox avisa; carência (ex.: 3 dias) antes de `free` |
 | `PAYMENT_REFUNDED` / `PAYMENT_CHARGEBACK_REQUESTED` | Rebaixa na hora |
 
@@ -272,7 +314,7 @@ Somente runtime da API. Prefixo `TaNoMar__` / variáveis Coolify.
 | `ASAAS_WEBHOOK_TOKEN` | Valor esperado em `asaas-access-token` |
 | `ASAAS_ARRAIS_MONTHLY_PRICE` | Tabela Arrais (padrão `14.90`) |
 | `ASAAS_MESTRE_MONTHLY_PRICE` | Tabela Mestre (padrão `19.90`) |
-| `ASAAS_CAPITAO_MONTHLY_PRICE` | Tabela Capitão (padrão `24.90`) |
+| `ASAAS_CAPITAO_MONTHLY_PRICE` | Tabela Capitão (padrão `24.90`). Catálogo; não reescreve anual já contratado |
 | `PUBLIC_APP_ORIGIN` | Origem HTTPS para `callback.*` |
 
 Sem `ASAAS_API_KEY`, `/premium` permanece vitrine e `POST /billing/checkout` responde `503` (`billing_disabled`).
@@ -281,7 +323,7 @@ O webhook no painel Asaas aponta para `https://<domínio>/api/v1/webhooks/asaas`
 
 ## Frontend
 
-- `/premium`: os cards mostram anual, equivalente mensal e selo “20% de desconto”. No upgrade, o CTA usa `quote.firstCharge` (“Pagar R$ 87,19 hoje · desconto proporcional”) e deixa claro que o plano novo começa na hora e a renovação segue o anual cheio. Sem chave, permanece “A cobrança ainda não começa por aqui.”
+- `/premium`: cada card oferece **mês** (tabela) e **ano** (−20%). No upgrade, o CTA usa `quote.firstCharge` e deixa claro que o plano novo começa na hora. Assinante anual vê o valor contratado separado do catálogo se a tabela tiver mudado. Sem chave, permanece “A cobrança ainda não começa por aqui.”
 - Retornos `?checkout=success|cancel|expired`: copy local; o plano vem de `GET /me`.
 - Conta: plano atual, “Cancelar renovação” com texto de que **não há estorno** e a data de acesso. Depois, “Renovação cancelada · {nome} até {data}”.
 - Upgrade: CTA só nos cards de tabela maior. Downgrade: copy apontando para o cancelamento e a nova assinatura após o vencimento.
@@ -301,7 +343,6 @@ Vocabulário: na interface, **Arrais**, **Mestre** e **Capitão**. “Assinatura
 
 - Pix
 - Boleto
-- SKU mensal no checkout
 - Proration / crédito no **downgrade** (só no upgrade)
 - Parcelamento `INSTALLMENT`
 - Split e checkout de parceiros
@@ -313,8 +354,9 @@ Vocabulário: na interface, **Arrais**, **Mestre** e **Capitão**. “Assinatura
 ## Ordem de implementação
 
 1. Opções + `HttpClient` Asaas + tabelas + webhook idempotente (ainda sem promover).
-2. `GET /billing/catalog` e `POST /billing/checkout { planCode }`, alinhados a `PlanRules`.
+2. `GET /billing/catalog` e `POST /billing/checkout { planCode, cycle }`.
 3. Aplicar `arrais` / `premium` / `capitao` nos eventos da tabela acima.
 4. Cancelamento sem refund, worker de `CurrentPeriodEnd` e copy na Conta.
-5. Upgrade: crédito proporcional na primeira parcela, plano novo na hora, `PUT` da recorrência para o anual cheio, `DELETE` da assinatura antiga sem refund.
-6. Sandbox ponta a ponta nos três planos e um upgrade Arrais→Mestre no meio do período (conferir valor cobrado, cotas na hora e renovação futura cheia); só então chave de produção no Coolify.
+5. Reajuste de tabela: mensal `PUT` na próxima fatura; anual contratado intocado.
+6. Upgrade proporcional; `PUT` da recorrência para `RecurringPrice`; `DELETE` da assinatura antiga sem refund.
+7. Sandbox: mensal, anual, reajuste de tabela (anual congelado / mensal reajustado) e upgrade Arrais→Mestre; só então chave de produção.

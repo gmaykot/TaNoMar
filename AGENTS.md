@@ -17,7 +17,7 @@ TáNoMar ajuda pescadores a decidir onde e quando pescar. O repositório contém
 - Contratos e identificadores de runtime estão em `docs/api-contracts.md`.
 - Na interface, o ponto de pesca se chama **local** (plural **locais**). Não use “pesqueiro” nem “praia” para nomear a entidade. Ver `docs/frontend-guidelines.md`.
 - Parceiros (vitrine, sem venda no app) estão em `docs/partners.md`. A vitrine pública é ligada pelo admin em `/admin/parceiros`.
-- Cobrança da assinatura (proposta, Asaas Checkout com cartão, Arrais/Mestre/Capitão anuais −20%, upgrade com desconto proporcional na primeira parcela, cancelar recorrência sem estorno): `docs/billing.md` e `docs/decisions/ADR-004-asaas-checkout.md`. Os códigos de plano vêm de `PlanRules` (`arrais`, `premium`, `capitao`). A cobrança automática ainda não está ligada.
+- Cobrança da assinatura (proposta, Asaas Checkout, Arrais/Mestre/Capitão mensal ou anual −20%; anual contratado congelado, mensal acompanha a tabela; upgrade proporcional; cancelar sem estorno): `docs/billing.md` e `docs/decisions/ADR-004-asaas-checkout.md`.
 
 ## Antes de alterar uma feature
 

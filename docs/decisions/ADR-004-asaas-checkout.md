@@ -14,22 +14,22 @@ A necessidade é cobrar Arrais, Mestre ou Capitão com cartão, sem o PWA lidar 
 
 ## Decisão
 
-Integrar o **Asaas Checkout hospedado**, somente cartão, um checkout por plano, cobrança **recorrente anual** com 20% de desconto sobre 12 meses da tabela daquele plano.
+Integrar o **Asaas Checkout hospedado**, somente cartão, um checkout por plano e ciclo (`MONTHLY` ou `YEARLY`). O anual tem 20% de desconto sobre 12 meses da tabela vigente **no momento do contrato**.
 
 - `billingTypes: ["CREDIT_CARD"]`
 - `chargeTypes: ["RECURRENT"]`
-- `subscription.cycle: "YEARLY"`
-- `POST /billing/checkout` recebe `{ planCode: "arrais" | "premium" | "capitao" }`
-- Preço cobrado: `arredondar(mensal_do_plano × 12 × 0,80; 2)`
-- O plano na conta sobe só depois do webhook, para o `PlanCode` comprado.
-- **Upgrade** (tabela maior) começa na hora. A primeira cobrança é `anual_novo − crédito_proporcional` dos dias que ainda restavam no plano atual. A renovação seguinte cobra o anual cheio do plano novo. Não há estorno no cartão da assinatura antiga.
-- Cancelar a recorrência chama `DELETE /v3/subscriptions/{id}` e **não** chama `/refund`. O `PlanCode` pago permanece até o fim do período.
+- `POST /billing/checkout` recebe `{ planCode, cycle: "MONTHLY" | "YEARLY" }`
+- Anual cobrado: `arredondar(mensal_tabela × 12 × 0,80; 2)` na data da contratação; esse valor **fica congelado** na assinatura (`RecurringPrice`)
+- Mensal cobrado: tabela vigente; se o preço do plano mudar, a **próxima** cobrança mensal usa o novo valor
+- Mudar a tabela **não** altera anual já contratado nem a renovação anual desse contrato
+- **Upgrade** (tabela maior) começa na hora. A primeira cobrança tem desconto proporcional. Recorrência futura: anual congelado no catálogo da hora do upgrade, ou mensal acompanhando a tabela
+- Cancelar a recorrência chama `DELETE /v3/subscriptions/{id}` e **não** chama `/refund`. O plano pago permanece até o fim do período
 
 Não coletar PAN, CVV nem validade no TáNoMar. Não confirmar pagamento pelo `successUrl`.
 
 ## Motivo
 
-Três SKUs no Asaas batem com `PlanRules` (Arrais, Mestre, Capitão). O ciclo anual com desconto é a oferta comercial. No upgrade, o comando novo vale na hora e o que já foi pago vira desconto na primeira parcela — sem devolver dinheiro no cartão. Cancelar encerra a renovação e preserva o valor já pago. Pix, boleto e SKU mensal no checkout ficam para depois.
+Três SKUs no Asaas batem com `PlanRules`. Quem fecha o anual leva o preço daquele contrato até cancelar — reajuste de tabela não reescreve o que já foi assinado. Quem paga o mês acompanha a tabela na fatura seguinte. No upgrade, o comando novo vale na hora e o restante vira desconto na primeira parcela, sem estorno no cartão.
 
 ## Fluxo
 
@@ -37,7 +37,7 @@ Três SKUs no Asaas batem com `PlanRules` (Arrais, Mestre, Capitão). O ciclo an
 Pescador em /premium escolhe Arrais, Mestre ou Capitão
         │
         ▼
-POST /api/v1/billing/checkout { planCode }
+POST /api/v1/billing/checkout { planCode, cycle }
         │
         ▼
 redirect → asaas.com/checkoutSession
@@ -55,7 +55,7 @@ redirect → asaas.com/checkoutSession
 Upgrade (ex.: Arrais → Mestre), ainda com período pago:
 
 ```text
-POST /billing/checkout { planCode: "premium" }
+POST /billing/checkout { planCode: "premium", cycle: "YEARLY" }
         │
         ▼
 primeira cobrança = anual(Mestre) − crédito dos dias restantes
@@ -63,7 +63,16 @@ primeira cobrança = anual(Mestre) − crédito dos dias restantes
         ▼
 paga no Asaas → PlanCode = premium na hora
 assinatura antiga DELETE sem /refund
-renovação daqui a 1 ano = anual cheio do Mestre
+renovação daqui a 1 ano = anual **contratado** do Mestre (congelado)
+```
+
+Reajuste de tabela:
+
+```text
+ASAAS_*_MONTHLY_PRICE muda
+        │
+        ├── YEARLY ativo → RecurringPrice intacto; Asaas não é atualizado
+        └── MONTHLY ativo → próxima fatura = tabela nova (PUT no Asaas)
 ```
 
 Cancelar a renovação:
@@ -83,9 +92,10 @@ Worker no vencimento → PlanCode = free
 
 ## Consequências
 
-- Um item Asaas por plano (nome Arrais, Mestre ou Capitão). `externalReference` liga usuário + `planCode`.
-- Upgrade no meio do ano: plano novo na hora; primeira parcela com desconto proporcional; recorrência futura no valor cheio. Downgrade só depois do período pago (ou pelo admin).
+- Um item Asaas por plano e ciclo. `externalReference` liga usuário + `planCode` + `cycle`.
+- Preço anual contratado é imutável naquela assinatura, inclusive na renovação. Preço mensal vigente incide na próxima cobrança.
+- Upgrade no meio do período: plano novo na hora; primeira parcela proporcional; sem estorno. Downgrade só depois do período pago (ou pelo admin).
 - Bootstrap admin permanece Mestre (`premium`) mesmo se um webhook tentar rebaixar.
-- Fora da primeira entrega: Pix, SKU mensal, parcelamento, split, checkout de parceiros, botão de estorno.
+- Fora da primeira entrega: Pix, parcelamento, split, checkout de parceiros, botão de estorno.
 
 Detalhe: [billing.md](../billing.md).
