@@ -4,9 +4,11 @@ import {
   Bell,
   BookOpen,
   Check,
+  Download,
   Heart,
   SlidersHorizontal,
   Sparkles,
+  Users,
   Waves,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -45,6 +47,18 @@ const benefits = [
     title: 'Diário de pesca',
     description:
       'Registre suas capturas e saídas sem captura para criar seu histórico de pesca.',
+  },
+  {
+    icon: Download,
+    title: 'Previsão offline',
+    description:
+      'Salve a previsão mais recente e consulte seus dados mesmo quando estiver sem conexão.',
+  },
+  {
+    icon: Users,
+    title: 'Confirmação da comunidade',
+    description:
+      'Confirme ou conteste os relatos de outros pescadores para deixar a comunidade mais confiável.',
   },
 ];
 

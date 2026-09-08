@@ -5,16 +5,18 @@ import { forecastFixture } from '@/features/forecast/fixtures/forecast';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { HomePage } from './HomePage';
 
-const { authState } = vi.hoisted(() => ({
+const { authState, forecastState } = vi.hoisted(() => ({
   authState: {
     planCode: 'premium' as 'free' | 'premium',
     showPartners: false,
     visibleMetrics: undefined as string[] | undefined,
   },
+  forecastState: { error: false },
 }));
 
 vi.mock('@/features/forecast/services/forecastService', () => ({
-  getForecast: () => Promise.resolve(forecastFixture),
+  getForecast: () =>
+    forecastState.error ? Promise.reject(new Error('offline')) : Promise.resolve(forecastFixture),
   getLocationForecast: () => Promise.resolve(null),
 }));
 
@@ -99,6 +101,8 @@ describe('HomePage', () => {
     authState.planCode = 'premium';
     authState.showPartners = false;
     authState.visibleMetrics = undefined;
+    forecastState.error = false;
+    localStorage.removeItem('tanomar.offline-forecast.v1');
   });
 
   it('mostra o convite do Premium somente para o plano Free', async () => {
@@ -117,6 +121,46 @@ describe('HomePage', () => {
     expect(
       screen.queryByRole('link', { name: /Pesque com mais contexto no Premium/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it('oferece salvar a previsão offline somente para o Premium', async () => {
+    renderWithProviders(<HomePage />);
+
+    await screen.findByRole('heading', { name: 'Pântano do Sul' });
+    expect(screen.getByRole('button', { name: /Salvar para usar offline/ })).toBeInTheDocument();
+  });
+
+  it('não oferece salvar a previsão offline para o plano Free', async () => {
+    authState.planCode = 'free';
+    renderWithProviders(<HomePage />);
+
+    await screen.findByRole('heading', { name: 'Pântano do Sul' });
+    expect(
+      screen.queryByRole('button', { name: /Salvar para usar offline/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('usa a previsão salva offline para o Premium quando a API falha', async () => {
+    forecastState.error = true;
+    localStorage.setItem(
+      'tanomar.offline-forecast.v1',
+      JSON.stringify({ forecast: forecastFixture }),
+    );
+    renderWithProviders(<HomePage />);
+
+    expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
+  });
+
+  it('não usa a previsão salva offline para o plano Free quando a API falha', async () => {
+    authState.planCode = 'free';
+    forecastState.error = true;
+    localStorage.setItem(
+      'tanomar.offline-forecast.v1',
+      JSON.stringify({ forecast: forecastFixture }),
+    );
+    renderWithProviders(<HomePage />);
+
+    expect(await screen.findByText('Previsão indisponível')).toBeInTheDocument();
   });
 
   it('troca a melhor escolha quando a data muda', async () => {

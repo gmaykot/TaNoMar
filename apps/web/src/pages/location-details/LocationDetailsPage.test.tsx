@@ -193,6 +193,30 @@ describe('LocationDetailsPage', () => {
     expect(enabled).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('permite trocar o dia arrastando o carrossel nos detalhes', async () => {
+    renderWithProviders(
+      <Routes>
+        <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
+      </Routes>,
+      ['/locais/pantano_do_sul'],
+    );
+
+    const selector = await screen.findByLabelText('Selecionar dia da previsão');
+    expect(selector).toHaveAttribute('aria-roledescription', 'carrossel');
+    const days = [...selector.querySelectorAll<HTMLElement>('[data-snap-key]')];
+    Object.defineProperty(selector, 'clientWidth', { configurable: true, value: 320 });
+    Object.defineProperty(selector, 'scrollLeft', { configurable: true, writable: true, value: 320 });
+    days.forEach((day, index) => {
+      Object.defineProperty(day, 'offsetLeft', { configurable: true, value: index * 320 });
+      Object.defineProperty(day, 'offsetWidth', { configurable: true, value: 320 });
+    });
+
+    selector.dispatchEvent(new Event('scrollend'));
+    selector.dispatchEvent(new Event('scroll'));
+
+    expect(await screen.findByRole('heading', { name: '16:30–19:00' })).toBeInTheDocument();
+  });
+
   it('planeja a saída com a melhor janela do dia selecionado', async () => {
     const user = userEvent.setup();
     renderWithProviders(

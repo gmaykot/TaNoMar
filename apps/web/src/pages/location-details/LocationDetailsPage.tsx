@@ -189,6 +189,7 @@ export function LocationDetailsPage() {
         days={days.map((day) => ({ ...day, ranking: [day.forecast] }))}
         selectedDate={activeDate}
         onSelect={setSelectedDate}
+        variant="carousel"
       />
       <Card as="section" className={styles.detailCard} elevated>
         <div className={styles.detailSummary}>

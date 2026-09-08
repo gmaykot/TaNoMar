@@ -27,10 +27,11 @@ export function HomePage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [offlineForecast, setOfflineForecast] = useState<FishingForecast | null>(() => readOfflineForecast());
   const [offlineSaved, setOfflineSaved] = useState(false);
+  const isPremium = auth.user?.plan.code === 'premium';
   const visibleMetricKeys =
-    auth.user?.plan.code === 'premium' ? auth.user.preferences.visibleMetrics : undefined;
+    isPremium ? auth.user?.preferences.visibleMetrics : undefined;
 
-  const data = forecast.data ?? (forecast.isError ? offlineForecast : undefined);
+  const data = forecast.data ?? (isPremium && forecast.isError ? offlineForecast : undefined);
 
   if (forecast.isPending && !data)
     return (
@@ -138,23 +139,25 @@ export function HomePage() {
           </div>
         </section>
       ) : null}
-      <div className={styles.homeActions}>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => {
-            if (!data) return;
-            setOfflineSaved(saveOfflineForecast(data));
-            setOfflineForecast(data);
-          }}
-        >
-          <Download size={17} aria-hidden="true" />
-          {offlineSaved || offlineForecast ? 'Previsão salva nesta sessão' : 'Salvar para usar offline'}
-        </Button>
-        {offlineForecast && !forecast.data ? (
-          <small>Exibindo a última previsão salva nesta sessão. Ela pode estar desatualizada.</small>
-        ) : null}
-      </div>
+      {isPremium ? (
+        <div className={styles.homeActions}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              if (!data) return;
+              setOfflineSaved(saveOfflineForecast(data));
+              setOfflineForecast(data);
+            }}
+          >
+            <Download size={17} aria-hidden="true" />
+            {offlineSaved || offlineForecast ? 'Previsão salva nesta sessão' : 'Salvar para usar offline'}
+          </Button>
+          {offlineForecast && !forecast.data ? (
+            <small>Exibindo a última previsão salva nesta sessão. Ela pode estar desatualizada.</small>
+          ) : null}
+        </div>
+      ) : null}
       <Link className={styles.exploreCard} to="/locais">
         <span>
           <MapPinned size={22} aria-hidden="true" />
