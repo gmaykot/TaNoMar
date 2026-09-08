@@ -28,6 +28,13 @@ const rankingWire = {
           score: available(9.1),
           classification: available('Excelente'),
           bestHours: available(['05:00', '06:00', '17:00']),
+          bestHourWindows: available([
+            { time: '05:00', score: 9.3 },
+            { time: '06:00', score: 9.1 },
+            { time: '17:00', score: 8.9 },
+          ]),
+          metricsHour: '05:00',
+          windOrigin: 'terra',
           wind: available('8 km/h Leste'),
           gusts: available('12 km/h'),
           waves: locked(),
@@ -98,14 +105,20 @@ describe('forecastMapper', () => {
       classification: 'excellent',
       bestWindow: '05:00, 06:00 e 17:00',
       isOwner: true,
+      metricsHour: '05:00',
+      windOrigin: 'terra',
+      scoreBreakdown: 'Média das 3 melhores horas · 05:00 9,3 · 06:00 9,1 · 17:00 8,9',
     });
     expect(forecast.days[1]?.ranking[0]).toMatchObject({ isOwner: false });
+    expect(forecast.days[1]?.ranking[0]?.scoreBreakdown).toBe('');
+    expect(forecast.days[1]?.ranking[0]?.metricsHour).toBe('06:00');
   });
 
   it('marca métricas premium como locked', () => {
     const item = mapForecastItem(parseRankingForecast(rankingWire).days[0]!.ranking[0]!);
     const waves = item.metrics.find((metric) => metric.key === 'waves');
     expect(waves).toMatchObject({ value: 'Assinatura', locked: true, detail: 'Assinatura' });
+    expect(item.metrics.find((metric) => metric.key === 'wind')?.detail).toBe('Vento de terra');
   });
 
   it('mapeia o perfil do local', () => {

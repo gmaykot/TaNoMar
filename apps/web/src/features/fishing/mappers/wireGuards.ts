@@ -1,5 +1,6 @@
 import { ContractError } from '@/shared/api/errors';
 import type {
+  WireBestHourWindow,
   WireForecastDay,
   WireForecastItem,
   WireLocationForecast,
@@ -48,11 +49,32 @@ function parseStringList(value: unknown) {
   return value as string[];
 }
 
+function parseBestHourWindows(value: unknown): WireBestHourWindow[] | null {
+  if (!Array.isArray(value)) return null;
+  const windows = value.map((item) => {
+    if (!isRecord(item)) return null;
+    const time = readString(item.time);
+    const score = readNumber(item.score);
+    if (!time || score === null) return null;
+    return { time, score };
+  });
+  if (windows.some((item) => item === null)) return null;
+  return windows as WireBestHourWindow[];
+}
+
+function parseWindOrigin(value: unknown) {
+  return value === 'terra' || value === 'mar' || value === 'cruzado' ? value : null;
+}
+
 function parseForecastItem(value: unknown): WireForecastItem {
   if (!isRecord(value)) throw new ContractError('Item de ranking inválido.');
   const spotId = readString(value.spotId);
   const spotName = readString(value.spotName);
   if (!spotId || !spotName) throw new ContractError('Item de ranking sem local.');
+  const bestHourWindows =
+    value.bestHourWindows === undefined
+      ? undefined
+      : parseMetric(value.bestHourWindows, parseBestHourWindows, 'bestHourWindows');
   return {
     spotId,
     spotName,
@@ -60,6 +82,9 @@ function parseForecastItem(value: unknown): WireForecastItem {
     score: parseMetric(value.score, readNumber, 'score'),
     classification: parseMetric(value.classification, readString, 'classification'),
     bestHours: parseMetric(value.bestHours, parseStringList, 'bestHours'),
+    bestHourWindows,
+    metricsHour: readString(value.metricsHour),
+    windOrigin: parseWindOrigin(value.windOrigin),
     highlights: parseStringList(value.highlights) ?? undefined,
     wind: parseMetric(value.wind, readString, 'wind'),
     gusts: parseMetric(value.gusts, readString, 'gusts'),

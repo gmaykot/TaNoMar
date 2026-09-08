@@ -2,9 +2,11 @@ import type {
   FishingClassification,
   FishingForecast,
   FishingMetric,
+  ForecastHourWindow,
   ForecastRankingItem,
 } from '@/features/fishing/types/fishing';
 import { locationsFixture } from '@/features/locations/fixtures/locations';
+import { formatScoreBreakdown } from '@/features/fishing/utils/scoreBreakdown';
 
 interface ForecastSeed {
   id: string;
@@ -34,6 +36,11 @@ function ranking(seeds: ForecastSeed[]): ForecastRankingItem[] {
     const location = locationsFixture.find((item) => item.id === seed.id);
     if (!location) throw new Error(`Local de fixture desconhecido: ${seed.id}`);
     const start = seed.window.slice(0, 5);
+    const bestHours = [start, '07:00', '17:00'];
+    const hourWindows: ForecastHourWindow[] = bestHours.map((time, hourIndex) => ({
+      time,
+      score: Math.round((seed.score - hourIndex * 0.2) * 10) / 10,
+    }));
     return {
       locationId: location.id,
       locationName: location.name,
@@ -41,7 +48,11 @@ function ranking(seeds: ForecastSeed[]): ForecastRankingItem[] {
       isOwner: location.isOwner,
       classification: seed.classification,
       bestWindow: seed.window,
-      bestHours: [start, '07:00', '17:00'],
+      bestHours,
+      hourWindows,
+      scoreBreakdown: formatScoreBreakdown(hourWindows),
+      metricsHour: start,
+      windOrigin: index % 2 ? 'mar' : 'terra',
       metrics: metrics(seed, index),
     };
   });

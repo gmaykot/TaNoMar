@@ -6,6 +6,7 @@ import { ScoreIndicator } from '@/design-system/components/ScoreIndicator';
 import type { FishingMetricKey, ForecastRankingItem } from '@/features/fishing/types/fishing';
 import { MetricGrid } from '@/features/forecast/components/MetricGrid';
 import { formatWindMetric } from '@/features/forecast/utils/formatWindMetric';
+import { metricsHourCaption } from '@/features/fishing/utils/scoreBreakdown';
 import { OwnerBadge } from '@/features/locations/components/OwnerBadge';
 import { rankingMetricKeys } from '../rankingEmphasis';
 import styles from './ranking.module.css';
@@ -61,6 +62,9 @@ export function RankingList({
                 <p>
                   <Clock3 size={15} aria-hidden="true" /> {item.bestWindow}
                 </p>
+                {item.scoreBreakdown ? (
+                  <p className={styles.scoreBreakdown}>{item.scoreBreakdown}</p>
+                ) : null}
                 {emphasisMetric ? (
                   <p className={styles.emphasis}>
                     {EmphasisIcon ? <EmphasisIcon size={15} aria-hidden="true" /> : null}
@@ -78,6 +82,9 @@ export function RankingList({
               <summary>
                 Ver condições <ChevronDown size={17} aria-hidden="true" />
               </summary>
+              {metricsHourCaption(item.metricsHour) ? (
+                <p className={styles.metricCaption}>{metricsHourCaption(item.metricsHour)}</p>
+              ) : null}
               <MetricGrid metrics={item.metrics} keys={metricKeys} windUnit={windUnit} />
               <Link className={styles.locationLink} to={`/locais/${item.locationId}`}>
                 <MapPin size={16} aria-hidden="true" /> Abrir local
