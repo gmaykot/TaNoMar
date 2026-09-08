@@ -12,6 +12,7 @@ const paidModules = {
   customMetrics: true,
   communityVote: true,
   rankingEmphasis: true,
+  liveWebcams: false,
 };
 
 const freePlan: PlanCatalog = {
@@ -36,6 +37,7 @@ const freePlan: PlanCatalog = {
     customMetrics: false,
     communityVote: false,
     rankingEmphasis: false,
+    liveWebcams: false,
   },
 };
 

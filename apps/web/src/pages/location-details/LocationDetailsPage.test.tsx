@@ -185,6 +185,24 @@ describe('LocationDetailsPage', () => {
     expect(favorite).toHaveTextContent('Assinatura');
   });
 
+  it('mostra o convite do plano Capitão quando o local tem câmera e a conta não', async () => {
+    const location = locationsFixture.find((item) => item.id === 'pantano_do_sul');
+    if (!location) throw new Error('fixture pantano_do_sul ausente');
+    location.hasLiveWebcam = true;
+    try {
+      renderWithProviders(
+        <Routes>
+          <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
+        </Routes>,
+        ['/locais/pantano_do_sul'],
+      );
+      expect(await screen.findByText('Recurso do plano Capitão')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Ver câmera ao vivo' })).not.toBeInTheDocument();
+    } finally {
+      location.hasLiveWebcam = false;
+    }
+  });
+
   it('mostra o selo Meu local quando o usuário é dono', async () => {
     const location = locationsFixture.find((item) => item.id === 'pantano_do_sul');
     if (!location) throw new Error('fixture pantano_do_sul ausente');

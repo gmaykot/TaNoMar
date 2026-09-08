@@ -85,6 +85,7 @@ export interface FishingLocation {
   isInRanking: boolean;
   isApproved: boolean;
   isOwner: boolean;
+  hasLiveWebcam: boolean;
 }
 
 export interface LocationForecast {

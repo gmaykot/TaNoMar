@@ -180,6 +180,7 @@ export function parseSpot(value: unknown): WireSpot {
     isInRanking: readBoolean(value.isEnabled) ?? readBoolean(value.isInRanking) ?? false,
     isApproved: readBoolean(value.isApproved) ?? visibility !== 'shared',
     isOwner: readBoolean(value.isOwner) ?? false,
+    hasLiveWebcam: readBoolean(value.hasLiveWebcam) ?? false,
   };
 }
 

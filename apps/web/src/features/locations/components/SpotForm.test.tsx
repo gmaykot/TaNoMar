@@ -90,6 +90,7 @@ describe('SpotForm', () => {
             isInRanking: true,
             isApproved: true,
             isOwner: false,
+            hasLiveWebcam: false,
           },
         ]}
         submitLabel="Salvar local"

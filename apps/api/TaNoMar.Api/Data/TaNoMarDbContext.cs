@@ -23,6 +23,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
     public DbSet<BillingCustomer> BillingCustomers => Set<BillingCustomer>();
     public DbSet<BillingSubscription> BillingSubscriptions => Set<BillingSubscription>();
     public DbSet<BillingWebhookEvent> BillingWebhookEvents => Set<BillingWebhookEvent>();
+    public DbSet<FishingSpotWebcam> FishingSpotWebcams => Set<FishingSpotWebcam>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -48,6 +49,13 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
         modelBuilder.Entity<BillingSubscription>().HasIndex(item => item.AsaasCheckoutId);
         modelBuilder.Entity<BillingSubscription>().HasIndex(item => item.AsaasSubscriptionId);
         modelBuilder.Entity<BillingWebhookEvent>().HasIndex(item => item.AsaasEventId).IsUnique();
+        modelBuilder.Entity<FishingSpotWebcam>().HasIndex(item => item.FishingSpotId).IsUnique().HasFilter("\"IsActive\" = TRUE");
+        modelBuilder.Entity<FishingSpotWebcam>().HasIndex(item => new { item.FishingSpotId, item.Provider, item.ExternalId }).IsUnique();
+        modelBuilder.Entity<FishingSpotWebcam>()
+            .HasOne<FishingSpot>()
+            .WithMany()
+            .HasForeignKey(item => item.FishingSpotId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Plan>().HasData(
             new Plan
@@ -63,7 +71,8 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 MaxForecastDays = 3,
                 MaxFavorites = 0,
                 MaxPersonalSpots = 0,
-                MaxAlerts = 0
+                MaxAlerts = 0,
+                CanLiveWebcams = false
             },
             new Plan
             {
@@ -84,7 +93,8 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 CanOffline = true,
                 CanCustomMetrics = true,
                 CanCommunityVote = true,
-                CanRankingEmphasis = true
+                CanRankingEmphasis = true,
+                CanLiveWebcams = false
             },
             new Plan
             {
@@ -105,7 +115,8 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 CanOffline = true,
                 CanCustomMetrics = true,
                 CanCommunityVote = true,
-                CanRankingEmphasis = true
+                CanRankingEmphasis = true,
+                CanLiveWebcams = false
             },
             new Plan
             {
@@ -126,7 +137,8 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 CanOffline = true,
                 CanCustomMetrics = true,
                 CanCommunityVote = true,
-                CanRankingEmphasis = true
+                CanRankingEmphasis = true,
+                CanLiveWebcams = true
             });
         modelBuilder.Entity<PlatformSettings>().HasData(
             new PlatformSettings { Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0010"), ShowPartners = false });
@@ -199,6 +211,24 @@ public sealed class Plan
     public bool CanCustomMetrics { get; set; }
     public bool CanCommunityVote { get; set; }
     public bool CanRankingEmphasis { get; set; }
+    public bool CanLiveWebcams { get; set; }
+}
+
+public sealed class FishingSpotWebcam
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid FishingSpotId { get; set; }
+    public string Provider { get; set; } = string.Empty;
+    public string ExternalId { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public double Latitude { get; set; }
+    public double Longitude { get; set; }
+    public bool IsActive { get; set; } = true;
+    public bool IsAvailable { get; set; } = true;
+    public DateTimeOffset? LastAvailabilityCheck { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public Guid CreatedByUserId { get; set; }
 }
 
 public sealed class CommunityReport

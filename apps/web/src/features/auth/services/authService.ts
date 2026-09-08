@@ -119,6 +119,7 @@ function parsePlanModules(value: unknown): AuthUser['modules'] {
   const customMetrics = readBoolean(value.customMetrics);
   const communityVote = readBoolean(value.communityVote);
   const rankingEmphasis = readBoolean(value.rankingEmphasis);
+  const liveWebcams = readBoolean(value.liveWebcams);
   if (
     marine === null ||
     diary === null ||
@@ -129,7 +130,15 @@ function parsePlanModules(value: unknown): AuthUser['modules'] {
   ) {
     throw new ContractError('Módulos do plano incompletos.');
   }
-  return { marine, diary, offline, customMetrics, communityVote, rankingEmphasis };
+  return {
+    marine,
+    diary,
+    offline,
+    customMetrics,
+    communityVote,
+    rankingEmphasis,
+    liveWebcams: liveWebcams ?? false,
+  };
 }
 
 export async function loginWithGoogle(credential: string) {

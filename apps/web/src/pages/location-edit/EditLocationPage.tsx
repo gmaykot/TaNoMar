@@ -2,6 +2,9 @@ import { ArrowLeft } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { SpotForm } from '@/features/locations/components/SpotForm';
+import { WebcamManager } from '@/features/webcam/components/WebcamManager';
+import { useAuth } from '@/features/auth/hooks/useAuth';
+import { hasLiveWebcams } from '@/features/auth/types/auth';
 import { useLocationMutations } from '@/features/locations/hooks/useLocationMutations';
 import { useLocations } from '@/features/locations/hooks/useLocations';
 import { PageHeader } from '@/pages/shared/PageHeader';
@@ -13,6 +16,7 @@ export function EditLocationPage() {
   const navigate = useNavigate();
   const locations = useLocations();
   const mutations = useLocationMutations();
+  const auth = useAuth();
   const location = locations.data?.find((item) => item.id === locationId);
 
   if (locations.isPending) {
@@ -52,6 +56,9 @@ export function EditLocationPage() {
           mutations.remove.mutate(location.id, { onSuccess: () => navigate(routes.locations) });
         }}
       />
+      {hasLiveWebcams(auth.user) && location.visibility !== 'official' ? (
+        <WebcamManager spotId={location.id} />
+      ) : null}
     </div>
   );
 }

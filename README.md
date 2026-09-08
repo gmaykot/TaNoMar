@@ -51,6 +51,28 @@ A API expõe `/api/v1`; Swagger fica disponível em Development. Identificadores
 
 Para desenvolvimento local, execute React e .NET diretamente nos dois terminais acima. Docker não faz parte do fluxo local; a sessão `default` de `.vscode/sessions.json` já inicia ambos os processos.
 
+## Live Webcams
+
+Provider atual: **Windy Webcams API v3**. Plano: **Capitão**. Feature: `liveWebcams`.
+
+A chave é opcional. Sem ela o TáNoMar sobe; só a pesquisa de câmeras fica indisponível.
+
+1. Crie a chave em [api.windy.com](https://api.windy.com/) (Webcams API).
+2. Exporte no terminal da API (não commite a chave):
+
+```bash
+export WINDY_WEBCAMS_API_KEY=SUA_CHAVE
+export Webcams__SearchRadiusKm=10
+export Webcams__AvailabilityCacheMinutes=15
+```
+
+3. Inicie API e frontend como nas seções acima.
+4. Login Google. Admin: `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_GOOGLE_SUBJECT`.
+5. Capitão sem pagamento: em Development, um Admin troca o plano da conta em `/admin/usuarios` para Capitão.
+6. Admin abre um local → Procurar câmera próxima → Selecionar. Capitão abre o local → Ver câmera ao vivo.
+
+Guia completo: [docs/features/webcams.md](docs/features/webcams.md).
+
 ## Produção no Coolify
 
 O deploy usa `docker-compose.yml` na raiz. Web e API sobem no **mesmo container** — o build do React vira arquivos estáticos servidos pela API em `wwwroot/`. O PostgreSQL continua externo.

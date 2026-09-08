@@ -7,14 +7,14 @@ Base: `/api/v1`. Implementação em `apps/api/TaNoMar.Api`.
 - `POST /auth/google`: recebe `{ credential }`, devolve `{ accessToken }` e cria refresh token HttpOnly.
 - `POST /auth/refresh`: rotaciona refresh token e devolve novo access token.
 - `POST /auth/logout`: revoga e remove o cookie no path `/api/v1/auth`.
-- `GET /me`: usuário, role, plano, entitlements, `modules` (marine, diary, offline, customMetrics, communityVote, rankingEmphasis), `features.showPartners`, preferências e `billing` (estado da assinatura; `enabled: false` sem chave Asaas).
+- `GET /me`: usuário, role, plano, entitlements, `modules` (marine, diary, offline, customMetrics, communityVote, rankingEmphasis, liveWebcams), `features.showPartners`, preferências e `billing` (estado da assinatura; `enabled: false` sem chave Asaas).
 - `PUT /me/preferences`: região (um ou mais trechos da ilha, separados por ` | `), unidade de vento, opt-in de notificações de previsão, `focus` (`pescador`, `surfista` ou `ambos`) e `visibleMetrics`. A preferência `Ilha de Santa Catarina` (incluindo os nomes antigos `Florianópolis` e `Meu mapa`) abrange todas as regiões. O foco vale para qualquer plano, é escolhido no primeiro acesso e pode ser alterado na conta; a web só mostra ou oculta informações. Sem `focus`, a API devolve `null` e a web pede a escolha. A seleção de indicadores exige `modules.customMetrics`, afeta somente a apresentação na web e não altera a nota. Contas sem seleção mantêm todos os indicadores visíveis.
 
 O access token é JWT Bearer e fica só em memória no frontend. O refresh token permanece no cookie `tanomar_refresh`. A web entra em `/entrar` com Google Identity Services, tenta refresh na abertura e encerra a sessão após um 401 sem cookie válido.
 
 `BOOTSTRAP_ADMIN_EMAIL` e `BOOTSTRAP_ADMIN_GOOGLE_SUBJECT` promovem o usuário correspondente a Admin no login Google e de novo em `GET /me`. No primeiro login essa conta entra no plano Mestre (`premium`); depois o admin pode trocar o plano. O subject é a claim `sub` do token Google, não o e-mail. Usuários novos entram no plano Free.
 
-Planos pagos na interface: **Arrais** (`arrais`), **Mestre** (`premium`) e **Capitão** (`capitao`). O código `premium` permanece estável para contas já assinantes. Preço (centavos), texto de apoio, destaque, ordem, disponibilidade, cotas e módulos ficam em `Plans` e o admin edita em `/admin/planos`. `GET /plans` devolve os planos pagos com `enabled = true`. A API aplica as flags de módulo nos gates; cotas continuam em `entitlements`.
+Planos pagos na interface: **Arrais** (`arrais`), **Mestre** (`premium`) e **Capitão** (`capitao`). O código `premium` permanece estável para contas já assinantes. Preço (centavos), texto de apoio, destaque, ordem, disponibilidade, cotas e módulos ficam em `Plans` e o admin edita em `/admin/planos`. `GET /plans` devolve os planos pagos com `enabled = true`. A API aplica as flags de módulo nos gates; cotas continuam em `entitlements`. O módulo `liveWebcams` nasce ligado só no Capitão; o admin pode alterar em `/admin/planos`.
 
 ## Identificadores de runtime
 
@@ -30,7 +30,7 @@ Namespaces, assembly, projeto, DbContext, seeder, options e usuário interno do 
 
 ## Pesca e locais
 
-- `GET /fishing-spots`: locais oficiais e compartilhados aprovados cuja região esteja nas preferências da conta, além de todos os locais pessoais do dono independentemente da região. O DTO inclui `profile`, `visibility`, `isApproved`, `isOwner`, `isFavorite`, `isEnabled`, `isInRanking` e `seaOrientationDegrees`. Sem preferência do usuário, oficiais, compartilhados aprovados e locais pessoais do dono vêm `isEnabled = true`.
+- `GET /fishing-spots`: locais oficiais e compartilhados aprovados cuja região esteja nas preferências da conta, além de todos os locais pessoais do dono independentemente da região. O DTO inclui `profile`, `visibility`, `isApproved`, `isOwner`, `isFavorite`, `isEnabled`, `isInRanking`, `seaOrientationDegrees` e `hasLiveWebcam` (há câmera ativa; sem URL). Sem preferência do usuário, oficiais, compartilhados aprovados e locais pessoais do dono vêm `isEnabled = true`.
 - `POST /fishing-spots`: local pessoal com região obrigatória, sujeito ao plano, duplicidade (mesmo nome, ignorando maiúsculas, ou até 200 m), perfil costeiro e visibilidade (`shared` pendente ou `private`). O dono já recebe o local habilitado nas previsões; a API aquece o cache de previsão (nota e ranking) antes de responder.
 - `PUT /fishing-spots/{id}`: dono edita o local, mantendo a região obrigatória; a mesma regra de duplicidade vale contra os demais; compartilhar de novo volta para moderação.
 - `DELETE /fishing-spots/{id}`: dono remove o local e os relatos/favoritos/habilitações ligados.
@@ -73,6 +73,15 @@ O contrato de métrica é uma união `{ state: "available", value }` ou `{ state
 - `DELETE /me/alerts/{id}`: remove o alerta do próprio usuário.
 
 O worker de alertas verifica a previsão de hora em hora, respeita `forecastNotifications`, evita repetir a mesma data e publica no inbox, SSE e Web Push quando a nota mínima é atingida. O envio não substitui a conferência da previsão no local.
+
+## Câmeras ao vivo
+
+Exigem `modules.liveWebcams` (padrão: plano Capitão). Sem o módulo, `GET /fishing-spots/{id}/webcam` responde `403` e não devolve URL/embed. O frontend vincula só com `{ provider, externalId }`. Detalhes em [features/webcams.md](features/webcams.md).
+
+- `GET /fishing-spots/{id}/webcam`: transmissão do local visível. `404` sem câmera.
+- `GET /fishing-spots/{id}/webcams/search`, `POST /fishing-spots/{id}/webcam`, `DELETE /fishing-spots/{id}/webcam`: dono Capitão de Meu Local.
+- `GET /admin/fishing-spots/{id}/webcam`, `GET /admin/fishing-spots/{id}/webcams/search`, `POST /admin/fishing-spots/{id}/webcam`, `DELETE /admin/fishing-spots/{id}/webcam`: Admin, qualquer local.
+- Pesquisa sem chave Windy: `503 webcam_unconfigured`. Provider fora: `502 webcam_provider_unavailable`.
 
 ## Implantação
 

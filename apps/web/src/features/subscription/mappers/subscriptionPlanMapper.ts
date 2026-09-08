@@ -43,6 +43,7 @@ function parseModules(value: unknown): PlanModules {
   const customMetrics = readBoolean(value.customMetrics);
   const communityVote = readBoolean(value.communityVote);
   const rankingEmphasis = readBoolean(value.rankingEmphasis);
+  const liveWebcams = readBoolean(value.liveWebcams);
   if (
     marine === null ||
     diary === null ||
@@ -53,7 +54,15 @@ function parseModules(value: unknown): PlanModules {
   ) {
     throw new ContractError('Módulos do plano incompletos.');
   }
-  return { marine, diary, offline, customMetrics, communityVote, rankingEmphasis };
+  return {
+    marine,
+    diary,
+    offline,
+    customMetrics,
+    communityVote,
+    rankingEmphasis,
+    liveWebcams: liveWebcams ?? false,
+  };
 }
 
 export function parsePlanCatalog(value: unknown): PlanCatalog {

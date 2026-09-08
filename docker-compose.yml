@@ -18,6 +18,9 @@ services:
       TaNoMar__VapidSubject: ${VAPID_SUBJECT:-}
       Fishing__TabuaMareApiKey: ${TABUA_MARE_API_KEY:-}
       Fishing__GeoapifyApiKey: ${GEOAPIFY_API_KEY:-}
+      Webcams__WindyApiKey: ${WINDY_WEBCAMS_API_KEY:-}
+      Webcams__SearchRadiusKm: ${Webcams__SearchRadiusKm:-10}
+      Webcams__AvailabilityCacheMinutes: ${Webcams__AvailabilityCacheMinutes:-15}
       Billing__AsaasApiKey: ${ASAAS_API_KEY:-}
       Billing__AsaasBaseUrl: ${ASAAS_BASE_URL:-https://api.asaas.com/v3}
       Billing__AsaasWebhookToken: ${ASAAS_WEBHOOK_TOKEN:-}

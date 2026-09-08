@@ -37,6 +37,7 @@ Os services chamam `/api/v1`, validam DTOs de wire e mapeiam para os tipos da UI
 - `Options`: configuração da aplicação.
 - `Notifications`: hub SSE em memória, worker de Web Push (VAPID) e worker horário de alertas de previsão. Sem fila externa; um container. Alertas são persistidos em `ForecastAlerts` e respeitam as preferências de notificação.
 - `Billing`: cliente Asaas, catálogo, checkout, webhook, cancelamento e worker do período.
+- `Webcams`: `WebcamService`, `IWebcamProvider` e `WindyWebcamProvider`. O vínculo fica em `FishingSpotWebcams` (`Provider` + `ExternalId`). Módulo `liveWebcams` no plano Capitão. Ver [features/webcams.md](features/webcams.md).
 - `Program.cs`: DI, middleware, worker de aquecimento e endpoints Minimal API sob `/api/v1`.
 
 Namespaces, assembly e tipos técnicos usam `TaNoMar.Api`. Identificadores de runtime estáveis (seção `TaNoMar`, cookie, caminhos persistentes) estão catalogados em `docs/api-contracts.md`.
