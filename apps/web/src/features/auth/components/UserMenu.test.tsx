@@ -53,7 +53,7 @@ describe('UserMenu', () => {
     expect(screen.getByText('Plano Mestre')).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'Mudar plano' })).toHaveAttribute(
       'href',
-      '/premium',
+      '/premium#planos',
     );
     expect(screen.getByRole('menuitem', { name: 'Conta' })).toHaveAttribute('href', '/conta');
     expect(screen.getByRole('menuitem', { name: 'Sobre' })).toHaveAttribute('href', '/sobre');

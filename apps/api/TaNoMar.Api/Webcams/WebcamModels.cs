@@ -36,6 +36,8 @@ internal sealed record WebcamProviderDetails(
         && uri.Scheme == Uri.UriSchemeHttps;
 }
 
+internal sealed record WebcamPlayerCache(string EmbedUrl, string? PreviewUrl);
+
 internal sealed record WebcamLinkRequest(string? Provider, string? ExternalId);
 
 internal sealed record WebcamHttpResult(int Status, object? Body = null)

@@ -31,7 +31,7 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const target =
-    typeof event.notification.data?.url === 'string' ? event.notification.data.url : '/';
+    typeof event.notification.data?.url === 'string' ? event.notification.data.url : '/app';
   event.waitUntil(openApp(target));
 });
 
@@ -43,7 +43,7 @@ async function handlePush(event: PushEvent) {
     body: payload.body,
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-192.png',
-    data: { url: '/' },
+    data: { url: '/app' },
   });
 }
 

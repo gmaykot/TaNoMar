@@ -99,6 +99,8 @@ public sealed class WebcamServiceTests
 
         Assert.Equal(200, result.Status);
         Assert.Contains("embedUrl", Body(result));
+        Assert.Contains("previewUrl", Body(result));
+        Assert.Contains("https://images.windy.com/preview.jpg", Body(result));
     }
 
     [Fact]

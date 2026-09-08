@@ -258,17 +258,15 @@ api.MapGet("/me", async (ClaimsPrincipal principal, TaNoMarDbContext db, Billing
     return Results.Ok(await UserDtoAsync(user, db, billing, cancellationToken));
 }).RequireAuthorization();
 
-api.MapGet("/plans", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+api.MapGet("/plans", async (TaNoMarDbContext db, CancellationToken cancellationToken) =>
 {
-    var user = await CurrentUserAsync(principal, db, cancellationToken);
-    if (user is null) return Results.Unauthorized();
     var plans = await db.Plans.AsNoTracking()
         .Where(plan => plan.Code != PlanRules.Free && plan.IsEnabled)
         .OrderBy(plan => plan.SortOrder)
         .ThenBy(plan => plan.Name)
         .ToListAsync(cancellationToken);
     return Results.Ok(plans.Select(PlanRules.CatalogDto).ToList());
-}).RequireAuthorization();
+});
 
 api.MapGet("/billing/catalog", async (ClaimsPrincipal principal, TaNoMarDbContext db, BillingService billing, CancellationToken cancellationToken) =>
 {

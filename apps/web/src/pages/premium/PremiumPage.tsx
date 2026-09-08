@@ -11,8 +11,8 @@ import {
   Users,
   Waves,
 } from 'lucide-react';
-import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Card } from '@/design-system/components/Card';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -99,6 +99,7 @@ export function PremiumPage() {
   const auth = useAuth();
   const catalog = useBillingCatalog();
   const checkout = useBillingCheckout();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const isPaid = isPaidPlan(auth.user);
@@ -114,9 +115,20 @@ export function PremiumPage() {
         ? 'Não foi possível abrir o pagamento.'
         : null;
 
+  useEffect(() => {
+    if (catalog.isSuccess && location.hash === '#planos') {
+      document.getElementById('planos')?.scrollIntoView({ block: 'start' });
+    }
+  }, [catalog.isSuccess, location.hash]);
+
   function handleCheckout(planCode: string, cycle: BillingCycle) {
     setPendingKey(`${planCode}:${cycle}`);
-    checkout.mutate({ planCode, cycle });
+    checkout.mutate(
+      { planCode, cycle },
+      {
+        onSettled: () => setPendingKey(null),
+      },
+    );
   }
 
   if (catalog.isPending) {

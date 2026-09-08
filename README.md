@@ -24,7 +24,7 @@ npm install
 npm run dev
 ```
 
-Rotas: `/entrar`, `/`, `/ranking`, `/locais`, `/locais/novo`, `/locais/:locationId`, `/conta`, `/conta/preferencias`, `/conta/notificacoes`, `/premium`, `/diario`, `/admin`, `/admin/locais` e `/admin/usuarios`. O Vite encaminha `/api` para `http://127.0.0.1:5000`. No celular use `http://<ip-lan>.nip.io:5173/` e, para instalar o PWA, `https://<ip-lan>.nip.io:5174/` — detalhes em [docs/pwa.md](docs/pwa.md).
+Rotas: `/` (landing pública), `/entrar`, `/app` (início autenticado), `/ranking`, `/locais`, `/locais/novo`, `/locais/:locationId`, `/conta`, `/conta/preferencias`, `/conta/notificacoes`, `/premium`, `/diario`, `/admin`, `/admin/locais` e `/admin/usuarios`. O Vite encaminha `/api` para `http://127.0.0.1:5000`. No celular use `http://<ip-lan>.nip.io:5173/` e, para instalar o PWA, `https://<ip-lan>.nip.io:5174/` — detalhes em [docs/pwa.md](docs/pwa.md). A landing, o catálogo público e a configuração de domínio estão em [docs/landing.md](docs/landing.md).
 
 | Comando             | Uso                            |
 | ------------------- | ------------------------------ |

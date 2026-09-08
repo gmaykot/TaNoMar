@@ -15,7 +15,8 @@ Coolify
               │     ├── estágio 2 — dotnet publish + wwwroot/
               │     └── estágio 3 — imagem aspnet final
               └── runtime: TaNoMar.Api.dll na porta 8080
-                    ├── /              → PWA (React estático)
+                    ├── /              → landing pública (React estático)
+                    ├── /app           → início autenticado do PWA
                     ├── /ranking, …    → SPA (React Router)
                     └── /api/v1/*      → endpoints da API
 ```
@@ -46,6 +47,14 @@ Alterações no frontend exigem **rebuild da imagem inteira** (web + API). Isso 
 3. Configure as variáveis de ambiente (ver tabela abaixo).
 4. Ative persistência do volume `tanomar-data` se quiser preservar o log de auditoria (mapeado para `/var/lib/tanomar`).
 5. Configure domínio e HTTPS no proxy do Coolify (porta interna do container **8080**). A porta publicada no host padrão é **8082** (`TANOMAR_PORT`), para não colidir com outro serviço na 8080.
+
+### Domínio raiz, www e URL canônica
+
+Cadastre o domínio raiz e o subdomínio `www` no mesmo recurso do Coolify, ambos apontando para a porta interna `8080`. O fallback da SPA entrega a landing em `/` nos dois hosts. No DNS, o domínio raiz deve apontar para o servidor do Coolify e `www` pode ser um CNAME para o domínio raiz.
+
+A landing define o domínio raiz como canônico: ao abrir por `www`, o `canonical`, `og:url` e os dados estruturados removem esse prefixo. Se o proxy permitir escolher um domínio principal, configure o domínio raiz como principal e redirecione `www` permanentemente para ele; mesmo sem esse redirecionamento, a landing continua acessível nos dois endereços. Configure também `PUBLIC_APP_ORIGIN=https://<domínio-raiz>` para os callbacks da cobrança.
+
+`robots.txt` é publicado pelo frontend. O repositório não gera `sitemap.xml` enquanto o domínio de produção não estiver definido em configuração versionada; após definir o domínio, publique um sitemap com a URL canônica `/` no proxy ou como asset do frontend.
 
 ### Variáveis obrigatórias
 

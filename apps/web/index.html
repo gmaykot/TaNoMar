@@ -9,8 +9,26 @@
     <meta name="apple-mobile-web-app-title" content="TáNoMar" />
     <meta
       name="description"
-      content="TáNoMar ajuda você a descobrir onde e quando vale a pena pescar."
+      content="Compare as condições do mar, vento, ondas, maré e melhores horários para planejar sua pescaria com mais informação."
     />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:site_name" content="TáNoMar" />
+    <meta property="og:title" content="TáNoMar — Entenda o mar antes de pescar" />
+    <meta
+      property="og:description"
+      content="Compare as condições do mar, vento, ondas, maré e melhores horários para planejar sua pescaria com mais informação."
+    />
+    <meta id="landing-og-url" property="og:url" content="/" />
+    <meta id="landing-og-image" property="og:image" content="/icons/icon-1024.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="TáNoMar — Entenda o mar antes de pescar" />
+    <meta
+      name="twitter:description"
+      content="Compare as condições do mar, vento, ondas, maré e melhores horários para planejar sua pescaria com mais informação."
+    />
+    <meta id="landing-twitter-image" name="twitter:image" content="/icons/icon-1024.png" />
+    <link id="landing-canonical" rel="canonical" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png" />
     <link rel="apple-touch-icon" href="/icons/icon-180.png" />
@@ -79,7 +97,35 @@
       media="screen and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
       href="/splash/1640x2360.png"
     />
-    <title>TáNoMar — Pesque no momento certo.</title>
+    <script id="landing-structured-data" type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "TáNoMar",
+        "description": "Compare as condições do mar, vento, ondas, maré e melhores horários para planejar sua pescaria com mais informação.",
+        "applicationCategory": "LifestyleApplication",
+        "operatingSystem": "Android, iOS, Windows, macOS, Linux",
+        "url": "/",
+        "image": "/icons/icon-1024.png"
+      }
+    </script>
+    <script>
+      (() => {
+        const canonical = new URL('/', window.location.href);
+        canonical.hostname = canonical.hostname.replace(/^www\./i, '');
+        const image = new URL('/icons/icon-1024.png', canonical);
+        document.getElementById('landing-canonical').href = canonical.href;
+        document.getElementById('landing-og-url').content = canonical.href;
+        document.getElementById('landing-og-image').content = image.href;
+        document.getElementById('landing-twitter-image').content = image.href;
+        const structuredData = document.getElementById('landing-structured-data');
+        const data = JSON.parse(structuredData.textContent);
+        data.url = canonical.href;
+        data.image = image.href;
+        structuredData.textContent = JSON.stringify(data);
+      })();
+    </script>
+    <title>TáNoMar — Entenda o mar antes de pescar</title>
   </head>
   <body>
     <div id="root"></div>

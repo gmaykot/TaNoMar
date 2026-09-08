@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import { Route, Routes } from 'react-router-dom';
 import { renderWithProviders } from '@/test/renderWithProviders';
+import { routes } from '@/shared/constants/routes';
 import { PartnerDetailsPage } from './PartnerDetailsPage';
 
 const { authState } = vi.hoisted(() => ({
@@ -69,7 +70,7 @@ function renderPage() {
   return renderWithProviders(
     <Routes>
       <Route path="/parceiros/:partnerSlug" element={<PartnerDetailsPage />} />
-      <Route path="/" element={<p>Início</p>} />
+      <Route path={routes.home} element={<p>Início</p>} />
     </Routes>,
     ['/parceiros/pesca-campeche'],
   );

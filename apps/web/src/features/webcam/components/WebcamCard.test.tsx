@@ -16,6 +16,7 @@ const live: SpotWebcam = {
   longitude: -48.46,
   isAvailable: true,
   isLive: true,
+  previewUrl: 'https://images.windy.com/preview.jpg',
   player: { kind: 'embed', embedUrl: 'https://webcams.windy.com/embed/123/live' },
 };
 
@@ -24,12 +25,33 @@ describe('WebcamCard', () => {
     const user = userEvent.setup();
     renderWithProviders(<WebcamCard webcam={live} />);
     expect(screen.getByRole('heading', { name: 'Praia do Campeche' })).toBeInTheDocument();
+    expect(screen.getByRole('presentation')).toHaveAttribute(
+      'src',
+      'https://images.windy.com/preview.jpg',
+    );
     expect(screen.queryByTitle('Câmera ao vivo: Praia do Campeche')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Ver câmera ao vivo' }));
+    expect(
+      screen.getByRole('dialog', { name: 'Câmera ao vivo: Praia do Campeche' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Vire o celular para a transmissão preencher a tela'),
+    ).toBeInTheDocument();
     expect(screen.getByTitle('Câmera ao vivo: Praia do Campeche')).toHaveAttribute(
       'src',
-      'https://webcams.windy.com/embed/123/live',
+      'https://webcams.windy.com/embed/123/live?autoplay=1&mute=1&playsinline=1',
     );
+    await user.click(screen.getByRole('button', { name: 'Fechar câmera' }));
+    expect(
+      screen.queryByRole('dialog', { name: 'Câmera ao vivo: Praia do Campeche' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('abre a câmera pela miniatura', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<WebcamCard webcam={live} />);
+    await user.click(screen.getByRole('button', { name: 'Ver câmera ao vivo: Praia do Campeche' }));
+    expect(screen.getByTitle('Câmera ao vivo: Praia do Campeche')).toBeInTheDocument();
   });
 
   it('não oferece player quando a câmera está indisponível', () => {

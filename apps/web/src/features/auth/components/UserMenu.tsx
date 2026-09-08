@@ -66,7 +66,7 @@ export function UserMenu() {
           </div>
           <NavLink
             role="menuitem"
-            to={routes.premium}
+            to={isPaidPlan(user) ? `${routes.premium}#planos` : routes.premium}
             className={({ isActive }) => `${styles.item} ${isActive ? styles.active : ''}`}
             onClick={close}
           >

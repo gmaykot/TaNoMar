@@ -7,6 +7,7 @@ import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { useSpotWebcam } from '../hooks/useSpotWebcam';
 import { WebcamPlayer } from './WebcamPlayer';
 import { WebcamSearch } from './WebcamSearch';
+import { WebcamThumb } from './WebcamThumb';
 import styles from './webcam.module.css';
 
 interface WebcamManagerProps {
@@ -78,13 +79,16 @@ export function WebcamManager({ spotId, admin = false }: WebcamManagerProps) {
       ) : null}
       {webcams.linkError ? <p className={styles.error}>{webcams.linkError}</p> : null}
       {webcams.unlinkError ? <p className={styles.error}>{webcams.unlinkError}</p> : null}
+      {linked ? (
+        <WebcamThumb webcam={linked} onOpen={canPlay ? () => setPlayerOpen(true) : undefined} />
+      ) : null}
       {linked && !canPlay ? (
         <p className={styles.copy}>A câmera vinculada não está disponível agora.</p>
       ) : null}
       <div className={styles.actions}>
         {canPlay && linked?.player ? (
-          <Button type="button" onClick={() => setPlayerOpen(true)} disabled={playerOpen}>
-            {playerOpen ? 'Câmera aberta' : 'Ver câmera'}
+          <Button type="button" onClick={() => setPlayerOpen(true)}>
+            Ver câmera
           </Button>
         ) : null}
         <Button type="button" onClick={startSearch} disabled={webcams.search.isPending}>
@@ -102,7 +106,12 @@ export function WebcamManager({ spotId, admin = false }: WebcamManagerProps) {
         ) : null}
       </div>
       {playerOpen && linked?.player ? (
-        <WebcamPlayer title={linked.name ?? 'Câmera ao vivo'} embedUrl={linked.player.embedUrl} />
+        <WebcamPlayer
+          title={linked.name ?? 'Câmera ao vivo'}
+          embedUrl={linked.player.embedUrl}
+          expanded
+          onClose={() => setPlayerOpen(false)}
+        />
       ) : null}
       {searching ? (
         <WebcamSearch

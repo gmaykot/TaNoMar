@@ -118,7 +118,10 @@ describe('AccountPage', () => {
     expect(screen.getByText('Mestre')).toBeInTheDocument();
     expect(screen.getByText('1 / 10')).toBeInTheDocument();
     expect(screen.getByText('2 / 20')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Mudar plano/ })).toHaveAttribute('href', '/premium');
+    expect(screen.getByRole('link', { name: /Mudar plano/ })).toHaveAttribute(
+      'href',
+      '/premium#planos',
+    );
 
     await user.click(screen.getByRole('button', { name: 'Sair' }));
     expect(logout).toHaveBeenCalledTimes(1);

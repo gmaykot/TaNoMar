@@ -52,7 +52,7 @@ O contrato de métrica é uma união `{ state: "available", value }` ou `{ state
 - `POST /community/reports/{id}/confirm` e `/contest`: um voto por usuário, só com `modules.communityVote`. Free vê e cria relatos; o autor não vota no próprio. Sem o módulo a API responde `400` (`plan_required`).
 - `GET /admin/fishing-spots/pending`, `POST /admin/fishing-spots/{id}/approve` e `/reject`: só Admin. Recusar devolve o ponto para `private` e notifica o dono.
 - `GET /admin/users`, `PUT /admin/users/{id}/plan` e `PUT /admin/users/{id}/active`: só Admin. Lista contas, troca o plano (`free`, `arrais`, `premium` ou `capitao`; `mestre` é aceito como alias de `premium`) e bloqueia ou libera o acesso. Não atribui plano desligado. A conta do bootstrap pode mudar de plano e não é bloqueada; o admin não bloqueia a si mesmo nem o último admin ativo. Bloquear revoga os refresh tokens.
-- `GET /plans`: autenticado. Catálogo comercial dos planos pagos com `enabled = true` (nome, tagline, `monthlyPriceCents`, destaque, ordem, cotas e módulos), na ordem da vitrine.
+- `GET /plans`: público. Catálogo comercial dos planos pagos com `enabled = true` (nome, tagline, `monthlyPriceCents`, destaque, ordem, cotas e módulos), na ordem da vitrine. Não devolve contas, cobrança nem dados de usuário.
 - `GET /billing/catalog`: autenticado. Planos pagos habilitados com `annualPriceCents`, `discountPercent`, `enabled` (chave Asaas) e `quotes` de upgrade quando couber.
 - `POST /billing/checkout`: autenticado. Body `{ planCode, cycle: "MONTHLY" | "YEARLY" }`. Devolve `{ checkoutId, checkoutUrl, expiresAt }` ou `503 billing_disabled`.
 - `GET /billing/subscription` e `POST /billing/subscription/cancel`: autenticado. Cancelar encerra a recorrência no Asaas **sem** `/refund`; o plano pago segue até `accessUntil`.
@@ -78,7 +78,7 @@ O worker de alertas verifica a previsão de hora em hora, respeita `forecastNoti
 
 Exigem `modules.liveWebcams` (padrão: plano Capitão). Sem o módulo, `GET /fishing-spots/{id}/webcam` responde `403` e não devolve URL/embed. O frontend vincula só com `{ provider, externalId }`. Identidade da câmera: `provider` + `externalId` (`windy` ou `youtube`). O DTO pode incluir `providerDisplayName` (`Windy` ou `YouTube`). Detalhes em [features/webcams.md](features/webcams.md).
 
-- `GET /fishing-spots/{id}/webcam`: transmissão do local visível. `404` sem câmera. Feature desligada no admin: `403 feature_disabled`, sem URL.
+- `GET /fishing-spots/{id}/webcam`: transmissão do local visível. O DTO inclui `previewUrl` (miniatura HTTPS) e, para quem pode assistir, `player.embedUrl`. `404` sem câmera. Feature desligada no admin: `403 feature_disabled`, sem URL.
 - `GET /fishing-spots/{id}/webcams/search`, `POST /fishing-spots/{id}/webcam`, `DELETE /fishing-spots/{id}/webcam`: dono Capitão de Meu Local, com a feature ligada. O POST aceita só Windy; `provider=youtube` responde `403`.
 - `GET /admin/fishing-spots/{id}/webcam`, `GET /admin/fishing-spots/{id}/webcams/search`, `GET /admin/fishing-spots/{id}/webcams/youtube?q=`, `POST /admin/fishing-spots/{id}/webcam`, `DELETE /admin/fishing-spots/{id}/webcam`: Admin, qualquer local, mesmo com a feature desligada. O `q` do YouTube é o link da live; a resposta usa o mesmo DTO da pesquisa. O POST envia `{ provider, externalId }`.
 - Pesquisa sem chave Windy ou consulta YouTube sem chave: `503 webcam_unconfigured`. Provider fora: `502 webcam_provider_unavailable`. Live do YouTube inválida ou encerrada: `400 webcam_invalid`.

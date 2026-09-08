@@ -61,6 +61,58 @@ export function SubscriptionPlanCards({
 
   return (
     <div className={premiumStyles.planGrid}>
+      <div className={premiumStyles.planComparison}>
+        <table aria-label="Comparação dos planos">
+          <thead>
+            <tr>
+              <th scope="col">Recurso</th>
+              {plans.map((plan) => (
+                <th scope="col" key={plan.code}>
+                  {plan.name}
+                  {currentPlanCode === plan.code ? <small>Plano atual</small> : null}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <ComparisonRow
+              label="Mensal"
+              plans={plans}
+              value={(plan) => formatBrlFromCents(plan.monthlyPriceCents)}
+            />
+            <ComparisonRow
+              label="Anual"
+              plans={plans}
+              value={(plan) => formatBrlFromCents(plan.annualPriceCents)}
+            />
+            <ComparisonRow
+              label="Previsão"
+              plans={plans}
+              value={(plan) => `${plan.entitlements.maxForecastDays} dias`}
+            />
+            <ComparisonRow
+              label="Locais pessoais"
+              plans={plans}
+              value={(plan) => String(plan.entitlements.maxPersonalSpots)}
+            />
+            <ComparisonRow
+              label="Favoritos"
+              plans={plans}
+              value={(plan) => String(plan.entitlements.maxFavorites)}
+            />
+            <ComparisonRow
+              label="Alertas"
+              plans={plans}
+              value={(plan) => String(plan.entitlements.maxAlerts)}
+            />
+            <ComparisonRow
+              label="Câmeras ao vivo"
+              plans={plans}
+              value={(plan) => (plan.modules.liveWebcams ? 'Incluídas' : '—')}
+            />
+          </tbody>
+        </table>
+      </div>
       {plans.map((plan) => {
         const Icon = planIcons[subscriptionPlanIcon(plan.code)];
         const isCurrent = currentPlanCode === plan.code;
@@ -104,7 +156,7 @@ export function SubscriptionPlanCards({
                 {statusLabel({ isCurrent, isPaid, billingEnabled })}
               </p>
             ) : null}
-            {billingEnabled ? (
+            {billingEnabled && (!isCurrent || (hasPaidPeriod && currentCycle === 'MONTHLY')) ? (
               <div className={premiumStyles.planActions}>
                 <CycleAction
                   plan={plan}
@@ -139,6 +191,25 @@ export function SubscriptionPlanCards({
         );
       })}
     </div>
+  );
+}
+
+function ComparisonRow({
+  label,
+  plans,
+  value,
+}: {
+  label: string;
+  plans: BillingPlan[];
+  value: (plan: BillingPlan) => string;
+}) {
+  return (
+    <tr>
+      <th scope="row">{label}</th>
+      {plans.map((plan) => (
+        <td key={plan.code}>{value(plan)}</td>
+      ))}
+    </tr>
   );
 }
 

@@ -20,6 +20,7 @@ Page → feature/design-system components → tokens CSS
 ```
 
 - `apps/web/src/app`: providers, rotas, shell e ciclo PWA.
+- `/` carrega a landing pública; o roteador de sessão e as páginas autenticadas são carregados sob demanda a partir de `/entrar` ou de uma rota interna. A home do aplicativo fica em `/app`.
 - O shell exibe a confirmação global disparada pelos fluxos que salvam cadastros e configurações.
 - `apps/web/src/design-system`: tokens, marca e componentes sem regra de pesca.
 - `apps/web/src/features`: domínio, hooks, services, mappers e componentes por feature.

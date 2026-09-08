@@ -28,6 +28,7 @@ export interface SpotWebcam {
   longitude: number | null;
   isAvailable: boolean;
   isLive: boolean;
+  previewUrl: string | null;
   player: WebcamPlayer | null;
 }
 

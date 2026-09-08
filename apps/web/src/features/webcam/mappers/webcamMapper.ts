@@ -46,6 +46,7 @@ export function parseSpotWebcam(value: unknown): SpotWebcam {
       longitude: null,
       isAvailable: false,
       isLive: false,
+      previewUrl: null,
       player: null,
     };
   }
@@ -69,6 +70,7 @@ export function parseSpotWebcam(value: unknown): SpotWebcam {
     longitude: readNumber(value.longitude),
     isAvailable: readBoolean(value.isAvailable) === true,
     isLive: readBoolean(value.isLive) === true,
+    previewUrl: readHttps(value.previewUrl),
     player,
   };
 }
@@ -112,6 +114,28 @@ export function parseWebcamSearch(value: unknown): WebcamSearchItem[] {
       previewUrl: readHttps(item.previewUrl),
     };
   });
+}
+
+export function webcamPreviewUrl(
+  webcam: Pick<SpotWebcam, 'previewUrl' | 'provider' | 'externalId'>,
+) {
+  if (webcam.previewUrl) return webcam.previewUrl;
+  if (webcam.provider === 'youtube' && webcam.externalId) {
+    return `https://i.ytimg.com/vi/${webcam.externalId}/hqdefault.jpg`;
+  }
+  return null;
+}
+
+export function webcamAutoplayUrl(embedUrl: string) {
+  try {
+    const url = new URL(embedUrl);
+    url.searchParams.set('autoplay', '1');
+    url.searchParams.set('mute', '1');
+    url.searchParams.set('playsinline', '1');
+    return url.toString();
+  } catch {
+    return embedUrl;
+  }
 }
 
 export function formatDistanceKm(distanceKm: number) {

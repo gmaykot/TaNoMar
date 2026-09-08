@@ -115,7 +115,10 @@ export function AccountPage() {
 
       <BillingSummary />
 
-      <Link className={accountStyles.premiumCallout} to={routes.premium}>
+      <Link
+        className={accountStyles.premiumCallout}
+        to={isPaidPlan(user) ? `${routes.premium}#planos` : routes.premium}
+      >
         <strong>{isPaidPlan(user) ? 'Mudar plano' : 'Conhecer os planos'}</strong>
         <small>
           {isPaidPlan(user)

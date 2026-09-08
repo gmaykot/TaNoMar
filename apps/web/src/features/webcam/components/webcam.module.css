@@ -56,6 +56,56 @@
   line-height: 1.4;
 }
 
+.thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-ocean-950);
+  cursor: pointer;
+}
+
+.thumbOff {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.thumbImage,
+.thumbFallback {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.thumbImage {
+  object-fit: cover;
+}
+
+.thumbFallback {
+  display: grid;
+  place-items: center;
+  color: rgb(255 255 255 / 55%);
+}
+
+.thumbPlay {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--color-ocean-950);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -76,6 +126,87 @@
   width: 100%;
   height: 100%;
   border: 0;
+}
+
+.expanded {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-sheet) + 10);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  color: white;
+  background: var(--color-ocean-950);
+}
+
+.expandedBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: calc(var(--space-3) + env(safe-area-inset-top)) var(--space-4) var(--space-3);
+}
+
+.expandedBar p {
+  margin: 0;
+  color: rgb(255 255 255 / 78%);
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+}
+
+.expandedClose {
+  color: var(--color-ocean-950);
+  background: var(--color-surface);
+}
+
+.expandedStage {
+  display: grid;
+  min-height: 0;
+  place-items: center;
+  padding: 0 var(--space-3) max(var(--space-3), env(safe-area-inset-bottom));
+}
+
+.expandedStage iframe {
+  display: block;
+  width: 100%;
+  max-height: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  background: black;
+}
+
+@media (orientation: landscape) {
+  .expanded {
+    grid-template-rows: 0 minmax(0, 1fr);
+  }
+
+  .expandedBar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 1;
+    justify-content: flex-end;
+    padding: max(var(--space-2), env(safe-area-inset-top))
+      max(var(--space-2), env(safe-area-inset-right)) 0 0;
+  }
+
+  .expandedBar p {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .expandedStage {
+    padding: 0;
+  }
+
+  .expandedStage iframe {
+    width: 100vw;
+    height: 100dvh;
+    max-height: none;
+    aspect-ratio: auto;
+  }
 }
 
 .results {

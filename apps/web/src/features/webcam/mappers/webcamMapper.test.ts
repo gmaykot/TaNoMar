@@ -4,6 +4,8 @@ import {
   formatDistanceKm,
   parseSpotWebcam,
   parseWebcamSearch,
+  webcamAutoplayUrl,
+  webcamPreviewUrl,
   webcamSearchCaption,
 } from './webcamMapper';
 
@@ -19,11 +21,13 @@ describe('parseSpotWebcam', () => {
         longitude: -48.46,
         isAvailable: true,
         isLive: true,
+        previewUrl: 'https://images.windy.com/preview.jpg',
         player: { kind: 'embed', embedUrl: 'https://webcams.windy.com/embed/123/live' },
       }),
     ).toMatchObject({
       linked: true,
       name: 'Campeche',
+      previewUrl: 'https://images.windy.com/preview.jpg',
       player: { embedUrl: 'https://webcams.windy.com/embed/123/live' },
     });
   });
@@ -53,8 +57,37 @@ describe('parseSpotWebcam', () => {
       longitude: null,
       isAvailable: false,
       isLive: false,
+      previewUrl: null,
       player: null,
     });
+  });
+});
+
+describe('webcamPreviewUrl', () => {
+  it('usa a miniatura do contrato e cai no YouTube quando faltar', () => {
+    expect(
+      webcamPreviewUrl({
+        previewUrl: 'https://images.windy.com/preview.jpg',
+        provider: 'windy',
+        externalId: '123',
+      }),
+    ).toBe('https://images.windy.com/preview.jpg');
+    expect(
+      webcamPreviewUrl({
+        previewUrl: null,
+        provider: 'youtube',
+        externalId: 'dQw4w9WgXcQ',
+      }),
+    ).toBe('https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
+  });
+});
+
+describe('webcamAutoplayUrl', () => {
+  it('pede autoplay mudo no embed', () => {
+    expect(webcamAutoplayUrl('https://webcams.windy.com/embed/123/live')).toBe(
+      'https://webcams.windy.com/embed/123/live?autoplay=1&mute=1&playsinline=1',
+    );
+    expect(webcamAutoplayUrl('https://www.youtube.com/embed/dQw4w9WgXcQ')).toContain('autoplay=1');
   });
 });
 

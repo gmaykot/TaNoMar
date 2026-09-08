@@ -188,6 +188,57 @@
   gap: var(--space-3);
 }
 
+.planComparison {
+  grid-column: 1 / -1;
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.planComparison table {
+  width: 100%;
+  min-width: 38rem;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.planComparison th,
+.planComparison td {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.planComparison th:first-child {
+  position: sticky;
+  left: 0;
+  text-align: left;
+  background: var(--color-surface);
+}
+
+.planComparison thead th {
+  color: var(--color-ocean-950);
+  background: var(--color-sea-100);
+}
+
+.planComparison thead th:first-child {
+  background: var(--color-sea-100);
+}
+
+.planComparison th small {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--color-sea-700);
+  font-size: var(--font-size-xs);
+}
+
+.planComparison tbody tr:last-child th,
+.planComparison tbody tr:last-child td {
+  border-bottom: 0;
+}
+
 .planCard {
   display: grid;
   align-content: start;

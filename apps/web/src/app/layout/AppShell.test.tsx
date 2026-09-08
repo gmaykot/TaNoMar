@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router-dom';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
+import { routes } from '@/shared/constants/routes';
 import { AppShell } from './AppShell';
 import { showSaveConfirmation } from './saveConfirmationEvents';
 
@@ -51,11 +52,11 @@ vi.mock('@/features/auth/components/UserMenu', () => ({
   UserMenu: () => null,
 }));
 
-function renderShell(initialEntries = ['/']) {
+function renderShell(initialEntries: string[] = [routes.home]) {
   return renderWithProviders(
     <Routes>
       <Route element={<AppShell />}>
-        <Route path="/" element={<div>Início</div>} />
+        <Route path={routes.home} element={<div>Início</div>} />
         <Route path="/ranking" element={<div>Ranking</div>} />
         <Route path="/locais" element={<div>Locais</div>} />
         <Route path="/conta" element={<div>Conta</div>} />
@@ -81,7 +82,7 @@ describe('AppShell', () => {
 
   it('volta ao topo ao abrir outra página pelo menu inferior', async () => {
     const user = userEvent.setup();
-    renderShell(['/']);
+    renderShell([routes.home]);
     vi.mocked(window.scrollTo).mockClear();
 
     await user.click(within(footerNav()).getByRole('link', { name: 'Ranking' }));
@@ -101,7 +102,7 @@ describe('AppShell', () => {
   });
 
   it('mostra a confirmação global de salvamento', async () => {
-    renderShell(['/']);
+    renderShell([routes.home]);
 
     showSaveConfirmation('Preferências salvas.');
 

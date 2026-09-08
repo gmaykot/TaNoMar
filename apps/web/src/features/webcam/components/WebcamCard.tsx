@@ -6,6 +6,7 @@ import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { useSpotWebcam } from '../hooks/useSpotWebcam';
 import type { SpotWebcam } from '../types/webcam';
 import { WebcamPlayer } from './WebcamPlayer';
+import { WebcamThumb } from './WebcamThumb';
 import styles from './webcam.module.css';
 
 interface WebcamCardProps {
@@ -32,17 +33,25 @@ export function WebcamCard({ webcam, heading = 'Ao vivo' }: WebcamCardProps) {
           {canPlay ? 'Disponível' : 'Indisponível'}
         </span>
       </div>
+      {webcam.linked ? (
+        <WebcamThumb webcam={webcam} onOpen={canPlay ? () => setOpen(true) : undefined} />
+      ) : null}
       {canPlay ? (
         <div className={styles.actions}>
-          <Button type="button" onClick={() => setOpen(true)} disabled={open}>
-            {open ? 'Câmera aberta' : 'Ver câmera ao vivo'}
+          <Button type="button" onClick={() => setOpen(true)}>
+            Ver câmera ao vivo
           </Button>
         </div>
       ) : (
         <p className={styles.copy}>A câmera vinculada não está disponível agora.</p>
       )}
       {open && webcam.player ? (
-        <WebcamPlayer title={name} embedUrl={webcam.player.embedUrl} />
+        <WebcamPlayer
+          title={name}
+          embedUrl={webcam.player.embedUrl}
+          expanded
+          onClose={() => setOpen(false)}
+        />
       ) : null}
     </Card>
   );

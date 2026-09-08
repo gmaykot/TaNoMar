@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /app
+Disallow: /comecar
+Disallow: /conta/
+Disallow: /diario
+Disallow: /locais
+Disallow: /ranking

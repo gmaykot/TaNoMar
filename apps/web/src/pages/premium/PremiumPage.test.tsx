@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { PremiumPage } from './PremiumPage';
@@ -90,6 +90,12 @@ const { authState, billingState, startCheckout } = vi.hoisted(() => ({
   startCheckout: vi.fn(),
 }));
 
+const scrollIntoView = vi.fn();
+Object.defineProperty(Element.prototype, 'scrollIntoView', {
+  configurable: true,
+  value: scrollIntoView,
+});
+
 vi.mock('@/features/auth/hooks/useAuth', () => ({
   useAuth: () => authState,
 }));
@@ -111,6 +117,7 @@ describe('PremiumPage', () => {
     authState.user = { plan: { code: 'free', name: 'Free' } };
     billingState.enabled = false;
     startCheckout.mockReset();
+    scrollIntoView.mockReset();
   });
 
   it('lista os três planos de assinatura e os recursos incluídos', async () => {
@@ -119,9 +126,10 @@ describe('PremiumPage', () => {
     expect(await screen.findByRole('heading', { name: 'Arrais' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Mestre' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Capitão' })).toBeInTheDocument();
-    expect(screen.getByText('R$ 14,90')).toBeInTheDocument();
-    expect(screen.getByText('R$ 19,90')).toBeInTheDocument();
-    expect(screen.getByText('R$ 24,90')).toBeInTheDocument();
+    expect(screen.getAllByText('R$ 14,90')).toHaveLength(2);
+    expect(screen.getAllByText('R$ 19,90')).toHaveLength(2);
+    expect(screen.getAllByText('R$ 24,90')).toHaveLength(2);
+    expect(screen.getByRole('table', { name: 'Comparação dos planos' })).toBeInTheDocument();
     expect(screen.getByText('Mais escolhido')).toBeInTheDocument();
     expect(screen.getByText(/A cobrança ainda não começa por aqui/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Previsão ampliada' })).toBeInTheDocument();
@@ -144,6 +152,20 @@ describe('PremiumPage', () => {
     expect(screen.getByText('Compare os demais planos')).toBeInTheDocument();
   });
 
+  it('não oferece checkout para o plano atual sem assinatura ativa', async () => {
+    authState.user = {
+      plan: { code: 'premium', name: 'Mestre' },
+      billing: { status: 'inactive', cycle: null, enabled: true },
+    };
+    billingState.enabled = true;
+    renderWithProviders(<PremiumPage />);
+
+    const currentPlan = await screen.findByRole('article', { name: 'Mestre' });
+    expect(within(currentPlan).queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Assinar no mês · R$ 14,90' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Assinar no mês · R$ 24,90' })).toBeInTheDocument();
+  });
+
   it('abre o checkout mensal quando a cobrança está ligada', async () => {
     billingState.enabled = true;
     startCheckout.mockResolvedValue({
@@ -161,6 +183,31 @@ describe('PremiumPage', () => {
     ).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Assinar no mês · R$ 14,90' }));
     expect(startCheckout).toHaveBeenCalledWith('arrais', 'MONTHLY');
+  });
+
+  it('permite tentar o checkout de novo depois de uma falha', async () => {
+    billingState.enabled = true;
+    startCheckout.mockRejectedValue(new Error('falha'));
+    const user = userEvent.setup();
+    renderWithProviders(<PremiumPage />);
+
+    const button = await screen.findByRole('button', { name: 'Assinar no mês · R$ 14,90' });
+    await user.click(button);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível abrir o pagamento.',
+    );
+    expect(button).toBeEnabled();
+
+    await user.click(button);
+    expect(startCheckout).toHaveBeenCalledTimes(2);
+  });
+
+  it('leva o atalho de mudança direto para a comparação', async () => {
+    renderWithProviders(<PremiumPage />, ['/premium#planos']);
+
+    await screen.findByRole('table', { name: 'Comparação dos planos' });
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' }));
   });
 
   it('explica o retorno do checkout sem promover o plano localmente', async () => {

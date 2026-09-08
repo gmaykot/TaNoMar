@@ -1,5 +1,6 @@
 export const routes = {
-  home: '/',
+  landing: '/',
+  home: '/app',
   login: '/entrar',
   onboarding: '/comecar',
   ranking: '/ranking',

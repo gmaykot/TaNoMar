@@ -198,7 +198,7 @@ internal sealed class WebcamService(
         match.LastAvailabilityCheck = now;
         match.UpdatedAt = now;
         await db.SaveChangesAsync(cancellationToken);
-        RememberPlayer(match, details.EmbedUrl);
+        RememberPlayer(match, details.EmbedUrl, details.PreviewUrl);
         logger.LogInformation(
             "WebcamLinked spot={SpotId} provider={Provider} externalId={ExternalId} user={UserId}",
             target.Slug,
@@ -240,8 +240,13 @@ internal sealed class WebcamService(
         var stale = link.LastAvailabilityCheck is null
             || DateTimeOffset.UtcNow - link.LastAvailabilityCheck.Value > TimeSpan.FromMinutes(cacheMinutes);
         string? embedUrl = null;
-        if (!stale && cache.TryGetValue(PlayerCacheKey(link.Provider, link.ExternalId), out string? cached))
-            embedUrl = cached;
+        string? previewUrl = null;
+        if (!stale && cache.TryGetValue(PlayerCacheKey(link.Provider, link.ExternalId), out WebcamPlayerCache? cached)
+            && cached is not null)
+        {
+            embedUrl = cached.EmbedUrl;
+            previewUrl = cached.PreviewUrl;
+        }
 
         if (stale || (includePlayer && string.IsNullOrWhiteSpace(embedUrl)))
         {
@@ -251,6 +256,7 @@ internal sealed class WebcamService(
                 if (source is null)
                 {
                     embedUrl = null;
+                    previewUrl = null;
                     logger.LogInformation(
                         "WebcamUnavailable spotWebcam={Id} provider={Provider} externalId={ExternalId}",
                         link.Id,
@@ -271,13 +277,15 @@ internal sealed class WebcamService(
                         link.Name = details!.Name;
                         link.Latitude = details.Latitude;
                         link.Longitude = details.Longitude;
-                        RememberPlayer(link, details.EmbedUrl);
+                        RememberPlayer(link, details.EmbedUrl, details.PreviewUrl);
                         embedUrl = details.EmbedUrl;
+                        previewUrl = details.PreviewUrl;
                     }
                     else
                     {
                         cache.Remove(PlayerCacheKey(link.Provider, link.ExternalId));
                         embedUrl = null;
+                        previewUrl = null;
                         logger.LogInformation(
                             "WebcamUnavailable spotWebcam={Id} provider={Provider} externalId={ExternalId}",
                             link.Id,
@@ -290,11 +298,13 @@ internal sealed class WebcamService(
             catch (WebcamNotConfiguredException)
             {
                 embedUrl = null;
+                previewUrl = null;
             }
             catch (WebcamProviderException exception)
             {
                 logger.LogError(exception, "WebcamProviderError action=status externalId={ExternalId}", link.ExternalId);
                 embedUrl = null;
+                previewUrl = null;
             }
         }
 
@@ -310,6 +320,7 @@ internal sealed class WebcamService(
             longitude = link.Longitude,
             isAvailable = available,
             isLive = available,
+            previewUrl,
             player = includePlayer && available
                 ? new { kind = "embed", embedUrl }
                 : null
@@ -402,12 +413,12 @@ internal sealed class WebcamService(
             "Câmeras ao vivo exigem o plano Capitão.",
             RequiredPlanLabel);
 
-    private void RememberPlayer(FishingSpotWebcam link, string? embedUrl)
+    private void RememberPlayer(FishingSpotWebcam link, string? embedUrl, string? previewUrl)
     {
         if (string.IsNullOrWhiteSpace(embedUrl)) return;
         cache.Set(
             PlayerCacheKey(link.Provider, link.ExternalId),
-            embedUrl,
+            new WebcamPlayerCache(embedUrl, previewUrl),
             TimeSpan.FromMinutes(options.Value.EffectiveAvailabilityCacheMinutes));
     }
 
