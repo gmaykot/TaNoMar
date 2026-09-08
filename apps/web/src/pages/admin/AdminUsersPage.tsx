@@ -7,21 +7,24 @@ import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { SearchField } from '@/design-system/components/SearchField';
 import { AdminUserCard } from '@/features/admin-users/components/AdminUserCard';
 import { adminUsersQueryKey, useAdminUsers } from '@/features/admin-users/hooks/useAdminUsers';
+import { useAdminPlans } from '@/features/admin-plans/hooks/useAdminPlans';
 import {
   setAdminUserActive,
   setAdminUserPlan,
 } from '@/features/admin-users/services/adminUsersService';
+import type { AdminPlanCode } from '@/features/admin-users/types/adminUser';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { isPaidPlan } from '@/features/auth/types/auth';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { ApiError } from '@/shared/api/errors';
 import { routes } from '@/shared/constants/routes';
 import { normalizeText } from '@/shared/utils/normalizeText';
 import styles from '@/pages/shared/pages.module.css';
 
-type Filter = 'all' | 'premium' | 'free' | 'blocked';
+type Filter = 'all' | 'paid' | 'free' | 'blocked';
 
 function filterLabel(filter: Filter) {
-  if (filter === 'premium') return 'Premium';
+  if (filter === 'paid') return 'Assinantes';
   if (filter === 'free') return 'Free';
   if (filter === 'blocked') return 'Bloqueados';
   return 'Todos';
@@ -31,6 +34,10 @@ export function AdminUsersPage() {
   const auth = useAuth();
   const queryClient = useQueryClient();
   const users = useAdminUsers();
+  const catalog = useAdminPlans();
+  const enabledPlanCodes = catalog.isSuccess
+    ? new Set(catalog.data.filter((plan) => plan.enabled).map((plan) => plan.code))
+    : null;
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -40,7 +47,7 @@ export function AdminUsersPage() {
     if (!users.data) return [];
     const term = normalizeText(search.trim());
     return users.data.filter((user) => {
-      if (filter === 'premium' && user.plan.code !== 'premium') return false;
+      if (filter === 'paid' && !isPaidPlan(user)) return false;
       if (filter === 'free' && user.plan.code !== 'free') return false;
       if (filter === 'blocked' && user.isActive) return false;
       if (!term) return true;
@@ -56,7 +63,7 @@ export function AdminUsersPage() {
   }
 
   const planMutation = useMutation({
-    mutationFn: ({ id, planCode }: { id: string; planCode: 'free' | 'premium' }) =>
+    mutationFn: ({ id, planCode }: { id: string; planCode: AdminPlanCode }) =>
       setAdminUserPlan(id, planCode),
     onMutate: ({ id }) => {
       setPendingId(id);
@@ -132,7 +139,7 @@ export function AdminUsersPage() {
         onChange={setSearch}
       />
       <div className={styles.filters} role="group" aria-label="Filtrar usuários">
-        {(['all', 'premium', 'free', 'blocked'] as const).map((item) => (
+        {(['all', 'paid', 'free', 'blocked'] as const).map((item) => (
           <button
             key={item}
             type="button"
@@ -160,6 +167,7 @@ export function AdminUsersPage() {
               user={user}
               pending={pendingId === user.id}
               error={errorById[user.id] || null}
+              enabledPlanCodes={enabledPlanCodes}
               onPlanChange={(planCode) => planMutation.mutate({ id: user.id, planCode })}
               onActiveChange={(isActive) => activeMutation.mutate({ id: user.id, isActive })}
             />

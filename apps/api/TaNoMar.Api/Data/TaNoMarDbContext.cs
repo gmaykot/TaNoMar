@@ -41,8 +41,84 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
         modelBuilder.Entity<ForecastAlert>().HasIndex(item => new { item.UserId, item.FishingSpotId }).IsUnique();
 
         modelBuilder.Entity<Plan>().HasData(
-            new Plan { Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0001"), Code = "free", Name = "Free", MaxForecastDays = 3, MaxFavorites = 0, MaxPersonalSpots = 0, MaxAlerts = 0 },
-            new Plan { Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0002"), Code = "premium", Name = "Premium", MaxForecastDays = 8, MaxFavorites = 20, MaxPersonalSpots = 10, MaxAlerts = 10 });
+            new Plan
+            {
+                Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0001"),
+                Code = "free",
+                Name = "Free",
+                Tagline = "Consulta o mapa TáNoMar.",
+                MonthlyPriceCents = 0,
+                SortOrder = 0,
+                Featured = false,
+                IsEnabled = true,
+                MaxForecastDays = 3,
+                MaxFavorites = 0,
+                MaxPersonalSpots = 0,
+                MaxAlerts = 0
+            },
+            new Plan
+            {
+                Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0003"),
+                Code = "arrais",
+                Name = "Arrais",
+                Tagline = "O primeiro comando da sua pesca.",
+                MonthlyPriceCents = 1490,
+                SortOrder = 1,
+                Featured = false,
+                IsEnabled = true,
+                MaxForecastDays = 5,
+                MaxFavorites = 10,
+                MaxPersonalSpots = 5,
+                MaxAlerts = 5,
+                CanMarine = true,
+                CanDiary = true,
+                CanOffline = true,
+                CanCustomMetrics = true,
+                CanCommunityVote = true,
+                CanRankingEmphasis = true
+            },
+            new Plan
+            {
+                Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0002"),
+                Code = "premium",
+                Name = "Mestre",
+                Tagline = "O equilíbrio para planejar a semana.",
+                MonthlyPriceCents = 1990,
+                SortOrder = 2,
+                Featured = true,
+                IsEnabled = true,
+                MaxForecastDays = 8,
+                MaxFavorites = 20,
+                MaxPersonalSpots = 10,
+                MaxAlerts = 10,
+                CanMarine = true,
+                CanDiary = true,
+                CanOffline = true,
+                CanCustomMetrics = true,
+                CanCommunityVote = true,
+                CanRankingEmphasis = true
+            },
+            new Plan
+            {
+                Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0004"),
+                Code = "capitao",
+                Name = "Capitão",
+                Tagline = "Mais cotas para quem pesca o ano todo.",
+                MonthlyPriceCents = 2490,
+                SortOrder = 3,
+                Featured = false,
+                IsEnabled = true,
+                MaxForecastDays = 8,
+                MaxFavorites = 40,
+                MaxPersonalSpots = 20,
+                MaxAlerts = 20,
+                CanMarine = true,
+                CanDiary = true,
+                CanOffline = true,
+                CanCustomMetrics = true,
+                CanCommunityVote = true,
+                CanRankingEmphasis = true
+            });
         modelBuilder.Entity<PlatformSettings>().HasData(
             new PlatformSettings { Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0010"), ShowPartners = false });
 
@@ -99,10 +175,21 @@ public sealed class Plan
     public Guid Id { get; set; }
     public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public string Tagline { get; set; } = string.Empty;
+    public int MonthlyPriceCents { get; set; }
+    public int SortOrder { get; set; }
+    public bool Featured { get; set; }
+    public bool IsEnabled { get; set; } = true;
     public int MaxForecastDays { get; set; }
     public int MaxFavorites { get; set; }
     public int MaxPersonalSpots { get; set; }
     public int MaxAlerts { get; set; }
+    public bool CanMarine { get; set; }
+    public bool CanDiary { get; set; }
+    public bool CanOffline { get; set; }
+    public bool CanCustomMetrics { get; set; }
+    public bool CanCommunityVote { get; set; }
+    public bool CanRankingEmphasis { get; set; }
 }
 
 public sealed class CommunityReport

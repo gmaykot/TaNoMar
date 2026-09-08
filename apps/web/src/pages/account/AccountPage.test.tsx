@@ -35,7 +35,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
       role: authState.role,
       plan: {
         code: authState.maxPersonalSpots > 0 || authState.maxFavorites > 0 ? 'premium' : 'free',
-        name: authState.maxPersonalSpots > 0 || authState.maxFavorites > 0 ? 'Premium' : 'Free',
+        name: authState.maxPersonalSpots > 0 || authState.maxFavorites > 0 ? 'Mestre' : 'Free',
       },
       entitlements: {
         maxForecastDays: 8,
@@ -81,11 +81,14 @@ describe('AccountPage', () => {
       '/locais?filtro=favoritos',
     );
     expect(screen.getByRole('link', { name: /Sobre o TáNoMar/ })).toHaveAttribute('href', '/sobre');
-    expect(screen.getByRole('link', { name: /Diário de pesca/ })).toHaveAttribute('href', '/diario');
+    expect(screen.getByRole('link', { name: /Diário de pesca/ })).toHaveAttribute(
+      'href',
+      '/diario',
+    );
     expect(screen.queryByRole('link', { name: /Novo local/ })).not.toBeInTheDocument();
     expect(screen.queryByText(/pescadores relatam como está o mar/)).not.toBeInTheDocument();
     expect(screen.getByText('Plano')).toBeInTheDocument();
-    expect(screen.getByText('Premium')).toBeInTheDocument();
+    expect(screen.getByText('Mestre')).toBeInTheDocument();
     expect(screen.getByText('1 / 10')).toBeInTheDocument();
     expect(screen.getByText('2 / 20')).toBeInTheDocument();
 

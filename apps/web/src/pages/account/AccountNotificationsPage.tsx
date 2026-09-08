@@ -7,7 +7,7 @@ import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { updatePreferences } from '@/features/auth/services/preferencesService';
-import type { AuthUser } from '@/features/auth/types/auth';
+import { hasPlanModule, SUBSCRIPTION_LOCK_LABEL, type AuthUser } from '@/features/auth/types/auth';
 import formStyles from '@/features/locations/components/spotForm.module.css';
 import { useDevicePush } from '@/features/notifications/hooks/useDevicePush';
 import { ForecastAlerts } from '@/features/notifications/components/ForecastAlerts';
@@ -21,7 +21,7 @@ export function AccountNotificationsPage() {
   const queryClient = useQueryClient();
   const user = auth.user;
   const canNotify = (user?.entitlements.maxAlerts ?? 0) > 0;
-  const premium = user?.plan.code === 'premium';
+  const canCustomizeMetrics = hasPlanModule(user, 'customMetrics');
   const [forecastNotifications, setForecastNotifications] = useState(
     user?.preferences.forecastNotifications ?? true,
   );
@@ -55,7 +55,7 @@ export function AccountNotificationsPage() {
                 region: user?.preferences.region ?? 'Florianópolis',
                 windUnit: user?.preferences.windUnit ?? 'kmh',
                 forecastNotifications,
-                ...(premium && user?.preferences.visibleMetrics
+                ...(canCustomizeMetrics && user?.preferences.visibleMetrics
                   ? { visibleMetrics: user.preferences.visibleMetrics }
                   : {}),
               })
@@ -98,7 +98,7 @@ export function AccountNotificationsPage() {
             <Lock size={16} aria-hidden="true" />
             <span>
               Notificações de previsão
-              <small>Premium</small>
+              <small>{SUBSCRIPTION_LOCK_LABEL}</small>
             </span>
           </div>
         )}

@@ -4,11 +4,14 @@ import { Link } from 'react-router-dom';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { Button } from '@/design-system/components/Button';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { showsPartners } from '@/features/auth/types/auth';
+import { hasPlanModule, isPaidPlan, showsPartners } from '@/features/auth/types/auth';
 import { DayCarousel } from '@/features/forecast/components/DayCarousel';
 import { ForecastHero } from '@/features/forecast/components/ForecastHero';
 import { useForecast } from '@/features/forecast/hooks/useForecast';
-import { readOfflineForecast, saveOfflineForecast } from '@/features/forecast/utils/offlineForecast';
+import {
+  readOfflineForecast,
+  saveOfflineForecast,
+} from '@/features/forecast/utils/offlineForecast';
 import type { FishingForecast } from '@/features/fishing/types/fishing';
 import { PartnerCard } from '@/features/partners/components/PartnerCard';
 import { usePartners } from '@/features/partners/hooks/usePartners';
@@ -25,13 +28,16 @@ export function HomePage() {
   const partners = usePartners(partnersEnabled);
   const featured = (partners.data ?? []).filter((item) => item.isFeatured);
   const [selectedDate, setSelectedDate] = useState('');
-  const [offlineForecast, setOfflineForecast] = useState<FishingForecast | null>(() => readOfflineForecast());
+  const [offlineForecast, setOfflineForecast] = useState<FishingForecast | null>(() =>
+    readOfflineForecast(),
+  );
   const [offlineSaved, setOfflineSaved] = useState(false);
-  const isPremium = auth.user?.plan.code === 'premium';
-  const visibleMetricKeys =
-    isPremium ? auth.user?.preferences.visibleMetrics : undefined;
+  const isPaid = isPaidPlan(auth.user);
+  const canCustomizeMetrics = hasPlanModule(auth.user, 'customMetrics');
+  const canSaveOffline = hasPlanModule(auth.user, 'offline');
+  const visibleMetricKeys = canCustomizeMetrics ? auth.user?.preferences.visibleMetrics : undefined;
 
-  const data = forecast.data ?? (isPremium && forecast.isError ? offlineForecast : undefined);
+  const data = forecast.data ?? (canSaveOffline && forecast.isError ? offlineForecast : undefined);
 
   if (forecast.isPending && !data)
     return (
@@ -47,7 +53,11 @@ export function HomePage() {
       <FeedbackState
         title="Previsão indisponível"
         description="Não foi possível carregar a previsão."
-        action={<Button variant="secondary" onClick={() => void forecast.refetch()}>Tentar novamente</Button>}
+        action={
+          <Button variant="secondary" onClick={() => void forecast.refetch()}>
+            Tentar novamente
+          </Button>
+        }
       />
     );
 
@@ -69,14 +79,14 @@ export function HomePage() {
         title="Onde vale pescar hoje?"
         description="Condições no melhor momento."
       />
-      {auth.user?.plan.code !== 'premium' ? (
+      {!isPaid ? (
         <Link className={styles.premiumBanner} to={routes.premium}>
           <span>
             <Sparkles size={19} aria-hidden="true" />
           </span>
           <div>
-            <strong>Pesque com mais contexto no Premium</strong>
-            <small>Veja até 8 dias, detalhes do mar e alertas para seus locais.</small>
+            <strong>Pesque com mais contexto na assinatura</strong>
+            <small>Arrais, Mestre ou Capitão: mais dias, detalhes do mar e alertas.</small>
           </div>
           <ArrowRight size={19} aria-hidden="true" />
         </Link>
@@ -139,7 +149,7 @@ export function HomePage() {
           </div>
         </section>
       ) : null}
-      {isPremium ? (
+      {canSaveOffline ? (
         <div className={styles.homeActions}>
           <Button
             type="button"
@@ -151,10 +161,14 @@ export function HomePage() {
             }}
           >
             <Download size={17} aria-hidden="true" />
-            {offlineSaved || offlineForecast ? 'Previsão salva nesta sessão' : 'Salvar para usar offline'}
+            {offlineSaved || offlineForecast
+              ? 'Previsão salva nesta sessão'
+              : 'Salvar para usar offline'}
           </Button>
           {offlineForecast && !forecast.data ? (
-            <small>Exibindo a última previsão salva nesta sessão. Ela pode estar desatualizada.</small>
+            <small>
+              Exibindo a última previsão salva nesta sessão. Ela pode estar desatualizada.
+            </small>
           ) : null}
         </div>
       ) : null}

@@ -101,7 +101,7 @@ function mapMetric(
     return {
       key,
       label,
-      value: 'Premium',
+      value: metric.requiredPlan,
       detail: metric.requiredPlan,
       locked: true,
     };
@@ -189,7 +189,14 @@ function mapMarineSeries(
   metric: WireMetric<WireMarineSeries>,
 ): MarineSeries {
   if (metric.state === 'locked') {
-    return { key, label, current: 'Premium', range: 'Premium', points: [], locked: true };
+    return {
+      key,
+      label,
+      current: metric.requiredPlan,
+      range: metric.requiredPlan,
+      points: [],
+      locked: true,
+    };
   }
   return {
     key,
@@ -205,9 +212,9 @@ function mapMarineSeries(
 function mapTide(metric: WireOptionalMetric<WireTideValue>): MarineTide {
   if (metric.state === 'locked') {
     return {
-      current: 'Premium',
-      phase: 'Premium',
-      nextExtreme: 'Premium',
+      current: metric.requiredPlan,
+      phase: metric.requiredPlan,
+      nextExtreme: metric.requiredPlan,
       extremes: [],
       points: [],
       locked: true,

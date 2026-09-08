@@ -5,6 +5,7 @@ import { Button } from '@/design-system/components/Button';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { SearchField } from '@/design-system/components/SearchField';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { SUBSCRIPTION_LOCK_LABEL } from '@/features/auth/types/auth';
 import { LocationCard } from '@/features/locations/components/LocationCard';
 import { useLocationMutations } from '@/features/locations/hooks/useLocationMutations';
 import { useLocations } from '@/features/locations/hooks/useLocations';
@@ -73,7 +74,11 @@ export function LocationsPage() {
       <FeedbackState
         title="Locais indisponíveis"
         description="Não foi possível carregar os locais."
-        action={<Button variant="secondary" onClick={() => void locations.refetch()}>Tentar novamente</Button>}
+        action={
+          <Button variant="secondary" onClick={() => void locations.refetch()}>
+            Tentar novamente
+          </Button>
+        }
       />
     );
 
@@ -104,7 +109,11 @@ export function LocationsPage() {
             type="button"
             className={`${styles.filter} ${filter === id ? styles.filterActive : ''}`}
             aria-pressed={filter === id}
-            aria-label={locked ? `${label}, disponível no Premium` : undefined}
+            aria-label={
+              locked
+                ? `${label}, disponível na ${SUBSCRIPTION_LOCK_LABEL.toLowerCase()}`
+                : undefined
+            }
             disabled={locked}
             onClick={locked ? undefined : () => setFilter(id)}
           >

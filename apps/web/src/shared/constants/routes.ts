@@ -20,6 +20,7 @@ export const routes = {
   admin: '/admin',
   adminSpots: '/admin/locais',
   adminUsers: '/admin/usuarios',
+  adminPlans: '/admin/planos',
   adminPartners: '/admin/parceiros',
   adminPartnerNew: '/admin/parceiros/novo',
   adminPartnerEdit: (slug: string) => `/admin/parceiros/${slug}`,

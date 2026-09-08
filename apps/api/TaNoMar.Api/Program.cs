@@ -187,6 +187,18 @@ api.MapGet("/me", async (ClaimsPrincipal principal, TaNoMarDbContext db, Microso
     return Results.Ok(await UserDtoAsync(user, db, cancellationToken));
 }).RequireAuthorization();
 
+api.MapGet("/plans", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    var plans = await db.Plans.AsNoTracking()
+        .Where(plan => plan.Code != PlanRules.Free && plan.IsEnabled)
+        .OrderBy(plan => plan.SortOrder)
+        .ThenBy(plan => plan.Name)
+        .ToListAsync(cancellationToken);
+    return Results.Ok(plans.Select(PlanRules.CatalogDto).ToList());
+}).RequireAuthorization();
+
 api.MapGet("/fishing-spots", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
@@ -342,13 +354,15 @@ api.MapPut("/admin/users/{id:guid}/plan", async (Guid id, AdminPlanRequest reque
 {
     var (actor, failure) = await AdminActorAsync(principal, db, cancellationToken);
     if (failure is not null) return failure;
-    var planCode = request.PlanCode?.Trim().ToLowerInvariant();
-    if (planCode is not ("free" or "premium")) return Results.BadRequest(new { code = "invalid_plan", detail = "Use o plano free ou premium." });
+    var planCode = PlanRules.NormalizeAssignable(request.PlanCode);
+    if (planCode is null) return Results.BadRequest(new { code = "invalid_plan", detail = "Use o plano free, arrais, premium ou capitao." });
     var target = await db.Users.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
     if (target is null) return Results.NotFound();
     if (MatchesBootstrapAdmin(target.Email, target.GoogleSubject, options.Value))
-        return Results.Conflict(new { code = "bootstrap_locked", detail = "A conta inicial do bootstrap permanece Premium." });
+        return Results.Conflict(new { code = "bootstrap_locked", detail = "A conta inicial do bootstrap permanece no plano Mestre." });
     var plan = await db.Plans.SingleAsync(item => item.Code == planCode, cancellationToken);
+    if (!plan.IsEnabled)
+        return Results.Conflict(new { code = "plan_disabled", detail = "Esse plano está desligado." });
     if (!string.Equals(target.PlanCode, plan.Code, StringComparison.Ordinal))
     {
         target.PlanCode = plan.Code;
@@ -360,6 +374,72 @@ api.MapPut("/admin/users/{id:guid}/plan", async (Guid id, AdminPlanRequest reque
     }
     var activeAdmins = await db.Users.CountAsync(item => item.IsActive && item.Role == "Admin", cancellationToken);
     return Results.Ok(AdminUserDto(target, plan, actor!, options.Value, activeAdmins));
+}).RequireAuthorization();
+
+api.MapGet("/admin/plans", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
+    if (failure is not null) return failure;
+    var plans = await db.Plans.AsNoTracking()
+        .OrderBy(plan => plan.SortOrder)
+        .ThenBy(plan => plan.Name)
+        .ToListAsync(cancellationToken);
+    var activeCounts = await db.Users.AsNoTracking()
+        .Where(item => item.IsActive)
+        .GroupBy(item => item.PlanCode)
+        .Select(group => new { Code = group.Key, Count = group.Count() })
+        .ToDictionaryAsync(item => item.Code, item => item.Count, cancellationToken);
+    return Results.Ok(plans.Select(plan => PlanRules.CatalogDto(plan, activeCounts.GetValueOrDefault(plan.Code))).ToList());
+}).RequireAuthorization();
+
+api.MapPut("/admin/plans/{code}", async (string code, AdminPlanConfigRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
+    if (failure is not null) return failure;
+    var planCode = PlanRules.NormalizeAssignable(code);
+    if (planCode is null) return Results.NotFound();
+    var plan = await db.Plans.SingleOrDefaultAsync(item => item.Code == planCode, cancellationToken);
+    if (plan is null) return Results.NotFound();
+    var tagline = request.Tagline?.Trim() ?? string.Empty;
+    var error = PlanRules.ValidateUpdate(
+        request.Name,
+        tagline,
+        request.MonthlyPriceCents,
+        request.SortOrder,
+        request.MaxForecastDays,
+        request.MaxFavorites,
+        request.MaxPersonalSpots,
+        request.MaxAlerts);
+    if (error is not null) return Results.BadRequest(new { code = "invalid_plan", detail = error });
+    var activeUserCount = await db.Users.CountAsync(item => item.IsActive && item.PlanCode == plan.Code, cancellationToken);
+    var availabilityError = PlanRules.ValidateAvailability(plan.Code, request.Enabled, activeUserCount);
+    if (availabilityError is not null) return Results.Conflict(new { code = "plan_in_use", detail = availabilityError });
+    PlanRules.ApplyUpdate(
+        plan,
+        request.Name,
+        tagline,
+        request.MonthlyPriceCents,
+        request.SortOrder,
+        request.Featured,
+        request.Enabled,
+        request.MaxForecastDays,
+        request.MaxFavorites,
+        request.MaxPersonalSpots,
+        request.MaxAlerts,
+        request.CanMarine,
+        request.CanDiary,
+        request.CanOffline,
+        request.CanCustomMetrics,
+        request.CanCommunityVote,
+        request.CanRankingEmphasis);
+    if (plan.Featured)
+    {
+        var others = await db.Plans.Where(item => item.Id != plan.Id && item.Featured).ToListAsync(cancellationToken);
+        foreach (var other in others)
+            other.Featured = false;
+    }
+    await db.SaveChangesAsync(cancellationToken);
+    return Results.Ok(PlanRules.CatalogDto(plan, activeUserCount));
 }).RequireAuthorization();
 
 api.MapPut("/admin/users/{id:guid}/active", async (Guid id, AdminActiveRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, NotificationRealtimeHub hub, WebPushQueue push, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
@@ -514,8 +594,9 @@ api.MapPut("/me/preferences", async (PreferencesRequest request, ClaimsPrincipal
     preferences.ForecastNotifications = request.ForecastNotifications ?? preferences.ForecastNotifications;
     if (request.VisibleMetrics is not null)
     {
-        if (!string.Equals(user.PlanCode, "premium", StringComparison.Ordinal))
-            return Results.BadRequest(new { code = "plan_required", detail = "Personalizar os indicadores exige o plano Premium.", requiredPlan = "Premium" });
+        var plan = await db.Plans.AsNoTracking().SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
+        if (!plan.CanCustomMetrics)
+            return Results.BadRequest(new { code = "plan_required", detail = "Personalizar os indicadores exige uma assinatura.", requiredPlan = PlanRules.RequiredPlanLabel });
         if (request.VisibleMetrics.Any(metric => !IsVisibleMetric(metric)))
             return Results.BadRequest(new { code = "invalid_metrics", detail = "Um ou mais indicadores são inválidos." });
         preferences.VisibleMetrics = string.Join(
@@ -552,7 +633,7 @@ api.MapPost("/me/alerts", async (ForecastAlertRequest request, ClaimsPrincipal p
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
     var plan = await db.Plans.AsNoTracking().SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
-    if (plan.MaxAlerts <= 0) return Results.BadRequest(new { code = "plan_required", detail = "Alertas de previsão exigem o plano Premium.", requiredPlan = "Premium" });
+    if (plan.MaxAlerts <= 0) return Results.BadRequest(new { code = "plan_required", detail = "Alertas de previsão exigem uma assinatura.", requiredPlan = PlanRules.RequiredPlanLabel });
     if (request.MinimumScore is < 0 or > 10 || request.LeadHours is < 1 or > 168)
         return Results.BadRequest(new { code = "invalid_alert", detail = "Informe uma nota entre 0 e 10 e antecedência entre 1 e 168 horas." });
     var spot = await db.FishingSpots.SingleOrDefaultAsync(item => item.Slug == request.SpotId, cancellationToken);
@@ -643,9 +724,8 @@ api.MapGet("/forecasts/ranking", async (string? emphasis, ClaimsPrincipal princi
     if (!FishingRankingEmphasis.TryParse(emphasis, out var parsedEmphasis))
         return Results.BadRequest(new { detail = "Ênfase inválida. Use wind, wind-more, rain, rain-more, waves ou waves-less." });
     var plan = await db.Plans.SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
-    var premium = plan.Code == "premium";
-    if (FishingRankingEmphasis.RequiresPremium(parsedEmphasis) && !premium)
-        return Results.BadRequest(new { code = "plan_required", detail = "Reordenar o ranking exige o plano Premium.", requiredPlan = "Premium" });
+    if (FishingRankingEmphasis.RequiresPremium(parsedEmphasis) && !plan.CanRankingEmphasis)
+        return Results.BadRequest(new { code = "plan_required", detail = "Reordenar o ranking exige uma assinatura.", requiredPlan = PlanRules.RequiredPlanLabel });
     var enabledSettings = await EnabledSettingsAsync(db, user.Id, cancellationToken);
     var preferredRegions = await PreferredRegionsAsync(db, user.Id, cancellationToken);
     var visibleSpots = await db.FishingSpots.AsNoTracking()
@@ -659,7 +739,7 @@ api.MapGet("/forecasts/ranking", async (string? emphasis, ClaimsPrincipal princi
     {
         var forecast = await fishing.GetAsync(day, cancellationToken, user.Id, enabledSlugs);
         var ordered = forecast with { Ranking = FishingRankingEmphasis.Order(forecast.Ranking, parsedEmphasis) };
-        days.Add(ForecastDayDto(ordered, premium, ownerSlugs));
+        days.Add(ForecastDayDto(ordered, plan.CanMarine, ownerSlugs));
     }
     return Results.Ok(new { generatedAt = DateTimeOffset.UtcNow, availableFrom = DateOnly.FromDateTime(DateTime.UtcNow), availableTo = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(plan.MaxForecastDays - 1)), days });
 }).RequireAuthorization();
@@ -677,7 +757,7 @@ api.MapGet("/fishing-spots/{id}/forecast", async (string id, ClaimsPrincipal pri
     {
         var forecast = await fishing.GetAsync(day, cancellationToken, user.Id);
         var filtered = forecast with { Ranking = forecast.Ranking.Where(item => item.Id == spot.Slug).ToList() };
-        result.Add(ForecastDayDto(filtered, plan.Code == "premium", OwnerSpotIds([spot], user)));
+        result.Add(ForecastDayDto(filtered, plan.CanMarine, OwnerSpotIds([spot], user)));
     }
     return Results.Ok(new { spotId = spot.Slug, days = result });
 }).RequireAuthorization();
@@ -693,8 +773,7 @@ api.MapGet("/fishing-spots/{id}/marine", async (string id, DateOnly? date, Claim
     var targetDate = date ?? fishing.Today();
     var dayOffset = targetDate.DayNumber - fishing.Today().DayNumber;
     if (dayOffset < 0 || dayOffset >= plan.MaxForecastDays) return Results.BadRequest(new { detail = "Data fora da janela do plano." });
-    var premium = plan.Code == "premium";
-    if (!premium) return Results.Ok(MarineLockedDto(spot.Slug, targetDate));
+    if (!plan.CanMarine) return Results.Ok(MarineLockedDto(spot.Slug, targetDate));
     var location = new FishingLocation
     {
         Id = spot.Slug,
@@ -963,9 +1042,9 @@ static bool ApplyBootstrapAdmin(User user, string? email, string? googleSubject,
         user.Role = "Admin";
         changed = true;
     }
-    if (!string.Equals(user.PlanCode, "premium", StringComparison.Ordinal))
+    if (!string.Equals(user.PlanCode, PlanRules.Mestre, StringComparison.Ordinal))
     {
-        user.PlanCode = "premium";
+        user.PlanCode = PlanRules.Mestre;
         changed = true;
     }
     return changed;
@@ -994,6 +1073,7 @@ static async Task<object> UserDtoAsync(User user, TaNoMarDbContext db, Cancellat
         role = user.Role,
         plan = new { code = plan.Code, name = plan.Name },
         entitlements = new { maxForecastDays = plan.MaxForecastDays, maxFavorites = plan.MaxFavorites, maxPersonalSpots = plan.MaxPersonalSpots, maxAlerts = plan.MaxAlerts },
+        modules = PlanRules.ModulesDto(plan),
         features = new { showPartners = await ShowPartnersEnabledAsync(db, cancellationToken) },
         preferences = new
         {
@@ -1147,8 +1227,9 @@ static async Task<IResult> VoteReportAsync(Guid id, string kind, ClaimsPrincipal
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
-    if (!string.Equals(user.PlanCode, "premium", StringComparison.Ordinal))
-        return Results.BadRequest(new { code = "plan_required", detail = "Confirmar ou contestar um relato exige o plano Premium.", requiredPlan = "Premium" });
+    var plan = await db.Plans.AsNoTracking().SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
+    if (!plan.CanCommunityVote)
+        return Results.BadRequest(new { code = "plan_required", detail = "Confirmar ou contestar um relato exige uma assinatura.", requiredPlan = PlanRules.RequiredPlanLabel });
     var report = await db.CommunityReports.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
     if (report is null || report.ExpiresAt <= DateTimeOffset.UtcNow) return Results.NotFound();
     var spot = await db.FishingSpots.SingleOrDefaultAsync(item => item.Id == report.FishingSpotId, cancellationToken);
@@ -1177,10 +1258,10 @@ static HashSet<string> OwnerSpotIds(IEnumerable<FishingSpot> spots, User user) =
     spots.Where(spot => SpotRules.Owns(spot, user)).Select(spot => spot.Slug).ToHashSet(StringComparer.Ordinal);
 static Task<HashSet<string>> OwnerSpotSlugsAsync(TaNoMarDbContext db, Guid userId, CancellationToken cancellationToken) =>
     db.FishingSpots.AsNoTracking().Where(spot => spot.OwnerUserId == userId).Select(spot => spot.Slug).ToHashSetAsync(StringComparer.Ordinal, cancellationToken);
-static object ForecastDayDto(FishingForecast forecast, bool premium, HashSet<string>? ownerSpotIds = null) => new { date = forecast.Date, ranking = forecast.Ranking.Select(item => ForecastItemDto(item, premium, ownerSpotIds)).ToList(), unavailableSpotIds = forecast.Errors.Select(error => error.Location).ToList() };
+static object ForecastDayDto(FishingForecast forecast, bool paid, HashSet<string>? ownerSpotIds = null) => new { date = forecast.Date, ranking = forecast.Ranking.Select(item => ForecastItemDto(item, paid, ownerSpotIds)).ToList(), unavailableSpotIds = forecast.Errors.Select(error => error.Location).ToList() };
 static object MarineLockedDto(string spotId, DateOnly date)
 {
-    object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = "Premium" };
+    object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = PlanRules.RequiredPlanLabel };
     return new { spotId, date, waves = Locked(), wavePeriod = Locked(), swell = Locked(), waterTemperature = Locked(), atmosphericPressure = Locked(), tide = Locked() };
 }
 static object MarineDto(string spotId, DateOnly date, FishingLocationForecast forecast, object tide)
@@ -1301,14 +1382,14 @@ static object TideTable(
         }
     };
 }
-static object ForecastItemDto(FishingLocationForecast item, bool premium, HashSet<string>? ownerSpotIds = null)
+static object ForecastItemDto(FishingLocationForecast item, bool paid, HashSet<string>? ownerSpotIds = null)
 {
     var hour = item.BestHour;
     object Available(object value) => new { state = "available", value };
-    object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = "Premium" };
+    object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = PlanRules.RequiredPlanLabel };
     var classification = item.Score >= 8.5 ? "Excelente" : item.Score >= 7 ? "Muito bom" : item.Score >= 5 ? "Regular" : "Difícil";
     var highlights = ForecastHighlights(hour);
-    return new { spotId = item.Id, spotName = item.Location, isOwner = ownerSpotIds is not null && ownerSpotIds.Contains(item.Id), score = Available(item.Score), classification = Available(classification), bestHours = Available(item.BestHours.Select(best => best.Time).ToArray()), highlights, wind = Available(hour is null ? "n/d" : $"{hour.WindSpeedKmh:0.#} km/h {hour.WindDirection}"), gusts = Available(hour is null ? "n/d" : $"{hour.WindGustKmh:0.#} km/h"), waves = premium ? Available(hour?.WaveMeters.ToString("0.00") + " m") : Locked(), wavePeriod = premium ? Available(hour?.WavePeriodSeconds.ToString("0.#") + " s") : Locked(), swell = premium ? Available(hour?.SwellMeters.ToString("0.00") + " m") : Locked(), rain = Available(hour is null ? "n/d" : $"{hour.RainMm:0.#} mm ({hour.RainProbability}%)"), airTemperature = Available(hour is null ? "n/d" : $"{hour.AirTemperatureC:0.#} °C"), waterTemperature = premium ? Available(hour?.WaterTemperatureC.ToString("0.#") + " °C") : Locked() };
+    return new { spotId = item.Id, spotName = item.Location, isOwner = ownerSpotIds is not null && ownerSpotIds.Contains(item.Id), score = Available(item.Score), classification = Available(classification), bestHours = Available(item.BestHours.Select(best => best.Time).ToArray()), highlights, wind = Available(hour is null ? "n/d" : $"{hour.WindSpeedKmh:0.#} km/h {hour.WindDirection}"), gusts = Available(hour is null ? "n/d" : $"{hour.WindGustKmh:0.#} km/h"), waves = paid ? Available(hour?.WaveMeters.ToString("0.00") + " m") : Locked(), wavePeriod = paid ? Available(hour?.WavePeriodSeconds.ToString("0.#") + " s") : Locked(), swell = paid ? Available(hour?.SwellMeters.ToString("0.00") + " m") : Locked(), rain = Available(hour is null ? "n/d" : $"{hour.RainMm:0.#} mm ({hour.RainProbability}%)"), airTemperature = Available(hour is null ? "n/d" : $"{hour.AirTemperatureC:0.#} °C"), waterTemperature = paid ? Available(hour?.WaterTemperatureC.ToString("0.#") + " °C") : Locked() };
 }
 
 static string[] ForecastHighlights(FishingHourForecast? hour)
@@ -1461,6 +1542,23 @@ record PersonalSpotRequest(string Name, double? Latitude, double? Longitude, str
 record CommunityReportRequest(string SpotId, string Type, string? Comment);
 record PushSubscriptionRequest(string? Endpoint, string? P256dh, string? Auth);
 record AdminPlanRequest(string PlanCode);
+record AdminPlanConfigRequest(
+    string Name,
+    string? Tagline,
+    int MonthlyPriceCents,
+    int SortOrder,
+    bool Featured,
+    bool Enabled,
+    int MaxForecastDays,
+    int MaxFavorites,
+    int MaxPersonalSpots,
+    int MaxAlerts,
+    bool CanMarine,
+    bool CanDiary,
+    bool CanOffline,
+    bool CanCustomMetrics,
+    bool CanCommunityVote,
+    bool CanRankingEmphasis);
 record AdminActiveRequest(bool IsActive);
 record PartnerOfferRequest(string Title, string? Description, string? PriceLabel, DateTimeOffset? EndsAt, int? SortOrder);
 record PartnerRequest(string? Slug, string Name, string Category, string? Tagline, string? About, string? City, string? WhatsApp, string? Instagram, string? Website, string? MapsUrl, string? CoverImageUrl, bool IsPublished, bool IsFeatured, int SortOrder, PartnerOfferRequest[]? Offers);

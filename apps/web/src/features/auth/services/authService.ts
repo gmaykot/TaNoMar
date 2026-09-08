@@ -16,6 +16,10 @@ function readNumber(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
+function readBoolean(value: unknown) {
+  return typeof value === 'boolean' ? value : null;
+}
+
 export function parseVisibleMetrics(value: unknown): FishingMetricKey[] {
   if (value === undefined) return [...fishingMetricKeys];
   if (
@@ -85,9 +89,32 @@ export function parseAuthUser(payload: unknown): AuthUser {
     role,
     plan: { code: planCode, name: planName },
     entitlements: { maxForecastDays, maxFavorites, maxPersonalSpots, maxAlerts },
+    modules: parsePlanModules(payload.modules),
     features: { showPartners },
     preferences: { region, windUnit, forecastNotifications, visibleMetrics },
   };
+}
+
+function parsePlanModules(value: unknown): AuthUser['modules'] {
+  if (value === undefined || value === null) return undefined;
+  if (!isRecord(value)) throw new ContractError('Módulos do plano inválidos.');
+  const marine = readBoolean(value.marine);
+  const diary = readBoolean(value.diary);
+  const offline = readBoolean(value.offline);
+  const customMetrics = readBoolean(value.customMetrics);
+  const communityVote = readBoolean(value.communityVote);
+  const rankingEmphasis = readBoolean(value.rankingEmphasis);
+  if (
+    marine === null ||
+    diary === null ||
+    offline === null ||
+    customMetrics === null ||
+    communityVote === null ||
+    rankingEmphasis === null
+  ) {
+    throw new ContractError('Módulos do plano incompletos.');
+  }
+  return { marine, diary, offline, customMetrics, communityVote, rankingEmphasis };
 }
 
 export async function loginWithGoogle(credential: string) {

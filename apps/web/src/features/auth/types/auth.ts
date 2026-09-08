@@ -16,6 +16,7 @@ export interface AuthUser {
     maxPersonalSpots: number;
     maxAlerts: number;
   };
+  modules?: PlanModules;
   features: {
     showPartners: boolean;
   };
@@ -28,6 +29,33 @@ export interface AuthUser {
 }
 
 export type AuthStatus = 'booting' | 'anonymous' | 'authenticated';
+
+export type PlanModule =
+  'marine' | 'diary' | 'offline' | 'customMetrics' | 'communityVote' | 'rankingEmphasis';
+
+export interface PlanModules {
+  marine: boolean;
+  diary: boolean;
+  offline: boolean;
+  customMetrics: boolean;
+  communityVote: boolean;
+  rankingEmphasis: boolean;
+}
+
+export const SUBSCRIPTION_LOCK_LABEL = 'Assinatura';
+
+export function isPaidPlan(user: { plan?: { code?: string } | null } | null | undefined) {
+  return Boolean(user?.plan?.code && user.plan.code !== 'free');
+}
+
+export function hasPlanModule(
+  user: { plan?: { code?: string } | null; modules?: PlanModules } | null | undefined,
+  module: PlanModule,
+) {
+  const value = user?.modules?.[module];
+  if (typeof value === 'boolean') return value;
+  return isPaidPlan(user);
+}
 
 export function isAdmin(user: Pick<AuthUser, 'role'> | null | undefined) {
   return user?.role === 'Admin';

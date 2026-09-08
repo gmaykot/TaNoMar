@@ -18,5 +18,6 @@ describe('AdminHomePage', () => {
       'href',
       '/admin/parceiros',
     );
+    expect(screen.getByRole('link', { name: /Planos/ })).toHaveAttribute('href', '/admin/planos');
   });
 });

@@ -30,7 +30,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
       role: 'User',
       plan: {
         code: authState.maxPersonalSpots > 0 || authState.maxFavorites > 0 ? 'premium' : 'free',
-        name: authState.maxPersonalSpots > 0 || authState.maxFavorites > 0 ? 'Premium' : 'Free',
+        name: authState.maxPersonalSpots > 0 || authState.maxFavorites > 0 ? 'Mestre' : 'Free',
       },
       entitlements: {
         maxForecastDays: 8,
@@ -117,9 +117,9 @@ describe('LocationsPage', () => {
     expect(await screen.findByRole('heading', { name: 'Campeche' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Todos' })).toHaveAttribute('aria-pressed', 'true');
     expect(
-      screen.getByRole('button', { name: 'Meus locais, disponível no Premium' }),
+      screen.getByRole('button', { name: 'Meus locais, disponível na assinatura' }),
     ).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Favoritos, disponível no Premium' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Favoritos, disponível na assinatura' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Novo local' })).not.toBeInTheDocument();
   });
 

@@ -31,7 +31,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
       role: 'User',
       plan: {
         code: authState.planCode,
-        name: authState.planCode === 'premium' ? 'Premium' : 'Free',
+        name: authState.planCode === 'premium' ? 'Mestre' : 'Free',
       },
       entitlements: {
         maxForecastDays: 8,
@@ -105,21 +105,21 @@ describe('HomePage', () => {
     localStorage.removeItem('tanomar.offline-forecast.v1');
   });
 
-  it('mostra o convite do Premium somente para o plano Free', async () => {
+  it('mostra o convite da assinatura somente para o plano Free', async () => {
     authState.planCode = 'free';
     renderWithProviders(<HomePage />);
 
     expect(
-      await screen.findByRole('link', { name: /Pesque com mais contexto no Premium/ }),
+      await screen.findByRole('link', { name: /Pesque com mais contexto na assinatura/ }),
     ).toHaveAttribute('href', '/premium');
   });
 
-  it('não mostra o convite do Premium para quem já é Premium', async () => {
+  it('não mostra o convite da assinatura para quem já é assinante', async () => {
     renderWithProviders(<HomePage />);
 
     await screen.findByRole('heading', { name: 'Pântano do Sul' });
     expect(
-      screen.queryByRole('link', { name: /Pesque com mais contexto no Premium/ }),
+      screen.queryByRole('link', { name: /Pesque com mais contexto na assinatura/ }),
     ).not.toBeInTheDocument();
   });
 

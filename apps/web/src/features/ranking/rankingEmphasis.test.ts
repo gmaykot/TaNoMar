@@ -61,7 +61,7 @@ describe('rankingEmphasis', () => {
       'Mais vento. Toque para remover a ênfase.',
     );
     expect(rankingEmphasisControlLabel('waves', 'score', true)).toBe(
-      'Ondas, disponível no Premium',
+      'Ondas, disponível na assinatura',
     );
   });
 

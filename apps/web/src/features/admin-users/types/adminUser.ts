@@ -1,4 +1,5 @@
 export type AdminProtection = 'self' | 'bootstrap' | 'last_admin';
+export type AdminPlanCode = 'free' | 'arrais' | 'premium' | 'capitao';
 
 export interface AdminUser {
   id: string;

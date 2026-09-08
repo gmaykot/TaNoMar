@@ -35,7 +35,7 @@ function parseMetric<T>(value: unknown, readValue: (input: unknown) => T | null,
     return {
       state: 'locked' as const,
       reason: readString(value.reason) ?? 'plan_required',
-      requiredPlan: readString(value.requiredPlan) ?? 'Premium',
+      requiredPlan: readString(value.requiredPlan) ?? 'Assinatura',
     };
   }
   const parsed = readValue(value.value);

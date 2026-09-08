@@ -62,7 +62,7 @@ Guia completo: **[docs/deployment.md](docs/deployment.md)**.
 - A web chama a API por `/api/v1`, com mappers de contrato e Google Sign-In.
 - A API vive em `apps/api/TaNoMar.Api`, com namespace e assembly `TaNoMar.Api`.
 - Comunidade, favoritos e locais pessoais têm API e telas: criar/editar local, favoritar, habilitar para as previsões, relatos, moderação admin, gestão de usuários e inbox de notificações (SSE no sino; Web Push opcional com o app fechado).
-- Alertas de previsão podem ser configurados no Premium por local, nota mínima e antecedência; o worker envia avisos pelo inbox e pelos canais de notificação habilitados.
+- Alertas de previsão podem ser configurados na assinatura por local, nota mínima e antecedência; o worker envia avisos pelo inbox e pelos canais de notificação habilitados.
 - O diário de pesca e o planejamento de saída ficam privados no armazenamento local do aparelho nesta primeira versão.
 
 Antes de alterar o projeto, leia [AGENTS.md](AGENTS.md) e [docs/architecture.md](docs/architecture.md).

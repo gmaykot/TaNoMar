@@ -13,8 +13,12 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/design-system/components/Card';
+import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { isPaidPlan } from '@/features/auth/types/auth';
+import { useSubscriptionPlans } from '@/features/subscription/hooks/useSubscriptionPlans';
 import { PageHeader } from '@/pages/shared/PageHeader';
+import { SubscriptionPlanCards } from '@/pages/premium/SubscriptionPlanCards';
 import { routes } from '@/shared/constants/routes';
 import styles from '@/pages/shared/pages.module.css';
 import premiumStyles from './premium.module.css';
@@ -23,8 +27,7 @@ const benefits = [
   {
     icon: Waves,
     title: 'Previsão ampliada',
-    description:
-      'Consulte até 8 dias de previsão e veja os detalhes do mar para planejar melhor.',
+    description: 'Consulte até 8 dias de previsão e veja os detalhes do mar para planejar melhor.',
   },
   {
     icon: SlidersHorizontal,
@@ -35,18 +38,17 @@ const benefits = [
   {
     icon: Heart,
     title: 'Seus locais e favoritos',
-    description: 'Cadastre até 10 locais privados e guarde até 20 pontos favoritos.',
+    description: 'Cadastre locais privados e guarde pontos favoritos conforme o plano.',
   },
   {
     icon: Bell,
     title: 'Alertas de oportunidade',
-    description: 'Configure até 10 alertas para acompanhar as condições dos seus locais.',
+    description: 'Configure alertas para acompanhar as condições dos seus locais.',
   },
   {
     icon: BookOpen,
     title: 'Diário de pesca',
-    description:
-      'Registre suas capturas e saídas sem captura para criar seu histórico de pesca.',
+    description: 'Registre suas capturas e saídas sem captura para criar seu histórico de pesca.',
   },
   {
     icon: Download,
@@ -62,9 +64,46 @@ const benefits = [
   },
 ];
 
+function maxForecastCaption(plans: { name: string; entitlements: { maxForecastDays: number } }[]) {
+  if (plans.length === 0) return { days: 8, caption: 'conforme o plano' };
+  const maxDays = Math.max(...plans.map((plan) => plan.entitlements.maxForecastDays));
+  const names = plans
+    .filter((plan) => plan.entitlements.maxForecastDays === maxDays)
+    .map((plan) => plan.name);
+  if (names.length === 0) return { days: maxDays, caption: 'conforme o plano' };
+  if (names.length === 1) return { days: maxDays, caption: `no plano ${names[0]}` };
+  return {
+    days: maxDays,
+    caption: `no plano ${names.slice(0, -1).join(', ')} e ${names.at(-1)}`,
+  };
+}
+
 export function PremiumPage() {
   const auth = useAuth();
-  const isPremium = auth.user?.plan.code === 'premium';
+  const catalog = useSubscriptionPlans();
+  const isPaid = isPaidPlan(auth.user);
+  const currentPlanName = isPaid ? auth.user?.plan.name : undefined;
+  const plans = catalog.data ?? [];
+  const highlight = maxForecastCaption(plans);
+
+  if (catalog.isPending) {
+    return (
+      <FeedbackState
+        title="Assinatura"
+        description="Carregando os planos disponíveis."
+        icon={Sparkles}
+        busy
+      />
+    );
+  }
+  if (catalog.isError) {
+    return (
+      <FeedbackState
+        title="Planos indisponíveis"
+        description="Não foi possível carregar os planos da assinatura."
+      />
+    );
+  }
 
   return (
     <div className={styles.page}>
@@ -72,9 +111,9 @@ export function PremiumPage() {
         <ArrowLeft size={16} aria-hidden="true" /> Conta
       </Link>
       <PageHeader
-        eyebrow="Plano Premium"
-        title="Pesque com mais contexto."
-        description="Mais informação para comparar os dias, escolher seus locais e sair com mais confiança."
+        eyebrow="Assinatura"
+        title="Escolha o comando da sua pesca."
+        description="Arrais, Mestre ou Capitão. Três planos para ver mais dias, guardar seus locais e sair com mais contexto."
       />
       <section className={premiumStyles.hero} aria-labelledby="premium-hero-title">
         <div className={premiumStyles.heroCopy}>
@@ -87,15 +126,22 @@ export function PremiumPage() {
             realmente importa na sua pescaria.
           </p>
           <div className={premiumStyles.heroActions}>
-            <Link className={premiumStyles.heroLink} to={routes.about}>
-              Entender a previsão <ArrowRight size={17} aria-hidden="true" />
-            </Link>
-            <span>{isPremium ? 'Seu plano atual' : 'Conheça os recursos incluídos'}</span>
+            <a className={premiumStyles.heroLink} href="#planos">
+              Ver os planos <ArrowRight size={17} aria-hidden="true" />
+            </a>
+            <span>
+              {isPaid
+                ? `Você já é assinante${currentPlanName ? ` · ${currentPlanName}` : ''}`
+                : 'Conheça os recursos incluídos'}
+            </span>
           </div>
         </div>
-        <div className={premiumStyles.heroHighlight} aria-label="Resumo dos benefícios Premium">
-          <strong>8 dias</strong>
-          <span>para planejar</span>
+        <div
+          className={premiumStyles.heroHighlight}
+          aria-label="Resumo dos benefícios da assinatura"
+        >
+          <strong>{highlight.days} dias</strong>
+          <span>{highlight.caption}</span>
           <div>
             <Check size={16} aria-hidden="true" /> Detalhes do mar
           </div>
@@ -104,6 +150,14 @@ export function PremiumPage() {
           </div>
         </div>
       </section>
+      <div className={premiumStyles.benefitIntro} id="planos">
+        <div>
+          <span>Planos</span>
+          <h2>Três rotas. O mesmo mar.</h2>
+        </div>
+        <p>Escolha o ritmo da sua pesca. A cobrança ainda não começa por aqui.</p>
+      </div>
+      <SubscriptionPlanCards plans={plans} currentPlanCode={auth.user?.plan.code} />
       <div className={premiumStyles.benefitIntro}>
         <div>
           <span>O que muda</span>
@@ -125,11 +179,12 @@ export function PremiumPage() {
       <Card as="section" className={premiumStyles.infoCard}>
         <div>
           <span>Disponibilidade</span>
-          <h2>Comece conhecendo os recursos</h2>
+          <h2>Os planos já existem na conta</h2>
         </div>
         <p>
-          A ativação comercial ainda está sendo configurada pela equipe do TáNoMar. Por enquanto,
-          esta página apresenta os recursos e não inicia cobrança nem cria assinatura.
+          Arrais, Mestre e Capitão já podem ser liberados pelo administrador. A cobrança automática
+          ainda está sendo configurada pela equipe do TáNoMar e esta página não inicia pagamento nem
+          cria assinatura sozinha.
         </p>
         <Link className={styles.backLink} to={routes.about}>
           Saiba como a previsão é feita <ArrowRight size={16} aria-hidden="true" />

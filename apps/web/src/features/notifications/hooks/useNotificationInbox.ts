@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { hasPlanModule } from '@/features/auth/types/auth';
 import {
   confirmReport,
   contestReport,
@@ -103,7 +104,7 @@ export function useNotificationInbox(open: boolean) {
   return {
     items: listQuery.data ?? [],
     reports,
-    canVote: auth.user?.plan.code === 'premium',
+    canVote: hasPlanModule(auth.user, 'communityVote'),
     unread: (unreadQuery.data?.unread ?? false) || pendingReports,
     listPending: (open && listQuery.isPending) || reportsQuery.isPending,
     listError: (open && listQuery.isError) || reportsQuery.isError,

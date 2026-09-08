@@ -445,9 +445,33 @@ namespace TaNoMar.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("CanCommunityVote")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("CanCustomMetrics")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("CanDiary")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("CanMarine")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("CanOffline")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("CanRankingEmphasis")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<bool>("Featured")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("MaxAlerts")
                         .HasColumnType("integer");
@@ -461,7 +485,17 @@ namespace TaNoMar.Api.Data.Migrations
                     b.Property<int>("MaxPersonalSpots")
                         .HasColumnType("integer");
 
+                    b.Property<int>("MonthlyPriceCents")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Tagline")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -476,24 +510,89 @@ namespace TaNoMar.Api.Data.Migrations
                         new
                         {
                             Id = new Guid("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0001"),
+                            CanCommunityVote = false,
+                            CanCustomMetrics = false,
+                            CanDiary = false,
+                            CanMarine = false,
+                            CanOffline = false,
+                            CanRankingEmphasis = false,
                             Code = "free",
+                            Featured = false,
+                            IsEnabled = true,
                             MaxAlerts = 0,
                             MaxFavorites = 0,
                             MaxForecastDays = 3,
                             MaxPersonalSpots = 0,
-                            Name = "Free"
+                            MonthlyPriceCents = 0,
+                            Name = "Free",
+                            SortOrder = 0,
+                            Tagline = "Consulta o mapa TáNoMar."
+                        },
+                        new
+                        {
+                            Id = new Guid("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0003"),
+                            CanCommunityVote = true,
+                            CanCustomMetrics = true,
+                            CanDiary = true,
+                            CanMarine = true,
+                            CanOffline = true,
+                            CanRankingEmphasis = true,
+                            Code = "arrais",
+                            Featured = false,
+                            IsEnabled = true,
+                            MaxAlerts = 5,
+                            MaxFavorites = 10,
+                            MaxForecastDays = 5,
+                            MaxPersonalSpots = 5,
+                            MonthlyPriceCents = 1490,
+                            Name = "Arrais",
+                            SortOrder = 1,
+                            Tagline = "O primeiro comando da sua pesca."
                         },
                         new
                         {
                             Id = new Guid("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0002"),
+                            CanCommunityVote = true,
+                            CanCustomMetrics = true,
+                            CanDiary = true,
+                            CanMarine = true,
+                            CanOffline = true,
+                            CanRankingEmphasis = true,
                             Code = "premium",
+                            Featured = true,
+                            IsEnabled = true,
                             MaxAlerts = 10,
                             MaxFavorites = 20,
                             MaxForecastDays = 8,
                             MaxPersonalSpots = 10,
-                            Name = "Premium"
+                            MonthlyPriceCents = 1990,
+                            Name = "Mestre",
+                            SortOrder = 2,
+                            Tagline = "O equilíbrio para planejar a semana."
+                        },
+                        new
+                        {
+                            Id = new Guid("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0004"),
+                            CanCommunityVote = true,
+                            CanCustomMetrics = true,
+                            CanDiary = true,
+                            CanMarine = true,
+                            CanOffline = true,
+                            CanRankingEmphasis = true,
+                            Code = "capitao",
+                            Featured = false,
+                            IsEnabled = true,
+                            MaxAlerts = 20,
+                            MaxFavorites = 40,
+                            MaxForecastDays = 8,
+                            MaxPersonalSpots = 20,
+                            MonthlyPriceCents = 2490,
+                            Name = "Capitão",
+                            SortOrder = 3,
+                            Tagline = "Mais cotas para quem pesca o ano todo."
                         });
                 });
+
 
             modelBuilder.Entity("TaNoMar.Api.Data.PlatformSettings", b =>
                 {

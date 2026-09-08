@@ -118,6 +118,7 @@
   align-items: end;
   justify-content: space-between;
   gap: var(--space-3);
+  scroll-margin-top: 5rem;
 }
 
 .benefitIntro h2,
@@ -182,6 +183,119 @@
   padding: var(--space-5);
 }
 
+.planGrid {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.planCard {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  padding: var(--space-5);
+}
+
+.planCardFeatured {
+  border: 2px solid var(--color-sea-500);
+  box-shadow: var(--shadow-md);
+}
+
+.planBadge,
+.planBadgeSpacer {
+  display: inline-flex;
+  min-height: 1.75rem;
+  align-items: center;
+  justify-self: start;
+  padding: 0.2rem 0.7rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+}
+
+.planBadge {
+  color: var(--color-ocean-950);
+  background: var(--color-sea-200);
+}
+
+.planBadgeSpacer {
+  visibility: hidden;
+}
+
+.planIcon {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border-radius: 0.9rem;
+  color: var(--color-ocean-950);
+  background: var(--color-sea-200);
+}
+
+.planCard h3 {
+  margin: 0;
+  color: var(--color-ocean-950);
+  font-size: var(--font-size-xl);
+  letter-spacing: -0.04em;
+}
+
+.planTagline {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+}
+
+.planPrice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.planPrice strong {
+  color: var(--color-ocean-950);
+  font-size: 1.7rem;
+  letter-spacing: -0.05em;
+}
+
+.planPrice span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.planFeatures {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.planFeatures li {
+  display: flex;
+  align-items: start;
+  gap: var(--space-2);
+  color: var(--color-ocean-950);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+}
+
+.planFeatures svg {
+  flex: 0 0 auto;
+  margin-top: 0.15rem;
+  color: var(--color-sea-700);
+}
+
+.planStatus {
+  margin: var(--space-1) 0 0;
+  color: var(--color-sea-700);
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 @media (min-width: 48rem) {
   .hero {
     grid-template-columns: minmax(0, 1.6fr) minmax(14rem, 0.8fr);
@@ -195,5 +309,12 @@
 
   .benefitCard:last-child {
     grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 64rem) {
+  .planGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
   }
 }
