@@ -307,7 +307,7 @@ api.MapGet("/fishing-spots", async (ClaimsPrincipal principal, TaNoMarDbContext 
     var enabledSettings = await EnabledSettingsAsync(db, user.Id, cancellationToken);
     var preferredRegions = await PreferredRegionsAsync(db, user.Id, cancellationToken);
     var spots = await db.FishingSpots.AsNoTracking().Where(spot => spot.Visibility == "official" || (spot.Visibility == "shared" && spot.IsApproved) || spot.OwnerUserId == user.Id).OrderBy(spot => spot.Name).ToListAsync(cancellationToken);
-    var webcamSpotIds = await ActiveWebcamSpotIdsAsync(db, cancellationToken);
+    var webcamSpotIds = await VisibleWebcamSpotIdsAsync(db, cancellationToken);
     return Results.Ok(spots.Where(spot => SpotRules.Owns(spot, user) || SpotRules.IsInPreferredRegion(spot, preferredRegions)).Select(spot => SpotDtoProjection(spot, user, favoriteIds.Contains(spot.Id), SpotRules.IsEnabledForUser(spot, enabledSettings), webcamSpotIds.Contains(spot.Id))).ToList());
 }).RequireAuthorization();
 
@@ -362,7 +362,8 @@ api.MapPut("/fishing-spots/{id}", async (string id, PersonalSpotRequest request,
     await db.SaveChangesAsync(cancellationToken);
     var favorite = await db.FavoriteSpots.AnyAsync(item => item.UserId == user.Id && item.FishingSpotId == spot.Id, cancellationToken);
     var enabledSettings = await EnabledSettingsAsync(db, user.Id, cancellationToken);
-    var hasLiveWebcam = await db.FishingSpotWebcams.AnyAsync(item => item.FishingSpotId == spot.Id && item.IsActive, cancellationToken);
+    var hasLiveWebcam = await ShowLiveWebcamsEnabledAsync(db, cancellationToken)
+        && await db.FishingSpotWebcams.AnyAsync(item => item.FishingSpotId == spot.Id && item.IsActive, cancellationToken);
     return Results.Ok(SpotDtoProjection(spot, user, favorite, SpotRules.IsEnabledForUser(spot, enabledSettings), hasLiveWebcam));
 }).RequireAuthorization();
 
@@ -400,7 +401,7 @@ api.MapGet("/admin/fishing-spots/pending", async (ClaimsPrincipal principal, TaN
     var (actor, failure) = await AdminActorAsync(principal, db, cancellationToken);
     if (failure is not null) return failure;
     var spots = await db.FishingSpots.AsNoTracking().Where(spot => spot.Visibility == "shared" && !spot.IsApproved).OrderBy(spot => spot.CreatedAt).ToListAsync(cancellationToken);
-    var webcamSpotIds = await ActiveWebcamSpotIdsAsync(db, cancellationToken);
+    var webcamSpotIds = await VisibleWebcamSpotIdsAsync(db, cancellationToken);
     return Results.Ok(spots.Select(spot => SpotDtoProjection(spot, actor!, false, null, webcamSpotIds.Contains(spot.Id))).ToList());
 }).RequireAuthorization();
 
@@ -674,7 +675,11 @@ api.MapGet("/admin/settings", async (ClaimsPrincipal principal, TaNoMarDbContext
 {
     var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
     if (failure is not null) return failure;
-    return Results.Ok(new { showPartners = await ShowPartnersEnabledAsync(db, cancellationToken) });
+    return Results.Ok(new
+    {
+        showPartners = await ShowPartnersEnabledAsync(db, cancellationToken),
+        showLiveWebcams = await ShowLiveWebcamsEnabledAsync(db, cancellationToken)
+    });
 }).RequireAuthorization();
 
 api.MapPut("/admin/settings", async (PlatformSettingsRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
@@ -682,9 +687,10 @@ api.MapPut("/admin/settings", async (PlatformSettingsRequest request, ClaimsPrin
     var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
     if (failure is not null) return failure;
     var settings = await db.PlatformSettings.SingleAsync(cancellationToken);
-    settings.ShowPartners = request.ShowPartners;
+    if (request.ShowPartners is not null) settings.ShowPartners = request.ShowPartners.Value;
+    if (request.ShowLiveWebcams is not null) settings.ShowLiveWebcams = request.ShowLiveWebcams.Value;
     await db.SaveChangesAsync(cancellationToken);
-    return Results.Ok(new { showPartners = settings.ShowPartners });
+    return Results.Ok(new { showPartners = settings.ShowPartners, showLiveWebcams = settings.ShowLiveWebcams });
 }).RequireAuthorization();
 
 api.MapPut("/me/preferences", async (PreferencesRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
@@ -1165,6 +1171,11 @@ static bool MatchesBootstrapAdmin(string? email, string? googleSubject, TaNoMarO
     || (!string.IsNullOrWhiteSpace(options.BootstrapAdminEmail) && string.Equals(email, options.BootstrapAdminEmail, StringComparison.OrdinalIgnoreCase));
 static void SetRefreshCookie(HttpContext context, string value, bool development) => context.Response.Cookies.Append(TaNoMarOptions.RefreshCookieName, value, new CookieOptions { HttpOnly = true, Secure = !development, SameSite = SameSiteMode.Lax, MaxAge = TimeSpan.FromDays(30), Path = "/api/v1/auth" });
 static async Task<User?> CurrentUserAsync(ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) { var id = principal.FindFirstValue(ClaimTypes.NameIdentifier); return Guid.TryParse(id, out var userId) ? await db.Users.SingleOrDefaultAsync(user => user.Id == userId, cancellationToken) : null; }
+static async Task<bool> ShowLiveWebcamsEnabledAsync(TaNoMarDbContext db, CancellationToken cancellationToken)
+{
+    var settings = await db.PlatformSettings.AsNoTracking().SingleOrDefaultAsync(cancellationToken);
+    return settings is null || settings.ShowLiveWebcams;
+}
 static async Task<bool> ShowPartnersEnabledAsync(TaNoMarDbContext db, CancellationToken cancellationToken)
 {
     var settings = await db.PlatformSettings.AsNoTracking().SingleOrDefaultAsync(cancellationToken);
@@ -1186,7 +1197,11 @@ static async Task<object> UserDtoAsync(User user, TaNoMarDbContext db, BillingSe
         plan = new { code = plan.Code, name = plan.Name },
         entitlements = new { maxForecastDays = plan.MaxForecastDays, maxFavorites = plan.MaxFavorites, maxPersonalSpots = plan.MaxPersonalSpots, maxAlerts = plan.MaxAlerts },
         modules = PlanRules.ModulesDto(plan),
-        features = new { showPartners = await ShowPartnersEnabledAsync(db, cancellationToken) },
+        features = new
+        {
+            showPartners = await ShowPartnersEnabledAsync(db, cancellationToken),
+            showLiveWebcams = await ShowLiveWebcamsEnabledAsync(db, cancellationToken)
+        },
         preferences = new
         {
             region = preferences?.Region ?? "Florianópolis",
@@ -1254,6 +1269,13 @@ static object SpotDtoProjection(FishingSpot spot, User user, bool favorite = fal
         hasLiveWebcam
     };
 }
+static async Task<HashSet<Guid>> VisibleWebcamSpotIdsAsync(TaNoMarDbContext db, CancellationToken cancellationToken)
+{
+    if (!await ShowLiveWebcamsEnabledAsync(db, cancellationToken))
+        return [];
+    return await ActiveWebcamSpotIdsAsync(db, cancellationToken);
+}
+
 static Task<HashSet<Guid>> ActiveWebcamSpotIdsAsync(TaNoMarDbContext db, CancellationToken cancellationToken) =>
     db.FishingSpotWebcams.AsNoTracking()
         .Where(item => item.IsActive)
@@ -1710,4 +1732,4 @@ record AdminPlanConfigRequest(
 record AdminActiveRequest(bool IsActive);
 record PartnerOfferRequest(string Title, string? Description, string? PriceLabel, DateTimeOffset? EndsAt, int? SortOrder);
 record PartnerRequest(string? Slug, string Name, string Category, string? Tagline, string? About, string? City, string? WhatsApp, string? Instagram, string? Website, string? MapsUrl, string? CoverImageUrl, bool IsPublished, bool IsFeatured, int SortOrder, PartnerOfferRequest[]? Offers);
-record PlatformSettingsRequest(bool ShowPartners);
+record PlatformSettingsRequest(bool? ShowPartners, bool? ShowLiveWebcams);

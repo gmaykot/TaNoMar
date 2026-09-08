@@ -81,3 +81,12 @@ export async function setPlatformShowPartners(showPartners: boolean) {
     }),
   );
 }
+
+export async function setPlatformShowLiveWebcams(showLiveWebcams: boolean) {
+  return parsePlatformSettings(
+    await apiRequest('/admin/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ showLiveWebcams }),
+    }),
+  );
+}

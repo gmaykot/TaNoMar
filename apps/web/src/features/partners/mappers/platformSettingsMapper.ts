@@ -9,5 +9,8 @@ export function parsePlatformSettings(value: unknown): PlatformSettings {
   if (!isRecord(value) || typeof value.showPartners !== 'boolean') {
     throw new ContractError('Configuração da plataforma inválida.');
   }
-  return { showPartners: value.showPartners };
+  return {
+    showPartners: value.showPartners,
+    showLiveWebcams: value.showLiveWebcams !== false,
+  };
 }

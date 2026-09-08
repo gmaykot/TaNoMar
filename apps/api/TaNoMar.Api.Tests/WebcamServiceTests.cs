@@ -319,6 +319,67 @@ public sealed class WebcamServiceTests
     }
 
     [Fact]
+    public async Task Feature_desligada_no_admin_nao_devolve_stream()
+    {
+        using var db = WebcamTestHarness.CreateDb();
+        db.PlatformSettings.Add(new PlatformSettings
+        {
+            Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0010"),
+            ShowLiveWebcams = false
+        });
+        var user = WebcamTestHarness.User(PlanRules.Capitao);
+        var spot = WebcamTestHarness.Official();
+        db.Users.Add(user);
+        db.FishingSpots.Add(spot);
+        await db.SaveChangesAsync();
+        db.FishingSpotWebcams.Add(new FishingSpotWebcam
+        {
+            FishingSpotId = spot.Id,
+            Provider = "windy",
+            ExternalId = "123456",
+            Name = "Campeche",
+            IsAvailable = true,
+            LastAvailabilityCheck = DateTimeOffset.UtcNow,
+            CreatedByUserId = user.Id
+        });
+        await db.SaveChangesAsync();
+        var provider = new FakeWebcamProvider();
+        provider.Details["123456"] = WebcamTestHarness.LiveDetails();
+        var service = WebcamTestHarness.CreateService(db, provider);
+
+        var result = await service.ViewAsync(user, spot.Slug, CancellationToken.None);
+
+        Assert.Equal(403, result.Status);
+        Assert.DoesNotContain("embedUrl", Body(result));
+        Assert.Contains("feature_disabled", Body(result));
+        Assert.Equal(0, provider.GetCalls);
+    }
+
+    [Fact]
+    public async Task Admin_pesquisa_com_feature_desligada()
+    {
+        using var db = WebcamTestHarness.CreateDb();
+        db.PlatformSettings.Add(new PlatformSettings
+        {
+            Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0010"),
+            ShowLiveWebcams = false
+        });
+        var admin = WebcamTestHarness.User(PlanRules.Mestre, "Admin");
+        var spot = WebcamTestHarness.Official();
+        db.Users.Add(admin);
+        db.FishingSpots.Add(spot);
+        await db.SaveChangesAsync();
+        var provider = new FakeWebcamProvider();
+        provider.SearchResults.Add(WebcamTestHarness.LiveHit());
+        var service = WebcamTestHarness.CreateService(db, provider);
+
+        var result = await service.SearchAsync(admin, spot.Slug, asAdmin: true, CancellationToken.None);
+
+        Assert.Equal(200, result.Status);
+        Assert.Equal(1, provider.SearchCalls);
+    }
+
+    [Fact]
     public async Task Vinculo_duplicado_nao_e_criado()
     {
         using var db = WebcamTestHarness.CreateDb();

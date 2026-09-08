@@ -53,6 +53,12 @@ internal sealed record WebcamHttpResult(int Status, object? Body = null)
             code = "webcam_provider_unavailable",
             detail = "Não foi possível consultar as câmeras agora. Tente novamente em alguns minutos."
         });
+    public static WebcamHttpResult FeatureDisabled() =>
+        new(403, new
+        {
+            code = "feature_disabled",
+            detail = "Câmeras ao vivo estão desligadas no momento."
+        });
     public static WebcamHttpResult NotConfigured() =>
         new(503, new
         {

@@ -25,6 +25,11 @@ internal sealed class WebcamService(
             logger.LogInformation("UnauthorizedWebcamAccess user={UserId} spot={SpotId} action=view", user.Id, spot.Slug);
             return ForbiddenPlan();
         }
+        if (!await LiveWebcamsEnabledAsync(cancellationToken))
+        {
+            logger.LogInformation("UnauthorizedWebcamAccess user={UserId} spot={SpotId} action=feature", user.Id, spot.Slug);
+            return WebcamHttpResult.FeatureDisabled();
+        }
 
         var link = await ActiveLinkAsync(spot.Id, cancellationToken);
         if (link is null) return WebcamHttpResult.NotFound();
@@ -307,6 +312,11 @@ internal sealed class WebcamService(
                 logger.LogInformation("UnauthorizedWebcamAccess user={UserId} spot={SpotId} action=manage", user.Id, spot.Slug);
                 return (null, ForbiddenPlan());
             }
+            if (!await LiveWebcamsEnabledAsync(cancellationToken))
+            {
+                logger.LogInformation("UnauthorizedWebcamAccess user={UserId} spot={SpotId} action=feature", user.Id, spot.Slug);
+                return (null, WebcamHttpResult.FeatureDisabled());
+            }
         }
 
         if (!SpotRules.Owns(spot, user) || spot.Visibility == "official")
@@ -316,6 +326,12 @@ internal sealed class WebcamService(
         }
 
         return (spot, null);
+    }
+
+    private async Task<bool> LiveWebcamsEnabledAsync(CancellationToken cancellationToken)
+    {
+        var settings = await db.PlatformSettings.AsNoTracking().SingleOrDefaultAsync(cancellationToken);
+        return settings is null || settings.ShowLiveWebcams;
     }
 
     private Task<FishingSpot?> FindVisibleSpotAsync(string spotId, User user, CancellationToken cancellationToken) =>

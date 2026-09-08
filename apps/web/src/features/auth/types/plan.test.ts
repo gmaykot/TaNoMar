@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isPaidPlan, hasPlanModule, SUBSCRIPTION_LOCK_LABEL } from './auth';
+import { isPaidPlan, hasPlanModule, hasLiveWebcams, SUBSCRIPTION_LOCK_LABEL } from './auth';
 
 describe('isPaidPlan', () => {
   it('reconhece Arrais, Mestre e Capitão como assinatura', () => {
@@ -61,5 +61,17 @@ describe('hasPlanModule', () => {
         'liveWebcams',
       ),
     ).toBe(true);
+  });
+});
+
+describe('hasLiveWebcams', () => {
+  const capitao = {
+    plan: { code: 'capitao' },
+    modules: { liveWebcams: true },
+  };
+
+  it('respeita o interruptor do admin', () => {
+    expect(hasLiveWebcams({ ...capitao, features: { showLiveWebcams: true } })).toBe(true);
+    expect(hasLiveWebcams({ ...capitao, features: { showLiveWebcams: false } })).toBe(false);
   });
 });

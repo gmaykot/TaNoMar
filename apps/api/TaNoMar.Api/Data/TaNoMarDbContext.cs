@@ -141,7 +141,12 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 CanLiveWebcams = true
             });
         modelBuilder.Entity<PlatformSettings>().HasData(
-            new PlatformSettings { Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0010"), ShowPartners = false });
+            new PlatformSettings
+            {
+                Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0010"),
+                ShowPartners = false,
+                ShowLiveWebcams = true
+            });
 
     }
 }
@@ -355,6 +360,7 @@ public sealed class PlatformSettings
 {
     public Guid Id { get; set; }
     public bool ShowPartners { get; set; }
+    public bool ShowLiveWebcams { get; set; } = true;
 }
 
 public sealed class ForecastAlert

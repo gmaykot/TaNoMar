@@ -29,10 +29,19 @@ Metadado opcional de origem: `providerDisplayName`. Na Windy vale `"Windy"`. A U
 
 ## Quem faz o quê
 
-- **Admin**: pesquisa, seleciona, troca e remove a câmera de qualquer local (`/admin/fishing-spots/{id}/…`).
-- **Capitão dono de Meu Local** (local pessoal, `OwnerUserId` = usuário autenticado): o mesmo fluxo em `/fishing-spots/{id}/…`.
-- **Capitão**: vê a transmissão de um local que já tem câmera válida (`GET /fishing-spots/{id}/webcam`).
+- **Admin**: pesquisa, seleciona, troca e remove a câmera de qualquer local (`/admin/fishing-spots/{id}/…`). Liga ou desliga a feature em `/admin` (`Mostrar câmeras ao vivo`).
+- **Capitão dono de Meu Local** (local pessoal, `OwnerUserId` = usuário autenticado): o mesmo fluxo em `/fishing-spots/{id}/…`, se a feature estiver ligada.
+- **Capitão**: vê a transmissão de um local que já tem câmera válida (`GET /fishing-spots/{id}/webcam`), se a feature estiver ligada.
 - **Demais planos**: `403` nesse GET. O DTO do local pode trazer `hasLiveWebcam` (booleano, sem URL) para o convite do plano.
+
+Com a feature desligada no admin (`PlatformSettings.ShowLiveWebcams`, padrão `true`):
+
+- `GET /me` devolve `features.showLiveWebcams: false`
+- Capitão recebe `403 feature_disabled` no GET da câmera, sem URL/embed
+- `hasLiveWebcam` fica `false` no DTO do local
+- Admin continua pesquisando, vinculando e removendo
+
+O CRUD admin não depende do interruptor. `GET/PUT /admin/settings` troca `{ showPartners, showLiveWebcams }` sem redeploy. O PUT só altera os campos enviados.
 
 Pesquisa e seleção continuam: local → coordenadas → provider de proximidade → resultados → selecionar → vincular. Sem cadastro manual de URL.
 

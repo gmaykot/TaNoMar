@@ -69,7 +69,8 @@ export Webcams__AvailabilityCacheMinutes=15
 3. Inicie API e frontend como nas seções acima.
 4. Login Google. Admin: `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_GOOGLE_SUBJECT`.
 5. Capitão sem pagamento: em Development, um Admin troca o plano da conta em `/admin/usuarios` para Capitão.
-6. Admin abre um local → Procurar câmera próxima → Selecionar. Capitão abre o local → Ver câmera ao vivo.
+6. Em `/admin`, ligue **Mostrar câmeras ao vivo** (padrão: ligado).
+7. Admin abre um local → Procurar câmera próxima → Selecionar. Capitão abre o local → Ver câmera ao vivo.
 
 Guia completo: [docs/features/webcams.md](docs/features/webcams.md).
 

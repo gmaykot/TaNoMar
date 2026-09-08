@@ -7,7 +7,7 @@ Base: `/api/v1`. Implementação em `apps/api/TaNoMar.Api`.
 - `POST /auth/google`: recebe `{ credential }`, devolve `{ accessToken }` e cria refresh token HttpOnly.
 - `POST /auth/refresh`: rotaciona refresh token e devolve novo access token.
 - `POST /auth/logout`: revoga e remove o cookie no path `/api/v1/auth`.
-- `GET /me`: usuário, role, plano, entitlements, `modules` (marine, diary, offline, customMetrics, communityVote, rankingEmphasis, liveWebcams), `features.showPartners`, preferências e `billing` (estado da assinatura; `enabled: false` sem chave Asaas).
+- `GET /me`: usuário, role, plano, entitlements, `modules` (marine, diary, offline, customMetrics, communityVote, rankingEmphasis, liveWebcams), `features.showPartners`, `features.showLiveWebcams`, preferências e `billing` (estado da assinatura; `enabled: false` sem chave Asaas).
 - `PUT /me/preferences`: região (um ou mais trechos da ilha, separados por ` | `), unidade de vento, opt-in de notificações de previsão, `focus` (`pescador`, `surfista` ou `ambos`) e `visibleMetrics`. A preferência `Ilha de Santa Catarina` (incluindo os nomes antigos `Florianópolis` e `Meu mapa`) abrange todas as regiões. O foco vale para qualquer plano, é escolhido no primeiro acesso e pode ser alterado na conta; a web só mostra ou oculta informações. Sem `focus`, a API devolve `null` e a web pede a escolha. A seleção de indicadores exige `modules.customMetrics`, afeta somente a apresentação na web e não altera a nota. Contas sem seleção mantêm todos os indicadores visíveis.
 
 O access token é JWT Bearer e fica só em memória no frontend. O refresh token permanece no cookie `tanomar_refresh`. A web entra em `/entrar` com Google Identity Services, tenta refresh na abertura e encerra a sessão após um 401 sem cookie válido.
@@ -58,9 +58,9 @@ O contrato de métrica é uma união `{ state: "available", value }` ou `{ state
 - `GET /billing/subscription` e `POST /billing/subscription/cancel`: autenticado. Cancelar encerra a recorrência no Asaas **sem** `/refund`; o plano pago segue até `accessUntil`.
 - `POST /webhooks/asaas`: público. Valida o header `asaas-access-token` (`ASAAS_WEBHOOK_TOKEN`). Sem JWT.
 - `GET /admin/plans` e `PUT /admin/plans/{code}`: só Admin. Lista os quatro códigos (`free`, `arrais`, `premium`, `capitao`) com `enabled` e `activeUserCount` (contas `IsActive`). Atualiza nome (até 40), tagline (até 160), `monthlyPriceCents` (0–999900), ordem (0–99), destaque, `enabled`, cotas e flags de módulo. O código não muda. Marcar `featured` tira o destaque dos demais. Desligar um plano exige zero contas ativas nele; o Free não desliga. Plano desligado some da vitrine e não recebe contas novas. Sem criação nem exclusão de plano. Mudar o preço atualiza só a cobrança **futura** no Asaas.
-- `GET /me` inclui `features.showPartners`, ligado pela configuração persistida em `PlatformSettings` (admin em `/admin/parceiros`, padrão `false`).
+- `GET /me` inclui `features.showPartners` (admin em `/admin/parceiros`, padrão `false`) e `features.showLiveWebcams` (admin em `/admin`, padrão `true`).
 - `GET /partners` e `GET /partners/{slug}`: vitrine autenticada. Só com a flag ligada; senão `404` (`feature_disabled`). Lista só publicados; ofertas com `endsAt` vencido somem.
-- `GET/PUT /admin/settings`: só Admin. Lê e grava `{ showPartners }`. Independente da vitrine pública.
+- `GET/PUT /admin/settings`: só Admin. Lê `{ showPartners, showLiveWebcams }`. O PUT altera só os campos enviados.
 - `GET/POST /admin/partners`, `PUT/DELETE /admin/partners/{slug}`: só Admin, independente da flag. Categorias: `loja`, `guia`, `hospedagem`, `outro`. Publicar exige WhatsApp, Instagram, site ou Maps.
 - `GET /notifications`, `POST /notifications/{id}/read`, `DELETE /notifications/{id}`: caixa do usuário, itens ativos por 48h. Avisos ligados a locais também respeitam as regiões preferidas. A API cria avisos para: dono na aprovação/rejeição de local; alvo na troca de plano ou liberação de conta; contas ativas e interessadas na região em relato novo (o autor recebe confirmação). O sino da web também lista os relatos ativos (`GET /community/reports`) para confirmar ou contestar.
 - `GET /notifications/unread`: `{ unread }` para o pontinho do sino, sem baixar a lista.
@@ -78,9 +78,9 @@ O worker de alertas verifica a previsão de hora em hora, respeita `forecastNoti
 
 Exigem `modules.liveWebcams` (padrão: plano Capitão). Sem o módulo, `GET /fishing-spots/{id}/webcam` responde `403` e não devolve URL/embed. O frontend vincula só com `{ provider, externalId }`. Identidade da câmera: `provider` + `externalId` (hoje `windy`). O DTO pode incluir `providerDisplayName` (`Windy`); a UI ainda não exibe origem. Detalhes em [features/webcams.md](features/webcams.md).
 
-- `GET /fishing-spots/{id}/webcam`: transmissão do local visível. `404` sem câmera.
-- `GET /fishing-spots/{id}/webcams/search`, `POST /fishing-spots/{id}/webcam`, `DELETE /fishing-spots/{id}/webcam`: dono Capitão de Meu Local.
-- `GET /admin/fishing-spots/{id}/webcam`, `GET /admin/fishing-spots/{id}/webcams/search`, `POST /admin/fishing-spots/{id}/webcam`, `DELETE /admin/fishing-spots/{id}/webcam`: Admin, qualquer local.
+- `GET /fishing-spots/{id}/webcam`: transmissão do local visível. `404` sem câmera. Feature desligada no admin: `403 feature_disabled`, sem URL.
+- `GET /fishing-spots/{id}/webcams/search`, `POST /fishing-spots/{id}/webcam`, `DELETE /fishing-spots/{id}/webcam`: dono Capitão de Meu Local, com a feature ligada.
+- `GET /admin/fishing-spots/{id}/webcam`, `GET /admin/fishing-spots/{id}/webcams/search`, `POST /admin/fishing-spots/{id}/webcam`, `DELETE /admin/fishing-spots/{id}/webcam`: Admin, qualquer local, mesmo com a feature desligada.
 - Pesquisa sem chave Windy: `503 webcam_unconfigured`. Provider fora: `502 webcam_provider_unavailable`.
 
 ## Implantação

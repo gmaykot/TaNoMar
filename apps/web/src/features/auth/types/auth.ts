@@ -21,6 +21,7 @@ export interface AuthUser {
   modules?: PlanModules;
   features: {
     showPartners: boolean;
+    showLiveWebcams?: boolean;
   };
   preferences: {
     region: string;
@@ -70,9 +71,16 @@ export function hasPlanModule(
 }
 
 export function hasLiveWebcams(
-  user: { plan?: { code?: string } | null; modules?: Partial<PlanModules> } | null | undefined,
+  user:
+    | {
+        plan?: { code?: string } | null;
+        modules?: Partial<PlanModules>;
+        features?: { showLiveWebcams?: boolean };
+      }
+    | null
+    | undefined,
 ) {
-  return hasPlanModule(user, 'liveWebcams');
+  return hasPlanModule(user, 'liveWebcams') && showsLiveWebcams(user);
 }
 
 export function isAdmin(user: Pick<AuthUser, 'role'> | null | undefined) {
@@ -81,4 +89,10 @@ export function isAdmin(user: Pick<AuthUser, 'role'> | null | undefined) {
 
 export function showsPartners(user: Pick<AuthUser, 'features'> | null | undefined) {
   return user?.features.showPartners === true;
+}
+
+export function showsLiveWebcams(
+  user: { features?: { showLiveWebcams?: boolean } } | null | undefined,
+) {
+  return user?.features?.showLiveWebcams !== false;
 }
