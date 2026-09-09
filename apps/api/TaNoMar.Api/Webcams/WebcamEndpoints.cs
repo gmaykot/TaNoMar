@@ -20,43 +20,6 @@ internal static class WebcamEndpoints
             return (await webcams.ViewAsync(user, id, cancellationToken)).ToResult();
         }).RequireAuthorization();
 
-        api.MapGet("/fishing-spots/{id}/webcams/search", async (
-            string id,
-            ClaimsPrincipal principal,
-            TaNoMarDbContext db,
-            WebcamService webcams,
-            CancellationToken cancellationToken) =>
-        {
-            var user = await CurrentUserAsync(principal, db, cancellationToken);
-            if (user is null) return Results.Unauthorized();
-            return (await webcams.SearchAsync(user, id, asAdmin: false, cancellationToken)).ToResult();
-        }).RequireAuthorization().RequireRateLimiting("webcams");
-
-        api.MapPost("/fishing-spots/{id}/webcam", async (
-            string id,
-            WebcamLinkRequest request,
-            ClaimsPrincipal principal,
-            TaNoMarDbContext db,
-            WebcamService webcams,
-            CancellationToken cancellationToken) =>
-        {
-            var user = await CurrentUserAsync(principal, db, cancellationToken);
-            if (user is null) return Results.Unauthorized();
-            return (await webcams.LinkAsync(user, id, request, asAdmin: false, cancellationToken)).ToResult();
-        }).RequireAuthorization().RequireRateLimiting("webcams");
-
-        api.MapDelete("/fishing-spots/{id}/webcam", async (
-            string id,
-            ClaimsPrincipal principal,
-            TaNoMarDbContext db,
-            WebcamService webcams,
-            CancellationToken cancellationToken) =>
-        {
-            var user = await CurrentUserAsync(principal, db, cancellationToken);
-            if (user is null) return Results.Unauthorized();
-            return (await webcams.UnlinkAsync(user, id, asAdmin: false, cancellationToken)).ToResult();
-        }).RequireAuthorization();
-
         api.MapGet("/admin/fishing-spots/{id}/webcam", async (
             string id,
             ClaimsPrincipal principal,
@@ -66,7 +29,7 @@ internal static class WebcamEndpoints
         {
             var user = await CurrentUserAsync(principal, db, cancellationToken);
             if (user is null) return Results.Unauthorized();
-            return (await webcams.GetLinkedAsync(user, id, asAdmin: true, cancellationToken)).ToResult();
+            return (await webcams.GetLinkedAsync(user, id, cancellationToken)).ToResult();
         }).RequireAuthorization();
 
         api.MapGet("/admin/fishing-spots/{id}/webcams/search", async (
@@ -78,7 +41,7 @@ internal static class WebcamEndpoints
         {
             var user = await CurrentUserAsync(principal, db, cancellationToken);
             if (user is null) return Results.Unauthorized();
-            return (await webcams.SearchAsync(user, id, asAdmin: true, cancellationToken)).ToResult();
+            return (await webcams.SearchAsync(user, id, cancellationToken)).ToResult();
         }).RequireAuthorization().RequireRateLimiting("webcams");
 
         api.MapGet("/admin/fishing-spots/{id}/webcams/youtube", async (
@@ -104,7 +67,7 @@ internal static class WebcamEndpoints
         {
             var user = await CurrentUserAsync(principal, db, cancellationToken);
             if (user is null) return Results.Unauthorized();
-            return (await webcams.LinkAsync(user, id, request, asAdmin: true, cancellationToken)).ToResult();
+            return (await webcams.LinkAsync(user, id, request, cancellationToken)).ToResult();
         }).RequireAuthorization().RequireRateLimiting("webcams");
 
         api.MapDelete("/admin/fishing-spots/{id}/webcam", async (
@@ -116,7 +79,7 @@ internal static class WebcamEndpoints
         {
             var user = await CurrentUserAsync(principal, db, cancellationToken);
             if (user is null) return Results.Unauthorized();
-            return (await webcams.UnlinkAsync(user, id, asAdmin: true, cancellationToken)).ToResult();
+            return (await webcams.UnlinkAsync(user, id, cancellationToken)).ToResult();
         }).RequireAuthorization();
     }
 

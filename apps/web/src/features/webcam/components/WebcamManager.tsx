@@ -13,11 +13,10 @@ import styles from './webcam.module.css';
 
 interface WebcamManagerProps {
   spotId: string;
-  admin?: boolean;
 }
 
-export function WebcamManager({ spotId, admin = false }: WebcamManagerProps) {
-  const webcams = useSpotWebcam(spotId, { admin, enabled: Boolean(spotId) });
+export function WebcamManager({ spotId }: WebcamManagerProps) {
+  const webcams = useSpotWebcam(spotId, { admin: true, enabled: Boolean(spotId) });
   const [searching, setSearching] = useState(false);
   const [youtubeOpen, setYoutubeOpen] = useState(false);
   const [youtubeQuery, setYoutubeQuery] = useState('');
@@ -95,11 +94,9 @@ export function WebcamManager({ spotId, admin = false }: WebcamManagerProps) {
         <Button type="button" onClick={startSearch} disabled={webcams.search.isPending}>
           {linked ? 'Trocar câmera' : 'Procurar câmera próxima'}
         </Button>
-        {admin ? (
-          <Button type="button" variant="secondary" onClick={startYouTube}>
-            Incluir do YouTube
-          </Button>
-        ) : null}
+        <Button type="button" variant="secondary" onClick={startYouTube}>
+          Incluir do YouTube
+        </Button>
         {linked ? (
           <Button type="button" variant="quiet" onClick={() => setConfirmRemove(true)}>
             Remover
@@ -129,7 +126,7 @@ export function WebcamManager({ spotId, admin = false }: WebcamManagerProps) {
           }}
         />
       ) : null}
-      {admin && youtubeOpen ? (
+      {youtubeOpen ? (
         <form className={styles.lookup} onSubmit={lookupYouTube}>
           <label className={styles.lookupField}>
             <span>Link da transmissão no YouTube</span>

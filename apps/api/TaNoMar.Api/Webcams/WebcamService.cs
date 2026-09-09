@@ -36,19 +36,19 @@ internal sealed class WebcamService(
         return await PlaybackAsync(link, includePlayer: true, cancellationToken);
     }
 
-    public async Task<WebcamHttpResult> GetLinkedAsync(User user, string spotId, bool asAdmin, CancellationToken cancellationToken)
+    public async Task<WebcamHttpResult> GetLinkedAsync(User user, string spotId, CancellationToken cancellationToken)
     {
-        var (spot, failure) = await AuthorizeManageAsync(user, spotId, asAdmin, requireLiveWebcams: !asAdmin, cancellationToken);
+        var (spot, failure) = await AuthorizeManageAsync(user, spotId, cancellationToken);
         if (failure is not null) return failure;
         var link = await ActiveLinkAsync(spot!.Id, cancellationToken);
         if (link is null)
             return WebcamHttpResult.Ok(new { linked = false });
-        return await PlaybackAsync(link, includePlayer: asAdmin, cancellationToken);
+        return await PlaybackAsync(link, includePlayer: true, cancellationToken);
     }
 
-    public async Task<WebcamHttpResult> SearchAsync(User user, string spotId, bool asAdmin, CancellationToken cancellationToken)
+    public async Task<WebcamHttpResult> SearchAsync(User user, string spotId, CancellationToken cancellationToken)
     {
-        var (spot, failure) = await AuthorizeManageAsync(user, spotId, asAdmin, requireLiveWebcams: !asAdmin, cancellationToken);
+        var (spot, failure) = await AuthorizeManageAsync(user, spotId, cancellationToken);
         if (failure is not null) return failure;
         if (spot!.Latitude is null || spot.Longitude is null)
             return WebcamHttpResult.BadRequest("webcam_location_missing", "Este local ainda não tem coordenadas para pesquisar câmeras próximas.");
@@ -80,7 +80,7 @@ internal sealed class WebcamService(
 
     public async Task<WebcamHttpResult> LookupAsync(User user, string spotId, string? query, CancellationToken cancellationToken)
     {
-        var (spot, failure) = await AuthorizeManageAsync(user, spotId, asAdmin: true, requireLiveWebcams: false, cancellationToken);
+        var (spot, failure) = await AuthorizeManageAsync(user, spotId, cancellationToken);
         if (failure is not null) return failure;
         var text = query?.Trim() ?? string.Empty;
         if (text.Length is 0 or > WebcamOptions.LookupQueryMaxLength
@@ -119,20 +119,15 @@ internal sealed class WebcamService(
         }
     }
 
-    public async Task<WebcamHttpResult> LinkAsync(User user, string spotId, WebcamLinkRequest request, bool asAdmin, CancellationToken cancellationToken)
+    public async Task<WebcamHttpResult> LinkAsync(User user, string spotId, WebcamLinkRequest request, CancellationToken cancellationToken)
     {
-        var (spot, failure) = await AuthorizeManageAsync(user, spotId, asAdmin, requireLiveWebcams: !asAdmin, cancellationToken);
+        var (spot, failure) = await AuthorizeManageAsync(user, spotId, cancellationToken);
         if (failure is not null) return failure;
         var target = spot!;
         var providerId = request.Provider?.Trim().ToLowerInvariant();
         var externalId = request.ExternalId?.Trim();
         if (string.IsNullOrWhiteSpace(providerId) || string.IsNullOrWhiteSpace(externalId))
             return WebcamHttpResult.BadRequest("webcam_invalid", "Informe o provedor e o identificador da câmera.");
-        if (!asAdmin && string.Equals(providerId, WebcamOptions.YouTubeProviderId, StringComparison.OrdinalIgnoreCase))
-        {
-            logger.LogInformation("UnauthorizedWebcamAccess user={UserId} spot={SpotId} action=youtube", user.Id, target.Slug);
-            return WebcamHttpResult.Forbidden("forbidden", "Só o administrador vincula câmeras do YouTube.");
-        }
         var source = providers.Find(providerId);
         if (source is null)
             return WebcamHttpResult.BadRequest("webcam_unknown_provider", "Este provedor de câmera ainda não está disponível.");
@@ -205,12 +200,12 @@ internal sealed class WebcamService(
             match.Provider,
             match.ExternalId,
             user.Id);
-        return await PlaybackAsync(match, includePlayer: asAdmin, cancellationToken);
+        return await PlaybackAsync(match, includePlayer: true, cancellationToken);
     }
 
-    public async Task<WebcamHttpResult> UnlinkAsync(User user, string spotId, bool asAdmin, CancellationToken cancellationToken)
+    public async Task<WebcamHttpResult> UnlinkAsync(User user, string spotId, CancellationToken cancellationToken)
     {
-        var (spot, failure) = await AuthorizeManageAsync(user, spotId, asAdmin, requireLiveWebcams: !asAdmin, cancellationToken);
+        var (spot, failure) = await AuthorizeManageAsync(user, spotId, cancellationToken);
         if (failure is not null) return failure;
         var target = spot!;
         var current = await db.FishingSpotWebcams
@@ -330,43 +325,15 @@ internal sealed class WebcamService(
     private async Task<(FishingSpot? spot, WebcamHttpResult? failure)> AuthorizeManageAsync(
         User user,
         string spotId,
-        bool asAdmin,
-        bool requireLiveWebcams,
         CancellationToken cancellationToken)
     {
         var spot = await db.FishingSpots.SingleOrDefaultAsync(item => item.Slug == spotId, cancellationToken);
         if (spot is null) return (null, WebcamHttpResult.NotFound());
-        if (asAdmin)
+        if (!SpotRules.IsAdmin(user))
         {
-            if (!SpotRules.IsAdmin(user))
-            {
-                logger.LogInformation("UnauthorizedWebcamAccess user={UserId} spot={SpotId} action=admin", user.Id, spot.Slug);
-                return (null, WebcamHttpResult.Forbidden("forbidden", "Apenas administradores gerenciam câmeras de qualquer local."));
-            }
-            return (spot, null);
+            logger.LogInformation("UnauthorizedWebcamAccess user={UserId} spot={SpotId} action=admin", user.Id, spot.Slug);
+            return (null, WebcamHttpResult.Forbidden("forbidden", "Apenas administradores incluem câmeras nos locais."));
         }
-
-        if (requireLiveWebcams)
-        {
-            var plan = await PlanAsync(user, cancellationToken);
-            if (!plan.CanLiveWebcams)
-            {
-                logger.LogInformation("UnauthorizedWebcamAccess user={UserId} spot={SpotId} action=manage", user.Id, spot.Slug);
-                return (null, ForbiddenPlan());
-            }
-            if (!await LiveWebcamsEnabledAsync(cancellationToken))
-            {
-                logger.LogInformation("UnauthorizedWebcamAccess user={UserId} spot={SpotId} action=feature", user.Id, spot.Slug);
-                return (null, WebcamHttpResult.FeatureDisabled());
-            }
-        }
-
-        if (!SpotRules.Owns(spot, user) || spot.Visibility == "official")
-        {
-            logger.LogInformation("UnauthorizedWebcamAccess user={UserId} spot={SpotId} action=ownership", user.Id, spot.Slug);
-            return (null, WebcamHttpResult.Forbidden("forbidden", "Só o dono pode gerenciar a câmera deste local."));
-        }
-
         return (spot, null);
     }
 

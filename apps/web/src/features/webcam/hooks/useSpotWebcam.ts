@@ -49,20 +49,20 @@ export function useSpotWebcam(
   };
 
   const search = useMutation({
-    mutationFn: () => searchSpotWebcams(spotId, admin),
+    mutationFn: () => searchSpotWebcams(spotId),
   });
   const youtubeLookup = useMutation({
     mutationFn: (query: string) => lookupYouTubeWebcam(spotId, query),
   });
   const link = useMutation({
-    mutationFn: (input: WebcamLinkInput) => linkSpotWebcam(spotId, input, admin),
+    mutationFn: (input: WebcamLinkInput) => linkSpotWebcam(spotId, input),
     onSuccess: async () => {
       showSaveConfirmation('Câmera vinculada.');
       await invalidate();
     },
   });
   const unlink = useMutation({
-    mutationFn: () => unlinkSpotWebcam(spotId, admin),
+    mutationFn: () => unlinkSpotWebcam(spotId),
     onSuccess: async () => {
       showSaveConfirmation('Câmera removida.');
       await invalidate();

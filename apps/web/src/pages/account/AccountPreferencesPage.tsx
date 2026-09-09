@@ -38,6 +38,7 @@ const metricLabels: Record<FishingMetricKey, { label: string; description: strin
     label: 'Temperatura da água',
     description: 'Temperatura prevista da água.',
   },
+  pressure: { label: 'Pressão', description: 'Pressão atmosférica prevista.' },
 };
 
 export function AccountPreferencesPage() {

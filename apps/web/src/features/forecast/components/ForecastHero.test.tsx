@@ -101,7 +101,8 @@ describe('ForecastHero', () => {
       within(trend)
         .getAllByRole('listitem')
         .map((item) => item.textContent),
-    ).toEqual(['05h309,1', '07h8,9', '17h8,7']);
+    ).toEqual(['Melhor05h309,1', '07h8,9', '17h8,7']);
+    expect(within(trend).getByText('Melhor')).toBeInTheDocument();
     expect(screen.getAllByText('9,1')).toHaveLength(2);
     const infoButton = screen.getByLabelText('Como a nota é calculada');
     const details = infoButton.closest('details');
@@ -116,7 +117,7 @@ describe('ForecastHero', () => {
     expect(infoButton).toHaveFocus();
   });
 
-  it('não mostra o período no tile de ondas quando o período está oculto', () => {
+  it('mostra o período no tile de ondas mesmo quando o período está oculto como tile', () => {
     const forecast = forecastFixture.days[0]?.ranking[0];
     if (!forecast) throw new Error('fixture de ranking ausente');
 
@@ -127,7 +128,7 @@ describe('ForecastHero', () => {
     );
 
     expect(screen.getByText('Ondas')).toBeInTheDocument();
-    expect(screen.queryByText(/Período:/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Período:/)).toBeInTheDocument();
   });
 
   it('esconde indicadores de mar bloqueados no card compacto', () => {
@@ -153,5 +154,52 @@ describe('ForecastHero', () => {
     expect(screen.queryByText(/Rajadas:/)).not.toBeInTheDocument();
     expect(screen.queryByText('Ondas')).not.toBeInTheDocument();
     expect(screen.queryByText('Assinatura')).not.toBeInTheDocument();
+  });
+
+  it('troca as condições ao clicar numa nota de horário', async () => {
+    const forecast = forecastFixture.days[0]?.ranking[0];
+    if (!forecast) throw new Error('fixture de ranking ausente');
+    const hourWindows = forecast.hourWindows.map((window, index) => ({
+      ...window,
+      metrics: forecast.metrics.map((metric) => {
+        if (metric.key === 'wind') {
+          return { ...metric, value: index === 0 ? '5,3 km/h Sudoeste' : '18 km/h Nordeste' };
+        }
+        if (metric.key === 'gusts') {
+          return { ...metric, value: index === 0 ? '12,6 km/h' : '24 km/h' };
+        }
+        if (metric.key === 'rain') {
+          return { ...metric, value: index === 0 ? '0 mm (9%)' : '0,4 mm (45%)' };
+        }
+        return metric;
+      }),
+    }));
+
+    render(
+      <MemoryRouter>
+        <ForecastHero forecast={{ ...forecast, hourWindows }} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Condições às 05h30')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '05h30, nota 9,1, melhor horário' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: '07h, nota 8,9' }));
+    expect(screen.getByText('Condições às 07h')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '07h, nota 8,9' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: '05h30, nota 9,1, melhor horário' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(screen.getByText('Melhor')).toBeInTheDocument();
+    expect(screen.getByText(/18 km\/h/)).toBeInTheDocument();
+    expect(screen.getByText(/Rajadas:/)).toHaveTextContent(/Rajadas: 24 km\/h/);
+    expect(screen.getByText('45% de chance')).toBeInTheDocument();
   });
 });

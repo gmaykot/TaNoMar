@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.RateLimiting;
@@ -1647,7 +1646,7 @@ static object ForecastItemDto(FishingLocationForecast item, bool paid, HashSet<s
     object Available(object value) => new { state = "available", value };
     object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = PlanRules.RequiredPlanLabel };
     var classification = item.Score >= 8.5 ? "Excelente" : item.Score >= 7 ? "Muito bom" : item.Score >= 5 ? "Regular" : "Difícil";
-    var highlights = ForecastHighlights(hour);
+    var highlights = ForecastHourWindowDto.Highlights(hour);
     var windOrigin = string.IsNullOrEmpty(hour?.WindOrigin) ? null : hour.WindOrigin;
     return new
     {
@@ -1658,37 +1657,25 @@ static object ForecastItemDto(FishingLocationForecast item, bool paid, HashSet<s
         score = Available(item.Score),
         classification = Available(classification),
         bestHours = Available(item.BestHours.Select(best => best.Time).ToArray()),
-        bestHourWindows = Available(item.BestHours.Select(best => new { time = best.Time, score = best.Score }).ToArray()),
+        bestHourWindows = Available(item.BestHours.Select(best => ForecastHourWindowDto.Create(best, paid)).ToArray()),
         metricsHour = hour?.Time,
         windOrigin,
         highlights,
         wind = Available(hour is null ? "n/d" : $"{FormatPt(hour.WindSpeedKmh, "0.#")} km/h {hour.WindDirection}"),
         gusts = Available(hour is null ? "n/d" : FormatMeasure(hour.WindGustKmh, "0.#", "km/h")),
         waves = paid ? Available(hour is null ? "n/d" : FormatMeasure(hour.WaveMeters, "0.00", "m")) : Locked(),
+        waveDirection = string.IsNullOrEmpty(hour?.WaveDirection) ? null : hour.WaveDirection,
         wavePeriod = paid ? Available(hour is null ? "n/d" : FormatMeasure(hour.WavePeriodSeconds, "0.#", "s")) : Locked(),
         swell = paid ? Available(hour is null ? "n/d" : FormatMeasure(hour.SwellMeters, "0.00", "m")) : Locked(),
         rain = Available(hour is null ? "n/d" : $"{FormatPt(hour.RainMm, "0.#")} mm ({hour.RainProbability}%)"),
         airTemperature = Available(hour is null ? "n/d" : FormatMeasure(hour.AirTemperatureC, "0.#", "°C")),
-        waterTemperature = paid ? Available(hour is null ? "n/d" : FormatMeasure(hour.WaterTemperatureC, "0.#", "°C")) : Locked()
+        waterTemperature = paid ? Available(hour is null ? "n/d" : FormatMeasure(hour.WaterTemperatureC, "0.#", "°C")) : Locked(),
+        pressure = paid ? Available(hour is null ? "n/d" : FormatMeasure(hour.PressureHpa, "0", "hPa")) : Locked()
     };
 }
 
-static string[] ForecastHighlights(FishingHourForecast? hour)
-{
-    if (hour is null) return [];
-    var highlights = new List<string>();
-    if (hour.WindOrigin == "terra") highlights.Add("Vento de terra");
-    else if (hour.WindOrigin == "mar") highlights.Add("Vento do mar");
-    else if (hour.WindOrigin == "cruzado") highlights.Add("Vento cruzado");
-    if (hour.WindSpeedKmh <= 15) highlights.Add("Vento leve");
-    if (hour.RainProbability <= 20) highlights.Add("Pouca chance de chuva");
-    if (hour.WaveMeters <= 1.2) highlights.Add("Ondas moderadas");
-    return highlights.Count > 0 ? highlights.Take(3).ToArray() : ["Condições equilibradas"];
-}
-
-static string FormatPt(double value, string format) =>
-    value.ToString(format, CultureInfo.GetCultureInfo("pt-BR"));
-static string FormatMeasure(double value, string format, string unit) => $"{FormatPt(value, format)} {unit}";
+static string FormatPt(double value, string format) => ForecastHourWindowDto.FormatPt(value, format);
+static string FormatMeasure(double value, string format, string unit) => ForecastHourWindowDto.FormatMeasure(value, format, unit);
 
 static double DistanceMeters(double lat1, double lon1, double lat2, double lon2)
 {

@@ -210,6 +210,16 @@ describe('HomePage', () => {
     expect(screen.getByRole('button', { name: /Amanhã/ })).toBeInTheDocument();
   });
 
+  it('aponta a previsão completa para o local e dia exibidos', async () => {
+    renderWithProviders(<HomePage />);
+
+    await screen.findByRole('heading', { name: 'Pântano do Sul' });
+    expect(screen.getByRole('link', { name: /Ver previsão completa/ })).toHaveAttribute(
+      'href',
+      '/locais/pantano_do_sul?data=2026-09-05',
+    );
+  });
+
   it('mostra somente os indicadores escolhidos pelo usuário Premium', async () => {
     authState.visibleMetrics = ['rain'];
     renderWithProviders(<HomePage />);
@@ -249,7 +259,7 @@ describe('HomePage', () => {
     expect(within(hero).getByText('Condições às 05h30')).toBeInTheDocument();
     expect(within(hero).getByText(/Rajadas/)).toBeInTheDocument();
     expect(within(hero).getByText('Ondas')).toBeInTheDocument();
-    expect(within(hero).queryByText(/Período:/)).not.toBeInTheDocument();
+    expect(within(hero).getByText(/Período:/)).toBeInTheDocument();
     expect(within(hero).getByText('Chuva')).toBeInTheDocument();
     expect(
       within(hero).getByRole('region', { name: 'Notas dos melhores horários' }),

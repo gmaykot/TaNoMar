@@ -23,6 +23,7 @@ import type {
   WireRankingForecast,
   WireSpot,
   WireTideValue,
+  WireBestHourWindow,
 } from '../types/wire';
 import { ContractError } from '@/shared/api/errors';
 import { formatScoreBreakdown, windOriginLabel } from '../utils/scoreBreakdown';
@@ -96,7 +97,42 @@ function mapBestWindow(hours: string[]) {
 
 function mapHourWindows(item: WireForecastItem): ForecastHourWindow[] {
   if (!item.bestHourWindows || item.bestHourWindows.state !== 'available') return [];
-  return item.bestHourWindows.value;
+  return item.bestHourWindows.value.map(mapHourWindow);
+}
+
+function mapHourWindow(item: WireBestHourWindow): ForecastHourWindow {
+  if (
+    !item.wind ||
+    !item.gusts ||
+    !item.waves ||
+    !item.wavePeriod ||
+    !item.swell ||
+    !item.rain ||
+    !item.airTemperature ||
+    !item.waterTemperature
+  ) {
+    return { time: item.time, score: item.score };
+  }
+  const windOrigin = mapWindOrigin(item.windOrigin);
+  return {
+    time: item.time,
+    score: item.score,
+    windOrigin,
+    highlights: Array.isArray(item.highlights)
+      ? item.highlights.filter((highlight): highlight is string => typeof highlight === 'string')
+      : undefined,
+    pressure: item.pressure ? mapMetric('pressure', 'Pressão', item.pressure) : undefined,
+    metrics: [
+      mapMetric('wind', 'Vento', item.wind, windOriginLabel(windOrigin) ?? undefined),
+      mapMetric('gusts', 'Rajadas', item.gusts),
+      mapMetric('waves', 'Ondas', item.waves, item.waveDirection ?? undefined),
+      mapMetric('wave-period', 'Período', item.wavePeriod),
+      mapMetric('swell', 'Swell', item.swell),
+      mapMetric('rain', 'Chuva', item.rain),
+      mapMetric('air-temperature', 'Temperatura', item.airTemperature, 'Ar'),
+      mapMetric('water-temperature', 'Água', item.waterTemperature),
+    ],
+  };
 }
 
 function mapWindOrigin(value: string | null | undefined): WindOrigin | null {
@@ -150,10 +186,11 @@ export function mapForecastItem(item: WireForecastItem): ForecastRankingItem {
     highlights: Array.isArray(item.highlights)
       ? item.highlights.filter((highlight): highlight is string => typeof highlight === 'string')
       : [],
+    pressure: item.pressure ? mapMetric('pressure', 'Pressão', item.pressure) : undefined,
     metrics: [
       mapMetric('wind', 'Vento', item.wind, windOriginLabel(windOrigin) ?? undefined),
       mapMetric('gusts', 'Rajadas', item.gusts),
-      mapMetric('waves', 'Ondas', item.waves),
+      mapMetric('waves', 'Ondas', item.waves, item.waveDirection ?? undefined),
       mapMetric('wave-period', 'Período', item.wavePeriod),
       mapMetric('swell', 'Swell', item.swell),
       mapMetric('rain', 'Chuva', item.rain),

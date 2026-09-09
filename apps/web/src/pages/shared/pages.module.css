@@ -345,6 +345,32 @@
   letter-spacing: -0.05em;
 }
 
+.weatherCondition {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  color: var(--color-coral-500);
+  background: rgb(255 255 255 / 7%);
+}
+
+.weatherCondition span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.weatherCondition strong {
+  color: white;
+  font-size: var(--font-size-sm);
+}
+
+.weatherCondition small {
+  color: rgb(255 255 255 / 70%);
+  font-size: var(--font-size-xs);
+}
+
 .bestHours {
   display: flex;
   flex-wrap: wrap;

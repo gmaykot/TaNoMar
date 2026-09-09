@@ -82,6 +82,18 @@ export interface WireSpot {
 export interface WireBestHourWindow {
   time: string;
   score: number;
+  windOrigin?: string | null;
+  highlights?: string[];
+  wind?: WireMetric<string>;
+  gusts?: WireMetric<string>;
+  waves?: WireMetric<string>;
+  wavePeriod?: WireMetric<string>;
+  swell?: WireMetric<string>;
+  waveDirection?: string | null;
+  rain?: WireMetric<string>;
+  airTemperature?: WireMetric<string>;
+  waterTemperature?: WireMetric<string>;
+  pressure?: WireMetric<string>;
 }
 
 export interface WireForecastItem {
@@ -101,9 +113,11 @@ export interface WireForecastItem {
   waves: WireMetric<string>;
   wavePeriod: WireMetric<string>;
   swell: WireMetric<string>;
+  waveDirection?: string | null;
   rain: WireMetric<string>;
   airTemperature: WireMetric<string>;
   waterTemperature: WireMetric<string>;
+  pressure?: WireMetric<string>;
 }
 
 export interface WireForecastDay {

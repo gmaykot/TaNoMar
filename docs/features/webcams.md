@@ -33,9 +33,8 @@ Metadado opcional de origem: `providerDisplayName`. Windy vale `"Windy"`; YouTub
 
 ## Quem faz o quê
 
-- **Admin**: pesquisa Windy por proximidade, consulta live do YouTube pelo link, seleciona, troca e remove a câmera de qualquer local (`/admin/fishing-spots/{id}/…`). Liga ou desliga a feature em `/admin` (`Mostrar câmeras ao vivo`).
-- **Capitão dono de Meu Local** (local pessoal, `OwnerUserId` = usuário autenticado): pesquisa Windy e vincula em `/fishing-spots/{id}/…`, se a feature estiver ligada. Não vincula YouTube.
-- **Capitão**: vê a transmissão de um local que já tem câmera válida (`GET /fishing-spots/{id}/webcam`), se a feature estiver ligada.
+- **Admin**: pesquisa Windy por proximidade, consulta live do YouTube pelo link, seleciona, troca e remove a câmera de qualquer local (`/admin/fishing-spots/{id}/…`). Liga ou desliga a feature em `/admin` (`Mostrar câmeras ao vivo`). Só o perfil Admin inclui câmera.
+- **Capitão**: vê a transmissão de um local que já tem câmera válida (`GET /fishing-spots/{id}/webcam`), se a feature estiver ligada. Não pesquisa, vincula nem remove câmera.
 - **Demais planos**: `403` nesse GET. O DTO do local pode trazer `hasLiveWebcam` (booleano, sem URL). A web não mostra câmera nem convite no detalhe do local sem `modules.liveWebcams`.
 
 Com a feature desligada no admin (`PlatformSettings.ShowLiveWebcams`, padrão `true`):
@@ -80,7 +79,7 @@ YouTube Data API v3, encapsulada em `YouTubeWebcamProvider`. Só o admin consult
 - Vídeo encerrado ou canal: lista as lives atuais daquele canal (até 25), cada uma revalidada em `videos.list`
 - Sem live no ar ou não incorporável: `400 webcam_invalid`
 
-A chave é opcional. Sem `YOUTUBE_API_KEY` a API sobe; a consulta admin responde `503 webcam_unconfigured`. Capitão que tenta `POST` com `provider=youtube` recebe `403`.
+A chave é opcional. Sem `YOUTUBE_API_KEY` a API sobe; a consulta admin responde `503 webcam_unconfigured`. Quem não é Admin recebe `403` ao pesquisar, vincular ou remover câmera.
 
 ## Providers futuros (não implementados)
 

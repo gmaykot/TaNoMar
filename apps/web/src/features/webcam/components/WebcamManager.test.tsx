@@ -33,11 +33,9 @@ describe('WebcamManager', () => {
 
   it('admin inclui câmera pelo YouTube sem enviar URL no vínculo', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<WebcamManager spotId="campeche" admin />);
+    renderWithProviders(<WebcamManager spotId="campeche" />);
     expect(screen.getByRole('button', { name: 'Incluir do YouTube' })).toBeInTheDocument();
-    expect(
-      screen.getByText(/A transmissão é de terceiros/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/A transmissão é de terceiros/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Incluir do YouTube' }));
     await user.type(
       screen.getByLabelText(/Link da transmissão no YouTube/),
@@ -47,11 +45,5 @@ describe('WebcamManager', () => {
     expect(screen.getByText(/Só vinculamos transmissão no ar/)).toBeInTheDocument();
     expect(youtubeMutate).toHaveBeenCalledWith('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
     expect(linkMutate).not.toHaveBeenCalled();
-  });
-
-  it('Capitão não vê o campo do YouTube', () => {
-    renderWithProviders(<WebcamManager spotId="meu-local" />);
-    expect(screen.queryByRole('button', { name: 'Incluir do YouTube' })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/Link da transmissão no YouTube/)).not.toBeInTheDocument();
   });
 });

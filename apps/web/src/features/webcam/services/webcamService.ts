@@ -17,11 +17,8 @@ export async function getSpotWebcam(spotId: string, admin = false): Promise<Spot
   }
 }
 
-export async function searchSpotWebcams(
-  spotId: string,
-  admin = false,
-): Promise<WebcamSearchItem[]> {
-  return parseWebcamSearch(await apiRequest(webcamPath(spotId, admin, '/webcams/search')));
+export async function searchSpotWebcams(spotId: string): Promise<WebcamSearchItem[]> {
+  return parseWebcamSearch(await apiRequest(webcamPath(spotId, true, '/webcams/search')));
 }
 
 export async function lookupYouTubeWebcam(
@@ -37,16 +34,15 @@ export async function lookupYouTubeWebcam(
 export async function linkSpotWebcam(
   spotId: string,
   input: WebcamLinkInput,
-  admin = false,
 ): Promise<SpotWebcam> {
   return parseSpotWebcam(
-    await apiRequest(webcamPath(spotId, admin), {
+    await apiRequest(webcamPath(spotId, true), {
       method: 'POST',
       body: JSON.stringify({ provider: input.provider, externalId: input.externalId }),
     }),
   );
 }
 
-export async function unlinkSpotWebcam(spotId: string, admin = false) {
-  await apiRequest(webcamPath(spotId, admin), { method: 'DELETE' });
+export async function unlinkSpotWebcam(spotId: string) {
+  await apiRequest(webcamPath(spotId, true), { method: 'DELETE' });
 }

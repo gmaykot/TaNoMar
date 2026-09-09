@@ -13,11 +13,21 @@ const metrics: FishingMetric[] = [
 ];
 
 describe('MetricGrid', () => {
-  it('não mistura o período no tile de ondas quando o período está oculto', () => {
-    render(<MetricGrid metrics={metrics} keys={['waves']} compact />);
+  it('mostra direção e período no tile de ondas mesmo quando o período não é um tile separado', () => {
+    render(
+      <MetricGrid
+        metrics={[
+          { key: 'waves', label: 'Ondas', value: '0,7 m', detail: 'Leste' },
+          { key: 'wave-period', label: 'Período', value: '8 s' },
+        ]}
+        keys={['waves']}
+        compact
+      />,
+    );
 
     expect(screen.getByText('Ondas')).toBeInTheDocument();
-    expect(screen.queryByText(/Período:/)).not.toBeInTheDocument();
+    expect(screen.getByText('Leste')).toBeInTheDocument();
+    expect(screen.getByText(/Período:/)).toHaveTextContent(/Período: 8 s/);
     expect(screen.queryByText('Período')).not.toBeInTheDocument();
   });
 

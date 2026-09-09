@@ -49,6 +49,11 @@ function parseStringList(value: unknown) {
   return value as string[];
 }
 
+function parseOptionalStringMetric(value: unknown, label: string) {
+  if (value === undefined) return undefined;
+  return parseMetric(value, readString, label);
+}
+
 function parseBestHourWindows(value: unknown): WireBestHourWindow[] | null {
   if (!Array.isArray(value)) return null;
   const windows = value.map((item) => {
@@ -56,7 +61,29 @@ function parseBestHourWindows(value: unknown): WireBestHourWindow[] | null {
     const time = readString(item.time);
     const score = readNumber(item.score);
     if (!time || score === null) return null;
-    return { time, score };
+    if (item.wind === undefined) {
+      return { time, score } satisfies WireBestHourWindow;
+    }
+    try {
+      return {
+        time,
+        score,
+        windOrigin: parseWindOrigin(item.windOrigin),
+        highlights: parseStringList(item.highlights) ?? undefined,
+        wind: parseMetric(item.wind, readString, 'wind'),
+        gusts: parseMetric(item.gusts, readString, 'gusts'),
+        waves: parseMetric(item.waves, readString, 'waves'),
+        wavePeriod: parseMetric(item.wavePeriod, readString, 'wavePeriod'),
+        swell: parseMetric(item.swell, readString, 'swell'),
+        waveDirection: readString(item.waveDirection),
+        rain: parseMetric(item.rain, readString, 'rain'),
+        airTemperature: parseMetric(item.airTemperature, readString, 'airTemperature'),
+        waterTemperature: parseMetric(item.waterTemperature, readString, 'waterTemperature'),
+        pressure: parseOptionalStringMetric(item.pressure, 'pressure'),
+      } satisfies WireBestHourWindow;
+    } catch {
+      return null;
+    }
   });
   if (windows.some((item) => item === null)) return null;
   return windows as WireBestHourWindow[];
@@ -92,9 +119,14 @@ function parseForecastItem(value: unknown): WireForecastItem {
     waves: parseMetric(value.waves, readString, 'waves'),
     wavePeriod: parseMetric(value.wavePeriod, readString, 'wavePeriod'),
     swell: parseMetric(value.swell, readString, 'swell'),
+    waveDirection: readString(value.waveDirection),
     rain: parseMetric(value.rain, readString, 'rain'),
     airTemperature: parseMetric(value.airTemperature, readString, 'airTemperature'),
     waterTemperature: parseMetric(value.waterTemperature, readString, 'waterTemperature'),
+    pressure:
+      value.pressure === undefined
+        ? undefined
+        : parseMetric(value.pressure, readString, 'pressure'),
   };
 }
 

@@ -1,4 +1,4 @@
-import { CloudRain, Droplets, Gauge, Thermometer, Waves, Wind } from 'lucide-react';
+import { Activity, CloudRain, Droplets, Gauge, Thermometer, Waves, Wind } from 'lucide-react';
 import type { FishingMetric, FishingMetricKey } from '@/features/fishing/types/fishing';
 import { MetricTile } from '@/design-system/components/MetricTile';
 import { formatWindMetric } from '../utils/formatWindMetric';
@@ -18,6 +18,7 @@ const metricIcons = {
   rain: CloudRain,
   'air-temperature': Thermometer,
   'water-temperature': Droplets,
+  pressure: Activity,
 } satisfies Record<FishingMetricKey, typeof Wind>;
 
 interface MetricGridProps {
@@ -47,16 +48,14 @@ export function MetricGrid({
   const visibleMetrics = typeof limit === 'number' ? unlocked.slice(0, limit) : unlocked;
   const gusts = visibleMetrics.find((metric) => metric.key === 'gusts');
   const wind = visibleMetrics.find((metric) => metric.key === 'wind');
-  const wavePeriod = visibleMetrics.find((metric) => metric.key === 'wave-period');
+  const wavePeriod = metrics.find((metric) => metric.key === 'wave-period' && !metric.locked);
   const waves = visibleMetrics.find((metric) => metric.key === 'waves');
   const airTemperature = visibleMetrics.find((metric) => metric.key === 'air-temperature');
   const waterTemperature = visibleMetrics.find((metric) => metric.key === 'water-temperature');
   const combineWind = Boolean(
     compact && wind && gusts && !wind.locked && !gusts.locked && unlocked.length > 4,
   );
-  const combineWaves = Boolean(
-    compact && waves && wavePeriod && !waves.locked && !wavePeriod.locked,
-  );
+  const combineWaves = Boolean(compact && waves && wavePeriod && !waves.locked);
   const combineTemperatures = Boolean(
     compact &&
     airTemperature &&
@@ -92,7 +91,10 @@ export function MetricGrid({
               ...metric,
               value: keepMeasureTogether(metric.value),
               detail: undefined,
-              secondary: [`Período: ${keepMeasureTogether(wavePeriod.value)}`],
+              secondary: [
+                metric.detail,
+                `Período: ${keepMeasureTogether(wavePeriod.value)}`,
+              ].filter((line): line is string => Boolean(line)),
             },
           ];
         if (metric.key === 'rain' && !metric.locked) {

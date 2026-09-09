@@ -122,6 +122,90 @@ describe('forecastMapper', () => {
     expect(item.metrics.find((metric) => metric.key === 'wind')?.detail).toBe('Vento de terra');
   });
 
+  it('preserva janelas só com horário e nota', () => {
+    const item = mapForecastItem(parseRankingForecast(rankingWire).days[0]!.ranking[0]!);
+    expect(item.hourWindows).toEqual([
+      { time: '05:00', score: 9.3 },
+      { time: '06:00', score: 9.1 },
+      { time: '17:00', score: 8.9 },
+    ]);
+  });
+
+  it('mapeia métricas opcionais de cada janela horária', () => {
+    const item = mapForecastItem(
+      parseRankingForecast({
+        ...rankingWire,
+        days: [
+          {
+            date: '2026-09-05',
+            unavailableSpotIds: [],
+            ranking: [
+              {
+                ...rankingWire.days[0]!.ranking[0],
+                bestHourWindows: available([
+                  {
+                    time: '05:00',
+                    score: 9.3,
+                    windOrigin: 'terra',
+                    highlights: ['Vento de terra'],
+                    wind: available('8 km/h Leste'),
+                    gusts: available('12 km/h'),
+                    waves: locked(),
+                    wavePeriod: locked(),
+                    swell: locked(),
+                    waveDirection: 'Leste',
+                    rain: available('0,0 mm (10%)'),
+                    airTemperature: available('22,0 °C'),
+                    waterTemperature: locked(),
+                    pressure: locked(),
+                  },
+                  {
+                    time: '06:00',
+                    score: 9.1,
+                    windOrigin: 'mar',
+                    wind: available('14 km/h Nordeste'),
+                    gusts: available('18 km/h'),
+                    waves: available('0,70 m'),
+                    wavePeriod: available('7,0 s'),
+                    swell: available('0,50 m'),
+                    waveDirection: 'Nordeste',
+                    rain: available('0,4 mm (40%)'),
+                    airTemperature: available('21,0 °C'),
+                    waterTemperature: available('19,0 °C'),
+                    pressure: available('1016 hPa'),
+                  },
+                ]),
+              },
+            ],
+          },
+        ],
+      }).days[0]!.ranking[0]!,
+    );
+    expect(item.hourWindows[0]).toMatchObject({
+      time: '05:00',
+      score: 9.3,
+      windOrigin: 'terra',
+      highlights: ['Vento de terra'],
+    });
+    expect(item.hourWindows[0]?.metrics?.find((metric) => metric.key === 'waves')).toMatchObject({
+      locked: true,
+      value: 'Assinatura',
+    });
+    expect(item.hourWindows[1]).toMatchObject({
+      time: '06:00',
+      windOrigin: 'mar',
+    });
+    expect(item.hourWindows[1]?.metrics?.find((metric) => metric.key === 'waves')).toMatchObject({
+      value: '0,70 m',
+      detail: 'Nordeste',
+    });
+    expect(item.hourWindows[1]?.metrics?.find((metric) => metric.key === 'wind')).toMatchObject({
+      value: '14 km/h Nordeste',
+      detail: 'Vento do mar',
+    });
+    expect(item.hourWindows[1]?.pressure).toMatchObject({ value: '1016 hPa' });
+  });
+
   it('mapeia o perfil do local', () => {
     const location = mapLocation(
       parseSpot({

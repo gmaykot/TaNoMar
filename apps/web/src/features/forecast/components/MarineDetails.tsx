@@ -5,6 +5,7 @@ import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { Sparkline } from '@/design-system/components/Sparkline';
 import type { FishingMetricKey, MarineSeries, MarineTide } from '@/features/fishing/types/fishing';
 import { useMarineDetails } from '../hooks/useMarineDetails';
+import { marineSeriesAtHour } from '../utils/marineAtHour';
 import styles from './forecast.module.css';
 
 const seriesIcons = {
@@ -18,6 +19,8 @@ const seriesIcons = {
 interface MarineDetailsProps {
   locationId: string;
   date: string;
+  selectedHour?: string | null;
+  referenceHour?: string | null;
   visibleMetricKeys?: FishingMetricKey[];
 }
 
@@ -33,7 +36,13 @@ function showsMarineSeries(key: MarineSeries['key'], visibleMetricKeys?: Fishing
   return visibleMetricKeys.includes(key as FishingMetricKey);
 }
 
-export function MarineDetails({ locationId, date, visibleMetricKeys }: MarineDetailsProps) {
+export function MarineDetails({
+  locationId,
+  date,
+  selectedHour,
+  referenceHour,
+  visibleMetricKeys,
+}: MarineDetailsProps) {
   const marine = useMarineDetails(locationId, date, true);
 
   if (marine.isPending)
@@ -49,10 +58,12 @@ export function MarineDetails({ locationId, date, visibleMetricKeys }: MarineDet
     );
 
   const { series, tide } = marine.data;
-  const sea = series.filter(
-    (item) => item.key !== 'atmospheric-pressure' && showsMarineSeries(item.key, visibleMetricKeys),
-  );
-  const pressure = series.find((item) => item.key === 'atmospheric-pressure');
+  const sea = series
+    .filter(
+      (item) =>
+        item.key !== 'atmospheric-pressure' && showsMarineSeries(item.key, visibleMetricKeys),
+    )
+    .map((item) => marineSeriesAtHour(item, selectedHour, referenceHour));
 
   return (
     <div className={styles.marine}>
@@ -70,11 +81,10 @@ export function MarineDetails({ locationId, date, visibleMetricKeys }: MarineDet
       ) : null}
       <section className={styles.marineSection} aria-labelledby="marine-tide-heading">
         <h3 className={styles.marineEyebrow} id="marine-tide-heading">
-          Maré e pressão
+          Maré
         </h3>
         <div className={styles.marineCondition}>
           <TideCard tide={tide} />
-          {pressure ? <MarineMetricCard item={pressure} /> : null}
         </div>
       </section>
     </div>

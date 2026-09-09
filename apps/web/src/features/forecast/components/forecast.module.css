@@ -375,19 +375,39 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-2);
   margin: 0;
-  padding: 0;
+  padding: 0.35rem 0 0;
   list-style: none;
+  overflow: visible;
 }
 
 .scoreTrendValues li {
+  position: relative;
+  margin: 0;
+  padding: 0;
+}
+
+.scoreTrendValues button,
+.scoreTrendValues li:not(:has(button)) {
   display: grid;
   gap: 0.1rem;
+  width: 100%;
   padding: var(--space-2);
   border: 1px solid rgb(255 255 255 / 14%);
   border-radius: var(--radius-sm);
   color: rgb(255 255 255 / 76%);
   background: rgb(255 255 255 / 6%);
+  font: inherit;
   font-size: var(--font-size-sm);
+  text-align: left;
+}
+
+.scoreTrendValues button {
+  cursor: pointer;
+}
+
+.scoreTrendValues button:focus-visible {
+  outline: 2px solid var(--color-coral-500);
+  outline-offset: 2px;
 }
 
 .scoreTrendValues strong {
@@ -395,10 +415,27 @@
   font-size: var(--font-size-sm);
 }
 
-.scoreTrendValues .scoreTrendBest {
+.scoreTrendValues .scoreTrendSelected {
   border-color: var(--color-coral-500);
   color: white;
   background: color-mix(in srgb, var(--color-coral-500) 10%, transparent);
+}
+
+.scoreTrendStamp {
+  position: absolute;
+  top: -0.4rem;
+  right: 0.2rem;
+  z-index: 1;
+  padding: 0.12rem 0.42rem;
+  border-radius: var(--radius-pill);
+  color: white;
+  background: var(--color-coral-500);
+  font-size: 0.58rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  transform: rotate(6deg);
 }
 
 .metricGrid {

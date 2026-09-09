@@ -1,8 +1,14 @@
 import { ArrowRight, Clock3, Info, MapPin } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/design-system/components/Badge';
 import { ScoreIndicator } from '@/design-system/components/ScoreIndicator';
-import type { FishingMetricKey, ForecastRankingItem } from '@/features/fishing/types/fishing';
+import type {
+  FishingMetric,
+  FishingMetricKey,
+  ForecastRankingItem,
+} from '@/features/fishing/types/fishing';
+import { forecastAtHour } from '@/features/fishing/utils/forecastAtHour';
 import {
   formatHourLabel,
   formatHourList,
@@ -25,6 +31,15 @@ interface ForecastHeroProps {
   visibleMetricKeys?: FishingMetricKey[];
   windUnit?: string;
   showFishingScore?: boolean;
+  showLocationStamp?: boolean;
+  showLocationName?: boolean;
+  showLocationLink?: boolean;
+  hideLockedMetrics?: boolean;
+  selectedHour?: string | null;
+  onHourSelect?: (hour: string) => void;
+  adaptMetrics?: (forecast: ForecastRankingItem) => FishingMetric[];
+  beforeMetrics?: ReactNode | ((forecast: ForecastRankingItem) => ReactNode);
+  afterTrend?: ReactNode;
 }
 
 export function ForecastHero({
@@ -35,14 +50,39 @@ export function ForecastHero({
   visibleMetricKeys,
   windUnit,
   showFishingScore = true,
+  showLocationStamp = true,
+  showLocationName = true,
+  showLocationLink = true,
+  hideLockedMetrics = true,
+  selectedHour,
+  onHourSelect,
+  adaptMetrics,
+  beforeMetrics,
+  afterTrend,
 }: ForecastHeroProps) {
   const { best, alternatives } = splitRecommendationHours(forecast.bestHours, forecast.metricsHour);
   const hourWindows = [...forecast.hourWindows].sort((left, right) =>
     left.time.localeCompare(right.time),
   );
+  const defaultHour = forecast.metricsHour ?? hourWindows[0]?.time ?? null;
+  const isControlled = selectedHour !== undefined;
+  const [internalHour, setInternalHour] = useState(defaultHour);
+  const activeHour = isControlled ? selectedHour : internalHour;
+  const displayForecast = forecastAtHour(forecast, activeHour);
+  const displayMetrics = adaptMetrics ? adaptMetrics(displayForecast) : displayForecast.metrics;
+  const selectHour = (hour: string) => {
+    if (!isControlled) setInternalHour(hour);
+    onHourSelect?.(hour);
+  };
+  const hourCaption = metricsHourCaption(displayForecast.metricsHour);
+  const before =
+    typeof beforeMetrics === 'function' ? beforeMetrics(displayForecast) : beforeMetrics;
+
   return (
     <article className={styles.hero}>
-      <LocationStampFor isOwner={forecast.isOwner} visibility={forecast.visibility} />
+      {showLocationStamp ? (
+        <LocationStampFor isOwner={forecast.isOwner} visibility={forecast.visibility} />
+      ) : null}
       <div className={styles.heroDecor} aria-hidden="true">
         <div className={styles.heroGlow} />
       </div>
@@ -55,7 +95,7 @@ export function ForecastHero({
       </div>
       <div className={styles.heroMain}>
         <div>
-          <h2>{forecast.locationName}</h2>
+          {showLocationName ? <h2>{forecast.locationName}</h2> : null}
           {showFishingScore && best ? (
             <>
               <p className={styles.window}>
@@ -86,30 +126,39 @@ export function ForecastHero({
           </div>
         ) : null}
       </div>
-      {metricsHourCaption(forecast.metricsHour) ? (
-        <p className={styles.metricCaption}>{metricsHourCaption(forecast.metricsHour)}</p>
-      ) : null}
+      {hourCaption ? <p className={styles.metricCaption}>{hourCaption}</p> : null}
+      {before}
       <MetricGrid
-        metrics={forecast.metrics}
+        metrics={displayMetrics}
         keys={visibleMetricKeys}
         windUnit={windUnit}
         compact
-        hideLocked
+        hideLocked={hideLockedMetrics}
       />
       {showFishingScore && hourWindows.length > 0 ? (
         <section className={styles.scoreTrend} aria-label="Notas dos melhores horários">
           <strong className={styles.scoreTrendTitle}>Notas dos melhores horários</strong>
           <ol className={styles.scoreTrendValues}>
-            {hourWindows.map((item) => (
-              <li
-                key={item.time}
-                className={item.time === best ? styles.scoreTrendBest : undefined}
-                aria-current={item.time === best ? 'true' : undefined}
-              >
-                <span>{formatHourLabel(item.time)}</span>
-                <strong>{formatScore(item.score)}</strong>
-              </li>
-            ))}
+            {hourWindows.map((item) => {
+              const selected = item.time === activeHour;
+              const isBest = item.time === best;
+              return (
+                <li key={item.time}>
+                  <button
+                    type="button"
+                    className={selected ? styles.scoreTrendSelected : undefined}
+                    aria-label={`${formatHourLabel(item.time)}, nota ${formatScore(item.score)}${isBest ? ', melhor horário' : ''}`}
+                    aria-pressed={selected}
+                    aria-current={selected ? 'true' : undefined}
+                    onClick={() => selectHour(item.time)}
+                  >
+                    {isBest ? <span className={styles.scoreTrendStamp}>Melhor</span> : null}
+                    <span>{formatHourLabel(item.time)}</span>
+                    <strong>{formatScore(item.score)}</strong>
+                  </button>
+                </li>
+              );
+            })}
           </ol>
         </section>
       ) : showFishingScore && forecast.bestHours.length > 0 ? (
@@ -117,22 +166,26 @@ export function ForecastHero({
           <strong>Melhores horários</strong>
           <ol className={styles.scoreTrendValues}>
             {forecast.bestHours.map((hour) => (
-              <li key={hour} className={hour === best ? styles.scoreTrendBest : undefined}>
+              <li key={hour} className={hour === best ? styles.scoreTrendSelected : undefined}>
+                {hour === best ? <span className={styles.scoreTrendStamp}>Melhor</span> : null}
                 <span>{formatHourLabel(hour)}</span>
               </li>
             ))}
           </ol>
         </section>
       ) : null}
+      {afterTrend}
       {generatedAt ? (
         <p className={styles.heroFreshness}>Previsão atualizada em {generatedAt}</p>
       ) : null}
-      <Link
-        className={styles.heroLink}
-        to={`/locais/${forecast.locationId}${date ? `?data=${encodeURIComponent(date)}` : ''}`}
-      >
-        Ver previsão completa <ArrowRight size={18} aria-hidden="true" />
-      </Link>
+      {showLocationLink ? (
+        <Link
+          className={styles.heroLink}
+          to={`/locais/${forecast.locationId}${date ? `?data=${encodeURIComponent(date)}` : ''}`}
+        >
+          Ver previsão completa <ArrowRight size={18} aria-hidden="true" />
+        </Link>
+      ) : null}
     </article>
   );
 }

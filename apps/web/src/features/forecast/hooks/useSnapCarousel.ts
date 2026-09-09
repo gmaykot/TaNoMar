@@ -115,6 +115,11 @@ export function useSnapCarousel({
 
     const onPointerDown = (event: PointerEvent) => {
       if (event.pointerType !== 'mouse' || event.button !== 0) return;
+      if (
+        event.target instanceof Element &&
+        event.target.closest('a,button,input,select,textarea,summary')
+      )
+        return;
       dragging = true;
       dragged = false;
       startX = event.clientX;

@@ -22,7 +22,9 @@ vi.mock('@/features/forecast/services/forecastService', () => ({
         locked: authState.lockMarine,
         points: [
           { time: '05:00', value: 0.4 },
+          { time: '07:00', value: 1.1 },
           { time: '12:00', value: 0.7 },
+          { time: '17:00', value: 1.4 },
         ],
       },
       {
@@ -33,6 +35,7 @@ vi.mock('@/features/forecast/services/forecastService', () => ({
         locked: authState.lockMarine,
         points: [
           { time: '05:00', value: 0.4 },
+          { time: '07:00', value: 0.6 },
           { time: '12:00', value: 0.5 },
         ],
       },
@@ -45,6 +48,7 @@ vi.mock('@/features/forecast/services/forecastService', () => ({
         locked: authState.lockMarine,
         points: [
           { time: '05:00', value: 1016 },
+          { time: '07:00', value: 1014 },
           { time: '12:00', value: 1018 },
         ],
       },
@@ -82,7 +86,62 @@ vi.mock('@/features/forecast/services/forecastService', () => ({
           date: day.date,
           label: day.label,
           shortLabel: day.shortLabel,
-          forecast: { ...forecast, metrics },
+          forecast: {
+            ...forecast,
+            metrics,
+            hourWindows: forecast.hourWindows.map((window, hourIndex) => {
+              const pressure = authState.includeForecastPressure
+                ? {
+                    key: 'pressure' as const,
+                    label: 'Pressão',
+                    value: hourIndex === 0 ? '1018 hPa' : hourIndex === 1 ? '1016 hPa' : '1014 hPa',
+                    detail: 'estável',
+                  }
+                : undefined;
+              if (hourIndex === 0) {
+                return { ...window, metrics, pressure };
+              }
+              return {
+                ...window,
+                pressure,
+                metrics: metrics.map((metric) => {
+                  if (metric.key === 'rain') {
+                    return {
+                      ...metric,
+                      value: hourIndex === 1 ? '0,2 mm (45%)' : '1,4 mm (80%)',
+                    };
+                  }
+                  if (metric.key === 'wind') {
+                    return {
+                      ...metric,
+                      value: hourIndex === 1 ? '18 km/h Nordeste' : '22 km/h Sul',
+                    };
+                  }
+                  if (metric.key === 'waves' && !metric.locked) {
+                    return {
+                      ...metric,
+                      value: hourIndex === 1 ? '0,9 m' : '1,3 m',
+                      detail: hourIndex === 1 ? 'Nordeste' : 'Sul',
+                    };
+                  }
+                  if (metric.key === 'wave-period' && !metric.locked) {
+                    return { ...metric, value: hourIndex === 1 ? '9 s' : '6 s' };
+                  }
+                  return metric;
+                }),
+              };
+            }),
+            ...(authState.includeForecastPressure
+              ? {
+                  pressure: {
+                    key: 'pressure' as const,
+                    label: 'Pressão',
+                    value: '1018 hPa',
+                    detail: 'estável',
+                  },
+                }
+              : {}),
+          },
         },
       ];
     });
@@ -107,8 +166,11 @@ const authState = vi.hoisted(() => ({
   focus: null as string | null,
   showAppFocus: false,
   visibleMetrics: undefined as string[] | undefined,
+  includeForecastPressure: true,
   lockMarine: false,
   canDiary: true,
+  role: 'User' as 'User' | 'Admin',
+  liveWebcams: false,
 }));
 
 vi.mock('@/app/layout/saveConfirmationEvents', () => ({ showSaveConfirmation }));
@@ -121,7 +183,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
       name: 'Ana',
       email: 'ana@example.com',
       pictureUrl: null,
-      role: 'User',
+      role: authState.role,
       plan: {
         code: authState.maxFavorites > 0 ? 'premium' : 'free',
         name: authState.maxFavorites > 0 ? 'Mestre' : 'Free',
@@ -139,7 +201,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
         customMetrics: true,
         communityVote: true,
         rankingEmphasis: true,
-        liveWebcams: false,
+        liveWebcams: authState.liveWebcams,
       },
       features: { showPartners: false, showAppFocus: authState.showAppFocus },
       preferences: {
@@ -153,6 +215,14 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
     loginWithGoogle: vi.fn(),
     logout: vi.fn(),
   }),
+}));
+
+vi.mock('@/features/webcam/services/webcamService', () => ({
+  getSpotWebcam: () => Promise.resolve({ linked: false }),
+  searchSpotWebcams: vi.fn(),
+  lookupYouTubeWebcam: vi.fn(),
+  linkSpotWebcam: vi.fn(),
+  unlinkSpotWebcam: vi.fn(),
 }));
 
 vi.mock('@/features/locations/services/locationsService', () => ({
@@ -191,8 +261,11 @@ describe('LocationDetailsPage', () => {
     authState.focus = null;
     authState.showAppFocus = false;
     authState.visibleMetrics = undefined;
+    authState.includeForecastPressure = true;
     authState.lockMarine = false;
     authState.canDiary = true;
+    authState.role = 'User';
+    authState.liveWebcams = false;
     localStorage.clear();
     showSaveConfirmation.mockClear();
   });
@@ -208,18 +281,45 @@ describe('LocationDetailsPage', () => {
     expect(await screen.findByLabelText('Previsão por dia')).toBeInTheDocument();
     const slide = within(visibleDaySlide());
     expect(await slide.findByText('Vento')).toBeInTheDocument();
-    expect(slide.getByText('Chuva')).toBeInTheDocument();
+    expect(slide.getByLabelText('Condição do tempo: Sol')).toBeInTheDocument();
+    expect(slide.getByText('8% de chance de chuva')).toBeInTheDocument();
+    expect(slide.queryByText('Chuva')).not.toBeInTheDocument();
+    expect(slide.getByRole('region', { name: 'Notas dos melhores horários' })).toBeInTheDocument();
+    expect(slide.getByText('Pressão')).toBeInTheDocument();
     expect(slide.getByText('Ondas')).toBeInTheDocument();
     expect(slide.queryByText('Swell')).not.toBeInTheDocument();
     expect(slide.queryByLabelText('Maré')).not.toBeInTheDocument();
 
     await user.click(slide.getByText('Mar e maré'));
     expect(await screen.findByRole('heading', { name: 'Mar' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Maré e pressão' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Maré' })).toBeInTheDocument();
     expect(screen.getByText('Enchente')).toBeInTheDocument();
-    expect(screen.getByText('Pressão')).toBeInTheDocument();
-    expect(screen.getByLabelText('Maré')).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Maré').length).toBeGreaterThan(0);
     expect(screen.queryByText('Swell')).not.toBeInTheDocument();
+  });
+
+  it('atualiza clima, métricas e mar ao clicar numa hora', async () => {
+    const user = userEvent.setup();
+    renderLocation();
+    expect(await screen.findByLabelText('Previsão por dia')).toBeInTheDocument();
+    const slide = within(visibleDaySlide());
+    expect(await slide.findByLabelText('Condição do tempo: Sol')).toBeInTheDocument();
+    expect(slide.getByText('8% de chance de chuva')).toBeInTheDocument();
+    expect(slide.getByText('1018 hPa')).toBeInTheDocument();
+
+    await user.click(slide.getByRole('button', { name: '07h, nota 8,9' }));
+
+    expect(slide.getByText('Condições às 07h')).toBeInTheDocument();
+    expect(slide.getByLabelText('Condição do tempo: Nublado')).toBeInTheDocument();
+    expect(slide.getByText('45% de chance de chuva')).toBeInTheDocument();
+    expect(slide.getByText('1016 hPa')).toBeInTheDocument();
+    expect(slide.getByText('0,9 m')).toBeInTheDocument();
+    expect(slide.getByText('Nordeste')).toBeInTheDocument();
+    expect(slide.getByText(/Período:/)).toHaveTextContent(/Período: 9 s/);
+
+    await user.click(slide.getByText('Mar e maré'));
+    expect(await screen.findByRole('heading', { name: 'Mar' })).toBeInTheDocument();
+    expect(screen.getByText('1,10 m')).toBeInTheDocument();
   });
 
   it('no foco surfista abre o mar e esconde a nota de pesca', async () => {
@@ -234,6 +334,14 @@ describe('LocationDetailsPage', () => {
     expect(slide.getAllByText('Swell').length).toBeGreaterThan(0);
     expect(screen.queryByText('Nenhum relato ativo')).not.toBeInTheDocument();
     expect(screen.queryByText('Enviar relato')).not.toBeInTheDocument();
+  });
+
+  it('mantém a pressão no painel quando ela vem do detalhe do mar', async () => {
+    authState.includeForecastPressure = false;
+    renderLocation();
+
+    expect(await screen.findByLabelText('Previsão por dia')).toBeInTheDocument();
+    expect(await within(visibleDaySlide()).findByText('Pressão')).toBeInTheDocument();
   });
 
   it('omite no painel de mar o indicador desmarcado na conta', async () => {
@@ -251,7 +359,7 @@ describe('LocationDetailsPage', () => {
     await user.click(slide.getByText('Mar e maré'));
     expect(await screen.findByRole('heading', { name: 'Mar' })).toBeInTheDocument();
     expect(screen.queryByText('Swell')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Maré')).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Maré').length).toBeGreaterThan(0);
   });
 
   it('mantém o cadeado do mar no detalhe do local no plano Free', async () => {
@@ -291,6 +399,36 @@ describe('LocationDetailsPage', () => {
       within(await screen.findByRole('dialog')).getByRole('button', { name: 'Ver planos' }),
     );
     expect(await screen.findByText('Página de planos')).toBeInTheDocument();
+  });
+
+  it('Capitão dono não inclui câmera no próprio local', async () => {
+    const location = locationsFixture.find((item) => item.id === 'pantano_do_sul');
+    if (!location) throw new Error('fixture pantano_do_sul ausente');
+    location.isOwner = true;
+    location.visibility = 'private';
+    authState.liveWebcams = true;
+    try {
+      renderLocation();
+      expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Procurar câmera próxima' }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Incluir do YouTube' })).not.toBeInTheDocument();
+      expect(screen.getByText('Sem câmera ao vivo neste local.')).toBeInTheDocument();
+    } finally {
+      location.isOwner = false;
+      location.visibility = 'official';
+    }
+  });
+
+  it('Admin inclui câmera em qualquer local', async () => {
+    authState.role = 'Admin';
+    renderLocation();
+    expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: 'Procurar câmera próxima' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Incluir do YouTube' })).toBeInTheDocument();
   });
 
   it('não mostra câmera nem convite no plano Free', async () => {
@@ -362,7 +500,8 @@ describe('LocationDetailsPage', () => {
 
   it('permite trocar o dia arrastando o carrossel nos detalhes', async () => {
     renderLocation();
-    expect(await screen.findByRole('heading', { name: '05h30, 07h e 17h' })).toBeInTheDocument();
+    expect(await screen.findByLabelText('Previsão por dia')).toBeInTheDocument();
+    expect(within(visibleDaySlide()).getAllByText('05h30').length).toBeGreaterThan(0);
 
     const track = screen.getByLabelText('Previsão por dia');
     const slides = [...track.querySelectorAll<HTMLElement>('[data-snap-key]')];
@@ -381,7 +520,7 @@ describe('LocationDetailsPage', () => {
     track.dispatchEvent(new Event('scroll'));
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: '16h30, 07h e 17h' })).toBeInTheDocument();
+      expect(within(visibleDaySlide()).getAllByText('16h30').length).toBeGreaterThan(0);
     });
   });
 
