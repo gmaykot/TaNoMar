@@ -15,6 +15,7 @@ import { DayCarousel } from '@/features/forecast/components/DayCarousel';
 import { ForecastPresentation } from '@/features/forecast/components/ForecastPresentation';
 import { useLocationForecast } from '@/features/forecast/hooks/useForecast';
 import { LocationStampFor } from '@/features/locations/components/LocationStamp';
+import { IdealWindPreference } from '@/features/locations/components/IdealWindPreference';
 import { useLocationMutations } from '@/features/locations/hooks/useLocationMutations';
 import { routes } from '@/shared/constants/routes';
 import styles from '@/pages/shared/pages.module.css';
@@ -27,6 +28,7 @@ export function LocationDetailsPage() {
   const mutations = useLocationMutations();
   const canFavorite = (auth.user?.entitlements.maxFavorites ?? 0) > 0;
   const canDiary = hasPlanModule(auth.user, 'diary');
+  const canConfigureWind = hasPlanModule(auth.user, 'customWind');
   const canWatchWebcams = hasLiveWebcams(auth.user);
   const canManageWebcams = isAdmin(auth.user);
   const presentation = forecastPresentation(
@@ -173,7 +175,11 @@ export function LocationDetailsPage() {
         <ArrowLeft size={18} aria-hidden="true" /> Voltar aos locais
       </Link>
       <section className={styles.locationHero}>
-        <LocationStampFor isOwner={location.isOwner} visibility={location.visibility} />
+        <LocationStampFor
+          isOwner={location.isOwner}
+          visibility={location.visibility}
+          isFavorite={location.isFavorite}
+        />
         <div className={styles.locationIntro}>
           <span>
             <MapPin size={16} aria-hidden="true" /> {location.region}
@@ -194,6 +200,13 @@ export function LocationDetailsPage() {
           <Navigation size={24} />
         </div>
       </section>
+      {canManageWebcams ? (
+        <WebcamManager spotId={location.id} />
+      ) : canWatchWebcams && location.hasLiveWebcam ? (
+        <WebcamLiveView spotId={location.id} />
+      ) : canWatchWebcams ? (
+        <p className={styles.webcamEmpty}>Sem câmera ao vivo neste local.</p>
+      ) : null}
       <div
         className={`${styles.toolbar} ${styles.locationToolbar}`}
         role="toolbar"
@@ -223,13 +236,16 @@ export function LocationDetailsPage() {
           />
         )}
       </DayCarousel>
-      {canManageWebcams ? (
-        <WebcamManager spotId={location.id} />
-      ) : canWatchWebcams && location.hasLiveWebcam ? (
-        <WebcamLiveView spotId={location.id} />
-      ) : canWatchWebcams ? (
-        <p className={styles.webcamEmpty}>Sem câmera ao vivo neste local.</p>
-      ) : null}
+      <IdealWindPreference
+        key={location.id}
+        initialDirection={location.idealWindDirectionDegrees}
+        canConfigure={canConfigureWind}
+        pending={mutations.idealWind.isPending}
+        error={mutations.idealWindError}
+        onSave={(idealWindDirectionDegrees) =>
+          mutations.idealWind.mutate({ spotId: location.id, idealWindDirectionDegrees })
+        }
+      />
       {presentation.showCommunity ? (
         <CommunityReports
           spotId={location.id}

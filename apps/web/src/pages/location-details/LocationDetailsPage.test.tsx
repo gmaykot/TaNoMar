@@ -159,8 +159,9 @@ vi.mock('@/features/community/services/communityService', () => ({
   deleteReport: vi.fn(),
 }));
 
-const { showSaveConfirmation } = vi.hoisted(() => ({
+const { showSaveConfirmation, setIdealWind } = vi.hoisted(() => ({
   showSaveConfirmation: vi.fn(),
+  setIdealWind: vi.fn(() => Promise.resolve()),
 }));
 
 const authState = vi.hoisted(() => ({
@@ -171,6 +172,7 @@ const authState = vi.hoisted(() => ({
   includeForecastPressure: true,
   lockMarine: false,
   canDiary: true,
+  canCustomWind: true,
   role: 'User' as 'User' | 'Admin',
   liveWebcams: false,
 }));
@@ -201,6 +203,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
         diary: authState.canDiary,
         offline: true,
         customMetrics: true,
+        customWind: authState.canCustomWind,
         communityVote: true,
         rankingEmphasis: true,
         liveWebcams: authState.liveWebcams,
@@ -231,6 +234,7 @@ vi.mock('@/features/locations/services/locationsService', () => ({
   getLocations: () => Promise.resolve(locationsFixture),
   setFavorite: () => Promise.resolve(),
   setEnabled: () => Promise.resolve(),
+  setIdealWind,
   createLocation: vi.fn(),
   updateLocation: vi.fn(),
   deleteLocation: vi.fn(),
@@ -266,10 +270,12 @@ describe('LocationDetailsPage', () => {
     authState.includeForecastPressure = true;
     authState.lockMarine = false;
     authState.canDiary = true;
+    authState.canCustomWind = true;
     authState.role = 'User';
     authState.liveWebcams = false;
     localStorage.clear();
     showSaveConfirmation.mockClear();
+    setIdealWind.mockClear();
   });
 
   it('mostra estado amigável para local inexistente', async () => {
@@ -474,6 +480,29 @@ describe('LocationDetailsPage', () => {
     }
   });
 
+  it('mostra o selo Favorito sem substituir Meu local', async () => {
+    const location = locationsFixture.find((item) => item.id === 'pantano_do_sul');
+    if (!location) throw new Error('fixture pantano_do_sul ausente');
+    location.isOwner = true;
+    location.isFavorite = true;
+    location.visibility = 'shared';
+
+    try {
+      renderLocation();
+
+      expect(await screen.findByText('Meu local')).toBeInTheDocument();
+      expect(screen.getAllByText('Favorito').length).toBeGreaterThanOrEqual(1);
+      expect(document.querySelector('[data-location-stamp="favorite"]')).toHaveTextContent(
+        'Favorito',
+      );
+      expect(screen.queryByText('Compartilhado')).not.toBeInTheDocument();
+    } finally {
+      location.isOwner = false;
+      location.isFavorite = false;
+      location.visibility = 'official';
+    }
+  });
+
   it('mostra o selo Compartilhado quando o local é da comunidade', async () => {
     const location = locationsFixture.find((item) => item.id === 'pantano_do_sul');
     if (!location) throw new Error('fixture pantano_do_sul ausente');
@@ -493,6 +522,59 @@ describe('LocationDetailsPage', () => {
     renderLocation();
     const enabled = await screen.findByRole('button', { name: 'Nas previsões' });
     expect(enabled).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('posiciona a câmera antes das ações e o vento ideal junto dos relatos', async () => {
+    authState.liveWebcams = true;
+    renderLocation();
+
+    const webcam = await screen.findByText('Sem câmera ao vivo neste local.');
+    const toolbar = screen.getByRole('toolbar', { name: 'Ações do local' });
+    const idealWind = screen.getByRole('heading', { name: 'Vento ideal' }).closest('section');
+    const reports = screen.getByRole('heading', { name: 'Relatos no local' }).closest('section');
+
+    expect(webcam.compareDocumentPosition(toolbar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(idealWind?.nextElementSibling).toBe(reports);
+  });
+
+  it('salva o vento ideal também em um local predefinido', async () => {
+    const user = userEvent.setup();
+    renderLocation();
+
+    await user.selectOptions(await screen.findByLabelText('Direção ideal'), '90');
+    await user.click(screen.getByRole('button', { name: 'Salvar vento ideal' }));
+
+    await waitFor(() => expect(setIdealWind).toHaveBeenCalledWith('pantano_do_sul', 90));
+    expect(showSaveConfirmation).toHaveBeenCalledWith('Vento ideal salvo.');
+  });
+
+  it('oferece a mesma configuração no Meu local quando o plano comporta', async () => {
+    const location = locationsFixture.find((item) => item.id === 'pantano_do_sul');
+    if (!location) throw new Error('fixture pantano_do_sul ausente');
+    location.isOwner = true;
+    try {
+      renderLocation();
+      expect(await screen.findByLabelText('Direção ideal')).toBeInTheDocument();
+    } finally {
+      location.isOwner = false;
+    }
+  });
+
+  it('bloqueia a configuração quando o plano não comporta', async () => {
+    const user = userEvent.setup();
+    authState.canCustomWind = false;
+    renderLocation();
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Configurar vento ideal. Disponível na assinatura.',
+      }),
+    );
+
+    expect(await screen.findByRole('dialog', { name: 'Ver os planos?' })).toHaveTextContent(
+      'Configurar o vento ideal está na Assinatura.',
+    );
+    expect(setIdealWind).not.toHaveBeenCalled();
   });
 
   it('mostra as ações livres antes das travadas', async () => {

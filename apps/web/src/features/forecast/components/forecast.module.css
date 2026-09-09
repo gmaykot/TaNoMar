@@ -247,7 +247,7 @@
   padding-right: 8rem;
 }
 
-.hero [data-location-stamp] {
+.hero [data-location-stamps] {
   right: var(--space-1);
 }
 
@@ -320,6 +320,7 @@
 .heroTopline,
 .summaryMain,
 .hourSelector,
+.customHourField,
 .scoreExplanation {
   position: relative;
   z-index: 2;
@@ -452,7 +453,30 @@
   background: color-mix(in srgb, var(--color-coral-500) 22%, transparent);
 }
 
+.customHourField {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  color: var(--color-sea-100);
+  font-size: var(--font-size-sm);
+  font-weight: 750;
+}
+
+.customHourField select {
+  min-width: 7rem;
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid rgb(255 255 255 / 28%);
+  border-radius: var(--radius-md);
+  color: var(--color-ocean-950);
+  background: white;
+  font: inherit;
+}
+
 .hourSelector button:focus-visible,
+.customHourField select:focus-visible,
 .scoreExplanation summary:focus-visible,
 .chartTabs button:focus-visible,
 .technicalDetails summary:focus-visible,

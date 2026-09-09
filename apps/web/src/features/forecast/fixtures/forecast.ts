@@ -55,6 +55,7 @@ function ranking(seeds: ForecastSeed[]): ForecastRankingItem[] {
       locationName: location.name,
       score: seed.score,
       isOwner: location.isOwner,
+      isFavorite: location.isFavorite,
       visibility: location.visibility,
       classification: seed.classification,
       bestWindow: seed.window,

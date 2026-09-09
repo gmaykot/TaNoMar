@@ -348,6 +348,7 @@ internal sealed class BillingService(
             entitlements = new
             {
                 maxForecastDays = plan.MaxForecastDays,
+                bestHoursMode = plan.BestHoursMode,
                 maxFavorites = plan.MaxFavorites,
                 maxPersonalSpots = plan.MaxPersonalSpots,
                 maxAlerts = plan.MaxAlerts

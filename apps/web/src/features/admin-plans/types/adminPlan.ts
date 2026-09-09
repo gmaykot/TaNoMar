@@ -1,6 +1,7 @@
 import {
   centsFromReaisInput,
   reaisFromCents,
+  type BestHoursMode,
   type PlanCatalog,
 } from '@/features/subscription/subscriptionPlans';
 
@@ -12,6 +13,7 @@ export interface AdminPlanUpdate {
   featured: boolean;
   enabled: boolean;
   maxForecastDays: number;
+  bestHoursMode: BestHoursMode;
   maxFavorites: number;
   maxPersonalSpots: number;
   maxAlerts: number;
@@ -19,6 +21,7 @@ export interface AdminPlanUpdate {
   canDiary: boolean;
   canOffline: boolean;
   canCustomMetrics: boolean;
+  canCustomWind: boolean;
   canCommunityVote: boolean;
   canRankingEmphasis: boolean;
   canLiveWebcams: boolean;
@@ -32,6 +35,7 @@ export interface AdminPlanInput {
   featured: boolean;
   enabled: boolean;
   maxForecastDays: number;
+  bestHoursMode: BestHoursMode;
   maxFavorites: number;
   maxPersonalSpots: number;
   maxAlerts: number;
@@ -39,6 +43,7 @@ export interface AdminPlanInput {
   canDiary: boolean;
   canOffline: boolean;
   canCustomMetrics: boolean;
+  canCustomWind: boolean;
   canCommunityVote: boolean;
   canRankingEmphasis: boolean;
   canLiveWebcams: boolean;
@@ -64,6 +69,11 @@ export const planModuleFields = [
     key: 'canCustomMetrics',
     label: 'Indicadores sob medida',
     hint: 'Escolher quais métricas aparecem na previsão.',
+  },
+  {
+    key: 'canCustomWind',
+    label: 'Vento ideal por local',
+    hint: 'Personalizar a direção de vento usada na nota de cada local.',
   },
   {
     key: 'canCommunityVote',
@@ -93,6 +103,7 @@ export function planRevision(plan: PlanCatalog) {
     plan.enabled,
     plan.activeUserCount,
     plan.entitlements.maxForecastDays,
+    plan.entitlements.bestHoursMode ?? '3',
     plan.entitlements.maxFavorites,
     plan.entitlements.maxPersonalSpots,
     plan.entitlements.maxAlerts,
@@ -100,6 +111,7 @@ export function planRevision(plan: PlanCatalog) {
     plan.modules.diary,
     plan.modules.offline,
     plan.modules.customMetrics,
+    plan.modules.customWind,
     plan.modules.communityVote,
     plan.modules.rankingEmphasis,
     plan.modules.liveWebcams,
@@ -115,6 +127,7 @@ export function planToInput(plan: PlanCatalog): AdminPlanInput {
     featured: plan.featured,
     enabled: plan.enabled,
     maxForecastDays: plan.entitlements.maxForecastDays,
+    bestHoursMode: plan.entitlements.bestHoursMode ?? '3',
     maxFavorites: plan.entitlements.maxFavorites,
     maxPersonalSpots: plan.entitlements.maxPersonalSpots,
     maxAlerts: plan.entitlements.maxAlerts,
@@ -122,6 +135,7 @@ export function planToInput(plan: PlanCatalog): AdminPlanInput {
     canDiary: plan.modules.diary,
     canOffline: plan.modules.offline,
     canCustomMetrics: plan.modules.customMetrics,
+    canCustomWind: plan.modules.customWind === true,
     canCommunityVote: plan.modules.communityVote,
     canRankingEmphasis: plan.modules.rankingEmphasis,
     canLiveWebcams: plan.modules.liveWebcams,
@@ -139,6 +153,7 @@ export function inputToUpdate(input: AdminPlanInput): AdminPlanUpdate | null {
     featured: input.featured,
     enabled: input.enabled,
     maxForecastDays: input.maxForecastDays,
+    bestHoursMode: input.bestHoursMode,
     maxFavorites: input.maxFavorites,
     maxPersonalSpots: input.maxPersonalSpots,
     maxAlerts: input.maxAlerts,
@@ -146,6 +161,7 @@ export function inputToUpdate(input: AdminPlanInput): AdminPlanUpdate | null {
     canDiary: input.canDiary,
     canOffline: input.canOffline,
     canCustomMetrics: input.canCustomMetrics,
+    canCustomWind: input.canCustomWind,
     canCommunityVote: input.canCommunityVote,
     canRankingEmphasis: input.canRankingEmphasis,
     canLiveWebcams: input.canLiveWebcams,

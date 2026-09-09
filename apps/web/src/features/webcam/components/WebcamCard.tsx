@@ -22,6 +22,7 @@ export function WebcamCard({ webcam, heading = 'Ao vivo' }: WebcamCardProps) {
 
   return (
     <Card as="section" className={styles.card} elevated>
+      <WebcamDisclaimer />
       <div className={styles.header}>
         <div>
           <span className={styles.meta}>
@@ -46,7 +47,6 @@ export function WebcamCard({ webcam, heading = 'Ao vivo' }: WebcamCardProps) {
       ) : (
         <p className={styles.copy}>A câmera vinculada não está disponível agora.</p>
       )}
-      <WebcamDisclaimer />
       {open && webcam.player ? (
         <WebcamPlayer
           title={name}

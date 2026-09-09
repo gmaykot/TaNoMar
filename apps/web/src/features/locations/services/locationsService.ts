@@ -63,6 +63,13 @@ export async function setEnabled(spotId: string, isEnabled: boolean) {
   });
 }
 
+export async function setIdealWind(spotId: string, idealWindDirectionDegrees: number | null) {
+  await apiRequest('/me/spot-wind', {
+    method: 'PUT',
+    body: JSON.stringify({ spotId, idealWindDirectionDegrees }),
+  });
+}
+
 export async function getPendingLocations(): Promise<FishingLocation[]> {
   return parseSpotList(await apiRequest('/admin/fishing-spots/pending')).map(mapLocation);
 }

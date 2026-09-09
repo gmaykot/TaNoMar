@@ -1,0 +1,196 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using TaNoMar.Api.Data;
+using TaNoMar.Api.Fishing;
+using Xunit;
+
+namespace TaNoMar.Api.Tests;
+
+public sealed class FishingForecastCacheTests
+{
+    [Fact]
+    public async Task Serves_unexpired_snapshot_and_marks_it_stale_after_refresh_interval()
+    {
+        using var harness = new CacheHarness();
+        var date = new DateOnly(2026, 9, 9);
+        await harness.SeedSnapshotAsync("campeche", date, Forecast("campeche", date), createdAt: DateTimeOffset.UtcNow.AddHours(-4), expiresAt: DateTimeOffset.UtcNow.AddHours(20));
+
+        var cached = await harness.Cache.TryGetUsableAsync("campeche", date, CancellationToken.None);
+
+        Assert.NotNull(cached);
+        Assert.True(cached.IsUsable(DateTimeOffset.UtcNow));
+        Assert.True(cached.IsStale(harness.Cache.RefreshAfter, DateTimeOffset.UtcNow));
+        Assert.Equal(8.1, cached.Forecast.Score);
+    }
+
+    [Fact]
+    public async Task Ignores_expired_snapshot_even_when_it_has_hours()
+    {
+        using var harness = new CacheHarness();
+        var date = new DateOnly(2026, 9, 9);
+        await harness.SeedSnapshotAsync("campeche", date, Forecast("campeche", date), createdAt: DateTimeOffset.UtcNow.AddHours(-25), expiresAt: DateTimeOffset.UtcNow.AddMinutes(-1));
+
+        var cached = await harness.Cache.TryGetUsableAsync("campeche", date, CancellationToken.None);
+
+        Assert.Null(cached);
+    }
+
+    [Fact]
+    public async Task Completing_tide_does_not_reset_weather_lifetime()
+    {
+        using var harness = new CacheHarness();
+        var date = new DateOnly(2026, 9, 9);
+        var createdAt = DateTimeOffset.UtcNow.AddHours(-2);
+        var expiresAt = createdAt.AddHours(24);
+        await harness.SeedSnapshotAsync("campeche", date, Forecast("campeche", date), createdAt, expiresAt);
+
+        var withTide = Forecast("campeche", date) with
+        {
+            TidePoints = [new FishingTidePoint("06:00", 0.4)],
+            TideExtremes = [new FishingTideExtreme("06:12", "high", 0.8)]
+        };
+        await harness.Cache.PutAsync("campeche", date, withTide, CancellationToken.None, resetLifetime: false);
+
+        var row = await harness.ReadSnapshotAsync("campeche", date);
+        Assert.NotNull(row);
+        Assert.Equal(createdAt, row.CreatedAt);
+        Assert.Equal(expiresAt, row.ExpiresAt);
+        var cached = await harness.Cache.TryGetUsableAsync("campeche", date, CancellationToken.None);
+        Assert.NotNull(cached?.Forecast.TideExtremes);
+        Assert.Single(cached.Forecast.TideExtremes);
+    }
+
+    [Fact]
+    public async Task Refreshing_weather_resets_lifetime()
+    {
+        using var harness = new CacheHarness();
+        var date = new DateOnly(2026, 9, 9);
+        var createdAt = DateTimeOffset.UtcNow.AddHours(-5);
+        await harness.SeedSnapshotAsync("campeche", date, Forecast("campeche", date), createdAt, createdAt.AddHours(24));
+
+        await harness.Cache.PutAsync("campeche", date, Forecast("campeche", date, 9.2), CancellationToken.None);
+
+        var row = await harness.ReadSnapshotAsync("campeche", date);
+        Assert.NotNull(row);
+        Assert.True(row.CreatedAt > createdAt.AddHours(4));
+        Assert.True(row.ExpiresAt > DateTimeOffset.UtcNow.AddHours(20));
+    }
+
+    [Fact]
+    public async Task Invalidate_removes_memory_and_snapshots_and_bumps_generation()
+    {
+        using var harness = new CacheHarness();
+        var date = new DateOnly(2026, 9, 9);
+        await harness.Cache.PutAsync("campeche", date, Forecast("campeche", date), CancellationToken.None);
+        var generation = harness.Cache.Generation("campeche");
+
+        await harness.Cache.InvalidateLocationAsync("campeche", CancellationToken.None);
+
+        Assert.Null(await harness.Cache.TryGetUsableAsync("campeche", date, CancellationToken.None));
+        Assert.Null(await harness.ReadSnapshotAsync("campeche", date));
+        Assert.False(harness.Cache.IsCurrentGeneration("campeche", generation));
+    }
+
+    [Fact]
+    public void Refresh_interval_follows_warmup_hours()
+    {
+        using var harness = new CacheHarness(cacheHours: 24, warmupIntervalHours: 3);
+        Assert.Equal(TimeSpan.FromHours(3), harness.Cache.RefreshAfter);
+    }
+
+    [Fact]
+    public void Forecast_inputs_change_when_coordinates_orientation_or_profile_change()
+    {
+        var spot = new FishingSpot("praia-mole", "Praia Mole", "Leste da ilha", -27.6, -48.4, 90, "praia_aberta");
+
+        Assert.False(SpotRules.ForecastInputsChanged(spot, -27.6, -48.4, 90, "praia_aberta"));
+        Assert.True(SpotRules.ForecastInputsChanged(spot, -27.61, -48.4, 90, "praia_aberta"));
+        Assert.True(SpotRules.ForecastInputsChanged(spot, -27.6, -48.41, 90, "praia_aberta"));
+        Assert.True(SpotRules.ForecastInputsChanged(spot, -27.6, -48.4, 180, "praia_aberta"));
+        Assert.True(SpotRules.ForecastInputsChanged(spot, -27.6, -48.4, 90, "praia_protegida"));
+    }
+
+    private static FishingLocationForecast Forecast(string id, DateOnly date, double score = 8.1)
+    {
+        var hour = new FishingHourForecast(
+            "06:00",
+            score,
+            8,
+            12,
+            "Nordeste",
+            0,
+            20,
+            19,
+            10,
+            10,
+            8,
+            0.8,
+            8,
+            0.6,
+            10,
+            "Leste",
+            "Leste",
+            null,
+            1013,
+            "mar");
+        return new FishingLocationForecast(id, id, date, score, [hour], hour, [hour]);
+    }
+
+    private sealed class CacheHarness : IDisposable
+    {
+        private readonly ServiceProvider _provider;
+
+        public CacheHarness(int cacheHours = 24, int warmupIntervalHours = 3)
+        {
+            var services = new ServiceCollection();
+            var databaseName = Guid.NewGuid().ToString();
+            services.AddDbContext<TaNoMarDbContext>(options =>
+                options.UseInMemoryDatabase(databaseName));
+            _provider = services.BuildServiceProvider();
+            Cache = new FishingForecastCache(
+                new MemoryCache(new MemoryCacheOptions()),
+                _provider.GetRequiredService<IServiceScopeFactory>(),
+                Microsoft.Extensions.Options.Options.Create(new FishingOptions
+                {
+                    CacheHours = cacheHours,
+                    WarmupIntervalHours = warmupIntervalHours
+                }),
+                NullLogger<FishingForecastCache>.Instance);
+        }
+
+        public FishingForecastCache Cache { get; }
+
+        public async Task SeedSnapshotAsync(
+            string locationId,
+            DateOnly date,
+            FishingLocationForecast forecast,
+            DateTimeOffset createdAt,
+            DateTimeOffset expiresAt)
+        {
+            await using var scope = _provider.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<TaNoMarDbContext>();
+            db.FishingForecastSnapshots.Add(new FishingForecastSnapshot
+            {
+                LocationId = locationId,
+                Date = date,
+                PayloadJson = System.Text.Json.JsonSerializer.Serialize(forecast, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)),
+                CreatedAt = createdAt,
+                ExpiresAt = expiresAt
+            });
+            await db.SaveChangesAsync();
+        }
+
+        public async Task<FishingForecastSnapshot?> ReadSnapshotAsync(string locationId, DateOnly date)
+        {
+            await using var scope = _provider.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<TaNoMarDbContext>();
+            return await db.FishingForecastSnapshots
+                .AsNoTracking()
+                .SingleOrDefaultAsync(item => item.LocationId == locationId && item.Date == date);
+        }
+
+        public void Dispose() => _provider.Dispose();
+    }
+}

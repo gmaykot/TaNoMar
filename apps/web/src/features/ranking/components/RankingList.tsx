@@ -57,7 +57,11 @@ export function RankingList({
         const conditions = conditionSummary(item, visibleMetricKeys, windUnit);
         return (
           <Card as="article" className={styles.item} key={item.locationId}>
-            <LocationStampFor isOwner={item.isOwner} visibility={item.visibility} />
+            <LocationStampFor
+              isOwner={item.isOwner}
+              visibility={item.visibility}
+              isFavorite={item.isFavorite}
+            />
             {showFishingScore ? (
               <Badge className={styles.itemBadge} classification={item.classification} />
             ) : null}

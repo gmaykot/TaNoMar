@@ -5,7 +5,9 @@ export function forecastAtHour(
   hour: string | null | undefined,
 ): ForecastRankingItem {
   if (!hour) return forecast;
-  const window = forecast.hourWindows.find((item) => item.time === hour);
+  const window = [...forecast.hourWindows, ...(forecast.selectableHourWindows ?? [])].find(
+    (item) => item.time === hour,
+  );
   if (!window) return { ...forecast, metricsHour: hour };
   return {
     ...forecast,

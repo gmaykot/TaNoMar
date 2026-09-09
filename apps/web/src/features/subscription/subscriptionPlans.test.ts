@@ -28,6 +28,7 @@ const plan: PlanCatalog = {
     diary: true,
     offline: true,
     customMetrics: true,
+    customWind: true,
     communityVote: true,
     rankingEmphasis: true,
     liveWebcams: false,
@@ -75,6 +76,7 @@ describe('planFeatureList', () => {
       'Diário e planejamento de saídas',
       'Previsão salva no aparelho para consultar sem conexão',
       'Escolha quais indicadores quer acompanhar',
+      'Defina o vento ideal em cada local',
       'Ajude a validar relatos da comunidade',
       'Ordene o ranking por vento, chuva ou ondas sem mudar a nota',
     ]);
@@ -95,6 +97,7 @@ describe('planFeatureList', () => {
           diary: false,
           offline: false,
           customMetrics: false,
+          customWind: false,
           communityVote: false,
           rankingEmphasis: false,
           liveWebcams: false,

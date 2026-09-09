@@ -330,6 +330,29 @@ describe('HomePage', () => {
     expect(screen.queryByText('Compartilhado')).not.toBeInTheDocument();
   });
 
+  it('marca o local favorito com o selo Favorito no ranking do dia', async () => {
+    const owned = forecastFixture.days[0]?.ranking.find(
+      (item) => item.locationId === 'molhe-da-barra',
+    );
+    const featured = forecastFixture.days[0]?.ranking.find(
+      (item) => item.locationId === 'pantano_do_sul',
+    );
+    if (!owned || !featured) throw new Error('fixture de ranking ausente');
+    owned.isFavorite = true;
+    featured.isFavorite = true;
+
+    try {
+      renderWithProviders(<HomePage />);
+
+      expect(await screen.findByRole('heading', { name: 'Molhe da Barra' })).toBeInTheDocument();
+      expect(screen.getByText('Meu local')).toBeInTheDocument();
+      expect(screen.getAllByText('Favorito').length).toBeGreaterThanOrEqual(2);
+    } finally {
+      owned.isFavorite = false;
+      featured.isFavorite = false;
+    }
+  });
+
   it('no foco surfista esconde a nota e prioriza o mar', async () => {
     authState.focus = 'surfista';
     authState.showAppFocus = true;

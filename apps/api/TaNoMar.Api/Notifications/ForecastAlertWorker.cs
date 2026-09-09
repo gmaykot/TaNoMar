@@ -27,11 +27,17 @@ internal sealed class ForecastAlertWorker(
             var push = scope.ServiceProvider.GetRequiredService<WebPushQueue>();
             var alerts = await db.ForecastAlerts.Where(item => item.IsActive).ToListAsync(cancellationToken);
             var spots = await db.FishingSpots.ToDictionaryAsync(item => item.Id, cancellationToken);
-            var activeUserIds = await db.Users.Where(item => item.IsActive).Select(item => item.Id).ToHashSetAsync(cancellationToken);
+            var activeUsers = await db.Users.Where(item => item.IsActive).ToDictionaryAsync(item => item.Id, item => item.PlanCode, cancellationToken);
+            var plans = await db.Plans.AsNoTracking().ToDictionaryAsync(item => item.Code, cancellationToken);
+            var idealWindRows = await db.EnabledSpots.AsNoTracking()
+                .Where(item => item.IdealWindDirectionDegrees != null)
+                .Select(item => new { item.UserId, item.FishingSpotId, item.IdealWindDirectionDegrees })
+                .ToListAsync(cancellationToken);
+            var idealWindSettings = idealWindRows.ToDictionary(item => (item.UserId, item.FishingSpotId), item => item.IdealWindDirectionDegrees);
 
             foreach (var alert in alerts)
             {
-                if (!activeUserIds.Contains(alert.UserId)) continue;
+                if (!activeUsers.TryGetValue(alert.UserId, out var planCode)) continue;
                 var preference = await db.UserPreferences.AsNoTracking().SingleOrDefaultAsync(item => item.UserId == alert.UserId, cancellationToken);
                 if (preference?.ForecastNotifications == false) continue;
                 if (!spots.TryGetValue(alert.FishingSpotId, out var spot)) continue;
@@ -47,6 +53,11 @@ internal sealed class ForecastAlertWorker(
                     SeaOrientationDegrees = spot.SeaOrientationDegrees,
                     Profile = spot.Profile,
                 }, date, cancellationToken);
+                if (forecast is not null && plans.GetValueOrDefault(planCode)?.CanCustomWind == true)
+                {
+                    idealWindSettings.TryGetValue((alert.UserId, alert.FishingSpotId), out var idealWindDirection);
+                    forecast = FishingWindPreference.Apply(forecast, idealWindDirection, spot.SeaOrientationDegrees, spot.Profile);
+                }
                 if (forecast is null || forecast.Score < alert.MinimumScore) continue;
 
                 var title = $"Boa janela em {spot.Name}";

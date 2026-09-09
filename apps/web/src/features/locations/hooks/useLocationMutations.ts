@@ -6,6 +6,7 @@ import {
   deleteLocation,
   setEnabled,
   setFavorite,
+  setIdealWind,
   updateLocation,
   type PersonalSpotInput,
 } from '../services/locationsService';
@@ -62,6 +63,19 @@ export function useLocationMutations() {
       await invalidate();
     },
   });
+  const idealWind = useMutation({
+    mutationFn: ({
+      spotId,
+      idealWindDirectionDegrees,
+    }: {
+      spotId: string;
+      idealWindDirectionDegrees: number | null;
+    }) => setIdealWind(spotId, idealWindDirectionDegrees),
+    onSuccess: async () => {
+      showSaveConfirmation('Vento ideal salvo.');
+      await invalidate();
+    },
+  });
 
   return {
     create,
@@ -69,6 +83,7 @@ export function useLocationMutations() {
     remove,
     favorite,
     enabled,
+    idealWind,
     createError: create.isError
       ? mutationError(create.error, 'Não foi possível salvar o local.')
       : null,
@@ -80,6 +95,9 @@ export function useLocationMutations() {
       : null,
     enabledError: enabled.isError
       ? mutationError(enabled.error, 'Não foi possível atualizar o uso nas previsões.')
+      : null,
+    idealWindError: idealWind.isError
+      ? mutationError(idealWind.error, 'Não foi possível salvar o vento ideal.')
       : null,
   };
 }

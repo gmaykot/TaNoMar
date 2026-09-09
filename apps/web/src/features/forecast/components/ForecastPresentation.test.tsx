@@ -51,6 +51,13 @@ describe('ForecastPresentation summary', () => {
     expect(screen.queryByText('Compartilhado')).not.toBeInTheDocument();
   });
 
+  it('mostra o selo Favorito sem substituir Meu local', () => {
+    renderSummary({ isOwner: true, visibility: 'shared', isFavorite: true });
+    expect(screen.getByText('Meu local')).toBeInTheDocument();
+    expect(screen.getByText('Favorito')).toBeInTheDocument();
+    expect(screen.queryByText('Compartilhado')).not.toBeInTheDocument();
+  });
+
   it('mantém a condição bloqueada visível no plano atual', () => {
     const forecast = forecastFixture.days[0]?.ranking[0];
     if (!forecast) throw new Error('fixture de ranking ausente');

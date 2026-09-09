@@ -36,16 +36,18 @@ export function ForecastRecommendation({
   if (variant === 'summary')
     return (
       <>
-        <LocationStampFor isOwner={forecast.isOwner} visibility={forecast.visibility} />
+        <LocationStampFor
+          isOwner={forecast.isOwner}
+          visibility={forecast.visibility}
+          isFavorite={forecast.isFavorite}
+        />
         <div className={styles.heroTopline}>
           <div className={styles.heroHeading}>
             <span className={styles.heroLabel}>
               <MapPin size={16} aria-hidden="true" />
               {dayLabel}
             </span>
-            <p className={styles.heroPrefix}>
-              {showFishingScore ? 'Melhor escolha' : 'Destaque'}
-            </p>
+            <p className={styles.heroPrefix}>{showFishingScore ? 'Melhor escolha' : 'Destaque'}</p>
           </div>
           {showFishingScore ? <Badge classification={forecast.classification} /> : null}
         </div>
@@ -119,6 +121,21 @@ export function ForecastRecommendation({
       ) : (
         <p className={styles.unavailableCopy}>Sem horários recomendados para este dia.</p>
       )}
+      {forecast.selectableHourWindows?.length ? (
+        <label className={styles.customHourField}>
+          <span>Escolher outro horário</span>
+          <select
+            value={selectedHour ?? ''}
+            onChange={(event) => onHourSelect?.(event.target.value)}
+          >
+            {forecast.selectableHourWindows.map((window) => (
+              <option key={window.time} value={window.time}>
+                {formatHourLabel(window.time)}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       {showFishingScore ? (
         <details className={styles.scoreExplanation}>
           <summary>

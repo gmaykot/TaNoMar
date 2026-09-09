@@ -148,6 +148,30 @@ describe('RankingPage', () => {
     expect(screen.queryByText('Compartilhado')).not.toBeInTheDocument();
   });
 
+  it('marca o local favorito com o selo Favorito sem substituir Meu local', async () => {
+    const favorited = {
+      ...forecastFixture,
+      days: forecastFixture.days.map((day, index) =>
+        index === 0
+          ? {
+              ...day,
+              ranking: day.ranking.map((item) =>
+                item.locationId === 'molhe-da-barra' || item.locationId === 'pantano_do_sul'
+                  ? { ...item, isFavorite: true }
+                  : item,
+              ),
+            }
+          : day,
+      ),
+    };
+    getForecast.mockResolvedValue(favorited);
+    renderWithProviders(<RankingPage />, ['/ranking']);
+
+    expect(await screen.findByRole('heading', { name: 'Molhe da Barra' })).toBeInTheDocument();
+    expect(screen.getByText('Meu local')).toBeInTheDocument();
+    expect(screen.getAllByText('Favorito').length).toBeGreaterThanOrEqual(2);
+  });
+
   it('marca o local compartilhado da comunidade com o selo Compartilhado', async () => {
     const shared = {
       ...forecastFixture,

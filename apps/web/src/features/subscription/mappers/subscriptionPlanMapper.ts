@@ -1,6 +1,6 @@
 import { ContractError } from '@/shared/api/errors';
 import type { PlanModules } from '@/features/auth/types/auth';
-import type { PlanCatalog, PlanEntitlements } from '../subscriptionPlans';
+import type { BestHoursMode, PlanCatalog, PlanEntitlements } from '../subscriptionPlans';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -18,21 +18,27 @@ function readBoolean(value: unknown) {
   return typeof value === 'boolean' ? value : null;
 }
 
+function readBestHoursMode(value: unknown): BestHoursMode | null {
+  return value === '1' || value === '2' || value === '3' || value === 'custom' ? value : null;
+}
+
 function parseEntitlements(value: unknown): PlanEntitlements {
   if (!isRecord(value)) throw new ContractError('Cotas do plano inválidas.');
   const maxForecastDays = readInteger(value.maxForecastDays);
+  const bestHoursMode = readBestHoursMode(value.bestHoursMode ?? '3');
   const maxFavorites = readInteger(value.maxFavorites);
   const maxPersonalSpots = readInteger(value.maxPersonalSpots);
   const maxAlerts = readInteger(value.maxAlerts);
   if (
     maxForecastDays === null ||
+    bestHoursMode === null ||
     maxFavorites === null ||
     maxPersonalSpots === null ||
     maxAlerts === null
   ) {
     throw new ContractError('Cotas do plano incompletas.');
   }
-  return { maxForecastDays, maxFavorites, maxPersonalSpots, maxAlerts };
+  return { maxForecastDays, bestHoursMode, maxFavorites, maxPersonalSpots, maxAlerts };
 }
 
 function parseModules(value: unknown): PlanModules {
@@ -41,6 +47,7 @@ function parseModules(value: unknown): PlanModules {
   const diary = readBoolean(value.diary);
   const offline = readBoolean(value.offline);
   const customMetrics = readBoolean(value.customMetrics);
+  const customWind = readBoolean(value.customWind);
   const communityVote = readBoolean(value.communityVote);
   const rankingEmphasis = readBoolean(value.rankingEmphasis);
   const liveWebcams = readBoolean(value.liveWebcams);
@@ -59,6 +66,7 @@ function parseModules(value: unknown): PlanModules {
     diary,
     offline,
     customMetrics,
+    customWind: customWind ?? false,
     communityVote,
     rankingEmphasis,
     liveWebcams: liveWebcams ?? false,

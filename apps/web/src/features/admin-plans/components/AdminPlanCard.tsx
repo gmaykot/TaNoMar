@@ -151,6 +151,22 @@ export function AdminPlanCard({ plan, pending = false, error, onSave }: AdminPla
             />
           </label>
           <label className={formStyles.field}>
+            <span>Melhores horários</span>
+            <select
+              value={form.bestHoursMode}
+              onChange={(event) =>
+                patch('bestHoursMode', event.target.value as AdminPlanInput['bestHoursMode'])
+              }
+            >
+              <option value="1">1 horário</option>
+              <option value="2">2 horários</option>
+              <option value="3">3 horários</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+        </div>
+        <div className={formStyles.row}>
+          <label className={formStyles.field}>
             <span>Locais pessoais</span>
             <input
               type="number"

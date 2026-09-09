@@ -57,6 +57,7 @@ export function WebcamManager({ spotId }: WebcamManagerProps) {
 
   return (
     <Card as="section" className={`${styles.card} ${linked ? '' : styles.cardEmpty}`}>
+      <WebcamDisclaimer />
       <div className={styles.header}>
         <div>
           <span className={styles.meta}>
@@ -103,7 +104,6 @@ export function WebcamManager({ spotId }: WebcamManagerProps) {
           </Button>
         ) : null}
       </div>
-      <WebcamDisclaimer />
       {playerOpen && linked?.player ? (
         <WebcamPlayer
           title={linked.name ?? 'Câmera ao vivo'}

@@ -5,6 +5,7 @@ import { apiRequest, refreshAccessTokenOnce } from '@/shared/api/client';
 import { ContractError } from '@/shared/api/errors';
 import { setAccessToken } from '@/shared/api/session';
 import type { AuthUser } from '../types/auth';
+import type { BestHoursMode } from '@/features/subscription/subscriptionPlans';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -20,6 +21,10 @@ function readNumber(value: unknown) {
 
 function readBoolean(value: unknown) {
   return typeof value === 'boolean' ? value : null;
+}
+
+function readBestHoursMode(value: unknown): BestHoursMode | null {
+  return value === '1' || value === '2' || value === '3' || value === 'custom' ? value : null;
 }
 
 export function parseVisibleMetrics(value: unknown): FishingMetricKey[] {
@@ -58,6 +63,7 @@ export function parseAuthUser(payload: unknown): AuthUser {
   const planCode = plan ? readString(plan.code) : null;
   const planName = plan ? readString(plan.name) : null;
   const maxForecastDays = entitlements ? readNumber(entitlements.maxForecastDays) : null;
+  const bestHoursMode = readBestHoursMode(entitlements?.bestHoursMode ?? '3');
   const maxFavorites = entitlements ? readNumber(entitlements.maxFavorites) : null;
   const maxPersonalSpots = entitlements ? readNumber(entitlements.maxPersonalSpots) : null;
   const maxAlerts = entitlements ? readNumber(entitlements.maxAlerts) : null;
@@ -83,6 +89,7 @@ export function parseAuthUser(payload: unknown): AuthUser {
     !planCode ||
     !planName ||
     maxForecastDays === null ||
+    bestHoursMode === null ||
     maxFavorites === null ||
     maxPersonalSpots === null ||
     maxAlerts === null ||
@@ -99,7 +106,7 @@ export function parseAuthUser(payload: unknown): AuthUser {
     pictureUrl: readString(payload.pictureUrl),
     role,
     plan: { code: planCode, name: planName },
-    entitlements: { maxForecastDays, maxFavorites, maxPersonalSpots, maxAlerts },
+    entitlements: { maxForecastDays, bestHoursMode, maxFavorites, maxPersonalSpots, maxAlerts },
     modules: parsePlanModules(payload.modules),
     features: { showPartners, showAppFocus, showLiveWebcams },
     preferences: { region, windUnit, forecastNotifications, focus, visibleMetrics },
@@ -119,6 +126,7 @@ function parsePlanModules(value: unknown): AuthUser['modules'] {
   const diary = readBoolean(value.diary);
   const offline = readBoolean(value.offline);
   const customMetrics = readBoolean(value.customMetrics);
+  const customWind = readBoolean(value.customWind);
   const communityVote = readBoolean(value.communityVote);
   const rankingEmphasis = readBoolean(value.rankingEmphasis);
   const liveWebcams = readBoolean(value.liveWebcams);
@@ -137,6 +145,7 @@ function parsePlanModules(value: unknown): AuthUser['modules'] {
     diary,
     offline,
     customMetrics,
+    customWind: customWind ?? false,
     communityVote,
     rankingEmphasis,
     liveWebcams: liveWebcams ?? false,

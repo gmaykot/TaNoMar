@@ -1,6 +1,7 @@
 import type { AppFocus } from '@/features/auth/appFocus';
 import type { BillingSubscription } from '@/features/billing/billing';
 import type { FishingMetricKey } from '@/features/fishing/types/fishing';
+import type { BestHoursMode } from '@/features/subscription/subscriptionPlans';
 
 export interface AuthUser {
   id: string;
@@ -14,6 +15,7 @@ export interface AuthUser {
   };
   entitlements: {
     maxForecastDays: number;
+    bestHoursMode?: BestHoursMode;
     maxFavorites: number;
     maxPersonalSpots: number;
     maxAlerts: number;
@@ -41,6 +43,7 @@ export type PlanModule =
   | 'diary'
   | 'offline'
   | 'customMetrics'
+  | 'customWind'
   | 'communityVote'
   | 'rankingEmphasis'
   | 'liveWebcams';
@@ -50,6 +53,7 @@ export interface PlanModules {
   diary: boolean;
   offline: boolean;
   customMetrics: boolean;
+  customWind?: boolean;
   communityVote: boolean;
   rankingEmphasis: boolean;
   liveWebcams: boolean;
@@ -67,7 +71,7 @@ export function hasPlanModule(
 ) {
   const value = user?.modules?.[module];
   if (typeof value === 'boolean') return value;
-  if (module === 'liveWebcams') return false;
+  if (module === 'liveWebcams' || module === 'customWind') return false;
   return isPaidPlan(user);
 }
 

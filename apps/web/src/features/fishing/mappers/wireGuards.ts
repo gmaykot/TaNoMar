@@ -92,7 +92,10 @@ function parseBestHourWindows(value: unknown): WireBestHourWindow[] | null {
 }
 
 function parseHourClassification(value: unknown) {
-  return value === 'Excelente' || value === 'Muito bom' || value === 'Regular' || value === 'Difícil'
+  return value === 'Excelente' ||
+    value === 'Muito bom' ||
+    value === 'Regular' ||
+    value === 'Difícil'
     ? value
     : undefined;
 }
@@ -110,6 +113,10 @@ function parseForecastItem(value: unknown): WireForecastItem {
     value.bestHourWindows === undefined
       ? undefined
       : parseMetric(value.bestHourWindows, parseBestHourWindows, 'bestHourWindows');
+  const selectableHourWindows =
+    value.selectableHourWindows === undefined || value.selectableHourWindows === null
+      ? undefined
+      : parseMetric(value.selectableHourWindows, parseBestHourWindows, 'selectableHourWindows');
   return {
     spotId,
     spotName,
@@ -119,6 +126,7 @@ function parseForecastItem(value: unknown): WireForecastItem {
     classification: parseMetric(value.classification, readString, 'classification'),
     bestHours: parseMetric(value.bestHours, parseStringList, 'bestHours'),
     bestHourWindows,
+    selectableHourWindows,
     metricsHour: readString(value.metricsHour),
     windOrigin: parseWindOrigin(value.windOrigin),
     highlights: parseStringList(value.highlights) ?? undefined,
@@ -196,11 +204,22 @@ export function parseSpot(value: unknown): WireSpot {
   }
   const latitude = value.latitude === null ? null : readNumber(value.latitude);
   const longitude = value.longitude === null ? null : readNumber(value.longitude);
+  const idealWindDirectionDegrees =
+    value.idealWindDirectionDegrees === null || value.idealWindDirectionDegrees === undefined
+      ? null
+      : readNumber(value.idealWindDirectionDegrees);
   if (value.latitude !== null && value.latitude !== undefined && latitude === null) {
     throw new ContractError('Latitude inválida.');
   }
   if (value.longitude !== null && value.longitude !== undefined && longitude === null) {
     throw new ContractError('Longitude inválida.');
+  }
+  if (
+    value.idealWindDirectionDegrees !== null &&
+    value.idealWindDirectionDegrees !== undefined &&
+    idealWindDirectionDegrees === null
+  ) {
+    throw new ContractError('Vento ideal inválido.');
   }
   return {
     id,
@@ -216,6 +235,7 @@ export function parseSpot(value: unknown): WireSpot {
     latitude,
     longitude,
     seaOrientationDegrees: readNumber(value.seaOrientationDegrees) ?? 0,
+    idealWindDirectionDegrees,
     isFavorite: readBoolean(value.isFavorite) ?? false,
     isEnabled: readBoolean(value.isEnabled) ?? readBoolean(value.isInRanking) ?? false,
     isInRanking: readBoolean(value.isEnabled) ?? readBoolean(value.isInRanking) ?? false,

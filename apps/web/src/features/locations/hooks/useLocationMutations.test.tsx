@@ -16,6 +16,7 @@ vi.mock('../services/locationsService', () => ({
   updateLocation: vi.fn(),
   deleteLocation: vi.fn(),
   setEnabled: vi.fn(),
+  setIdealWind: vi.fn(),
   setFavorite: vi.fn(),
 }));
 

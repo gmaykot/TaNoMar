@@ -12,6 +12,7 @@ const sample = {
   sortOrder: 2,
   entitlements: {
     maxForecastDays: 8,
+    bestHoursMode: 'custom',
     maxFavorites: 20,
     maxPersonalSpots: 10,
     maxAlerts: 10,
@@ -21,6 +22,7 @@ const sample = {
     diary: true,
     offline: true,
     customMetrics: true,
+    customWind: true,
     communityVote: true,
     rankingEmphasis: true,
   },
@@ -34,13 +36,22 @@ describe('parsePlanCatalog', () => {
       monthlyPriceCents: 1990,
       featured: true,
       enabled: true,
-      entitlements: { maxForecastDays: 8, maxAlerts: 10 },
-      modules: { marine: true, diary: true },
+      entitlements: { maxForecastDays: 8, bestHoursMode: 'custom', maxAlerts: 10 },
+      modules: { marine: true, diary: true, customWind: true },
     });
   });
 
   it('rejeita payload incompleto', () => {
     expect(() => parsePlanCatalog({ ...sample, monthlyPriceCents: '1990' })).toThrow(ContractError);
+  });
+
+  it('rejeita uma configuração desconhecida de melhores horários', () => {
+    expect(() =>
+      parsePlanCatalog({
+        ...sample,
+        entitlements: { ...sample.entitlements, bestHoursMode: '4' },
+      }),
+    ).toThrow(ContractError);
   });
 });
 

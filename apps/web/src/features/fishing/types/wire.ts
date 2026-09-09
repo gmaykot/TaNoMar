@@ -71,6 +71,7 @@ export interface WireSpot {
   latitude: number | null;
   longitude: number | null;
   seaOrientationDegrees: number;
+  idealWindDirectionDegrees?: number | null;
   isFavorite: boolean;
   isEnabled: boolean;
   isInRanking: boolean;
@@ -106,6 +107,7 @@ export interface WireForecastItem {
   classification: WireMetric<string>;
   bestHours: WireMetric<string[]>;
   bestHourWindows?: WireMetric<WireBestHourWindow[]>;
+  selectableHourWindows?: WireMetric<WireBestHourWindow[]>;
   metricsHour?: string | null;
   windOrigin?: string | null;
   highlights?: string[];

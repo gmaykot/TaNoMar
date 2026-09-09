@@ -100,6 +100,11 @@ function mapHourWindows(item: WireForecastItem): ForecastHourWindow[] {
   return item.bestHourWindows.value.map(mapHourWindow);
 }
 
+function mapSelectableHourWindows(item: WireForecastItem): ForecastHourWindow[] {
+  if (!item.selectableHourWindows || item.selectableHourWindows.state !== 'available') return [];
+  return item.selectableHourWindows.value.map(mapHourWindow);
+}
+
 function mapHourWindow(item: WireBestHourWindow): ForecastHourWindow {
   const classification = item.classification ? mapClassification(item.classification) : undefined;
   if (
@@ -181,11 +186,13 @@ export function mapForecastItem(item: WireForecastItem): ForecastRankingItem {
     locationName: item.spotName,
     score: requireAvailable(item.score, 'Nota'),
     isOwner: item.isOwner,
+    isFavorite: false,
     visibility: mapVisibility(item.visibility),
     classification: mapClassification(requireAvailable(item.classification, 'Classificação')),
     bestWindow: mapBestWindow(hours),
     bestHours: hours,
     hourWindows,
+    selectableHourWindows: mapSelectableHourWindows(item),
     scoreBreakdown: formatScoreBreakdown(hourWindows),
     metricsHour: item.metricsHour ?? hours[0] ?? null,
     windOrigin,
@@ -240,6 +247,7 @@ export function mapLocation(spot: WireSpot): FishingLocation {
     latitude: spot.latitude ?? 0,
     longitude: spot.longitude ?? 0,
     seaOrientationDegrees: spot.seaOrientationDegrees,
+    idealWindDirectionDegrees: spot.idealWindDirectionDegrees,
     isFavorite: spot.isFavorite,
     isEnabled: spot.isEnabled,
     isInRanking: spot.isInRanking,

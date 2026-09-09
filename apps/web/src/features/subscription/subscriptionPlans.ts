@@ -1,7 +1,10 @@
 import type { PlanModules } from '@/features/auth/types/auth';
 
+export type BestHoursMode = '1' | '2' | '3' | 'custom';
+
 export interface PlanEntitlements {
   maxForecastDays: number;
+  bestHoursMode?: BestHoursMode;
   maxFavorites: number;
   maxPersonalSpots: number;
   maxAlerts: number;
@@ -62,6 +65,7 @@ export function planFeatureList(plan: PlanCatalog) {
   if (plan.modules.diary) items.push('Diário e planejamento de saídas');
   if (plan.modules.offline) items.push('Previsão salva no aparelho para consultar sem conexão');
   if (plan.modules.customMetrics) items.push('Escolha quais indicadores quer acompanhar');
+  if (plan.modules.customWind) items.push('Defina o vento ideal em cada local');
   if (plan.modules.communityVote) items.push('Ajude a validar relatos da comunidade');
   if (plan.modules.rankingEmphasis)
     items.push('Ordene o ranking por vento, chuva ou ondas sem mudar a nota');

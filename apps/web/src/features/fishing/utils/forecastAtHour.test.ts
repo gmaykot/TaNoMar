@@ -33,6 +33,7 @@ const forecast: ForecastRankingItem = {
   metrics: [{ key: 'wind', label: 'Vento', value: '8 km/h Leste' }],
   pressure: { key: 'pressure', label: 'Pressão', value: '1018 hPa' },
   isOwner: false,
+  isFavorite: false,
   visibility: 'official',
 };
 
@@ -62,6 +63,25 @@ describe('forecastAtHour', () => {
       metricsHour: '17:00',
       metrics: forecast.metrics,
       score: 8.7,
+    });
+  });
+
+  it('usa as condições de uma hora disponível no modo Custom', () => {
+    const custom = {
+      ...forecast,
+      selectableHourWindows: [
+        {
+          time: '13:00',
+          score: 6.4,
+          metrics: [{ key: 'wind' as const, label: 'Vento', value: '20 km/h Sul' }],
+        },
+      ],
+    };
+
+    expect(forecastAtHour(custom, '13:00')).toMatchObject({
+      metricsHour: '13:00',
+      metrics: [{ key: 'wind', value: '20 km/h Sul' }],
+      score: 6.4,
     });
   });
 });

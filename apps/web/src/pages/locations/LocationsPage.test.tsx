@@ -72,6 +72,25 @@ describe('LocationsPage', () => {
     expect(screen.getAllByText('Meu local')).toHaveLength(1);
   });
 
+  it('marca o local favorito com o selo Favorito sem substituir Meu local', async () => {
+    const owned = locationsFixture.find((item) => item.id === 'molhe-da-barra');
+    const official = locationsFixture.find((item) => item.id === 'campeche');
+    if (!owned || !official) throw new Error('fixture de local ausente');
+    owned.isFavorite = true;
+    official.isFavorite = true;
+
+    try {
+      renderWithProviders(<LocationsPage />);
+
+      expect(await screen.findByRole('heading', { name: 'Molhe da Barra' })).toBeInTheDocument();
+      expect(screen.getByText('Meu local')).toBeInTheDocument();
+      expect(screen.getAllByText('Favorito')).toHaveLength(2);
+    } finally {
+      owned.isFavorite = false;
+      official.isFavorite = false;
+    }
+  });
+
   it('marca o local compartilhado da comunidade com o selo Compartilhado', async () => {
     const location = locationsFixture.find((item) => item.id === 'campeche');
     if (!location) throw new Error('fixture campeche ausente');

@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { vi } from 'vitest';
 import { forecastFixture } from '@/features/forecast/fixtures/forecast';
 import { ForecastRecommendation } from './ForecastRecommendation';
 
@@ -22,7 +23,9 @@ describe('ForecastRecommendation', () => {
 
     expect(screen.queryByText('Melhor')).not.toBeInTheDocument();
     expect(screen.getByText('Hoje · 05/09')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Melhores horários para pescar' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Melhores horários para pescar' }),
+    ).toBeInTheDocument();
     expect(screen.getAllByText('9,1')).toHaveLength(1);
     expect(
       screen.getByRole('button', { name: 'Ver condições das 05h30, selecionado' }),
@@ -55,14 +58,40 @@ describe('ForecastRecommendation', () => {
     expect(date.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(title.compareDocumentPosition(score) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(title.compareDocumentPosition(hours) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(hours.compareDocumentPosition(explanation) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Ver condições das 17h, selecionado' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    expect(
+      hours.compareDocumentPosition(explanation) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Ver condições das 17h, selecionado' }),
+    ).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'Ver condições das 05h30' })).toHaveAttribute(
       'aria-pressed',
       'false',
     );
+  });
+
+  it('mantém os três recomendados e permite escolher qualquer hora no modo Custom', () => {
+    const forecast = forecastFixture.days[0]?.ranking[0];
+    if (!forecast) throw new Error('fixture de ranking ausente');
+    const onHourSelect = vi.fn();
+    render(
+      <ForecastRecommendation
+        forecast={{
+          ...forecast,
+          selectableHourWindows: [...forecast.hourWindows, { time: '13:00', score: 6.4 }],
+        }}
+        variant="detail"
+        dayLabel="Hoje · 05/09"
+        showFishingScore
+        selectedHour="05:30"
+        onHourSelect={onHourSelect}
+      />,
+    );
+
+    expect(screen.getAllByRole('button', { name: /Ver condições das/ })).toHaveLength(3);
+    const selector = screen.getByRole('combobox', { name: 'Escolher outro horário' });
+    expect(selector).toHaveTextContent('13h');
+    fireEvent.change(selector, { target: { value: '13:00' } });
+    expect(onHourSelect).toHaveBeenCalledWith('13:00');
   });
 });

@@ -56,7 +56,11 @@ export function LocationCard({
           <MapPin size={15} aria-hidden="true" /> {location.region}, {location.city}
         </p>
       </div>
-      <LocationStampFor isOwner={location.isOwner} visibility={location.visibility} />
+      <LocationStampFor
+        isOwner={location.isOwner}
+        visibility={location.visibility}
+        isFavorite={location.isFavorite}
+      />
       {onToggleEnabled || onToggleFavorite ? (
         <div className={styles.actions}>
           {onToggleEnabled ? (

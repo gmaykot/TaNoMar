@@ -72,7 +72,7 @@ A landing define o domínio raiz como canônico: ao abrir por `www`, o `canonica
 | `BOOTSTRAP_ADMIN_EMAIL` | `TaNoMar__BootstrapAdminEmail` | E-mail do admin inicial (role Admin; no primeiro login entra no Mestre) |
 | `BOOTSTRAP_ADMIN_GOOGLE_SUBJECT` | `TaNoMar__BootstrapAdminGoogleSubject` | Claim `sub` do Google do admin inicial — não é o e-mail |
 | `Fishing__WarmupEnabled` | `Fishing:WarmupEnabled` | Worker que aquece previsão (padrão `true`) |
-| `Fishing__WarmupIntervalHours` | `Fishing:WarmupIntervalHours` | Intervalo entre ciclos do worker (padrão `3`) |
+| `Fishing__WarmupIntervalHours` | `Fishing:WarmupIntervalHours` | Idade máxima da previsão antes de renovar (padrão `3`). Também é o intervalo do worker. |
 | `TANOMAR_PORT` | compose `ports` | Porta do host no Coolify (padrão `8082`). A API continua em `8080` dentro do container. |
 | `VAPID_PUBLIC_KEY` | `TaNoMar__VapidPublicKey` | Chave pública Web Push. Sem ela o toggle de aparelho some; inbox e SSE seguem. |
 | `VAPID_PRIVATE_KEY` | `TaNoMar__VapidPrivateKey` | Chave privada Web Push. Gere o par com `npx web-push generate-vapid-keys`. |
@@ -98,7 +98,7 @@ O preço da assinatura não usa variável de ambiente: o admin edita `Plans.Mont
 
 O volume `tanomar-data` monta em `/var/lib/tanomar` e guarda o log de auditoria (`/var/lib/tanomar/audit.jsonl`). Sem o volume, a auditoria some a cada redeploy.
 
-O cache de previsão fica em memória no processo da API. Cada entrada também é gravada como snapshot no PostgreSQL (`FishingForecastSnapshots`), com o mesmo TTL de `Fishing:CacheHours`. Pressão e, quando existir, tábua de maré entram nesse snapshot; tábua ausente não o descarta. A tábua mensal do porto ainda é cacheada em memória para caber no limite da Tábua de Maré API. O worker interno `FishingForecastWarmupWorker` preenche cache e snapshot na subida e a cada `Fishing:WarmupIntervalHours` (oficiais e compartilhados aprovados, dias 0–7). Local pessoal novo, compartilhado aprovado e local religado nas previsões aquecem o mesmo cache na hora, para o ranking incluir a nota sem esperar o worker. Após um restart, a API rehidrata pela tabela antes de chamar a Open-Meteo. Desligue o worker com `Fishing__WarmupEnabled=false`.
+O cache de previsão fica em memória no processo da API. Cada entrada também é gravada como snapshot no PostgreSQL (`FishingForecastSnapshots`). `Fishing:CacheHours` (padrão 24h) é o TTL de serviço: o snapshot continua válido para responder. `Fishing:WarmupIntervalHours` (padrão 3h) é a idade de atualização: o worker e o request renovam a semana em background sem bloquear o usuário. Completar a tábua não estica o TTL do tempo. Um miss busca 8 dias na Open-Meteo e grava a semana. Pressão e, quando existir, tábua de maré entram nesse snapshot; tábua ausente não o descarta. A tábua mensal do porto ainda é cacheada em memória para caber no limite da Tábua de Maré API. O worker interno `FishingForecastWarmupWorker` preenche e refresca oficiais e compartilhados aprovados (dias 0–7) na subida e a cada intervalo. Local pessoal novo, compartilhado aprovado, local religado nas previsões e edição de coordenadas/orientação/perfil invalidam e aquecem o mesmo cache na hora. Após um restart, a API rehidrata pela tabela antes de chamar a Open-Meteo. Desligue o worker com `Fishing__WarmupEnabled=false`.
 
 ## Healthcheck
 

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TaNoMar.Api.Data;
@@ -11,9 +12,11 @@ using TaNoMar.Api.Data;
 namespace TaNoMar.Api.Data.Migrations
 {
     [DbContext(typeof(TaNoMarDbContext))]
-    partial class TaNoMarDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260909201405_AddPlanBestHoursMode")]
+    partial class AddPlanBestHoursMode
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -263,9 +266,6 @@ namespace TaNoMar.Api.Data.Migrations
 
                     b.Property<Guid>("FishingSpotId")
                         .HasColumnType("uuid");
-
-                    b.Property<int?>("IdealWindDirectionDegrees")
-                        .HasColumnType("integer");
 
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("boolean");
@@ -648,9 +648,6 @@ namespace TaNoMar.Api.Data.Migrations
                     b.Property<bool>("CanCustomMetrics")
                         .HasColumnType("boolean");
 
-                    b.Property<bool>("CanCustomWind")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("CanDiary")
                         .HasColumnType("boolean");
 
@@ -716,7 +713,6 @@ namespace TaNoMar.Api.Data.Migrations
                             BestHoursMode = "3",
                             CanCommunityVote = false,
                             CanCustomMetrics = false,
-                            CanCustomWind = false,
                             CanDiary = false,
                             CanLiveWebcams = false,
                             CanMarine = false,
@@ -740,7 +736,6 @@ namespace TaNoMar.Api.Data.Migrations
                             BestHoursMode = "3",
                             CanCommunityVote = true,
                             CanCustomMetrics = true,
-                            CanCustomWind = true,
                             CanDiary = true,
                             CanLiveWebcams = false,
                             CanMarine = true,
@@ -764,7 +759,6 @@ namespace TaNoMar.Api.Data.Migrations
                             BestHoursMode = "3",
                             CanCommunityVote = true,
                             CanCustomMetrics = true,
-                            CanCustomWind = true,
                             CanDiary = true,
                             CanLiveWebcams = false,
                             CanMarine = true,
@@ -788,7 +782,6 @@ namespace TaNoMar.Api.Data.Migrations
                             BestHoursMode = "3",
                             CanCommunityVote = true,
                             CanCustomMetrics = true,
-                            CanCustomWind = true,
                             CanDiary = true,
                             CanLiveWebcams = true,
                             CanMarine = true,

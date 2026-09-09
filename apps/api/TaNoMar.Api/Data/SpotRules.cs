@@ -38,6 +38,18 @@ internal static class SpotRules
     public static string NormalizeProfile(string? profile) =>
         profile is not null && Profiles.Contains(profile, StringComparer.Ordinal) ? profile : "praia_aberta";
 
+    public static bool ForecastInputsChanged(FishingSpot spot, double latitude, double longitude, double seaOrientationDegrees, string? profile)
+    {
+        var normalizedProfile = NormalizeProfile(profile);
+        return spot.Latitude != latitude
+            || spot.Longitude != longitude
+            || spot.SeaOrientationDegrees != seaOrientationDegrees
+            || !string.Equals(spot.Profile, normalizedProfile, StringComparison.Ordinal);
+    }
+
+    public static bool IsValidIdealWindDirection(int? degrees) =>
+        degrees is null || degrees is >= 0 and < 360 && degrees % 45 == 0;
+
     public static bool IsValidReportType(string type) =>
         ReportTypes.Contains(type, StringComparer.OrdinalIgnoreCase);
 

@@ -25,9 +25,12 @@ describe('WebcamCard', () => {
     const user = userEvent.setup();
     renderWithProviders(<WebcamCard webcam={live} />);
     expect(screen.getByRole('heading', { name: 'Praia do Campeche' })).toBeInTheDocument();
-    expect(
-      screen.getByText(/A transmissão é de terceiros/),
-    ).toBeInTheDocument();
+    const disclaimer = screen.getByLabelText('Sobre a transmissão');
+    expect(disclaimer).toHaveTextContent('Info');
+    expect(disclaimer.closest('details')).not.toHaveAttribute('open');
+    await user.click(disclaimer);
+    expect(disclaimer.closest('details')).toHaveAttribute('open');
+    expect(screen.getByText(/A transmissão é de terceiros/)).toBeInTheDocument();
     expect(screen.getByRole('presentation')).toHaveAttribute(
       'src',
       'https://images.windy.com/preview.jpg',

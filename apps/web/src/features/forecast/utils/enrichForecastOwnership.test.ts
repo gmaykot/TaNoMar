@@ -44,4 +44,20 @@ describe('enrichForecastOwnership', () => {
     const forecast = enrichForecastOwnership(forecastFixture, locations);
     expect(forecast).toEqual(forecastFixture);
   });
+
+  it('marca isFavorite nos itens de ranking a partir da lista de locais', () => {
+    const locations = locationsFixture.map((location) =>
+      location.id === 'pantano_do_sul' ? { ...location, isFavorite: true } : location,
+    );
+    const forecast = enrichForecastOwnership(forecastFixture, locations);
+    expect(
+      forecast.days[0]?.ranking.find((item) => item.locationId === 'pantano_do_sul')?.isFavorite,
+    ).toBe(true);
+    expect(
+      forecast.days[0]?.ranking.find((item) => item.locationId === 'molhe-da-barra')?.isFavorite,
+    ).toBe(false);
+    expect(forecast.days[0]?.ranking.map((item) => item.locationId)).toEqual(
+      forecastFixture.days[0]?.ranking.map((item) => item.locationId),
+    );
+  });
 });

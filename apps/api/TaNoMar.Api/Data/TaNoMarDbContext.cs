@@ -92,6 +92,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 CanDiary = true,
                 CanOffline = true,
                 CanCustomMetrics = true,
+                CanCustomWind = true,
                 CanCommunityVote = true,
                 CanRankingEmphasis = true,
                 CanLiveWebcams = false
@@ -114,6 +115,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 CanDiary = true,
                 CanOffline = true,
                 CanCustomMetrics = true,
+                CanCustomWind = true,
                 CanCommunityVote = true,
                 CanRankingEmphasis = true,
                 CanLiveWebcams = false
@@ -136,6 +138,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 CanDiary = true,
                 CanOffline = true,
                 CanCustomMetrics = true,
+                CanCustomWind = true,
                 CanCommunityVote = true,
                 CanRankingEmphasis = true,
                 CanLiveWebcams = true
@@ -208,6 +211,7 @@ public sealed class Plan
     public bool Featured { get; set; }
     public bool IsEnabled { get; set; } = true;
     public int MaxForecastDays { get; set; }
+    public string BestHoursMode { get; set; } = PlanRules.DefaultBestHoursMode;
     public int MaxFavorites { get; set; }
     public int MaxPersonalSpots { get; set; }
     public int MaxAlerts { get; set; }
@@ -215,6 +219,7 @@ public sealed class Plan
     public bool CanDiary { get; set; }
     public bool CanOffline { get; set; }
     public bool CanCustomMetrics { get; set; }
+    public bool CanCustomWind { get; set; }
     public bool CanCommunityVote { get; set; }
     public bool CanRankingEmphasis { get; set; }
     public bool CanLiveWebcams { get; set; }
@@ -312,6 +317,7 @@ public sealed class EnabledSpot
     public Guid UserId { get; set; }
     public Guid FishingSpotId { get; set; }
     public bool IsEnabled { get; set; }
+    public int? IdealWindDirectionDegrees { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 

@@ -17,6 +17,7 @@ export function enrichForecastOwnership(
         return {
           ...item,
           isOwner: item.isOwner || location.isOwner,
+          isFavorite: item.isFavorite || location.isFavorite,
           visibility: location.visibility,
         };
       }),

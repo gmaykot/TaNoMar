@@ -53,6 +53,7 @@ export interface ForecastRankingItem {
   bestWindow: string;
   bestHours: string[];
   hourWindows: ForecastHourWindow[];
+  selectableHourWindows?: ForecastHourWindow[];
   scoreBreakdown: string;
   metricsHour: string | null;
   windOrigin: WindOrigin | null;
@@ -60,6 +61,7 @@ export interface ForecastRankingItem {
   metrics: FishingMetric[];
   pressure?: FishingMetric;
   isOwner: boolean;
+  isFavorite: boolean;
   visibility: 'official' | 'shared' | 'private';
 }
 
@@ -88,6 +90,7 @@ export interface FishingLocation {
   latitude: number;
   longitude: number;
   seaOrientationDegrees: number;
+  idealWindDirectionDegrees?: number | null;
   isFavorite: boolean;
   isEnabled: boolean;
   isInRanking: boolean;
