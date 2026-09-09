@@ -11,6 +11,7 @@ interface MetricTileProps {
   rows?: Array<{ label: string; value: string }>;
   locked?: boolean;
   compact?: boolean;
+  tone?: 'dark' | 'light';
 }
 
 export function MetricTile({
@@ -22,6 +23,7 @@ export function MetricTile({
   rows,
   locked = false,
   compact = false,
+  tone = 'dark',
 }: MetricTileProps) {
   const DisplayIcon = locked ? Lock : Icon;
   const secondaryLines = secondary ?? (detail ? [detail] : []);
@@ -29,7 +31,7 @@ export function MetricTile({
   if (compact)
     return (
       <div
-        className={`${styles.metric} ${styles.metricCompact} ${locked ? styles.metricLocked : ''}`}
+        className={`${styles.metric} ${styles.metricCompact} ${tone === 'light' ? styles.metricLight : ''} ${locked ? styles.metricLocked : ''}`}
         aria-label={locked ? `${label} bloqueado no plano atual` : undefined}
       >
         <div className={styles.metricCompactHeader}>
@@ -60,7 +62,7 @@ export function MetricTile({
 
   return (
     <div
-      className={`${styles.metric} ${locked ? styles.metricLocked : ''}`}
+      className={`${styles.metric} ${tone === 'light' ? styles.metricLight : ''} ${locked ? styles.metricLocked : ''}`}
       aria-label={locked ? `${label} bloqueado no plano atual` : undefined}
     >
       <div className={styles.metricIcon} aria-hidden="true">

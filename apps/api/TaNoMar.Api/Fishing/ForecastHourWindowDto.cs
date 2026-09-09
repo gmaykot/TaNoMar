@@ -13,6 +13,7 @@ internal static class ForecastHourWindowDto
         {
             time = hour.Time,
             score = hour.Score,
+            classification = Classification(hour.Score),
             windOrigin = string.IsNullOrEmpty(hour.WindOrigin) ? null : hour.WindOrigin,
             highlights = Highlights(hour),
             wind = Available($"{FormatPt(hour.WindSpeedKmh, "0.#")} km/h {hour.WindDirection}"),
@@ -40,6 +41,9 @@ internal static class ForecastHourWindowDto
         if (hour.WaveMeters <= 1.2) highlights.Add("Ondas moderadas");
         return highlights.Count > 0 ? highlights.Take(3).ToArray() : ["Condições equilibradas"];
     }
+
+    public static string Classification(double score) =>
+        score >= 8.5 ? "Excelente" : score >= 7 ? "Muito bom" : score >= 5 ? "Regular" : "Difícil";
 
     public static string FormatPt(double value, string format) =>
         value.ToString(format, CultureInfo.GetCultureInfo("pt-BR"));

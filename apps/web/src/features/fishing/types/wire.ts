@@ -82,6 +82,7 @@ export interface WireSpot {
 export interface WireBestHourWindow {
   time: string;
   score: number;
+  classification?: string;
   windOrigin?: string | null;
   highlights?: string[];
   wind?: WireMetric<string>;

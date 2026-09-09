@@ -13,6 +13,7 @@ public sealed class ForecastHourWindowDtoTests
 
         Assert.Equal("05:00", json.GetProperty("time").GetString());
         Assert.Equal(9.1, json.GetProperty("score").GetDouble());
+        Assert.Equal("Excelente", json.GetProperty("classification").GetString());
         Assert.Equal("terra", json.GetProperty("windOrigin").GetString());
         Assert.Equal("available", json.GetProperty("wind").GetProperty("state").GetString());
         Assert.Equal("8 km/h Leste", json.GetProperty("wind").GetProperty("value").GetString());

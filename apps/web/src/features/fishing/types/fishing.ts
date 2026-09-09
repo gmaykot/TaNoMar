@@ -38,6 +38,7 @@ export type WindOrigin = 'terra' | 'mar' | 'cruzado';
 export interface ForecastHourWindow {
   time: string;
   score: number;
+  classification?: FishingClassification;
   windOrigin?: WindOrigin | null;
   highlights?: string[];
   metrics?: FishingMetric[];

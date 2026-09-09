@@ -39,7 +39,7 @@ describe('MetricGrid', () => {
     expect(screen.queryByLabelText('Água bloqueado no plano atual')).not.toBeInTheDocument();
   });
 
-  it('mostra rajadas no grid quando o mar bloqueado deixa só as condições do Free', () => {
+  it('mantém rajadas como detalhe secundário do vento', () => {
     const freeMetrics: FishingMetric[] = [
       { key: 'wind', label: 'Vento', value: '5,3 km/h' },
       { key: 'gusts', label: 'Rajadas', value: '12,6 km/h' },
@@ -61,8 +61,8 @@ describe('MetricGrid', () => {
     );
 
     expect(screen.getByText('Vento')).toBeInTheDocument();
-    expect(screen.getByText('Rajadas')).toBeInTheDocument();
-    expect(screen.queryByText(/Rajadas:/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Rajadas')).not.toBeInTheDocument();
+    expect(screen.getByText(/Rajadas:/)).toHaveTextContent(/Rajadas: 12,6 km\/h/);
     expect(screen.getByText('Chuva')).toBeInTheDocument();
     expect(screen.getByText('Temperatura')).toBeInTheDocument();
   });

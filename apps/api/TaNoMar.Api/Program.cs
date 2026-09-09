@@ -1645,7 +1645,7 @@ static object ForecastItemDto(FishingLocationForecast item, bool paid, HashSet<s
     var hour = item.BestHour;
     object Available(object value) => new { state = "available", value };
     object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = PlanRules.RequiredPlanLabel };
-    var classification = item.Score >= 8.5 ? "Excelente" : item.Score >= 7 ? "Muito bom" : item.Score >= 5 ? "Regular" : "Difícil";
+    var classification = ForecastHourWindowDto.Classification(item.Score);
     var highlights = ForecastHourWindowDto.Highlights(hour);
     var windOrigin = string.IsNullOrEmpty(hour?.WindOrigin) ? null : hour.WindOrigin;
     return new

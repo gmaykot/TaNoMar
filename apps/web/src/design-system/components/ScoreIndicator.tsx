@@ -8,7 +8,7 @@ import styles from './components.module.css';
 interface ScoreIndicatorProps {
   score: number;
   classification: FishingClassification;
-  size?: 'small' | 'large';
+  size?: 'small' | 'large' | 'compact';
 }
 
 export function ScoreIndicator({ score, classification, size = 'large' }: ScoreIndicatorProps) {

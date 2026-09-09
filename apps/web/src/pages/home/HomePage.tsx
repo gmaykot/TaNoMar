@@ -12,7 +12,7 @@ import {
   showsPartners,
 } from '@/features/auth/types/auth';
 import { DayCarousel } from '@/features/forecast/components/DayCarousel';
-import { ForecastHero } from '@/features/forecast/components/ForecastHero';
+import { ForecastPresentation } from '@/features/forecast/components/ForecastPresentation';
 import { useForecast } from '@/features/forecast/hooks/useForecast';
 import {
   readOfflineForecast,
@@ -25,7 +25,6 @@ import { RankingList } from '@/features/ranking/components/RankingList';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { routes } from '@/shared/constants/routes';
 import styles from '@/pages/shared/pages.module.css';
-import { formatDateTime } from '@/shared/utils/formatDateTime';
 
 export function HomePage() {
   const auth = useAuth();
@@ -104,11 +103,11 @@ export function HomePage() {
         {(day) =>
           day.ranking[0] ? (
             <>
-              <ForecastHero
+              <ForecastPresentation
+                variant="summary"
                 forecast={day.ranking[0]}
                 date={day.date}
                 dayLabel={day.label}
-                generatedAt={formatDateTime(data?.generatedAt ?? '')}
                 visibleMetricKeys={visibleMetricKeys}
                 windUnit={auth.user?.preferences.windUnit}
                 showFishingScore={presentation.showFishingScore}

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { forecastFixture } from '@/features/forecast/fixtures/forecast';
 import { renderWithProviders } from '@/test/renderWithProviders';
@@ -232,7 +232,7 @@ describe('HomePage', () => {
     expect(within(hero).queryByText('Vento')).not.toBeInTheDocument();
   });
 
-  it('esconde o mar bloqueado nos cards da home', async () => {
+  it('mantém a métrica básica bloqueada visível na home', async () => {
     authState.planCode = 'free';
     forecastState.lockMarine = true;
     renderWithProviders(<HomePage />);
@@ -242,13 +242,12 @@ describe('HomePage', () => {
     expect(hero).toBeTruthy();
     if (!hero) return;
     expect(within(hero).getByText('Vento')).toBeInTheDocument();
-    expect(within(hero).getByText('Rajadas')).toBeInTheDocument();
-    expect(within(hero).queryByText('Ondas')).not.toBeInTheDocument();
-    expect(within(hero).queryByText('Assinatura')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Ondas Assinatura/)).not.toBeInTheDocument();
+    expect(within(hero).getByText(/Rajadas:/)).toBeInTheDocument();
+    expect(within(hero).getByLabelText('Ondas bloqueado no plano atual')).toBeInTheDocument();
+    expect(within(hero).getByText('Assinatura')).toBeInTheDocument();
   });
 
-  it('mostra condições e as notas dos melhores horários sem sugerir evolução diária', async () => {
+  it('resume as condições sem listas, pressão ou gráficos', async () => {
     renderWithProviders(<HomePage />);
 
     const hero = (await screen.findByRole('heading', { name: 'Pântano do Sul' })).closest(
@@ -261,12 +260,13 @@ describe('HomePage', () => {
     expect(within(hero).getByText('Ondas')).toBeInTheDocument();
     expect(within(hero).getByText(/Período:/)).toBeInTheDocument();
     expect(within(hero).getByText('Chuva')).toBeInTheDocument();
+    expect(within(hero).queryByText('Pressão')).not.toBeInTheDocument();
     expect(
-      within(hero).getByRole('region', { name: 'Notas dos melhores horários' }),
-    ).toBeInTheDocument();
-    expect(within(hero).queryByRole('img', { name: /Evolução das notas/ })).not.toBeInTheDocument();
-    expect(within(hero).getAllByText('05h30')).toHaveLength(2);
-    expect(within(hero).getAllByText('9,1')).toHaveLength(2);
+      within(hero).queryByRole('region', { name: /melhores horários/i }),
+    ).not.toBeInTheDocument();
+    expect(within(hero).queryByRole('img')).not.toBeInTheDocument();
+    expect(within(hero).getAllByText('05h30')).toHaveLength(1);
+    expect(within(hero).getAllByText('9,1')).toHaveLength(1);
   });
 
   it('troca o dia ao arrastar o carrossel', async () => {
@@ -282,8 +282,10 @@ describe('HomePage', () => {
       Object.defineProperty(slide, 'offsetWidth', { configurable: true, value: 320 });
     });
 
-    track.dispatchEvent(new Event('scrollend'));
-    track.dispatchEvent(new Event('scroll'));
+    act(() => {
+      track.dispatchEvent(new Event('scrollend'));
+      track.dispatchEvent(new Event('scroll'));
+    });
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Armação' })).toBeInTheDocument();
@@ -342,7 +344,8 @@ describe('HomePage', () => {
     if (!hero) return;
     expect(within(hero).queryByLabelText(/Nota /)).not.toBeInTheDocument();
     expect(within(hero).queryByText('Chuva')).not.toBeInTheDocument();
-    expect(within(hero).getByText('Swell')).toBeInTheDocument();
+    expect(within(hero).getByText('Ondas')).toBeInTheDocument();
+    expect(within(hero).queryByText('Swell')).not.toBeInTheDocument();
   });
 
   it('omite a área de parceiros quando a vitrine está desligada', async () => {

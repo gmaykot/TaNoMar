@@ -60,14 +60,16 @@ function parseBestHourWindows(value: unknown): WireBestHourWindow[] | null {
     if (!isRecord(item)) return null;
     const time = readString(item.time);
     const score = readNumber(item.score);
+    const classification = parseHourClassification(item.classification);
     if (!time || score === null) return null;
     if (item.wind === undefined) {
-      return { time, score } satisfies WireBestHourWindow;
+      return { time, score, classification } satisfies WireBestHourWindow;
     }
     try {
       return {
         time,
         score,
+        classification,
         windOrigin: parseWindOrigin(item.windOrigin),
         highlights: parseStringList(item.highlights) ?? undefined,
         wind: parseMetric(item.wind, readString, 'wind'),
@@ -87,6 +89,12 @@ function parseBestHourWindows(value: unknown): WireBestHourWindow[] | null {
   });
   if (windows.some((item) => item === null)) return null;
   return windows as WireBestHourWindow[];
+}
+
+function parseHourClassification(value: unknown) {
+  return value === 'Excelente' || value === 'Muito bom' || value === 'Regular' || value === 'Difícil'
+    ? value
+    : undefined;
 }
 
 function parseWindOrigin(value: unknown) {

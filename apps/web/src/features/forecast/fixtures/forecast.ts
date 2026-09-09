@@ -41,10 +41,15 @@ function ranking(seeds: ForecastSeed[]): ForecastRankingItem[] {
     if (!location) throw new Error(`Local de fixture desconhecido: ${seed.id}`);
     const start = seed.window.slice(0, 5);
     const bestHours = [start, '07:00', '17:00'];
-    const hourWindows: ForecastHourWindow[] = bestHours.map((time, hourIndex) => ({
-      time,
-      score: Math.round((seed.score - hourIndex * 0.2) * 10) / 10,
-    }));
+    const hourWindows: ForecastHourWindow[] = bestHours.map((time, hourIndex) => {
+      const score = Math.round((seed.score - hourIndex * 0.2) * 10) / 10;
+      return {
+        time,
+        score,
+        classification:
+          score >= 8.5 ? 'excellent' : score >= 7 ? 'very-good' : score >= 5 ? 'regular' : 'difficult',
+      };
+    });
     return {
       locationId: location.id,
       locationName: location.name,

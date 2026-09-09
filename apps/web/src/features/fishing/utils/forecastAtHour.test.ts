@@ -19,6 +19,7 @@ const forecast: ForecastRankingItem = {
     {
       time: '07:00',
       score: 8.9,
+      classification: 'very-good',
       windOrigin: 'mar',
       highlights: ['Vento do mar'],
       metrics: [{ key: 'wind', label: 'Vento', value: '14 km/h Nordeste' }],
@@ -40,14 +41,15 @@ describe('forecastAtHour', () => {
     expect(forecastAtHour(forecast, null)).toBe(forecast);
   });
 
-  it('troca métricas e caption para a janela selecionada', () => {
+  it('troca métricas, nota e classificação da janela selecionada', () => {
     expect(forecastAtHour(forecast, '07:00')).toMatchObject({
       metricsHour: '07:00',
       windOrigin: 'mar',
       highlights: ['Vento do mar'],
       metrics: [{ key: 'wind', value: '14 km/h Nordeste' }],
       pressure: { value: '1016 hPa' },
-      score: 8,
+      score: 8.9,
+      classification: 'very-good',
     });
   });
 
@@ -59,6 +61,7 @@ describe('forecastAtHour', () => {
     expect(forecastAtHour(withoutMetrics, '17:00')).toMatchObject({
       metricsHour: '17:00',
       metrics: forecast.metrics,
+      score: 8.7,
     });
   });
 });

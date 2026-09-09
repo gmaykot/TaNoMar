@@ -101,6 +101,7 @@ function mapHourWindows(item: WireForecastItem): ForecastHourWindow[] {
 }
 
 function mapHourWindow(item: WireBestHourWindow): ForecastHourWindow {
+  const classification = item.classification ? mapClassification(item.classification) : undefined;
   if (
     !item.wind ||
     !item.gusts ||
@@ -111,12 +112,17 @@ function mapHourWindow(item: WireBestHourWindow): ForecastHourWindow {
     !item.airTemperature ||
     !item.waterTemperature
   ) {
-    return { time: item.time, score: item.score };
+    return {
+      time: item.time,
+      score: item.score,
+      ...(classification ? { classification } : {}),
+    };
   }
   const windOrigin = mapWindOrigin(item.windOrigin);
   return {
     time: item.time,
     score: item.score,
+    ...(classification ? { classification } : {}),
     windOrigin,
     highlights: Array.isArray(item.highlights)
       ? item.highlights.filter((highlight): highlight is string => typeof highlight === 'string')

@@ -189,6 +189,25 @@
   font-size: 1.25rem;
 }
 
+.compact {
+  width: 3.6rem;
+  height: 3.6rem;
+  padding: 0.22rem;
+}
+
+.compact .scoreMark {
+  width: 1.85rem;
+  height: 1.85rem;
+}
+
+.compact .scoreInner strong {
+  font-size: 1.05rem;
+}
+
+.compact .scoreInner small {
+  font-size: 0.52rem;
+}
+
 .metric {
   display: flex;
   min-width: 0;
@@ -243,9 +262,34 @@
   background: var(--color-warning-soft);
 }
 
+.metricLight {
+  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 72%, white);
+}
+
+.metricLight .metricIcon {
+  color: white;
+  background: var(--color-sea-700);
+}
+
+.metricLight span,
+.metricLight small,
+.metricLight .metricCompactHeader span,
+.metricLight .metricCompactSecondary,
+.metricLight .metricCompactRows span {
+  color: var(--color-text-muted);
+}
+
+.metricLight strong,
+.metricLight .metricCompactValue,
+.metricLight .metricCompactRows strong {
+  color: var(--color-ocean-950);
+}
+
 .metricCompact {
   display: grid;
-  align-items: stretch;
+  align-content: start;
+  align-items: start;
   gap: 0;
   padding: var(--space-3);
   border-radius: var(--radius-sm);

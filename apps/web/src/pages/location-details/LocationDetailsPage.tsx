@@ -1,17 +1,4 @@
-import {
-  ArrowLeft,
-  Cloud,
-  CloudRain,
-  CloudSun,
-  Eye,
-  EyeOff,
-  Heart,
-  Lock,
-  MapPin,
-  Navigation,
-  Pencil,
-  Sun,
-} from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Heart, Lock, MapPin, Navigation, Pencil } from 'lucide-react';
 import { Fragment, useState, type ReactNode } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/design-system/components/Button';
@@ -24,12 +11,8 @@ import { hasLiveWebcams, hasPlanModule, isAdmin, showsAppFocus } from '@/feature
 import { CommunityReports } from '@/features/community/components/CommunityReports';
 import { PlanTripAction } from '@/features/diary/components/PlanTripAction';
 import { SubscriptionGateDrawer } from '@/features/subscription/components/SubscriptionGateDrawer';
-import type { ForecastRankingItem } from '@/features/fishing/types/fishing';
 import { DayCarousel } from '@/features/forecast/components/DayCarousel';
-import { ForecastHero } from '@/features/forecast/components/ForecastHero';
-import { MarineDetails, MarineDetailsToggle } from '@/features/forecast/components/MarineDetails';
-import { useMarineDetails } from '@/features/forecast/hooks/useMarineDetails';
-import { marineSeriesAtHour } from '@/features/forecast/utils/marineAtHour';
+import { ForecastPresentation } from '@/features/forecast/components/ForecastPresentation';
 import { useLocationForecast } from '@/features/forecast/hooks/useForecast';
 import { LocationStampFor } from '@/features/locations/components/LocationStamp';
 import { useLocationMutations } from '@/features/locations/hooks/useLocationMutations';
@@ -53,7 +36,6 @@ export function LocationDetailsPage() {
   );
   const visibleMetricKeys = presentation.visibleMetricKeys;
   const [selectedDate, setSelectedDate] = useState(() => searchParams.get('data') ?? '');
-  const [marineOpen, setMarineOpen] = useState(presentation.preferMarineDetails);
   const [favoriteGateOpen, setFavoriteGateOpen] = useState(false);
 
   if (locationForecast.isPending)
@@ -98,7 +80,6 @@ export function LocationDetailsPage() {
     );
 
   const favoriteLocked = !canFavorite && !location.isFavorite;
-  const detailMetricKeys = visibleMetricKeys?.map((key) => (key === 'rain' ? 'pressure' : key));
   const toolbarActions: { key: string; locked: boolean; node: ReactNode }[] = [
     {
       key: 'plan',
@@ -225,6 +206,23 @@ export function LocationDetailsPage() {
       {favoriteGateOpen ? (
         <SubscriptionGateDrawer action="Favoritar" onCancel={() => setFavoriteGateOpen(false)} />
       ) : null}
+      {mutations.favoriteError ? <p>{mutations.favoriteError}</p> : null}
+      {mutations.enabledError ? <p>{mutations.enabledError}</p> : null}
+      <DayCarousel days={days} selectedDate={activeDate} onSelect={setSelectedDate}>
+        {(day) => (
+          <ForecastPresentation
+            variant="detail"
+            forecast={day.forecast}
+            date={day.date}
+            dayLabel={day.label}
+            locationId={location.id}
+            active={day.date === activeDate}
+            visibleMetricKeys={visibleMetricKeys}
+            windUnit={auth.user?.preferences.windUnit}
+            showFishingScore={presentation.showFishingScore}
+          />
+        )}
+      </DayCarousel>
       {canManageWebcams ? (
         <WebcamManager spotId={location.id} />
       ) : canWatchWebcams && location.hasLiveWebcam ? (
@@ -232,23 +230,6 @@ export function LocationDetailsPage() {
       ) : canWatchWebcams ? (
         <p className={styles.webcamEmpty}>Sem câmera ao vivo neste local.</p>
       ) : null}
-      {mutations.favoriteError ? <p>{mutations.favoriteError}</p> : null}
-      {mutations.enabledError ? <p>{mutations.enabledError}</p> : null}
-      <DayCarousel days={days} selectedDate={activeDate} onSelect={setSelectedDate}>
-        {(day) => (
-          <LocationForecastHero
-            day={day}
-            activeDate={activeDate}
-            locationId={location.id}
-            visibleMetricKeys={visibleMetricKeys}
-            detailMetricKeys={detailMetricKeys}
-            windUnit={auth.user?.preferences.windUnit}
-            showFishingScore={presentation.showFishingScore}
-            marineOpen={marineOpen}
-            onMarineToggle={setMarineOpen}
-          />
-        )}
-      </DayCarousel>
       {presentation.showCommunity ? (
         <CommunityReports
           spotId={location.id}
@@ -261,123 +242,4 @@ export function LocationDetailsPage() {
       ) : null}
     </div>
   );
-}
-
-function WeatherCondition({ forecast }: { forecast: ForecastRankingItem }) {
-  const rain = forecast.metrics.find((metric) => metric.key === 'rain');
-  const probability = rain ? parseRainProbability(rain.value) : null;
-  if (probability === null) return null;
-
-  const weather =
-    probability <= 20
-      ? { label: 'Sol', icon: Sun }
-      : probability <= 40
-        ? { label: 'Parcialmente nublado', icon: CloudSun }
-        : probability <= 60
-          ? { label: 'Nublado', icon: Cloud }
-          : { label: 'Chuva', icon: CloudRain };
-  const WeatherIcon = weather.icon;
-
-  return (
-    <div className={styles.weatherCondition} aria-label={`Condição do tempo: ${weather.label}`}>
-      <WeatherIcon size={28} aria-hidden="true" />
-      <span>
-        <strong>{weather.label}</strong>
-        <small>{probability}% de chance de chuva</small>
-      </span>
-    </div>
-  );
-}
-
-function parseRainProbability(value: string) {
-  const match = /(\d+(?:[.,]\d+)?)%/.exec(value);
-  if (!match) return null;
-  const probability = Number(match[1]!.replace(',', '.'));
-  return Number.isFinite(probability) ? probability : null;
-}
-
-interface LocationForecastHeroProps {
-  day: { date: string; label: string; forecast: ForecastRankingItem };
-  activeDate: string;
-  locationId: string;
-  visibleMetricKeys?: ForecastRankingItem['metrics'][number]['key'][];
-  detailMetricKeys?: ForecastRankingItem['metrics'][number]['key'][];
-  windUnit?: string;
-  showFishingScore: boolean;
-  marineOpen: boolean;
-  onMarineToggle: (open: boolean) => void;
-}
-
-function LocationForecastHero({
-  day,
-  activeDate,
-  locationId,
-  visibleMetricKeys,
-  detailMetricKeys,
-  windUnit,
-  showFishingScore,
-  marineOpen,
-  onMarineToggle,
-}: LocationForecastHeroProps) {
-  const [selectedHour, setSelectedHour] = useState(day.forecast.metricsHour);
-  const marine = useMarineDetails(
-    locationId,
-    day.date,
-    day.date === activeDate && !day.forecast.pressure,
-  );
-  const marinePressure = marine.data?.series.find((item) => item.key === 'atmospheric-pressure');
-  const pressureForHour = marinePressure
-    ? marineSeriesAtHour(marinePressure, selectedHour, day.forecast.metricsHour)
-    : undefined;
-
-  return (
-    <ForecastHero
-      forecast={day.forecast}
-      dayLabel={day.label}
-      visibleMetricKeys={detailMetricKeys}
-      windUnit={windUnit}
-      showFishingScore={showFishingScore}
-      showLocationStamp={false}
-      showLocationName={false}
-      showLocationLink={false}
-      hideLockedMetrics={false}
-      selectedHour={selectedHour}
-      onHourSelect={(hour) => setSelectedHour(hour)}
-      adaptMetrics={(item) => locationDetailMetrics(item, pressureForHour)}
-      beforeMetrics={(item) => <WeatherCondition forecast={item} />}
-      afterTrend={
-        <MarineDetailsToggle open={marineOpen} onToggle={onMarineToggle}>
-          {marineOpen && day.date === activeDate ? (
-            <MarineDetails
-              locationId={locationId}
-              date={day.date}
-              selectedHour={selectedHour}
-              referenceHour={day.forecast.metricsHour}
-              visibleMetricKeys={visibleMetricKeys}
-            />
-          ) : null}
-        </MarineDetailsToggle>
-      }
-    />
-  );
-}
-
-function locationDetailMetrics(
-  forecast: ForecastRankingItem,
-  marinePressure?: { current: string; detail?: string; locked?: boolean; unavailable?: boolean },
-) {
-  const pressure =
-    forecast.pressure ??
-    (marinePressure && !marinePressure.unavailable
-      ? {
-          key: 'pressure' as const,
-          label: 'Pressão',
-          value: marinePressure.current,
-          detail: marinePressure.detail,
-          locked: marinePressure.locked,
-        }
-      : undefined);
-  return pressure
-    ? forecast.metrics.map((metric) => (metric.key === 'rain' ? pressure : metric))
-    : forecast.metrics.filter((metric) => metric.key !== 'rain');
 }

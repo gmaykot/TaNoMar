@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Route, Routes } from 'react-router-dom';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { forecastFixture } from '@/features/forecast/fixtures/forecast';
 import { locationsFixture } from '@/features/locations/fixtures/locations';
@@ -103,6 +103,8 @@ vi.mock('@/features/forecast/services/forecastService', () => ({
               }
               return {
                 ...window,
+                score: hourIndex === 1 ? 7.2 : 5.4,
+                classification: hourIndex === 1 ? 'very-good' : 'regular',
                 pressure,
                 metrics: metrics.map((metric) => {
                   if (metric.key === 'rain') {
@@ -275,63 +277,79 @@ describe('LocationDetailsPage', () => {
     expect(await screen.findByText('Local não encontrado')).toBeInTheDocument();
   });
 
-  it('mostra clima do ar no card e mar só depois de abrir', async () => {
-    const user = userEvent.setup();
+  it('organiza recomendação, condições, maré, evolução e detalhes sem duplicar métricas', async () => {
     renderLocation();
     expect(await screen.findByLabelText('Previsão por dia')).toBeInTheDocument();
     const slide = within(visibleDaySlide());
-    expect(await slide.findByText('Vento')).toBeInTheDocument();
-    expect(slide.getByLabelText('Condição do tempo: Sol')).toBeInTheDocument();
-    expect(slide.getByText('8% de chance de chuva')).toBeInTheDocument();
-    expect(slide.queryByText('Chuva')).not.toBeInTheDocument();
-    expect(slide.getByRole('region', { name: 'Notas dos melhores horários' })).toBeInTheDocument();
+    const recommendation = slide.getByRole('heading', { name: 'Melhores horários para pescar' });
+    expect(recommendation).toBeInTheDocument();
+    const card = recommendation.closest('section');
+    expect(card).toBeTruthy();
+    if (!card) return;
+    expect(within(card).getByText('Hoje · 05/09')).toBeInTheDocument();
+    expect(within(card).getByText('Excelente')).toBeInTheDocument();
+    expect(slide.getByRole('group', { name: 'Horários recomendados' })).toBeInTheDocument();
+    expect(slide.getByText('Entenda a nota')).toBeInTheDocument();
+    expect(slide.queryByText(/^Selecionado$/)).not.toBeInTheDocument();
+    expect(slide.queryByRole('heading', { name: /Condição às/ })).not.toBeInTheDocument();
+    const conditions = slide
+      .getByRole('heading', { name: 'Condições às 05h30' })
+      .closest('section');
+    expect(conditions).toBeTruthy();
+    if (!conditions) return;
+    expect(within(conditions).getByText('Vento')).toBeInTheDocument();
+    expect(within(conditions).getByText('8%')).toBeInTheDocument();
+    expect(within(conditions).getByText('Chuva')).toBeInTheDocument();
+    expect(slide.getAllByText('Ondas')).toHaveLength(2);
+    expect(slide.getAllByText('Temperatura')).toHaveLength(2);
     expect(slide.getByText('Pressão')).toBeInTheDocument();
-    expect(slide.getByText('Ondas')).toBeInTheDocument();
+    expect(slide.getByText('Atualização: não informada pela fonte.')).toBeInTheDocument();
     expect(slide.queryByText('Swell')).not.toBeInTheDocument();
-    expect(slide.queryByLabelText('Maré')).not.toBeInTheDocument();
-
-    await user.click(slide.getByText('Mar e maré'));
-    expect(await screen.findByRole('heading', { name: 'Mar' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Maré' })).toBeInTheDocument();
-    expect(screen.getByText('Enchente')).toBeInTheDocument();
-    expect(screen.getAllByLabelText('Maré').length).toBeGreaterThan(0);
-    expect(screen.queryByText('Swell')).not.toBeInTheDocument();
+    expect(slide.getByRole('heading', { name: 'Maré' })).toBeInTheDocument();
+    expect(await slide.findByText('Enchente')).toBeInTheDocument();
+    expect(slide.getByRole('img', { name: 'Altura da maré ao longo do dia' })).toBeInTheDocument();
+    expect(slide.getByRole('heading', { name: 'Evolução das condições' })).toBeInTheDocument();
+    expect(slide.getByText('Detalhes da previsão')).toBeInTheDocument();
   });
 
-  it('atualiza clima, métricas e mar ao clicar numa hora', async () => {
+  it('atualiza métricas, maré e gráficos ao selecionar outra hora', async () => {
     const user = userEvent.setup();
     renderLocation();
     expect(await screen.findByLabelText('Previsão por dia')).toBeInTheDocument();
     const slide = within(visibleDaySlide());
-    expect(await slide.findByLabelText('Condição do tempo: Sol')).toBeInTheDocument();
-    expect(slide.getByText('8% de chance de chuva')).toBeInTheDocument();
+    expect(await slide.findByText('8%')).toBeInTheDocument();
     expect(slide.getByText('1018 hPa')).toBeInTheDocument();
+    expect(slide.getByLabelText('Nota 9,1 de 10, Excelente')).toBeInTheDocument();
 
-    await user.click(slide.getByRole('button', { name: '07h, nota 8,9' }));
+    await user.click(slide.getByRole('button', { name: 'Ver condições das 07h' }));
 
-    expect(slide.getByText('Condições às 07h')).toBeInTheDocument();
-    expect(slide.getByLabelText('Condição do tempo: Nublado')).toBeInTheDocument();
-    expect(slide.getByText('45% de chance de chuva')).toBeInTheDocument();
+    expect(await slide.findByText('Condições às 07h')).toBeInTheDocument();
+    expect(slide.getByLabelText('Nota 7,2 de 10, Muito bom')).toBeInTheDocument();
+    expect(slide.getByText('Muito bom')).toBeInTheDocument();
+    expect(
+      slide.getByRole('button', { name: 'Ver condições das 07h, selecionado' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(slide.getByText('45% chance')).toBeInTheDocument();
     expect(slide.getByText('1016 hPa')).toBeInTheDocument();
     expect(slide.getByText('0,9 m')).toBeInTheDocument();
     expect(slide.getByText('Nordeste')).toBeInTheDocument();
     expect(slide.getByText(/Período:/)).toHaveTextContent(/Período: 9 s/);
-
-    await user.click(slide.getByText('Mar e maré'));
-    expect(await screen.findByRole('heading', { name: 'Mar' })).toBeInTheDocument();
-    expect(screen.getByText('1,10 m')).toBeInTheDocument();
+    expect(slide.getByText('Às 07h')).toBeInTheDocument();
+    expect(slide.getByText(/Preamar · 14h20/)).toBeInTheDocument();
+    expect(slide.getAllByText('seleção').length).toBeGreaterThan(0);
   });
 
-  it('no foco surfista abre o mar e esconde a nota de pesca', async () => {
+  it('no foco surfista mostra condições do mar e esconde a nota de pesca', async () => {
     authState.focus = 'surfista';
     authState.showAppFocus = true;
     renderLocation();
 
-    expect(await screen.findByRole('heading', { name: 'Mar' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Maré' })).toBeInTheDocument();
     expect(screen.queryByLabelText(/Nota /)).not.toBeInTheDocument();
     const slide = within(visibleDaySlide());
     expect(slide.queryByText('Chuva')).not.toBeInTheDocument();
-    expect(slide.getAllByText('Swell').length).toBeGreaterThan(0);
+    expect(slide.getAllByText('Ondas').length).toBeGreaterThan(0);
+    expect(slide.queryByText('Swell')).not.toBeInTheDocument();
     expect(screen.queryByText('Nenhum relato ativo')).not.toBeInTheDocument();
     expect(screen.queryByText('Enviar relato')).not.toBeInTheDocument();
   });
@@ -344,8 +362,7 @@ describe('LocationDetailsPage', () => {
     expect(await within(visibleDaySlide()).findByText('Pressão')).toBeInTheDocument();
   });
 
-  it('omite no painel de mar o indicador desmarcado na conta', async () => {
-    const user = userEvent.setup();
+  it('omite na apresentação o indicador desmarcado na conta', async () => {
     authState.focus = 'ambos';
     authState.showAppFocus = true;
     authState.visibleMetrics = ['wind', 'waves', 'rain'];
@@ -353,17 +370,12 @@ describe('LocationDetailsPage', () => {
 
     expect(await screen.findByLabelText('Previsão por dia')).toBeInTheDocument();
     const slide = within(visibleDaySlide());
-    expect(await slide.findByText('Ondas')).toBeInTheDocument();
+    expect((await slide.findAllByText('Ondas')).length).toBeGreaterThan(0);
     expect(slide.queryByText('Swell')).not.toBeInTheDocument();
-
-    await user.click(slide.getByText('Mar e maré'));
-    expect(await screen.findByRole('heading', { name: 'Mar' })).toBeInTheDocument();
-    expect(screen.queryByText('Swell')).not.toBeInTheDocument();
-    expect(screen.getAllByLabelText('Maré').length).toBeGreaterThan(0);
+    expect(slide.getByRole('heading', { name: 'Maré' })).toBeInTheDocument();
   });
 
   it('mantém o cadeado do mar no detalhe do local no plano Free', async () => {
-    const user = userEvent.setup();
     authState.maxFavorites = 0;
     authState.lockMarine = true;
     renderLocation();
@@ -372,9 +384,7 @@ describe('LocationDetailsPage', () => {
     const slide = within(visibleDaySlide());
     expect(await slide.findByLabelText('Ondas bloqueado no plano atual')).toBeInTheDocument();
 
-    await user.click(slide.getByText('Mar e maré'));
-    expect(await screen.findByLabelText('Maré bloqueada no plano atual')).toBeInTheDocument();
-    expect(screen.getAllByLabelText('Ondas bloqueado no plano atual').length).toBeGreaterThan(0);
+    expect(await slide.findByLabelText('Maré bloqueada no plano atual')).toBeInTheDocument();
   });
 
   it('abre o drawer de planos ao favoritar sem cota', async () => {
@@ -516,8 +526,10 @@ describe('LocationDetailsPage', () => {
       Object.defineProperty(day, 'offsetWidth', { configurable: true, value: 320 });
     });
 
-    track.dispatchEvent(new Event('scrollend'));
-    track.dispatchEvent(new Event('scroll'));
+    act(() => {
+      track.dispatchEvent(new Event('scrollend'));
+      track.dispatchEvent(new Event('scroll'));
+    });
 
     await waitFor(() => {
       expect(within(visibleDaySlide()).getAllByText('16h30').length).toBeGreaterThan(0);

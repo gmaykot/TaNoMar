@@ -146,6 +146,7 @@ describe('forecastMapper', () => {
                   {
                     time: '05:00',
                     score: 9.3,
+                    classification: 'Excelente',
                     windOrigin: 'terra',
                     highlights: ['Vento de terra'],
                     wind: available('8 km/h Leste'),
@@ -184,6 +185,7 @@ describe('forecastMapper', () => {
     expect(item.hourWindows[0]).toMatchObject({
       time: '05:00',
       score: 9.3,
+      classification: 'excellent',
       windOrigin: 'terra',
       highlights: ['Vento de terra'],
     });

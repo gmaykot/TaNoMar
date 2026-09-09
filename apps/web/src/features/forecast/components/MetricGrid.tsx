@@ -28,6 +28,7 @@ interface MetricGridProps {
   windUnit?: string;
   compact?: boolean;
   hideLocked?: boolean;
+  tone?: 'dark' | 'light';
 }
 
 export function MetricGrid({
@@ -37,6 +38,7 @@ export function MetricGrid({
   windUnit,
   compact = false,
   hideLocked = false,
+  tone = 'dark',
 }: MetricGridProps) {
   const selected = keys
     ? keys.flatMap((key) => {
@@ -48,21 +50,13 @@ export function MetricGrid({
   const visibleMetrics = typeof limit === 'number' ? unlocked.slice(0, limit) : unlocked;
   const gusts = visibleMetrics.find((metric) => metric.key === 'gusts');
   const wind = visibleMetrics.find((metric) => metric.key === 'wind');
-  const wavePeriod = metrics.find((metric) => metric.key === 'wave-period' && !metric.locked);
+  const wavePeriod = metrics.find((metric) => metric.key === 'wave-period');
   const waves = visibleMetrics.find((metric) => metric.key === 'waves');
   const airTemperature = visibleMetrics.find((metric) => metric.key === 'air-temperature');
   const waterTemperature = visibleMetrics.find((metric) => metric.key === 'water-temperature');
-  const combineWind = Boolean(
-    compact && wind && gusts && !wind.locked && !gusts.locked && unlocked.length > 4,
-  );
-  const combineWaves = Boolean(compact && waves && wavePeriod && !waves.locked);
-  const combineTemperatures = Boolean(
-    compact &&
-    airTemperature &&
-    waterTemperature &&
-    !airTemperature.locked &&
-    !waterTemperature.locked,
-  );
+  const combineWind = Boolean(compact && wind && gusts && !wind.locked && !gusts.locked);
+  const combineWaves = Boolean(compact && waves && wavePeriod);
+  const combineTemperatures = Boolean(compact && airTemperature && waterTemperature);
   const displayMetrics: DisplayMetric[] = compact
     ? visibleMetrics.flatMap<DisplayMetric>((metric) => {
         if (metric.key === 'gusts' && combineWind) return [];
@@ -102,7 +96,7 @@ export function MetricGrid({
           return [
             {
               ...metric,
-              value: rain.chance ? `${rain.chance} de chance` : keepMeasureTogether(metric.value),
+              value: rain.chance ? `${rain.chance} chance` : keepMeasureTogether(metric.value),
               detail: undefined,
               secondary: rain.volume ? [`Volume: ${keepMeasureTogether(rain.volume)}`] : undefined,
             },
@@ -145,6 +139,7 @@ export function MetricGrid({
           rows={metric.rows}
           locked={metric.locked}
           compact={compact}
+          tone={tone}
         />
       ))}
     </div>
