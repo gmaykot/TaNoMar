@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { BadgePercent, Handshake, Shield, Users } from 'lucide-react';
+import { BadgePercent, ClipboardCheck, Handshake, Shield, Users } from 'lucide-react';
 import { showSaveConfirmation } from '@/app/layout/saveConfirmationEvents';
 import { locationsQueryKey } from '@/features/locations/hooks/useLocationMutations';
 import {
@@ -94,6 +94,15 @@ export function AdminHomePage() {
         </p>
       ) : null}
       <section className={adminStyles.shortcuts} aria-label="Áreas administrativas">
+        <Link className={adminStyles.shortcut} to={routes.adminAudit}>
+          <span>
+            <ClipboardCheck size={18} aria-hidden="true" />
+          </span>
+          <div>
+            <strong>Auditoria de dados</strong>
+            <small>Confira forecast, notas e fontes meteorológicas.</small>
+          </div>
+        </Link>
         <Link className={adminStyles.shortcut} to={routes.adminSpots}>
           <span>
             <Shield size={18} aria-hidden="true" />

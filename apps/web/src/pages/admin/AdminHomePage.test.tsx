@@ -45,6 +45,10 @@ describe('AdminHomePage', () => {
 
   it('abre as áreas administrativas', () => {
     renderWithProviders(<AdminHomePage />);
+    expect(screen.getByRole('link', { name: /Auditoria de dados/ })).toHaveAttribute(
+      'href',
+      '/admin/auditoria',
+    );
     expect(screen.getByRole('link', { name: /Moderação/ })).toHaveAttribute(
       'href',
       '/admin/locais',

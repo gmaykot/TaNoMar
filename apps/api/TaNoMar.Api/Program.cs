@@ -421,6 +421,48 @@ api.MapGet("/admin/fishing-spots/pending", async (ClaimsPrincipal principal, TaN
     return Results.Ok(spots.Select(spot => SpotDtoProjection(spot, actor!, false, null, webcamSpotIds.Contains(spot.Id))).ToList());
 }).RequireAuthorization();
 
+api.MapGet("/admin/fishing-audit", async (
+    string? spotId,
+    DateOnly? date,
+    bool refreshSources,
+    ClaimsPrincipal principal,
+    TaNoMarDbContext db,
+    FishingForecastService fishing,
+    CancellationToken cancellationToken) =>
+{
+    var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
+    if (failure is not null) return failure;
+    var slug = spotId?.Trim();
+    if (string.IsNullOrWhiteSpace(slug))
+        return Results.BadRequest(new { detail = "Informe spotId para auditar um local." });
+
+    var spot = await db.FishingSpots.AsNoTracking().SingleOrDefaultAsync(item => item.Slug == slug, cancellationToken);
+    if (spot is null) return Results.NotFound();
+    var targetDate = date ?? fishing.Today();
+    var location = FishingForecastService.ToFishingLocation(spot);
+    var sourceReport = refreshSources
+        ? await fishing.AuditLocationDayAsync(location, targetDate, cancellationToken)
+        : null;
+    var forecast = sourceReport is null
+        ? await fishing.GetLocationDayAsync(location, targetDate, cancellationToken)
+        : null;
+    if (sourceReport is null && forecast is null)
+        return Results.BadRequest(new { detail = "A data deve estar entre hoje e os próximos 7 dias." });
+
+    var snapshot = await db.FishingForecastSnapshots
+        .AsNoTracking()
+        .SingleOrDefaultAsync(item => item.LocationId == spot.Slug && item.Date == targetDate, cancellationToken);
+    var report = sourceReport ?? FishingForecastAudit.Run(location, forecast!);
+    return Results.Ok(new
+    {
+        audit = report,
+        sourceRefresh = refreshSources,
+        snapshot = snapshot is null
+            ? null
+            : new { snapshot.CreatedAt, snapshot.ExpiresAt, PayloadSize = snapshot.PayloadJson.Length }
+    });
+}).RequireAuthorization();
+
 api.MapPost("/admin/fishing-spots/{id}/approve", async (string id, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, NotificationRealtimeHub hub, WebPushQueue push, CancellationToken cancellationToken) =>
 {
     var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);

@@ -9,6 +9,7 @@ import { AccountNotificationsPage } from '@/pages/account/AccountNotificationsPa
 import { AccountPage } from '@/pages/account/AccountPage';
 import { AccountPreferencesPage } from '@/pages/account/AccountPreferencesPage';
 import { AdminHomePage } from '@/pages/admin/AdminHomePage';
+import { AdminAuditPage } from '@/pages/admin/AdminAuditPage';
 import { AdminPartnerFormPage } from '@/pages/admin/AdminPartnerFormPage';
 import { AdminPartnersPage } from '@/pages/admin/AdminPartnersPage';
 import { AdminPlansPage } from '@/pages/admin/AdminPlansPage';
@@ -56,6 +57,7 @@ export function SessionRouter() {
               <Route path="/parceiros/:partnerSlug" element={<PartnerDetailsPage />} />
               <Route element={<RequireAdmin />}>
                 <Route path={routes.admin} element={<AdminHomePage />} />
+                <Route path={routes.adminAudit} element={<AdminAuditPage />} />
                 <Route path={routes.adminSpots} element={<AdminSpotsPage />} />
                 <Route path={routes.adminUsers} element={<AdminUsersPage />} />
                 <Route path={routes.adminPlans} element={<AdminPlansPage />} />

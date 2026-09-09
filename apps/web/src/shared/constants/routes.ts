@@ -20,6 +20,7 @@ export const routes = {
   partners: '/parceiros',
   partnerDetails: (slug: string) => `/parceiros/${slug}`,
   admin: '/admin',
+  adminAudit: '/admin/auditoria',
   adminSpots: '/admin/locais',
   adminUsers: '/admin/usuarios',
   adminPlans: '/admin/planos',

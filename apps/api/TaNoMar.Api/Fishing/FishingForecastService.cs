@@ -112,6 +112,22 @@ internal sealed class FishingForecastService
         return withTide;
     }
 
+    public async Task<FishingForecastAuditReport?> AuditLocationDayAsync(
+        FishingLocation location,
+        DateOnly date,
+        CancellationToken cancellationToken)
+    {
+        var day = date.DayNumber - Today().DayNumber;
+        if (day is < 0 or > 7) return null;
+
+        var forecastDays = Math.Min(8, Math.Max(2, day + 1));
+        var weather = await _openMeteo.GetWeatherAsync(location, _options.TimeZone, forecastDays, cancellationToken);
+        var gfsRain = await _openMeteo.GetGfsRainAsync(location, _options.TimeZone, forecastDays, cancellationToken);
+        var marine = await _openMeteo.GetMarineAsync(location, _options.TimeZone, forecastDays, cancellationToken);
+        var forecast = BuildForecast(location, date, weather, gfsRain, marine);
+        return FishingForecastAudit.Run(location, forecast, new FishingForecastAuditSources(weather, gfsRain, marine));
+    }
+
     public async Task<ForecastWarmupResult> WarmPublicSpotsAsync(CancellationToken cancellationToken)
     {
         var today = Today();
