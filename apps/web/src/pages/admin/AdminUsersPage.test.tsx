@@ -170,7 +170,7 @@ describe('AdminUsersPage', () => {
     await user.click(
       within(beto as HTMLElement).getByRole('button', { name: 'Ações da conta de Beto Lima' }),
     );
-    expect(screen.getByRole('menu', { name: 'Ações de Beto Lima' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Ações de Beto Lima' })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'Tornar admin' })).toBeEnabled();
     expect(screen.getByRole('menuitem', { name: 'Bloquear' })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'Plano Mestre' })).toBeInTheDocument();
