@@ -7,6 +7,7 @@ import { ConfirmDrawer } from '@/design-system/components/ConfirmDrawer';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { SearchField } from '@/design-system/components/SearchField';
 import { AdminUserCard } from '@/features/admin-users/components/AdminUserCard';
+import userStyles from '@/features/admin-users/components/adminUsers.module.css';
 import { adminUsersQueryKey, useAdminUsers } from '@/features/admin-users/hooks/useAdminUsers';
 import { useAdminPlans } from '@/features/admin-plans/hooks/useAdminPlans';
 import {
@@ -240,7 +241,7 @@ export function AdminUsersPage() {
           description="Ajuste a busca ou o filtro para ver outros usuários."
         />
       ) : (
-        <div className={styles.locationGrid}>
+        <div className={userStyles.list}>
           {filtered.map((user) => (
             <AdminUserCard
               key={user.id}

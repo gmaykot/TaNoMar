@@ -121,6 +121,15 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
   }),
 }));
 
+async function openAccountMenu(user: ReturnType<typeof userEvent.setup>, name: string) {
+  const row = (await screen.findByText(name)).closest('article');
+  expect(row).toBeTruthy();
+  await user.click(
+    within(row as HTMLElement).getByRole('button', { name: `Ações da conta de ${name}` }),
+  );
+  return row as HTMLElement;
+}
+
 describe('AdminUsersPage', () => {
   beforeEach(() => {
     setAdminUserPlan.mockClear();
@@ -142,12 +151,36 @@ describe('AdminUsersPage', () => {
     expect(screen.queryByText('Ana Costa')).not.toBeInTheDocument();
   });
 
-  it('promove um usuário para Mestre depois da confirmação', async () => {
+  it('esconde bloqueio, plano e cargo no menu de três pontinhos', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AdminUsersPage />);
     const beto = (await screen.findByText('Beto Lima')).closest('article');
     expect(beto).toBeTruthy();
-    await user.click(within(beto as HTMLElement).getByRole('button', { name: 'Mestre' }));
+
+    expect(
+      within(beto as HTMLElement).queryByRole('button', { name: 'Bloquear' }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(beto as HTMLElement).queryByRole('menuitem', { name: 'Plano Mestre' }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(beto as HTMLElement).getByRole('button', { name: 'Ações da conta de Beto Lima' }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      within(beto as HTMLElement).getByRole('button', { name: 'Ações da conta de Beto Lima' }),
+    );
+    expect(screen.getByRole('menu', { name: 'Ações de Beto Lima' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Plano Mestre' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Tornar admin' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Bloquear' })).toBeInTheDocument();
+  });
+
+  it('promove um usuário para Mestre depois da confirmação', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AdminUsersPage />);
+    await openAccountMenu(user, 'Beto Lima');
+    await user.click(screen.getByRole('menuitem', { name: 'Plano Mestre' }));
     expect(setAdminUserPlan).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog', { name: 'Mudar plano' })).toBeInTheDocument();
     expect(
@@ -162,9 +195,8 @@ describe('AdminUsersPage', () => {
   it('cancela a mudança de plano sem salvar', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AdminUsersPage />);
-    const beto = (await screen.findByText('Beto Lima')).closest('article');
-    expect(beto).toBeTruthy();
-    await user.click(within(beto as HTMLElement).getByRole('button', { name: 'Mestre' }));
+    await openAccountMenu(user, 'Beto Lima');
+    await user.click(screen.getByRole('menuitem', { name: 'Plano Mestre' }));
     await user.click(screen.getByRole('button', { name: 'Cancelar' }));
     expect(setAdminUserPlan).not.toHaveBeenCalled();
     expect(screen.queryByRole('dialog', { name: 'Mudar plano' })).not.toBeInTheDocument();
@@ -173,9 +205,8 @@ describe('AdminUsersPage', () => {
   it('permite mudar o plano da conta inicial', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AdminUsersPage />);
-    const ana = (await screen.findByText('Ana Costa')).closest('article');
-    expect(ana).toBeTruthy();
-    await user.click(within(ana as HTMLElement).getByRole('button', { name: 'Capitão' }));
+    await openAccountMenu(user, 'Ana Costa');
+    await user.click(screen.getByRole('menuitem', { name: 'Plano Capitão' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar plano' }));
     expect(setAdminUserPlan).toHaveBeenCalledWith('user-1', 'capitao');
   });
@@ -183,9 +214,8 @@ describe('AdminUsersPage', () => {
   it('pede confirmação antes de bloquear uma conta', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AdminUsersPage />);
-    const beto = (await screen.findByText('Beto Lima')).closest('article');
-    expect(beto).toBeTruthy();
-    await user.click(within(beto as HTMLElement).getByRole('button', { name: 'Bloquear' }));
+    await openAccountMenu(user, 'Beto Lima');
+    await user.click(screen.getByRole('menuitem', { name: 'Bloquear' }));
     expect(setAdminUserActive).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog', { name: 'Bloquear conta' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Confirmar bloqueio' }));
@@ -195,9 +225,8 @@ describe('AdminUsersPage', () => {
   it('rebaixa outro admin depois da confirmação', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AdminUsersPage />);
-    const cida = (await screen.findByText('Cida Souza')).closest('article');
-    expect(cida).toBeTruthy();
-    await user.click(within(cida as HTMLElement).getByRole('button', { name: 'Rebaixar' }));
+    await openAccountMenu(user, 'Cida Souza');
+    await user.click(screen.getByRole('menuitem', { name: 'Rebaixar' }));
     expect(setAdminUserRole).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog', { name: 'Rebaixar admin' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Confirmar rebaixamento' }));
@@ -207,9 +236,8 @@ describe('AdminUsersPage', () => {
   it('promove um usuário a admin depois da confirmação', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AdminUsersPage />);
-    const beto = (await screen.findByText('Beto Lima')).closest('article');
-    expect(beto).toBeTruthy();
-    await user.click(within(beto as HTMLElement).getByRole('button', { name: 'Tornar admin' }));
+    await openAccountMenu(user, 'Beto Lima');
+    await user.click(screen.getByRole('menuitem', { name: 'Tornar admin' }));
     expect(setAdminUserRole).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog', { name: 'Tornar admin' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Confirmar cargo' }));
@@ -217,11 +245,9 @@ describe('AdminUsersPage', () => {
   });
 
   it('não oferece rebaixar a própria conta inicial', async () => {
+    const user = userEvent.setup();
     renderWithProviders(<AdminUsersPage />);
-    const ana = (await screen.findByText('Ana Costa')).closest('article');
-    expect(ana).toBeTruthy();
-    expect(
-      within(ana as HTMLElement).queryByRole('button', { name: 'Rebaixar' }),
-    ).not.toBeInTheDocument();
+    await openAccountMenu(user, 'Ana Costa');
+    expect(screen.queryByRole('menuitem', { name: 'Rebaixar' })).not.toBeInTheDocument();
   });
 });
