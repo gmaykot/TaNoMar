@@ -7,6 +7,7 @@ import styles from './landing.module.css';
 
 const navigation = [
   { href: '#como-funciona', label: 'Como funciona' },
+  { href: '#cobertura', label: 'Locais' },
   { href: '#recursos', label: 'Recursos' },
   { href: '#planos', label: 'Planos' },
   { href: '#instalar', label: 'Instalar' },

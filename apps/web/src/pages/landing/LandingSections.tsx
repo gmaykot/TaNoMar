@@ -5,8 +5,11 @@ import {
   Compass,
   FishSymbol,
   MapPinned,
+  Share2,
+  UserRound,
   Users,
   Waves,
+  Wind,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -34,30 +37,64 @@ const steps = [
   },
 ];
 
+const coverageRoles: Array<{ icon: LucideIcon; title: string; description: string }> = [
+  {
+    icon: MapPinned,
+    title: 'Oficiais do sistema',
+    description:
+      'Catálogo curado da Grande Florianópolis, já no mapa e no ranking, sem você precisar cadastrar.',
+  },
+  {
+    icon: UserRound,
+    title: 'Locais pessoais',
+    description:
+      'Nos planos pagos você marca o ponto pelas coordenadas. Fica privado ou pode enviar para a comunidade.',
+  },
+  {
+    icon: Share2,
+    title: 'Compartilhados',
+    description: 'Depois da aprovação, o local entra no mapa e no ranking de todo mundo.',
+  },
+];
+
+const coverageRegions = ['Norte', 'Sul', 'Leste', 'Oeste', 'Continente', 'Ilhas'];
+
 const features: Array<{ icon: LucideIcon; title: string; description: string }> = [
   {
     icon: Compass,
-    title: 'Ranking para a sua decisão',
+    title: 'Ranking e melhores horários',
     description:
-      'Compare pela nota ou ordene por vento, chuva e ondas nos planos que incluem personalização.',
+      'Compare pela nota e veja as janelas mais favoráveis do dia. Nos planos com personalização, também dá para ordenar por vento, chuva ou ondas sem mudar a nota.',
   },
   {
     icon: Waves,
-    title: 'Condições com contexto',
+    title: 'Condições do mar',
     description:
-      'Veja vento, rajadas, chuva, ondas, swell, temperaturas e maré quando os dados estiverem disponíveis.',
+      'Acompanhe vento, rajadas, chuva, ondas, swell, temperaturas e maré quando os dados existirem. Maré e temperaturas dão contexto; não entram na nota.',
+  },
+  {
+    icon: MapPinned,
+    title: 'Seus locais e favoritos',
+    description:
+      'Salve os pontos que você já usa e, nos planos pagos, cadastre locais próprios pelas coordenadas.',
   },
   {
     icon: Bell,
-    title: 'Planejamento e alertas',
+    title: 'Alertas quando a nota sobe',
     description:
-      'Salve favoritos, cadastre seus locais, mantenha alertas ativos e registre as saídas no diário.',
+      'Configure a nota mínima e a antecedência. O TáNoMar verifica a previsão de hora em hora e avisa quando a janela aparece.',
+  },
+  {
+    icon: Wind,
+    title: 'Vento ideal e previsão offline',
+    description:
+      'Defina o vento que funciona em cada local e salve a previsão no aparelho para consultar sem conexão.',
   },
   {
     icon: Users,
-    title: 'Comunidade e recursos de campo',
+    title: 'Comunidade no campo e câmeras',
     description:
-      'Ajude a validar relatos, salve uma previsão para consultar sem conexão e veja câmeras no Capitão.',
+      'Relatos de condição e perigo nos locais públicos. No Capitão, veja a transmissão ao vivo quando houver um stream válido.',
   },
 ];
 
@@ -86,6 +123,31 @@ const questions = [
     question: 'Onde há câmeras ao vivo?',
     answer:
       'As câmeras aparecem apenas nos locais com uma transmissão válida vinculada. O acesso é do plano Capitão e também depende de o recurso estar disponível no TáNoMar. Cada câmera é um stream de terceiros: o TáNoMar apenas exibe a transmissão, não se responsabiliza pelas imagens e não garante manutenção nem disponibilidade.',
+  },
+  {
+    question: 'Como entro?',
+    answer:
+      'Com a sua conta Google. O plano Free não pede cartão: você assina só se quiser ampliar limites e liberar outros recursos.',
+  },
+  {
+    question: 'Posso usar um local que não está na lista?',
+    answer:
+      'Sim. Os planos pagos permitem cadastrar locais próprios pelas coordenadas. Eles podem ficar privados ou ser enviados para aprovação da comunidade.',
+  },
+  {
+    question: 'O que é o vento ideal?',
+    answer:
+      'É a direção de vento que você prefere em cada local. A escolha é só sua: o TáNoMar recalcula a parcela do vento na nota, no ranking e nos alertas, sem alterar o cadastro nem a previsão compartilhada.',
+  },
+  {
+    question: 'Funciona sem internet?',
+    answer:
+      'Você pode salvar uma cópia da previsão no aparelho e consultar depois sem conexão. Isso não substitui o aplicativo completo: mapa, ranking ao vivo e demais recursos pedem rede.',
+  },
+  {
+    question: 'Qual a diferença entre Arrais e Mestre?',
+    answer:
+      'Os dois planos pagos liberam os mesmos módulos de mar, diário, offline, vento ideal, comunidade e ênfase no ranking. A diferença principal está nas cotas e nos dias de previsão. Câmeras ao vivo entram só no Capitão.',
   },
   {
     question: 'Posso cancelar a assinatura?',
@@ -152,6 +214,37 @@ export function ScoreExplanationSection() {
         </ul>
         <small>As previsões são atualizadas ao longo do dia e continuam sendo estimativas.</small>
       </div>
+    </section>
+  );
+}
+
+export function CoverageSection() {
+  return (
+    <section className={styles.section} id="cobertura" aria-labelledby="coverage-title">
+      <div className={styles.sectionHeading}>
+        <span>Cobertura</span>
+        <h2 id="coverage-title">Locais oficiais da Grande Florianópolis.</h2>
+        <p>
+          A base inicial cobre norte, sul, leste, oeste, continente e ilhas. Você compara pontos
+          como Pântano do Sul, Joaquina, Campeche e Armação, e nos planos pagos cadastra os seus.
+        </p>
+      </div>
+      <div className={styles.coverageRoles}>
+        {coverageRoles.map(({ icon: Icon, title, description }) => (
+          <article className={styles.valueCard} key={title}>
+            <span className={styles.featureIcon}>
+              <Icon size={21} aria-hidden="true" />
+            </span>
+            <h3>{title}</h3>
+            <p>{description}</p>
+          </article>
+        ))}
+      </div>
+      <ul className={styles.coverageRegions}>
+        {coverageRegions.map((region) => (
+          <li key={region}>{region}</li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -236,6 +329,7 @@ export function LandingFooter() {
         </div>
         <nav aria-label="Links do rodapé">
           <a href="#como-funciona">Como funciona</a>
+          <a href="#cobertura">Locais</a>
           <a href="#recursos">Recursos</a>
           <a href="#planos">Planos</a>
           <a href="#comparacao-planos">Comparar planos</a>

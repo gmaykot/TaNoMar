@@ -1,0 +1,133 @@
+.appPreview {
+  display: grid;
+  width: 100%;
+  max-width: 43rem;
+  min-width: 0;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.appPreview figcaption {
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+}
+
+.appFrame {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-sand-100);
+  box-shadow: var(--shadow-md);
+}
+
+.appFrameHeader {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+}
+
+.appFrameHeader :global(img) {
+  max-width: min(100%, 11rem);
+}
+
+.appFrameNav {
+  display: none;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.appFrameNav span {
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-pill);
+}
+
+.appFrameNavActive {
+  color: white;
+  background: var(--color-ocean-950);
+  font-weight: 800;
+}
+
+.appFrameBody {
+  max-height: 32rem;
+  overflow: hidden;
+  padding: var(--space-4) var(--space-4) 0;
+}
+
+.appFramePage {
+  gap: var(--space-4);
+}
+
+.appFramePage :global(a),
+.appFramePage :global(button) {
+  pointer-events: none;
+}
+
+.appFrameGhostLink {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-ocean-700);
+  font-size: var(--font-size-sm);
+  font-weight: 750;
+}
+
+.appFrameTabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-sand-100) 92%, transparent);
+}
+
+.appFrameTabs span {
+  display: flex;
+  min-height: 3rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  border-radius: 0.9rem;
+  color: var(--color-text-muted);
+  font-size: 0.62rem;
+  font-weight: 650;
+}
+
+.appFrameTabActive {
+  color: var(--color-ocean-950);
+  background: color-mix(in srgb, var(--color-sea-500) 20%, var(--color-sand-100));
+  font-weight: 750;
+}
+
+@media (min-width: 48rem) {
+  .appFrameNav {
+    display: flex;
+  }
+
+  .appFrameTabs {
+    display: none;
+  }
+
+  .appFrameBody {
+    max-height: 36rem;
+    padding-bottom: var(--space-4);
+  }
+}
+
+@media (min-width: 64rem) {
+  .appPreview {
+    max-width: 46rem;
+  }
+}

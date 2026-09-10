@@ -2,6 +2,7 @@ import { ArrowDown, ArrowRight, FishSymbol, MonitorSmartphone } from 'lucide-rea
 import { Link } from 'react-router-dom';
 import { LandingHeader } from './LandingHeader';
 import {
+  CoverageSection,
   FaqSection,
   FeaturesSection,
   FinalCtaSection,
@@ -34,7 +35,8 @@ export function LandingPage() {
             </h1>
             <p>
               Previsão, maré, vento, ondas e melhores horários reunidos em uma experiência simples
-              para ajudar você a escolher onde e quando pescar.
+              para ajudar você a escolher onde e quando pescar. A base inicial reúne locais oficiais
+              da Grande Florianópolis; nos planos pagos você também cadastra locais próprios.
             </p>
             <div className={styles.heroActions}>
               <Link className={styles.primaryCta} to={routes.login}>
@@ -44,6 +46,7 @@ export function LandingPage() {
                 Ver como funciona <ArrowDown size={18} aria-hidden="true" />
               </a>
             </div>
+            <small className={styles.heroNote}>Entre com Google. O Free não pede cartão.</small>
             <small className={styles.heroNote}>
               <MonitorSmartphone size={17} aria-hidden="true" /> Use pelo navegador ou instale no
               celular
@@ -53,6 +56,7 @@ export function LandingPage() {
         </section>
         <HowItWorksSection />
         <ScoreExplanationSection />
+        <CoverageSection />
         <FeaturesSection />
         <PlansSection />
         <PwaInstallSection />

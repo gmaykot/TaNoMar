@@ -96,14 +96,15 @@ describe('LandingPage', () => {
     expect(screen.getByRole('banner').querySelector('img')?.getAttribute('src')).toContain(
       'tanomar-horizontal-slogan',
     );
-    expect(screen.getAllByText('Enchente').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Grande Florianópolis/).length).toBeGreaterThan(0);
+    expect(screen.getByText('Entre com Google. O Free não pede cartão.')).toBeInTheDocument();
+    expect(screen.getByText('Demonstração da Home com dados ilustrativos')).toBeInTheDocument();
+    expect(screen.getByText('Demonstração do ranking com dados ilustrativos')).toBeInTheDocument();
     expect(
       screen.getByRole('heading', {
         name: 'O ranking coloca nota, melhores horários e condições lado a lado.',
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Joaquina')).toBeInTheDocument();
-    expect(screen.getByText('Campeche')).toBeInTheDocument();
     expect(screen.getAllByText('R$ 19,90').length).toBeGreaterThan(0);
     expect(screen.getByText('No anual, R$ 191,04 com 20% de desconto')).toBeInTheDocument();
     expect(screen.getAllByText('O Free não tem prazo de teste', { exact: false })).not.toHaveLength(
@@ -152,14 +153,24 @@ describe('LandingPage', () => {
     expect(
       screen.getByText('Espécie e modalidade de pesca não entram no cálculo.'),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Locais oficiais da Grande Florianópolis.' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Ranking e melhores horários' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Vento ideal e previsão offline' }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Quais locais estão disponíveis?')).toBeInTheDocument();
+    expect(screen.getByText('Como entro?')).toBeInTheDocument();
+    expect(screen.getByText('Posso usar um local que não está na lista?')).toBeInTheDocument();
+    expect(screen.getByText('O que é o vento ideal?')).toBeInTheDocument();
+    expect(screen.getByText('Funciona sem internet?')).toBeInTheDocument();
+    expect(screen.getByText('Qual a diferença entre Arrais e Mestre?')).toBeInTheDocument();
     expect(screen.getByText('Como funcionam os alertas?')).toBeInTheDocument();
     expect(screen.getByText('Onde há câmeras ao vivo?')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        /não garante manutenção nem disponibilidade/,
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/não garante manutenção nem disponibilidade/)).toBeInTheDocument();
     expect(screen.getByText('Posso cancelar a assinatura?')).toBeInTheDocument();
     expect(
       screen.getByText(/abra Gerenciar assinatura e toque em Cancelar renovação/),

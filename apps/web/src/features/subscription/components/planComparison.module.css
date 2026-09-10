@@ -30,7 +30,7 @@
   position: sticky;
   left: 0;
   z-index: 1;
-  min-width: 7.5rem;
+  min-width: 11rem;
   text-align: left;
   background: var(--color-surface);
   box-shadow: 1px 0 0 var(--color-border);

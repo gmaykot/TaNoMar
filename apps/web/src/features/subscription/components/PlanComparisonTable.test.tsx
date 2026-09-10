@@ -46,7 +46,7 @@ const paidPlan: PlanCatalog = {
     maxPersonalSpots: 10,
     maxAlerts: 10,
   },
-  modules: { ...modulesOff, liveWebcams: true },
+  modules: { ...modulesOff, marine: true, liveWebcams: true },
 };
 
 describe('PlanComparisonTable', () => {
@@ -60,6 +60,19 @@ describe('PlanComparisonTable', () => {
     expect(within(table).getByText('Grátis')).toBeInTheDocument();
     expect(within(table).getByText('R$ 19,90')).toBeInTheDocument();
     expect(within(table).getByText('3 dias')).toBeInTheDocument();
+    expect(within(table).getByRole('rowheader', { name: 'Detalhes do mar' })).toBeInTheDocument();
+    expect(within(table).getByRole('rowheader', { name: 'Diário' })).toBeInTheDocument();
+    expect(within(table).getByRole('rowheader', { name: 'Previsão offline' })).toBeInTheDocument();
+    expect(within(table).getByRole('rowheader', { name: 'Vento ideal' })).toBeInTheDocument();
+    expect(
+      within(table).getByRole('rowheader', { name: 'Relatos da comunidade' }),
+    ).toBeInTheDocument();
+    expect(
+      within(table).getByRole('rowheader', {
+        name: 'Ordenar ranking por vento, chuva ou ondas',
+      }),
+    ).toBeInTheDocument();
+    expect(within(table).getAllByText('Incluído').length).toBeGreaterThanOrEqual(1);
     expect(within(table).queryByText('0')).not.toBeInTheDocument();
     expect(within(table).getAllByText('—').length).toBeGreaterThanOrEqual(3);
     expect(within(table).getByText('Incluídas')).toBeInTheDocument();

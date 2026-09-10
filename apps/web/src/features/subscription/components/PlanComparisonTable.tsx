@@ -67,6 +67,36 @@ export function PlanComparisonTable({
             value={(plan) => quotaLabel(plan.entitlements.maxAlerts)}
           />
           <ComparisonRow
+            label="Detalhes do mar"
+            plans={plans}
+            value={(plan) => includedLabel(plan.modules.marine)}
+          />
+          <ComparisonRow
+            label="Diário"
+            plans={plans}
+            value={(plan) => includedLabel(plan.modules.diary)}
+          />
+          <ComparisonRow
+            label="Previsão offline"
+            plans={plans}
+            value={(plan) => includedLabel(plan.modules.offline)}
+          />
+          <ComparisonRow
+            label="Vento ideal"
+            plans={plans}
+            value={(plan) => includedLabel(plan.modules.customWind)}
+          />
+          <ComparisonRow
+            label="Relatos da comunidade"
+            plans={plans}
+            value={(plan) => includedLabel(plan.modules.communityVote)}
+          />
+          <ComparisonRow
+            label="Ordenar ranking por vento, chuva ou ondas"
+            plans={plans}
+            value={(plan) => includedLabel(plan.modules.rankingEmphasis)}
+          />
+          <ComparisonRow
             label="Câmeras ao vivo"
             plans={plans}
             value={(plan) => (plan.modules.liveWebcams ? 'Incluídas' : '—')}
@@ -79,6 +109,10 @@ export function PlanComparisonTable({
 
 function quotaLabel(value: number) {
   return value > 0 ? String(value) : '—';
+}
+
+function includedLabel(included: boolean | undefined) {
+  return included ? 'Incluído' : '—';
 }
 
 function ComparisonRow({
