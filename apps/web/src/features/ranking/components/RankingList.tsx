@@ -1,5 +1,5 @@
 import { ChevronDown, Clock3, CloudRain, MapPin, Waves, Wind } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/design-system/components/Badge';
 import { Button } from '@/design-system/components/Button';
@@ -36,7 +36,12 @@ const emphasisIcons: Partial<Record<FishingMetricKey, typeof Wind>> = {
   waves: Waves,
 };
 
-export function RankingList({
+export function RankingList(props: RankingListProps) {
+  const listKey = `${props.items.map((item) => item.locationId).join('|')}:${props.pageSize ?? 'all'}`;
+  return <RankingListView key={listKey} {...props} />;
+}
+
+function RankingListView({
   items,
   limit,
   pageSize,
@@ -47,10 +52,6 @@ export function RankingList({
   showFishingScore = true,
 }: RankingListProps) {
   const [visibleCount, setVisibleCount] = useState(pageSize ?? items.length);
-  const itemSignature = items.map((item) => item.locationId).join('|');
-  useEffect(() => {
-    setVisibleCount(pageSize ?? items.length);
-  }, [itemSignature, items.length, pageSize]);
   const cap = pageSize ? Math.min(visibleCount, items.length) : (limit ?? items.length);
   const visibleItems = items.slice(0, cap);
   const remaining = pageSize ? Math.max(0, items.length - visibleItems.length) : 0;
