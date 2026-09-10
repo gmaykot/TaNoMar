@@ -2,6 +2,8 @@
   display: grid;
   min-height: 100vh;
   width: min(100% - 2rem, 26rem);
+  max-width: 100%;
+  min-width: 0;
   margin: 0 auto;
   padding: var(--space-16) 0 var(--space-10);
   place-content: center;

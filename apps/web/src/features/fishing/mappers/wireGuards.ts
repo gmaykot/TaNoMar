@@ -3,6 +3,7 @@ import type {
   WireBestHourWindow,
   WireForecastDay,
   WireForecastItem,
+  WireForecastRefresh,
   WireLocationForecast,
   WireMarineDetails,
   WireMarinePoint,
@@ -12,6 +13,15 @@ import type {
   WireAdminOfficialSpot,
   WireTideValue,
 } from '../types/wire';
+
+const forecastRefreshStates = new Set([
+  'fresh',
+  'updating',
+  'preparing',
+  'degraded',
+  'unavailable',
+  'stale',
+]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -162,6 +172,20 @@ export function parseForecastDay(value: unknown): WireForecastDay {
   };
 }
 
+function parseForecastRefresh(value: unknown): WireForecastRefresh | undefined {
+  if (!isRecord(value) || !forecastRefreshStates.has(String(value.state))) return undefined;
+  return {
+    state: value.state as WireForecastRefresh['state'],
+    dataUpdatedAt: value.dataUpdatedAt === null ? null : readString(value.dataUpdatedAt),
+    pendingSpotIds: Array.isArray(value.pendingSpotIds)
+      ? value.pendingSpotIds.filter((item): item is string => typeof item === 'string')
+      : [],
+    failedSpotIds: Array.isArray(value.failedSpotIds)
+      ? value.failedSpotIds.filter((item): item is string => typeof item === 'string')
+      : [],
+  };
+}
+
 export function parseRankingForecast(value: unknown): WireRankingForecast {
   if (!isRecord(value)) throw new ContractError('Ranking inválido.');
   const generatedAt = readString(value.generatedAt);
@@ -174,6 +198,7 @@ export function parseRankingForecast(value: unknown): WireRankingForecast {
     generatedAt,
     availableFrom,
     availableTo,
+    refresh: parseForecastRefresh(value.refresh),
     days: value.days.map(parseForecastDay),
   };
 }
@@ -185,6 +210,7 @@ export function parseLocationForecast(value: unknown): WireLocationForecast {
     throw new ContractError('Previsão do local incompleta.');
   return {
     spotId,
+    refresh: parseForecastRefresh(value.refresh),
     days: value.days.map(parseForecastDay),
   };
 }

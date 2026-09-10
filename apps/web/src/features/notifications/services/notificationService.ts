@@ -60,8 +60,11 @@ export async function subscribeNotificationStream(
   const url = `${apiBaseUrl}/notifications/stream`;
   let response = await openStream(url, signal);
   if (response.status === 401) {
-    const token = await refreshAccessTokenOnce();
-    if (!token) throw new ApiError(401, 'Sessão expirada.');
+    const refresh = await refreshAccessTokenOnce();
+    if (!refresh.token) {
+      if (refresh.reason === 'network') throw new TypeError('Failed to fetch');
+      throw new ApiError(401, 'Sessão expirada.');
+    }
     response = await openStream(url, signal);
   }
   if (!response.ok || !response.body) {

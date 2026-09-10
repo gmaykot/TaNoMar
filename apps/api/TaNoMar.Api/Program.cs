@@ -119,6 +119,10 @@ builder.Services.AddTransient<IWebcamProvider>(provider => provider.GetRequiredS
 builder.Services.AddScoped<WebcamProviderCatalog>();
 builder.Services.AddScoped<WebcamService>();
 builder.Services.AddTransient<FishingForecastService>();
+builder.Services.AddSingleton<FishingForecastRefreshQueue>();
+builder.Services.AddSingleton<FishingTideEnrichmentQueue>();
+builder.Services.AddHostedService<FishingForecastRefreshWorker>();
+builder.Services.AddHostedService<FishingTideEnrichmentWorker>();
 builder.Services.AddHostedService<FishingForecastWarmupWorker>();
 builder.Services.AddHostedService<ForecastAlertWorker>();
 builder.Services.AddHostedService<BillingPeriodWorker>();
@@ -333,7 +337,7 @@ api.MapGet("/fishing-spots", async (ClaimsPrincipal principal, TaNoMarDbContext 
         .ToList());
 }).RequireAuthorization();
 
-api.MapPost("/fishing-spots", async (PersonalSpotRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, CancellationToken cancellationToken) =>
+api.MapPost("/fishing-spots", async (PersonalSpotRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastRefreshQueue forecastQueue, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
@@ -368,11 +372,11 @@ api.MapPost("/fishing-spots", async (PersonalSpotRequest request, ClaimsPrincipa
     db.FishingSpots.Add(spot);
     db.EnabledSpots.Add(new EnabledSpot { UserId = user.Id, FishingSpotId = spot.Id, IsEnabled = true });
     await db.SaveChangesAsync(cancellationToken);
-    await TryWarmSpotAsync(fishing, spot, cancellationToken);
+    QueueForecastRefresh(forecastQueue, spot);
     return Results.Created($"/api/v1/fishing-spots/{spot.Slug}", SpotDtoProjection(spot, user, false, true, false));
 }).RequireAuthorization();
 
-api.MapPut("/fishing-spots/{id}", async (string id, PersonalSpotRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, FishingForecastCache cache, CancellationToken cancellationToken) =>
+api.MapPut("/fishing-spots/{id}", async (string id, PersonalSpotRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastRefreshQueue forecastQueue, FishingForecastCache cache, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
@@ -395,7 +399,7 @@ api.MapPut("/fishing-spots/{id}", async (string id, PersonalSpotRequest request,
     if (forecastInputsChanged)
     {
         await cache.InvalidateLocationAsync(spot.Slug, cancellationToken);
-        await TryWarmSpotAsync(fishing, spot, cancellationToken);
+        QueueForecastRefresh(forecastQueue, spot);
     }
     var favorite = await db.FavoriteSpots.AnyAsync(item => item.UserId == user.Id && item.FishingSpotId == spot.Id, cancellationToken);
     var enabledSettings = await EnabledSettingsAsync(db, user.Id, cancellationToken);
@@ -482,7 +486,7 @@ api.MapGet("/admin/fishing-audit", async (
     });
 }).RequireAuthorization();
 
-api.MapPost("/admin/fishing-spots/{id}/approve", async (string id, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, NotificationRealtimeHub hub, WebPushQueue push, CancellationToken cancellationToken) =>
+api.MapPost("/admin/fishing-spots/{id}/approve", async (string id, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastRefreshQueue forecastQueue, NotificationRealtimeHub hub, WebPushQueue push, CancellationToken cancellationToken) =>
 {
     var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
     if (failure is not null) return failure;
@@ -496,7 +500,7 @@ api.MapPost("/admin/fishing-spots/{id}/approve", async (string id, ClaimsPrincip
     if (notifiedOwnerId is Guid notifiedId)
         AddNotification(db, notifiedId, title, body, spot.Region);
     await db.SaveChangesAsync(cancellationToken);
-    await TryWarmSpotAsync(fishing, spot, cancellationToken);
+    QueueForecastRefresh(forecastQueue, spot);
     if (notifiedOwnerId is Guid dispatchedId)
         DispatchCreated(hub, push, dispatchedId, title, body);
     return Results.NoContent();
@@ -534,7 +538,7 @@ api.MapGet("/admin/fishing-spots", async (ClaimsPrincipal principal, TaNoMarDbCo
     return Results.Ok(spots.Select(spot => AdminOfficialSpotDto(spot, actor!, webcamSpotIds.Contains(spot.Id))).ToList());
 }).RequireAuthorization();
 
-api.MapPost("/admin/fishing-spots", async (OfficialSpotRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, CancellationToken cancellationToken) =>
+api.MapPost("/admin/fishing-spots", async (OfficialSpotRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastRefreshQueue forecastQueue, CancellationToken cancellationToken) =>
 {
     var (actor, failure) = await AdminActorAsync(principal, db, cancellationToken);
     if (failure is not null) return failure;
@@ -554,11 +558,11 @@ api.MapPost("/admin/fishing-spots", async (OfficialSpotRequest request, ClaimsPr
     db.FishingSpots.Add(spot);
     await db.SaveChangesAsync(cancellationToken);
     if (spot.IsActive)
-        await TryWarmSpotAsync(fishing, spot, cancellationToken);
+        QueueForecastRefresh(forecastQueue, spot);
     return Results.Created($"/api/v1/admin/fishing-spots/{spot.Slug}", AdminOfficialSpotDto(spot, actor!, false));
 }).RequireAuthorization();
 
-api.MapPut("/admin/fishing-spots/{id}", async (string id, OfficialSpotRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, FishingForecastCache cache, CancellationToken cancellationToken) =>
+api.MapPut("/admin/fishing-spots/{id}", async (string id, OfficialSpotRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastRefreshQueue forecastQueue, FishingForecastCache cache, CancellationToken cancellationToken) =>
 {
     var (actor, failure) = await AdminActorAsync(principal, db, cancellationToken);
     if (failure is not null) return failure;
@@ -583,7 +587,7 @@ api.MapPut("/admin/fishing-spots/{id}", async (string id, OfficialSpotRequest re
     else if (forecastInputsChanged || becameActive)
     {
         await cache.InvalidateLocationAsync(spot.Slug, cancellationToken);
-        await TryWarmSpotAsync(fishing, spot, cancellationToken);
+        QueueForecastRefresh(forecastQueue, spot);
     }
     var hasLiveWebcam = await db.FishingSpotWebcams.AnyAsync(item => item.FishingSpotId == spot.Id && item.IsActive, cancellationToken);
     return Results.Ok(AdminOfficialSpotDto(spot, actor!, hasLiveWebcam));
@@ -1000,7 +1004,7 @@ api.MapPut("/me/favorites", async (FavoriteRequest request, ClaimsPrincipal prin
     return Results.NoContent();
 }).RequireAuthorization();
 
-api.MapPut("/me/enabled-spots", async (EnabledSpotRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, CancellationToken cancellationToken) =>
+api.MapPut("/me/enabled-spots", async (EnabledSpotRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastRefreshQueue forecastQueue, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
@@ -1019,7 +1023,7 @@ api.MapPut("/me/enabled-spots", async (EnabledSpotRequest request, ClaimsPrincip
     }
     await db.SaveChangesAsync(cancellationToken);
     if (request.IsEnabled)
-        await TryWarmSpotAsync(fishing, spot, cancellationToken);
+        QueueForecastRefresh(forecastQueue, spot);
     return Results.NoContent();
 }).RequireAuthorization();
 
@@ -1055,7 +1059,7 @@ api.MapPut("/me/spot-wind", async (IdealWindRequest request, ClaimsPrincipal pri
     return Results.NoContent();
 }).RequireAuthorization();
 
-api.MapGet("/forecasts/ranking", async (string? emphasis, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, CancellationToken cancellationToken) =>
+api.MapGet("/forecasts/ranking", async (string? emphasis, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, FishingForecastRefreshQueue forecastQueue, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
@@ -1077,16 +1081,18 @@ api.MapGet("/forecasts/ranking", async (string? emphasis, ClaimsPrincipal princi
     var ownerSlugs = await OwnerSpotSlugsAsync(db, user.Id, cancellationToken);
     var visibilities = SpotVisibilities(visibleSpots);
     var days = new List<object>();
+    var forecasts = new List<FishingForecast>();
     for (var day = 0; day < plan.MaxForecastDays; day++)
     {
         var forecast = ApplyIdealWindSettings(await fishing.GetAsync(day, cancellationToken, user.Id, enabledSlugs), visibleSpots, idealWindSettings);
+        forecasts.Add(forecast);
         var ordered = forecast with { Ranking = FishingRankingEmphasis.Order(forecast.Ranking, parsedEmphasis) };
         days.Add(ForecastDayDto(ordered, plan.CanMarine, plan.BestHoursMode, ownerSlugs, visibilities));
     }
-    return Results.Ok(new { generatedAt = DateTimeOffset.UtcNow, availableFrom = DateOnly.FromDateTime(DateTime.UtcNow), availableTo = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(plan.MaxForecastDays - 1)), days });
+    return Results.Ok(new { generatedAt = DateTimeOffset.UtcNow, availableFrom = DateOnly.FromDateTime(DateTime.UtcNow), availableTo = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(plan.MaxForecastDays - 1)), refresh = ForecastRefreshDto(forecasts, forecastQueue.Snapshot(enabledSlugs)), days });
 }).RequireAuthorization();
 
-api.MapGet("/fishing-spots/{id}/forecast", async (string id, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, CancellationToken cancellationToken) =>
+api.MapGet("/fishing-spots/{id}/forecast", async (string id, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, FishingForecastRefreshQueue forecastQueue, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
@@ -1098,13 +1104,16 @@ api.MapGet("/fishing-spots/{id}/forecast", async (string id, ClaimsPrincipal pri
         ? await db.EnabledSpots.AsNoTracking().Where(item => item.UserId == user.Id && item.FishingSpotId == spot.Id).Select(item => item.IdealWindDirectionDegrees).SingleOrDefaultAsync(cancellationToken)
         : null;
     var result = new List<object>();
+    var forecasts = new List<FishingForecast>();
+    var onlySpot = new HashSet<string>(StringComparer.Ordinal) { spot.Slug };
     for (var day = 0; day < plan.MaxForecastDays; day++)
     {
-        var forecast = await fishing.GetAsync(day, cancellationToken, user.Id);
+        var forecast = await fishing.GetAsync(day, cancellationToken, user.Id, onlySpot);
+        forecasts.Add(forecast);
         var filtered = forecast with { Ranking = forecast.Ranking.Where(item => item.Id == spot.Slug).Select(item => FishingWindPreference.Apply(item, idealWindDirection, spot.SeaOrientationDegrees, spot.Profile)).ToList() };
         result.Add(ForecastDayDto(filtered, plan.CanMarine, plan.BestHoursMode, OwnerSpotIds([spot], user), SpotVisibilities([spot]), includeSelectableHours: true));
     }
-    return Results.Ok(new { spotId = spot.Slug, days = result });
+    return Results.Ok(new { spotId = spot.Slug, refresh = ForecastRefreshDto(forecasts, forecastQueue.Snapshot(onlySpot)), days = result });
 }).RequireAuthorization();
 
 api.MapGet("/fishing-spots/{id}/marine", async (string id, DateOnly? date, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, CancellationToken cancellationToken) =>
@@ -1485,20 +1494,10 @@ static async Task<string?> PreferredRegionsAsync(TaNoMarDbContext db, Guid userI
 static async Task<bool> UserPrefersRegionAsync(TaNoMarDbContext db, Guid userId, string region, CancellationToken cancellationToken) =>
     SpotRules.IsInPreferredRegion(region, await PreferredRegionsAsync(db, userId, cancellationToken));
 
-static async Task TryWarmSpotAsync(FishingForecastService fishing, FishingSpot spot, CancellationToken cancellationToken)
+static void QueueForecastRefresh(FishingForecastRefreshQueue queue, FishingSpot spot)
 {
-    try
-    {
-        await fishing.WarmSpotAsync(spot, cancellationToken);
-    }
-    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-    {
-        throw;
-    }
-    catch
-    {
-        // O ranking calcula a nota na próxima consulta se o aquecimento falhar.
-    }
+    if (SpotRules.HasCoordinates(spot))
+        queue.Enqueue(FishingForecastService.ToFishingLocation(spot));
 }
 
 static object SpotDtoProjection(FishingSpot spot, User user, bool favorite = false, bool? enabled = null, bool hasLiveWebcam = false, int? idealWindDirectionDegrees = null)
@@ -1774,6 +1773,28 @@ static Dictionary<string, string> SpotVisibilities(IEnumerable<FishingSpot> spot
 static Task<HashSet<string>> OwnerSpotSlugsAsync(TaNoMarDbContext db, Guid userId, CancellationToken cancellationToken) =>
     db.FishingSpots.AsNoTracking().Where(spot => spot.OwnerUserId == userId).Select(spot => spot.Slug).ToHashSetAsync(StringComparer.Ordinal, cancellationToken);
 static object ForecastDayDto(FishingForecast forecast, bool paid, string bestHoursMode, HashSet<string>? ownerSpotIds = null, IReadOnlyDictionary<string, string>? visibilities = null, bool includeSelectableHours = false) => new { date = forecast.Date, ranking = forecast.Ranking.Select(item => ForecastItemDto(item, paid, bestHoursMode, ownerSpotIds, visibilities, includeSelectableHours)).ToList(), unavailableSpotIds = forecast.Errors.Select(error => error.Location).ToList() };
+static object ForecastRefreshDto(IEnumerable<FishingForecast> forecasts, ForecastRefreshSnapshot snapshot)
+{
+    var items = forecasts.ToList();
+    var dataUpdatedAt = items.Where(item => item.DataUpdatedAt.HasValue)
+        .Select(item => item.DataUpdatedAt!.Value)
+        .DefaultIfEmpty()
+        .Min();
+    var hasData = items.Any(item => item.Ranking.Count > 0);
+    var hasStaleData = items.Any(item => item.HasStaleData);
+    var state = snapshot.PendingSpotIds.Count > 0
+        ? hasData ? "updating" : "preparing"
+        : snapshot.FailedSpotIds.Count > 0
+            ? hasData ? "degraded" : "unavailable"
+            : hasStaleData ? "stale" : "fresh";
+    return new
+    {
+        state,
+        dataUpdatedAt = dataUpdatedAt == default ? (DateTimeOffset?)null : dataUpdatedAt,
+        pendingSpotIds = snapshot.PendingSpotIds,
+        failedSpotIds = snapshot.FailedSpotIds
+    };
+}
 static object MarineLockedDto(string spotId, DateOnly date)
 {
     object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = PlanRules.RequiredPlanLabel };

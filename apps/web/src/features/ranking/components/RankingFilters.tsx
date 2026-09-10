@@ -1,7 +1,8 @@
-import { ListFilter } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { ChevronDown, ListFilter } from 'lucide-react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Button } from '@/design-system/components/Button';
 import { IconButton } from '@/design-system/components/IconButton';
+import { SearchField } from '@/design-system/components/SearchField';
 import type { FishingMetricKey } from '@/features/fishing/types/fishing';
 import { extraRegions, islandRegions } from '@/features/locations/regions';
 import { coastalProfiles, spotTypes } from '@/features/locations/spotCatalog';
@@ -16,6 +17,7 @@ import { RankingEmphasisFilters } from './RankingEmphasisFilters';
 import styles from './ranking.module.css';
 
 const regions = [...islandRegions, ...extraRegions];
+const descriptionDebounceMs = 300;
 
 interface RankingFiltersProps {
   emphasis: RankingEmphasis;
@@ -35,8 +37,25 @@ export function RankingFilters({
   onFiltersChange,
 }: RankingFiltersProps) {
   const [open, setOpen] = useState(false);
+  const [descriptionDraft, setDescriptionDraft] = useState(filters.description);
   const rootRef = useRef<HTMLDivElement>(null);
-  const count = rankingSpotFilterCount(filters);
+  const filtersRef = useRef(filters);
+  const onFiltersChangeRef = useRef(onFiltersChange);
+  const count = rankingSpotFilterCount({ ...filters, description: descriptionDraft });
+  filtersRef.current = filters;
+  onFiltersChangeRef.current = onFiltersChange;
+
+  useEffect(() => {
+    setDescriptionDraft(filters.description);
+  }, [filters.description]);
+
+  useEffect(() => {
+    if (descriptionDraft === filters.description) return;
+    const timer = window.setTimeout(() => {
+      onFiltersChangeRef.current({ ...filtersRef.current, description: descriptionDraft });
+    }, descriptionDebounceMs);
+    return () => window.clearTimeout(timer);
+  }, [descriptionDraft, filters.description]);
 
   useEffect(() => {
     if (!open) return;
@@ -55,11 +74,12 @@ export function RankingFilters({
     };
   }, [open]);
 
-  function toggle(key: keyof RankingSpotFilters, value: string) {
-    onFiltersChange({
-      ...filters,
-      [key]: toggleRankingFilterValue(filters[key], value),
-    });
+  function commit(next: Partial<RankingSpotFilters>) {
+    onFiltersChange({ ...filters, description: descriptionDraft, ...next });
+  }
+
+  function toggle(key: 'types' | 'regions' | 'profiles', value: string) {
+    commit({ [key]: toggleRankingFilterValue(filters[key], value) });
   }
 
   return (
@@ -89,79 +109,150 @@ export function RankingFilters({
         </span>
       </div>
       <div className={styles.advanced} id="ranking-advanced-filters" hidden={!open}>
-        <fieldset className={styles.advancedGroup}>
-          <legend>Tipo</legend>
-          <div className={styles.advancedOptions}>
-            {spotTypes.map((item) => (
-              <FilterChip
-                key={item.value}
-                label={item.label}
-                pressed={filters.types.includes(item.value)}
-                onClick={() => toggle('types', item.value)}
-              />
-            ))}
+        <div className={styles.advancedHeader}>
+          <div>
+            <strong>Refine os locais</strong>
+            <span>Combine os critérios para encontrar o cenário que procura.</span>
           </div>
-        </fieldset>
-        <fieldset className={styles.advancedGroup}>
-          <legend>Região</legend>
-          <div className={styles.advancedOptions}>
-            {regions.map((region) => (
-              <FilterChip
-                key={region.value}
-                label={region.shortLabel}
-                pressed={filters.regions.includes(region.value)}
-                onClick={() => toggle('regions', region.value)}
-              />
-            ))}
-          </div>
-        </fieldset>
-        <fieldset className={styles.advancedGroup}>
-          <legend>Exposição</legend>
-          <div className={styles.advancedOptions}>
-            {coastalProfiles.map((item) => (
-              <FilterChip
-                key={item.value}
-                label={item.label}
-                pressed={filters.profiles.includes(item.value)}
-                onClick={() => toggle('profiles', item.value)}
-              />
-            ))}
-          </div>
-        </fieldset>
-        {count > 0 ? (
-          <div className={styles.advancedFooter}>
+          {count > 0 ? (
             <Button
               type="button"
               variant="quiet"
-              onClick={() => onFiltersChange(emptyRankingSpotFilters)}
+              onClick={() => {
+                setDescriptionDraft('');
+                onFiltersChange(emptyRankingSpotFilters);
+              }}
             >
-              Limpar filtros
+              Limpar
             </Button>
+          ) : null}
+        </div>
+        <div className={styles.advancedPrimary}>
+          <div className={styles.primaryField}>
+            <span>Descrição</span>
+            <SearchField
+              label="Filtrar por descrição"
+              value={descriptionDraft}
+              placeholder="Buscar no nome do local"
+              onChange={(description) => {
+                setDescriptionDraft(description);
+                if (!description) {
+                  onFiltersChange({ ...filters, description: '' });
+                }
+              }}
+            />
           </div>
-        ) : null}
+          <label className={styles.scoreField} htmlFor="ranking-minimum-score">
+            <span className={styles.scoreHeader}>
+              <span>Notas acima de</span>
+              <output htmlFor="ranking-minimum-score">
+                {filters.minimumScore === null
+                  ? 'Todas'
+                  : `${filters.minimumScore.toLocaleString('pt-BR')}+`}
+              </output>
+            </span>
+            <input
+              id="ranking-minimum-score"
+              type="range"
+              min="0"
+              max="9"
+              step="0.5"
+              value={filters.minimumScore ?? 0}
+              aria-label="Notas acima de"
+              aria-valuetext={
+                filters.minimumScore === null
+                  ? 'Todas as notas'
+                  : `${filters.minimumScore.toLocaleString('pt-BR')} ou mais`
+              }
+              style={
+                {
+                  '--score-progress': `${((filters.minimumScore ?? 0) / 9) * 100}%`,
+                } as CSSProperties
+              }
+              onChange={(event) =>
+                commit({
+                  minimumScore: Number(event.target.value) || null,
+                })
+              }
+            />
+            <span className={styles.scoreScale} aria-hidden="true">
+              <span>Todas</span>
+              <span>5</span>
+              <span>9+</span>
+            </span>
+          </label>
+        </div>
+        <div className={styles.advancedChoices}>
+          <FilterMultiSelect
+            label="Tipo"
+            options={spotTypes}
+            selected={filters.types}
+            onToggle={(value) => toggle('types', value)}
+          />
+          <FilterMultiSelect
+            label="Região"
+            options={regions.map((region) => ({
+              value: region.value,
+              label: region.shortLabel,
+            }))}
+            selected={filters.regions}
+            onToggle={(value) => toggle('regions', value)}
+          />
+          <FilterMultiSelect
+            label="Exposição"
+            options={coastalProfiles}
+            selected={filters.profiles}
+            onToggle={(value) => toggle('profiles', value)}
+          />
+        </div>
       </div>
     </div>
   );
 }
 
-function FilterChip({
+function FilterMultiSelect({
   label,
-  pressed,
-  onClick,
+  options,
+  selected,
+  onToggle,
 }: {
   label: string;
-  pressed: boolean;
-  onClick: () => void;
+  options: ReadonlyArray<{ value: string; label: string }>;
+  selected: string[];
+  onToggle: (value: string) => void;
 }) {
+  const selectedLabels = options
+    .filter((option) => selected.includes(option.value))
+    .map((option) => option.label);
+  const summary =
+    selectedLabels.length === 0
+      ? 'Todos'
+      : selectedLabels.length === 1
+        ? selectedLabels[0]
+        : `${selectedLabels.length} selecionados`;
+
   return (
-    <button
-      type="button"
-      className={`${styles.filter} ${pressed ? styles.filterActive : ''}`}
-      aria-pressed={pressed}
-      onClick={onClick}
-    >
-      {label}
-    </button>
+    <details className={styles.multiSelect}>
+      <summary>
+        <span>
+          <strong>{label}</strong>
+          <small>{summary}</small>
+        </span>
+        <ChevronDown size={18} aria-hidden="true" />
+      </summary>
+      <div className={styles.multiSelectOptions} role="group" aria-label={label}>
+        {options.map((option) => (
+          <label key={option.value} className={styles.checkOption}>
+            <input
+              type="checkbox"
+              checked={selected.includes(option.value)}
+              onChange={() => onToggle(option.value)}
+            />
+            <span>{option.label}</span>
+          </label>
+        ))}
+      </div>
+    </details>
   );
 }
 

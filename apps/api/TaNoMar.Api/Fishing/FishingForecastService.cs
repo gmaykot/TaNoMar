@@ -13,7 +13,8 @@ internal sealed class FishingForecastService
     private readonly OpenMeteoClient _openMeteo;
     private readonly TabuaMareClient _tabuaMare;
     private readonly TaNoMarDbContext _db;
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly FishingForecastRefreshQueue _refreshQueue;
+    private readonly FishingTideEnrichmentQueue _tideQueue;
     private readonly ILogger<FishingForecastService> _logger;
     private readonly TimeZoneInfo _timeZone;
 
@@ -23,7 +24,8 @@ internal sealed class FishingForecastService
         OpenMeteoClient openMeteo,
         TabuaMareClient tabuaMare,
         TaNoMarDbContext db,
-        IServiceScopeFactory scopeFactory,
+        FishingForecastRefreshQueue refreshQueue,
+        FishingTideEnrichmentQueue tideQueue,
         ILogger<FishingForecastService> logger)
     {
         _options = options.Value;
@@ -31,7 +33,8 @@ internal sealed class FishingForecastService
         _openMeteo = openMeteo;
         _tabuaMare = tabuaMare;
         _db = db;
-        _scopeFactory = scopeFactory;
+        _refreshQueue = refreshQueue;
+        _tideQueue = tideQueue;
         _logger = logger;
         _timeZone = TimeZoneInfo.FindSystemTimeZoneById(_options.TimeZone);
     }
@@ -75,27 +78,39 @@ internal sealed class FishingForecastService
             })
             .ToListAsync(cancellationToken);
 
+        var cachedByLocation = await _cache.GetAvailableAsync(
+            locations.Select(location => location.Id).ToArray(),
+            targetDate,
+            cancellationToken);
+        var dataUpdatedAt = new List<DateTimeOffset>();
+        var hasStaleData = false;
         foreach (var location in locations)
         {
-            try
+            if (!cachedByLocation.TryGetValue(location.Id, out var cached))
             {
-                results.Add(await GetCachedForecastAsync(location, targetDate, cancellationToken));
+                _refreshQueue.Enqueue(location);
+                errors.Add(new FishingForecastError(location.Id, "Previsão em atualização."));
+                continue;
             }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception exception)
-            {
-                errors.Add(new FishingForecastError(location.Name, exception.Message));
-            }
+
+            var nowUtc = DateTimeOffset.UtcNow;
+            var stale = !cached.IsUsable(nowUtc) || cached.IsStale(_cache.RefreshAfter, nowUtc);
+            if (stale)
+                _refreshQueue.Enqueue(location);
+            if (!HasTide(cached.Forecast))
+                _tideQueue.Enqueue(location);
+            hasStaleData |= stale;
+            dataUpdatedAt.Add(cached.CreatedAt);
+            results.Add(cached.Forecast);
         }
 
         return new FishingForecast(
             now,
             targetDate,
             results.OrderByDescending(result => result.Score).ToList(),
-            errors);
+            errors,
+            dataUpdatedAt.Count > 0 ? dataUpdatedAt.Min() : null,
+            hasStaleData);
     }
 
     public DateOnly Today()
@@ -120,16 +135,19 @@ internal sealed class FishingForecastService
         if (day is < 0 or > 7) return null;
 
         var forecastDays = Math.Min(8, Math.Max(2, day + 1));
-        var weather = await _openMeteo.GetWeatherAsync(location, _options.TimeZone, forecastDays, cancellationToken);
-        var gfsRain = await _openMeteo.GetGfsRainAsync(location, _options.TimeZone, forecastDays, cancellationToken);
-        var marine = await _openMeteo.GetMarineAsync(location, _options.TimeZone, forecastDays, cancellationToken);
+        var weatherTask = _openMeteo.GetWeatherAsync(location, _options.TimeZone, forecastDays, cancellationToken);
+        var gfsRainTask = _openMeteo.GetGfsRainAsync(location, _options.TimeZone, forecastDays, cancellationToken);
+        var marineTask = _openMeteo.GetMarineAsync(location, _options.TimeZone, forecastDays, cancellationToken);
+        await Task.WhenAll(weatherTask, gfsRainTask, marineTask);
+        var weather = await weatherTask;
+        var gfsRain = await gfsRainTask;
+        var marine = await marineTask;
         var forecast = BuildForecast(location, date, weather, gfsRain, marine);
         return FishingForecastAudit.Run(location, forecast, new FishingForecastAuditSources(weather, gfsRain, marine));
     }
 
-    public async Task<ForecastWarmupResult> WarmPublicSpotsAsync(CancellationToken cancellationToken)
+    public async Task<(int Locations, int Queued)> QueuePublicSpotsAsync(CancellationToken cancellationToken)
     {
-        var today = Today();
         var locations = await _db.FishingSpots
             .AsNoTracking()
             .Where(spot => ((spot.Visibility == "official" && spot.IsActive) || (spot.Visibility == "shared" && spot.IsApproved))
@@ -146,36 +164,10 @@ internal sealed class FishingForecastService
             })
             .ToListAsync(cancellationToken);
 
-        var refreshed = 0;
-        var reused = 0;
-        var failed = 0;
-
-        foreach (var location in locations)
-        {
-            try
-            {
-                if (await WarmLocationAsync(location, today, cancellationToken))
-                    refreshed++;
-                else
-                    reused++;
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch
-            {
-                failed++;
-            }
-        }
-
-        return new ForecastWarmupResult(locations.Count, refreshed, reused, failed);
+        await _cache.PruneAsync(cancellationToken);
+        var queued = locations.Count(location => _refreshQueue.Enqueue(location));
+        return (locations.Count, queued);
     }
-
-    public Task<bool> WarmSpotAsync(FishingSpot spot, CancellationToken cancellationToken)
-        => SpotRules.HasCoordinates(spot)
-            ? WarmLocationAsync(ToFishingLocation(spot), Today(), cancellationToken)
-            : Task.FromResult(false);
 
     public static FishingLocation ToFishingLocation(FishingSpot spot) => new()
     {
@@ -187,126 +179,101 @@ internal sealed class FishingForecastService
         Profile = spot.Profile
     };
 
-    private async Task<FishingLocationForecast> GetCachedForecastAsync(
-        FishingLocation location,
-        DateOnly date,
+    public async Task<IReadOnlySet<string>> RefreshBatchAsync(
+        IReadOnlyList<FishingLocation> locations,
         CancellationToken cancellationToken)
     {
-        var cached = await _cache.TryGetUsableAsync(location.Id, date, cancellationToken);
-        if (cached is not null)
+        if (locations.Count == 0)
+            return new HashSet<string>(StringComparer.Ordinal);
+
+        var generations = locations.ToDictionary(
+            location => location.Id,
+            location => _cache.Generation(location.Id),
+            StringComparer.Ordinal);
+        var weatherTask = _openMeteo.GetWeatherBatchAsync(locations, _options.TimeZone, 8, cancellationToken);
+        var gfsRainTask = _openMeteo.GetGfsRainBatchAsync(locations, _options.TimeZone, 8, cancellationToken);
+        var marineTask = _openMeteo.GetMarineBatchAsync(locations, _options.TimeZone, 8, cancellationToken);
+        await Task.WhenAll(weatherTask, gfsRainTask, marineTask);
+        var weather = await weatherTask;
+        var gfsRain = await gfsRainTask;
+        var marine = await marineTask;
+        var today = Today();
+        var forecastsByLocation = new Dictionary<string, IReadOnlyList<FishingLocationForecast>>(StringComparer.Ordinal);
+
+        for (var locationIndex = 0; locationIndex < locations.Count; locationIndex++)
         {
-            if (cached.IsStale(_cache.RefreshAfter, DateTimeOffset.UtcNow))
-                ScheduleWeekRefresh(location);
-            return await CompleteTideIfNeededAsync(location, date, cached.Forecast, resetLifetime: false, cancellationToken);
-        }
+            var location = locations[locationIndex];
+            if (!_cache.IsCurrentGeneration(location.Id, generations[location.Id]))
+                continue;
 
-        return await _cache.RunExclusiveAsync(location.Id, async token =>
-        {
-            cached = await _cache.TryGetUsableAsync(location.Id, date, token);
-            if (cached is not null)
-                return await CompleteTideIfNeededAsync(location, date, cached.Forecast, resetLifetime: false, token);
-
-            await RefreshWeekCoreAsync(location, token);
-            cached = await _cache.TryGetUsableAsync(location.Id, date, token);
-            return cached?.Forecast
-                ?? throw new InvalidOperationException($"Open-Meteo não devolveu horas para {location.Name} em {date:yyyy-MM-dd}.");
-        }, cancellationToken);
-    }
-
-    private void ScheduleWeekRefresh(FishingLocation location)
-    {
-        if (!_cache.TryBeginRefresh(location.Id))
-            return;
-
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await using var scope = _scopeFactory.CreateAsyncScope();
-                var fishing = scope.ServiceProvider.GetRequiredService<FishingForecastService>();
-                await fishing.RefreshWeekCoreAsync(location, CancellationToken.None);
-            }
-            catch (Exception exception)
-            {
-                _logger.LogWarning(exception, "Falha ao renovar previsão em background de {LocationId}.", location.Id);
-            }
-            finally
-            {
-                _cache.EndRefresh(location.Id);
-            }
-        });
-    }
-
-    private async Task<bool> WarmLocationAsync(
-        FishingLocation location,
-        DateOnly today,
-        CancellationToken cancellationToken)
-    {
-        return await _cache.RunExclusiveAsync(location.Id, async token =>
-        {
-            var now = DateTimeOffset.UtcNow;
-            var needsWeather = false;
+            var forecasts = new List<FishingLocationForecast>();
             for (var day = 0; day <= 7; day++)
             {
-                var date = today.AddDays(day);
-                var existing = await _cache.TryGetUsableAsync(location.Id, date, token);
-                if (existing is null || existing.IsStale(_cache.RefreshAfter, now))
-                {
-                    needsWeather = true;
-                    continue;
-                }
-
-                await CompleteTideIfNeededAsync(location, date, existing.Forecast, resetLifetime: false, token);
+                var forecast = BuildForecast(
+                    location,
+                    today.AddDays(day),
+                    weather[locationIndex],
+                    gfsRain[locationIndex],
+                    marine[locationIndex]);
+                if (forecast.Hours.Count > 0)
+                    forecasts.Add(forecast);
             }
 
-            if (!needsWeather)
-                return false;
+            if (forecasts.Count > 0)
+                forecastsByLocation[location.Id] = forecasts;
+            else
+                _logger.LogWarning("Open-Meteo não devolveu horas para {LocationId}.", location.Id);
+        }
 
-            await RefreshWeekCoreAsync(location, token);
-            return true;
-        }, cancellationToken);
+        await _cache.PutBatchAsync(forecastsByLocation, cancellationToken);
+        foreach (var location in locations.Where(location => forecastsByLocation.ContainsKey(location.Id)))
+            _tideQueue.Enqueue(location);
+        return forecastsByLocation.Keys.ToHashSet(StringComparer.Ordinal);
     }
 
-    private async Task RefreshWeekCoreAsync(
-        FishingLocation location,
-        CancellationToken cancellationToken)
+    public async Task EnrichTidesAsync(FishingLocation location, CancellationToken cancellationToken)
     {
-        var generation = _cache.Generation(location.Id);
-        var today = Today();
-        var weather = await _openMeteo.GetWeatherAsync(location, _options.TimeZone, 8, cancellationToken);
-        var gfsRain = await _openMeteo.GetGfsRainAsync(location, _options.TimeZone, 8, cancellationToken);
-        var marine = await _openMeteo.GetMarineAsync(location, _options.TimeZone, 8, cancellationToken);
-
-        if (!_cache.IsCurrentGeneration(location.Id, generation))
-            return;
-
-        for (var day = 0; day <= 7; day++)
+        var cachedWeek = await _cache.GetAvailableWeekAsync(location.Id, Today(), cancellationToken);
+        var changed = new List<FishingLocationForecast>();
+        foreach (var cached in cachedWeek)
         {
-            var date = today.AddDays(day);
-            var forecast = BuildForecast(location, date, weather, gfsRain, marine);
-            if (forecast.Hours.Count == 0)
+            if (HasTide(cached.Forecast))
                 continue;
-            var withTide = await WithTideAsync(location, date, forecast, cancellationToken);
-            if (!_cache.IsCurrentGeneration(location.Id, generation))
-                return;
-            await _cache.PutAsync(location.Id, date, withTide, cancellationToken);
+            var withTide = await WithTideAsync(location, cached.Forecast.Date, cached.Forecast, cancellationToken);
+            if (HasTide(withTide))
+                changed.Add(withTide);
+        }
+
+        if (changed.Count > 0)
+        {
+            await _cache.PutBatchAsync(
+                new Dictionary<string, IReadOnlyList<FishingLocationForecast>>(StringComparer.Ordinal)
+                {
+                    [location.Id] = changed
+                },
+                cancellationToken,
+                resetLifetime: false);
         }
     }
 
-    private async Task<FishingLocationForecast> CompleteTideIfNeededAsync(
+    private async Task<FishingLocationForecast?> GetCachedForecastAsync(
         FishingLocation location,
         DateOnly date,
-        FishingLocationForecast forecast,
-        bool resetLifetime,
         CancellationToken cancellationToken)
     {
-        if (HasTide(forecast))
-            return forecast;
+        var cached = await _cache.TryGetAvailableAsync(location.Id, date, cancellationToken);
+        if (cached is null)
+        {
+            _refreshQueue.Enqueue(location);
+            return null;
+        }
 
-        var withTide = await WithTideAsync(location, date, forecast, cancellationToken);
-        if (HasTide(withTide))
-            await _cache.PutAsync(location.Id, date, withTide, cancellationToken, resetLifetime);
-        return withTide;
+        var now = DateTimeOffset.UtcNow;
+        if (!cached.IsUsable(now) || cached.IsStale(_cache.RefreshAfter, now))
+            _refreshQueue.Enqueue(location);
+        if (!HasTide(cached.Forecast))
+            _tideQueue.Enqueue(location);
+        return cached.Forecast;
     }
 
     private async Task<FishingLocationForecast> WithTideAsync(

@@ -55,7 +55,7 @@ function paintOfficialButton(parent: HTMLElement) {
     theme: 'outline',
     size: 'large',
     text: 'signin_with',
-    width: 320,
+    width: Math.min(320, Math.max(200, Math.floor(parent.clientWidth) || 320)),
     locale: 'pt-BR',
     shape: 'pill',
   });

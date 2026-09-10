@@ -6,10 +6,18 @@ public sealed class FishingOptions
 
     public string TimeZone { get; set; } = "America/Sao_Paulo";
     public int CacheHours { get; set; } = 24;
+    public int MaxStaleHours { get; set; } = 12;
     public bool WarmupEnabled { get; set; } = true;
     public int WarmupIntervalHours { get; set; } = 3;
     public int WarmupStartupDelaySeconds { get; set; } = 10;
+    public int RefreshBatchSize { get; set; } = 10;
+    public int RefreshConcurrency { get; set; } = 2;
+    public int RefreshQueueCapacity { get; set; } = 256;
     public List<FishingLocation> Locations { get; set; } = [];
+    public string OpenMeteoWeatherBaseUrl { get; set; } = "https://api.open-meteo.com/v1/forecast";
+    public string OpenMeteoGfsBaseUrl { get; set; } = "https://api.open-meteo.com/v1/gfs";
+    public string OpenMeteoMarineBaseUrl { get; set; } = "https://marine-api.open-meteo.com/v1/marine";
+    public string OpenMeteoApiKey { get; set; } = string.Empty;
     public string TabuaMareBaseUrl { get; set; } = "https://tabuamare.api.br/api/v2";
     public string TabuaMareApiKey { get; set; } = string.Empty;
     public string GeoapifyApiKey { get; set; } = string.Empty;
@@ -29,7 +37,9 @@ public sealed record FishingForecast(
     DateTimeOffset GeneratedAt,
     DateOnly Date,
     IReadOnlyList<FishingLocationForecast> Ranking,
-    IReadOnlyList<FishingForecastError> Errors);
+    IReadOnlyList<FishingForecastError> Errors,
+    DateTimeOffset? DataUpdatedAt = null,
+    bool HasStaleData = false);
 
 public sealed record FishingLocationForecast(
     string Id,
@@ -72,4 +82,6 @@ public sealed record FishingHourForecast(
 
 public sealed record FishingForecastError(string Location, string Error);
 
-public sealed record ForecastWarmupResult(int Locations, int Refreshed, int Reused, int Failed);
+public sealed record ForecastRefreshSnapshot(
+    IReadOnlyList<string> PendingSpotIds,
+    IReadOnlyList<string> FailedSpotIds);

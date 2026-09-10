@@ -13,11 +13,12 @@ const { authState, forecastState } = vi.hoisted(() => ({
     focus: null as string | null,
     showAppFocus: false,
   },
-  forecastState: { error: false, lockMarine: false },
+  forecastState: { error: false, pending: false, lockMarine: false },
 }));
 
 vi.mock('@/features/forecast/services/forecastService', () => ({
   getForecast: () => {
+    if (forecastState.pending) return new Promise(() => undefined);
     if (forecastState.error) return Promise.reject(new Error('offline'));
     if (!forecastState.lockMarine) return Promise.resolve(forecastFixture);
     return Promise.resolve({
@@ -126,6 +127,7 @@ describe('HomePage', () => {
     authState.focus = null;
     authState.showAppFocus = false;
     forecastState.error = false;
+    forecastState.pending = false;
     forecastState.lockMarine = false;
     localStorage.removeItem('tanomar.offline-forecast.v1');
   });
@@ -155,6 +157,21 @@ describe('HomePage', () => {
     expect(screen.getByRole('button', { name: /Salvar para usar offline/ })).toBeInTheDocument();
   });
 
+  it('pede confirmação antes de salvar a previsão offline', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<HomePage />);
+
+    await screen.findByRole('heading', { name: 'Pântano do Sul' });
+    await user.click(screen.getByRole('button', { name: /Salvar para usar offline/ }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Salvar para usar offline?' });
+    expect(localStorage.getItem('tanomar.offline-forecast.v1')).toBeNull();
+    await user.click(within(dialog).getByRole('button', { name: 'Salvar offline' }));
+
+    expect(localStorage.getItem('tanomar.offline-forecast.v1')).toContain('"forecast"');
+    expect(screen.getByRole('button', { name: /Previsão salva neste aparelho/ })).toBeInTheDocument();
+  });
+
   it('não oferece salvar a previsão offline para o plano Free', async () => {
     authState.planCode = 'free';
     renderWithProviders(<HomePage />);
@@ -174,6 +191,19 @@ describe('HomePage', () => {
     renderWithProviders(<HomePage />);
 
     expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
+    expect(screen.getByText(/Exibindo a última previsão salva neste aparelho/)).toBeInTheDocument();
+  });
+
+  it('usa a previsão salva offline para o Premium enquanto a API ainda não responde', async () => {
+    forecastState.pending = true;
+    localStorage.setItem(
+      'tanomar.offline-forecast.v1',
+      JSON.stringify({ forecast: forecastFixture }),
+    );
+    renderWithProviders(<HomePage />);
+
+    expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
+    expect(screen.queryByText('Lendo o mar')).not.toBeInTheDocument();
   });
 
   it('não usa a previsão salva offline para o plano Free quando a API falha', async () => {

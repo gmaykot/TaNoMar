@@ -14,6 +14,7 @@ internal sealed class TabuaMareClient(
     ILogger<TabuaMareClient> logger)
 {
     private static readonly SemaphoreSlim Gate = new(1, 1);
+    private static readonly TimeSpan FailureCache = TimeSpan.FromMinutes(5);
 
     public async Task<TabuaMareDay?> GetDayAsync(
         double latitude,
@@ -43,13 +44,18 @@ internal sealed class TabuaMareClient(
         var key = $"tabuamare:harbor:{latitude.ToString("0.00", CultureInfo.InvariantCulture)}:{longitude.ToString("0.00", CultureInfo.InvariantCulture)}";
         if (cache.TryGetValue(key, out TabuaMareHarbor? cached) && cached is not null)
             return cached;
+        if (cache.TryGetValue($"{key}:unavailable", out bool unavailable) && unavailable)
+            return null;
 
         var coords = $"[{latitude.ToString(CultureInfo.InvariantCulture)},{longitude.ToString(CultureInfo.InvariantCulture)}]";
         var path = $"nearest-harbor-independent-state/{Uri.EscapeDataString(coords)}";
         var response = await GetAsync<TabuaMareList<TabuaMareHarborDto>>(path, cancellationToken);
         var dto = response?.Data.FirstOrDefault();
         if (dto is null || string.IsNullOrWhiteSpace(dto.Id))
+        {
+            cache.Set($"{key}:unavailable", true, FailureCache);
             return null;
+        }
 
         var harbor = new TabuaMareHarbor(dto.Id, dto.HarborName ?? dto.Id);
         cache.Set(key, harbor, TimeSpan.FromHours(Math.Max(options.Value.CacheHours, 24)));
@@ -65,14 +71,23 @@ internal sealed class TabuaMareClient(
         var key = $"tabuamare:month:{harborId}:{year:0000}-{month:00}";
         if (cache.TryGetValue(key, out TabuaMareMonth? cached) && cached is not null)
             return cached;
+        if (cache.TryGetValue($"{key}:unavailable", out bool unavailable) && unavailable)
+            return null;
 
         var path = $"tabua-mare/{Uri.EscapeDataString(harborId)}/{month}/{Uri.EscapeDataString("[1-31]")}";
         var response = await GetAsync<TabuaMareList<TabuaMareTableDto>>(path, cancellationToken);
         var table = response?.Data.FirstOrDefault();
         if (table is null || (table.Year != 0 && table.Year != year))
+        {
+            cache.Set($"{key}:unavailable", true, FailureCache);
             return null;
+        }
         var monthDto = table.Months.FirstOrDefault(item => item.Month == month);
-        if (monthDto is null) return null;
+        if (monthDto is null)
+        {
+            cache.Set($"{key}:unavailable", true, FailureCache);
+            return null;
+        }
 
         var days = monthDto.Days.ToDictionary(
             day => day.Day,

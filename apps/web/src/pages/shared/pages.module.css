@@ -55,13 +55,8 @@
   margin-top: var(--space-3);
 }
 
-.homeActions {
-  display: grid;
-  justify-items: start;
-  gap: var(--space-2);
-}
-
-.homeActions small {
+.offlineNotice {
+  margin: 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
 }
@@ -181,6 +176,8 @@
 .filters {
   display: flex;
   flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
   gap: var(--space-2);
 }
 
@@ -224,9 +221,12 @@
 }
 
 .locationToolbar {
+  min-width: 0;
+  max-width: 100%;
   flex-wrap: nowrap;
   justify-content: flex-start;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
 }
 
@@ -244,8 +244,9 @@
 
 .locationGrid {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   gap: var(--space-3);
-  overflow: visible;
 }
 
 .backLink {

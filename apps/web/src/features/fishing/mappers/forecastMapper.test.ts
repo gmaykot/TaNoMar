@@ -115,6 +115,28 @@ describe('forecastMapper', () => {
     expect(forecast.days[1]?.ranking[0]?.metricsHour).toBe('06:00');
   });
 
+  it('preserva o estado de atualização em segundo plano', () => {
+    const forecast = mapForecast(
+      parseRankingForecast({
+        ...rankingWire,
+        refresh: {
+          state: 'updating',
+          dataUpdatedAt: '2026-09-05T10:00:00Z',
+          pendingSpotIds: ['campeche'],
+          failedSpotIds: [],
+        },
+      }),
+      now,
+    );
+
+    expect(forecast.refresh).toEqual({
+      state: 'updating',
+      dataUpdatedAt: '2026-09-05T10:00:00Z',
+      pendingSpotIds: ['campeche'],
+      failedSpotIds: [],
+    });
+  });
+
   it('marca métricas premium como locked', () => {
     const item = mapForecastItem(parseRankingForecast(rankingWire).days[0]!.ranking[0]!);
     const waves = item.metrics.find((metric) => metric.key === 'waves');

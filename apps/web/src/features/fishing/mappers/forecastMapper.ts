@@ -4,6 +4,7 @@ import type {
   FishingLocation,
   AdminOfficialLocation,
   FishingMetric,
+  ForecastRefresh,
   ForecastDay,
   ForecastHourWindow,
   ForecastRankingItem,
@@ -31,6 +32,13 @@ import { ContractError } from '@/shared/api/errors';
 import { formatScoreBreakdown, windOriginLabel } from '../utils/scoreBreakdown';
 
 const TIME_ZONE = 'America/Sao_Paulo';
+
+const freshRefresh: ForecastRefresh = {
+  state: 'fresh',
+  dataUpdatedAt: null,
+  pendingSpotIds: [],
+  failedSpotIds: [],
+};
 
 const classificationByLabel: Record<string, FishingClassification> = {
   Excelente: 'excellent',
@@ -228,6 +236,7 @@ export function mapForecastDay(day: WireForecastDay, now = new Date()): Forecast
 export function mapForecast(wire: WireRankingForecast, now = new Date()): FishingForecast {
   return {
     generatedAt: wire.generatedAt,
+    refresh: wire.refresh ?? freshRefresh,
     days: wire.days.map((day) => mapForecastDay(day, now)),
   };
 }
@@ -353,6 +362,7 @@ export function mapLocationForecast(
 ): LocationForecast {
   return {
     location,
+    refresh: wire.refresh ?? freshRefresh,
     days: wire.days.flatMap((day) => {
       const mapped = mapForecastDay(day, now);
       const forecast = mapped.ranking[0];

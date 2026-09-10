@@ -15,6 +15,7 @@ function jsonResponse(status: number, body: unknown = {}) {
 
 describe('login e guard', () => {
   afterEach(() => {
+    localStorage.clear();
     vi.unstubAllGlobals();
   });
 

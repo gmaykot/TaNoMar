@@ -1,0 +1,31 @@
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-sea-700) 25%, transparent);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-sea-700) 8%, var(--color-surface));
+  color: var(--color-text);
+}
+
+.notice > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.notice span {
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+}
+
+.spinner {
+  flex: 0 0 auto;
+  animation: refresh-spin 1s linear infinite;
+}
+
+@keyframes refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

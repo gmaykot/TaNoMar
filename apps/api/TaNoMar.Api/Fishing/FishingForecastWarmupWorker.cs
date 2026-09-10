@@ -38,13 +38,11 @@ internal sealed class FishingForecastWarmupWorker(
         {
             await using var scope = scopeFactory.CreateAsyncScope();
             var fishing = scope.ServiceProvider.GetRequiredService<FishingForecastService>();
-            var result = await fishing.WarmPublicSpotsAsync(cancellationToken);
+            var result = await fishing.QueuePublicSpotsAsync(cancellationToken);
             logger.LogInformation(
-                "Previsão aquecida: {Locations} locais, {Refreshed} atualizados, {Reused} já em cache, {Failed} falhas, em {Elapsed}s.",
+                "Aquecimento agendado: {Locations} locais, {Queued} incluídos na fila, em {Elapsed}s.",
                 result.Locations,
-                result.Refreshed,
-                result.Reused,
-                result.Failed,
+                result.Queued,
                 (DateTimeOffset.UtcNow - started).TotalSeconds.ToString("0.0"));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

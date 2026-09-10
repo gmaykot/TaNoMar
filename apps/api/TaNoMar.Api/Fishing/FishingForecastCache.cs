@@ -16,6 +16,9 @@ internal sealed record CachedForecast(
 
     public bool IsUsable(DateTimeOffset now) => HasHours && ExpiresAt > now;
 
+    public bool IsAvailable(TimeSpan maxStale, DateTimeOffset now)
+        => HasHours && CreatedAt + maxStale > now;
+
     public bool IsStale(TimeSpan refreshAfter, DateTimeOffset now)
         => now - CreatedAt >= refreshAfter;
 }
@@ -27,11 +30,11 @@ internal sealed class FishingForecastCache
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _keysByLocation = new();
     private readonly ConcurrentDictionary<string, int> _generations = new();
-    private readonly ConcurrentDictionary<string, byte> _refreshing = new();
     private readonly IMemoryCache _cache;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<FishingForecastCache> _logger;
     private readonly TimeSpan _lifetime;
+    private readonly TimeSpan _maxStale;
 
     public FishingForecastCache(
         IMemoryCache cache,
@@ -43,6 +46,7 @@ internal sealed class FishingForecastCache
         _scopeFactory = scopeFactory;
         _logger = logger;
         _lifetime = TimeSpan.FromHours(Math.Max(1, options.Value.CacheHours));
+        _maxStale = TimeSpan.FromHours(Math.Max(options.Value.CacheHours, options.Value.MaxStaleHours));
         var refreshHours = options.Value.WarmupIntervalHours > 0
             ? options.Value.WarmupIntervalHours
             : Math.Max(1, options.Value.CacheHours / 2);
@@ -51,34 +55,13 @@ internal sealed class FishingForecastCache
 
     public TimeSpan RefreshAfter { get; }
 
+    public TimeSpan MaxStale => _maxStale;
+
     public int Generation(string locationId)
         => _generations.GetOrAdd(locationId, 0);
 
     public bool IsCurrentGeneration(string locationId, int generation)
         => Generation(locationId) == generation;
-
-    public bool TryBeginRefresh(string locationId)
-        => _refreshing.TryAdd(locationId, 0);
-
-    public void EndRefresh(string locationId)
-        => _refreshing.TryRemove(locationId, out _);
-
-    public async Task<T> RunExclusiveAsync<T>(
-        string locationId,
-        Func<CancellationToken, Task<T>> action,
-        CancellationToken cancellationToken)
-    {
-        var gate = _locks.GetOrAdd(locationId, _ => new SemaphoreSlim(1, 1));
-        await gate.WaitAsync(cancellationToken);
-        try
-        {
-            return await action(cancellationToken);
-        }
-        finally
-        {
-            gate.Release();
-        }
-    }
 
     public async Task<CachedForecast?> TryGetUsableAsync(
         string locationId,
@@ -98,6 +81,111 @@ internal sealed class FishingForecastCache
         return cached;
     }
 
+    public async Task<CachedForecast?> TryGetAvailableAsync(
+        string locationId,
+        DateOnly date,
+        CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var key = MemoryKey(locationId, date);
+        if (TryGetMemory(key, out var cached) && cached.IsAvailable(_maxStale, now))
+            return cached;
+
+        cached = await TryReadSnapshotAsync(locationId, date, cancellationToken);
+        if (cached is null || !cached.IsAvailable(_maxStale, now))
+            return null;
+
+        SetMemory(key, locationId, cached, cached.CreatedAt + _maxStale - now);
+        return cached;
+    }
+
+    public async Task<IReadOnlyDictionary<string, CachedForecast>> GetAvailableAsync(
+        IReadOnlyCollection<string> locationIds,
+        DateOnly date,
+        CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var result = new Dictionary<string, CachedForecast>(StringComparer.Ordinal);
+        var missing = new List<string>();
+        foreach (var locationId in locationIds.Distinct(StringComparer.Ordinal))
+        {
+            var key = MemoryKey(locationId, date);
+            if (TryGetMemory(key, out var cached) && cached.IsAvailable(_maxStale, now))
+                result[locationId] = cached;
+            else
+                missing.Add(locationId);
+        }
+
+        if (missing.Count == 0)
+            return result;
+
+        try
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<TaNoMarDbContext>();
+            var minimumCreatedAt = now - _maxStale;
+            var rows = await db.FishingForecastSnapshots
+                .AsNoTracking()
+                .Where(snapshot => missing.Contains(snapshot.LocationId)
+                    && snapshot.Date == date
+                    && snapshot.CreatedAt > minimumCreatedAt)
+                .ToListAsync(cancellationToken);
+            foreach (var row in rows)
+            {
+                var cached = Deserialize(row);
+                if (cached is null || !cached.IsAvailable(_maxStale, now))
+                    continue;
+                result[row.LocationId] = cached;
+                SetMemory(MemoryKey(row.LocationId, date), row.LocationId, cached, cached.CreatedAt + _maxStale - now);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Falha ao ler snapshots de previsão em lote para {Date}.", date);
+        }
+
+        return result;
+    }
+
+    public async Task<IReadOnlyList<CachedForecast>> GetAvailableWeekAsync(
+        string locationId,
+        DateOnly today,
+        CancellationToken cancellationToken)
+    {
+        var dates = Enumerable.Range(0, 8).Select(today.AddDays).ToArray();
+        var now = DateTimeOffset.UtcNow;
+        try
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<TaNoMarDbContext>();
+            var minimumCreatedAt = now - _maxStale;
+            var rows = await db.FishingForecastSnapshots
+                .AsNoTracking()
+                .Where(snapshot => snapshot.LocationId == locationId
+                    && dates.Contains(snapshot.Date)
+                    && snapshot.CreatedAt > minimumCreatedAt)
+                .OrderBy(snapshot => snapshot.Date)
+                .ToListAsync(cancellationToken);
+            return rows.Select(Deserialize)
+                .Where(cached => cached is not null && cached.IsAvailable(_maxStale, now))
+                .Cast<CachedForecast>()
+                .ToArray();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Falha ao ler semana de previsão {LocationId}.", locationId);
+            return [];
+        }
+    }
+
     public async Task PutAsync(
         string locationId,
         DateOnly date,
@@ -112,11 +200,106 @@ internal sealed class FishingForecastCache
         {
             var now = DateTimeOffset.UtcNow;
             var stored = await SaveSnapshotAsync(locationId, date, forecast, resetLifetime, now, cancellationToken);
-            SetMemory(key, locationId, stored, stored.ExpiresAt - now);
+            SetMemory(key, locationId, stored, stored.CreatedAt + _maxStale - now);
         }
         finally
         {
             gate.Release();
+        }
+    }
+
+    public async Task PutBatchAsync(
+        IReadOnlyDictionary<string, IReadOnlyList<FishingLocationForecast>> forecastsByLocation,
+        CancellationToken cancellationToken,
+        bool resetLifetime = true)
+    {
+        if (forecastsByLocation.Count == 0)
+            return;
+
+        var now = DateTimeOffset.UtcNow;
+        var locationIds = forecastsByLocation.Keys.ToArray();
+        var dates = forecastsByLocation.Values.SelectMany(items => items.Select(item => item.Date)).Distinct().ToArray();
+        var stored = new List<(string LocationId, CachedForecast Cached)>();
+        try
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<TaNoMarDbContext>();
+            var existingRows = await db.FishingForecastSnapshots
+                .Where(snapshot => locationIds.Contains(snapshot.LocationId) && dates.Contains(snapshot.Date))
+                .ToListAsync(cancellationToken);
+            var existingByKey = existingRows.ToDictionary(
+                row => MemoryKey(row.LocationId, row.Date),
+                StringComparer.Ordinal);
+
+            foreach (var (locationId, forecasts) in forecastsByLocation)
+            {
+                foreach (var forecast in forecasts)
+                {
+                    var key = MemoryKey(locationId, forecast.Date);
+                    var payload = JsonSerializer.Serialize(forecast, JsonOptions);
+                    var createdAt = now;
+                    var expiresAt = now + _lifetime;
+                    if (!existingByKey.TryGetValue(key, out var row))
+                    {
+                        row = new FishingForecastSnapshot
+                        {
+                            LocationId = locationId,
+                            Date = forecast.Date,
+                            CreatedAt = createdAt,
+                            ExpiresAt = expiresAt
+                        };
+                        db.FishingForecastSnapshots.Add(row);
+                    }
+                    else if (!resetLifetime)
+                    {
+                        createdAt = row.CreatedAt;
+                        expiresAt = row.ExpiresAt;
+                    }
+
+                    row.PayloadJson = payload;
+                    row.CreatedAt = createdAt;
+                    row.ExpiresAt = expiresAt;
+                    stored.Add((locationId, new CachedForecast(forecast, createdAt, expiresAt)));
+                }
+            }
+
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Falha ao gravar {Locations} lotes de snapshots de previsão.", forecastsByLocation.Count);
+        }
+
+        foreach (var (locationId, cached) in stored)
+            SetMemory(MemoryKey(locationId, cached.Forecast.Date), locationId, cached, cached.CreatedAt + _maxStale - now);
+    }
+
+    public async Task PruneAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<TaNoMarDbContext>();
+            var minimumCreatedAt = DateTimeOffset.UtcNow - _maxStale;
+            var expired = await db.FishingForecastSnapshots
+                .Where(snapshot => snapshot.CreatedAt < minimumCreatedAt)
+                .ToListAsync(cancellationToken);
+            if (expired.Count == 0)
+                return;
+            db.FishingForecastSnapshots.RemoveRange(expired);
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Falha ao remover snapshots antigos de previsão.");
         }
     }
 
@@ -189,18 +372,13 @@ internal sealed class FishingForecastCache
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<TaNoMarDbContext>();
-            var now = DateTimeOffset.UtcNow;
             var row = await db.FishingForecastSnapshots
                 .AsNoTracking()
                 .FirstOrDefaultAsync(
-                    snapshot => snapshot.LocationId == locationId && snapshot.Date == date && snapshot.ExpiresAt > now,
+                    snapshot => snapshot.LocationId == locationId && snapshot.Date == date,
                     cancellationToken);
 
-            if (row is null)
-                return null;
-
-            var forecast = JsonSerializer.Deserialize<FishingLocationForecast>(row.PayloadJson, JsonOptions);
-            return forecast is null ? null : new CachedForecast(forecast, row.CreatedAt, row.ExpiresAt);
+            return row is null ? null : Deserialize(row);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -260,14 +438,6 @@ internal sealed class FishingForecastCache
 
             await db.SaveChangesAsync(cancellationToken);
 
-            var expired = await db.FishingForecastSnapshots
-                .Where(snapshot => snapshot.ExpiresAt < now)
-                .ToListAsync(cancellationToken);
-            if (expired.Count > 0)
-            {
-                db.FishingForecastSnapshots.RemoveRange(expired);
-                await db.SaveChangesAsync(cancellationToken);
-            }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -279,5 +449,11 @@ internal sealed class FishingForecastCache
         }
 
         return new CachedForecast(forecast, createdAt, expiresAt);
+    }
+
+    private static CachedForecast? Deserialize(FishingForecastSnapshot row)
+    {
+        var forecast = JsonSerializer.Deserialize<FishingLocationForecast>(row.PayloadJson, JsonOptions);
+        return forecast is null ? null : new CachedForecast(forecast, row.CreatedAt, row.ExpiresAt);
     }
 }

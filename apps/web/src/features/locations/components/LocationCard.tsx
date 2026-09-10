@@ -56,7 +56,10 @@ export function LocationCard({
         <span>{visibilityLabel(location)}</span>
         <h2>{location.name}</h2>
         <p>
-          <MapPin size={15} aria-hidden="true" /> {regionLabel(location.region)}, {location.city}
+          <MapPin size={15} aria-hidden="true" />
+          <span>
+            {regionLabel(location.region)}, {location.city}
+          </span>
         </p>
       </div>
       <LocationStampFor

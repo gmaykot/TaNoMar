@@ -64,6 +64,7 @@
 
 .dayCarousel {
   display: flex;
+  min-width: 0;
   max-width: 100%;
   overflow-x: auto;
   scroll-snap-type: x mandatory;

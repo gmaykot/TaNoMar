@@ -72,8 +72,16 @@ export interface ForecastDay {
   ranking: ForecastRankingItem[];
 }
 
+export interface ForecastRefresh {
+  state: 'fresh' | 'updating' | 'preparing' | 'degraded' | 'unavailable' | 'stale';
+  dataUpdatedAt: string | null;
+  pendingSpotIds: string[];
+  failedSpotIds: string[];
+}
+
 export interface FishingForecast {
   generatedAt: string;
+  refresh: ForecastRefresh;
   days: ForecastDay[];
 }
 
@@ -109,6 +117,7 @@ export interface AdminOfficialLocation extends FishingLocation {
 
 export interface LocationForecast {
   location: FishingLocation;
+  refresh: ForecastRefresh;
   days: Array<Omit<ForecastDay, 'ranking'> & { forecast: ForecastRankingItem }>;
 }
 

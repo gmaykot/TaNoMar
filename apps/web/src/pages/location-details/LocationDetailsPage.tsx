@@ -11,6 +11,7 @@ import { CommunityReports } from '@/features/community/components/CommunityRepor
 import { PlanTripAction } from '@/features/diary/components/PlanTripAction';
 import { SubscriptionGateDrawer } from '@/features/subscription/components/SubscriptionGateDrawer';
 import { DayCarousel } from '@/features/forecast/components/DayCarousel';
+import { ForecastRefreshNotice } from '@/features/forecast/components/ForecastRefreshNotice';
 import { ForecastPresentation } from '@/features/forecast/components/ForecastPresentation';
 import { useLocationForecast } from '@/features/forecast/hooks/useForecast';
 import { LocationStampFor } from '@/features/locations/components/LocationStamp';
@@ -75,10 +76,21 @@ export function LocationDetailsPage() {
   const activeDay = days.find((day) => day.date === activeDate);
   if (!activeDay)
     return (
-      <FeedbackState
-        title="Sem previsão"
-        description="Nenhuma condição disponível para este local."
-      />
+      <div className={styles.page}>
+        <ForecastRefreshNotice refresh={locationForecast.data.refresh} />
+        <FeedbackState
+          title={
+            locationForecast.data.refresh?.state === 'preparing'
+              ? 'Preparando previsão'
+              : 'Sem previsão'
+          }
+          description={
+            locationForecast.data.refresh?.state === 'preparing'
+              ? 'Os dados deste local aparecerão assim que forem processados.'
+              : 'Nenhuma condição disponível para este local.'
+          }
+        />
+      </div>
     );
 
   const favoriteLocked = !canFavorite && !location.isFavorite;
@@ -174,6 +186,7 @@ export function LocationDetailsPage() {
       <Link className={styles.backLink} to={routes.locations}>
         <ArrowLeft size={18} aria-hidden="true" /> Voltar aos locais
       </Link>
+      <ForecastRefreshNotice refresh={locationForecast.data.refresh} />
       <section className={styles.locationHero}>
         <LocationStampFor
           isOwner={location.isOwner}

@@ -1,6 +1,7 @@
-import { ArrowRight, Compass, Download, MapPinned, Sparkles } from 'lucide-react';
+import { ArrowRight, Compass, MapPinned, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useOnlineStatus } from '@/app/hooks/useOnlineStatus';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { Button } from '@/design-system/components/Button';
 import { forecastPresentation, homeCopy } from '@/features/auth/appFocus';
@@ -12,12 +13,11 @@ import {
   showsPartners,
 } from '@/features/auth/types/auth';
 import { DayCarousel } from '@/features/forecast/components/DayCarousel';
+import { ForecastRefreshNotice } from '@/features/forecast/components/ForecastRefreshNotice';
 import { ForecastPresentation } from '@/features/forecast/components/ForecastPresentation';
+import { OfflineSaveAction } from '@/features/forecast/components/OfflineSaveAction';
 import { useForecast } from '@/features/forecast/hooks/useForecast';
-import {
-  readOfflineForecast,
-  saveOfflineForecast,
-} from '@/features/forecast/utils/offlineForecast';
+import { readOfflineForecast, shouldUseOfflineForecast } from '@/features/forecast/utils/offlineForecast';
 import type { FishingForecast } from '@/features/fishing/types/fishing';
 import { PartnerCard } from '@/features/partners/components/PartnerCard';
 import { usePartners } from '@/features/partners/hooks/usePartners';
@@ -28,6 +28,7 @@ import styles from '@/pages/shared/pages.module.css';
 
 export function HomePage() {
   const auth = useAuth();
+  const online = useOnlineStatus();
   const partnersEnabled = showsPartners(auth.user);
   const forecast = useForecast();
   const partners = usePartners(partnersEnabled);
@@ -36,7 +37,6 @@ export function HomePage() {
   const [offlineForecast, setOfflineForecast] = useState<FishingForecast | null>(() =>
     readOfflineForecast(),
   );
-  const [offlineSaved, setOfflineSaved] = useState(false);
   const isPaid = isPaidPlan(auth.user);
   const canCustomizeMetrics = hasPlanModule(auth.user, 'customMetrics');
   const canSaveOffline = hasPlanModule(auth.user, 'offline');
@@ -46,8 +46,16 @@ export function HomePage() {
     showsAppFocus(auth.user),
   );
   const visibleMetricKeys = presentation.visibleMetricKeys;
-
-  const data = forecast.data ?? (canSaveOffline && forecast.isError ? offlineForecast : undefined);
+  const useOffline = shouldUseOfflineForecast({
+    hasOfflineModule: canSaveOffline,
+    saved: offlineForecast,
+    liveData: forecast.data,
+    isError: forecast.isError,
+    isPending: forecast.isPending,
+    fetchStatus: forecast.fetchStatus,
+    isOnline: online,
+  });
+  const data = forecast.data ?? (useOffline ? offlineForecast : undefined) ?? undefined;
 
   if (forecast.isPending && !data)
     return (
@@ -77,16 +85,32 @@ export function HomePage() {
   const home = homeCopy(presentation.focus, activeDay?.label);
   if (!days.some((day) => day.ranking[0]))
     return (
-      <FeedbackState
-        title="Nenhum local nas previsões"
-        description="Habilite locais na lista para ver a previsão aqui."
-        action={<Link to="/locais?filtro=previsoes">Escolher locais</Link>}
-      />
+      <div className={styles.page}>
+        <ForecastRefreshNotice refresh={data?.refresh} />
+        <FeedbackState
+          title={
+            data?.refresh?.state === 'preparing'
+              ? 'Preparando previsões'
+              : 'Nenhum local nas previsões'
+          }
+          description={
+            data?.refresh?.state === 'preparing'
+              ? 'Os locais aparecerão assim que os primeiros dados forem processados.'
+              : 'Habilite locais na lista para ver a previsão aqui.'
+          }
+          action={
+            data?.refresh?.state === 'preparing' ? undefined : (
+              <Link to="/locais?filtro=previsoes">Escolher locais</Link>
+            )
+          }
+        />
+      </div>
     );
 
   return (
     <div className={styles.page}>
       <PageHeader eyebrow={home.eyebrow} title={home.title} description={home.description} />
+      <ForecastRefreshNotice refresh={data?.refresh} />
       {!isPaid ? (
         <Link className={styles.premiumBanner} to={routes.premium}>
           <span>
@@ -159,28 +183,13 @@ export function HomePage() {
           </div>
         </section>
       ) : null}
-      {canSaveOffline ? (
-        <div className={styles.homeActions}>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => {
-              if (!data) return;
-              setOfflineSaved(saveOfflineForecast(data));
-              setOfflineForecast(data);
-            }}
-          >
-            <Download size={17} aria-hidden="true" />
-            {offlineSaved || offlineForecast
-              ? 'Previsão salva nesta sessão'
-              : 'Salvar para usar offline'}
-          </Button>
-          {offlineForecast && !forecast.data ? (
-            <small>
-              Exibindo a última previsão salva nesta sessão. Ela pode estar desatualizada.
-            </small>
-          ) : null}
-        </div>
+      {canSaveOffline && data ? (
+        <OfflineSaveAction
+          forecast={data}
+          savedForecast={offlineForecast}
+          usingSavedCopy={Boolean(offlineForecast && !forecast.data)}
+          onSaved={setOfflineForecast}
+        />
       ) : null}
       <Link className={styles.exploreCard} to="/locais">
         <span>

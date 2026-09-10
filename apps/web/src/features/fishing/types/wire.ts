@@ -137,14 +137,26 @@ export interface WireForecastDay {
   unavailableSpotIds: string[];
 }
 
+export type WireForecastRefreshState =
+  'fresh' | 'updating' | 'preparing' | 'degraded' | 'unavailable' | 'stale';
+
+export interface WireForecastRefresh {
+  state: WireForecastRefreshState;
+  dataUpdatedAt: string | null;
+  pendingSpotIds: string[];
+  failedSpotIds: string[];
+}
+
 export interface WireRankingForecast {
   generatedAt: string;
   availableFrom: string;
   availableTo: string;
+  refresh?: WireForecastRefresh;
   days: WireForecastDay[];
 }
 
 export interface WireLocationForecast {
   spotId: string;
+  refresh?: WireForecastRefresh;
   days: WireForecastDay[];
 }

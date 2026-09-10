@@ -16,6 +16,11 @@ export function useForecast(emphasis?: ForecastRankingEmphasis) {
     queryFn: () => getForecast(emphasis),
     staleTime,
     placeholderData: keepPreviousData,
+    refetchInterval: (current) =>
+      current.state.data?.refresh?.state === 'updating' ||
+      current.state.data?.refresh?.state === 'preparing'
+        ? 3_000
+        : false,
   });
 
   const data = useMemo(() => {
@@ -32,5 +37,10 @@ export function useLocationForecast(locationId: string) {
     queryFn: () => getLocationForecast(locationId),
     staleTime,
     enabled: locationId.length > 0,
+    refetchInterval: (current) =>
+      current.state.data?.refresh?.state === 'updating' ||
+      current.state.data?.refresh?.state === 'preparing'
+        ? 3_000
+        : false,
   });
 }

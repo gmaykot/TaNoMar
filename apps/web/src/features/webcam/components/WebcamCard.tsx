@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Video } from 'lucide-react';
-import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { useSpotWebcam } from '../hooks/useSpotWebcam';
@@ -24,11 +23,11 @@ export function WebcamCard({ webcam, heading = 'Ao vivo' }: WebcamCardProps) {
     <Card as="section" className={styles.card} elevated>
       <WebcamDisclaimer />
       <div className={styles.header}>
-        <div>
+        <div className={styles.heading}>
           <span className={styles.meta}>
             <Video size={14} aria-hidden="true" /> {heading}
           </span>
-          <h2>{name}</h2>
+          <h2 className={styles.cameraTitle}>{name}</h2>
         </div>
         <span className={`${styles.status} ${canPlay ? '' : styles.statusOff}`}>
           <span className={styles.dot} aria-hidden="true" />
@@ -38,15 +37,9 @@ export function WebcamCard({ webcam, heading = 'Ao vivo' }: WebcamCardProps) {
       {webcam.linked ? (
         <WebcamThumb webcam={webcam} onOpen={canPlay ? () => setOpen(true) : undefined} />
       ) : null}
-      {canPlay ? (
-        <div className={styles.actions}>
-          <Button type="button" onClick={() => setOpen(true)}>
-            Ver câmera ao vivo
-          </Button>
-        </div>
-      ) : (
+      {!canPlay ? (
         <p className={styles.copy}>A câmera vinculada não está disponível agora.</p>
-      )}
+      ) : null}
       {open && webcam.player ? (
         <WebcamPlayer
           title={name}

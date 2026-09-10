@@ -8,7 +8,7 @@ import { routes } from '@/shared/constants/routes';
 export function RequirePremium() {
   const auth = useAuth();
 
-  if (auth.status === 'booting' || auth.userLoading) {
+  if (auth.status === 'booting' || (auth.userLoading && !auth.user)) {
     return (
       <FeedbackState
         title="Abrindo o Diário"

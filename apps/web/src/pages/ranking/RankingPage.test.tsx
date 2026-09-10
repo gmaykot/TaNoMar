@@ -69,6 +69,7 @@ describe('RankingPage', () => {
     getForecast.mockResolvedValue(forecastFixture);
     getLocations.mockReset();
     getLocations.mockResolvedValue(locationsFixture);
+    localStorage.removeItem('tanomar.offline-forecast.v1');
   });
 
   it('reordena o ranking quando a ênfase muda', async () => {
@@ -279,7 +280,8 @@ describe('RankingPage', () => {
     expect(screen.queryByRole('button', { name: 'Leste' })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Filtros avançados' }));
-    await user.click(screen.getByRole('button', { name: 'Leste' }));
+    await user.click(screen.getByText('Região'));
+    await user.click(screen.getByRole('checkbox', { name: 'Leste' }));
 
     await waitFor(() => {
       expect(screen.queryByRole('heading', { name: 'Pântano do Sul' })).not.toBeInTheDocument();
@@ -304,5 +306,82 @@ describe('RankingPage', () => {
       expect(screen.queryByRole('heading', { name: 'Pântano do Sul' })).not.toBeInTheDocument();
     });
     expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(1);
+  });
+
+  it('recorta o ranking pelo trecho do nome sem acento', async () => {
+    renderWithProviders(<RankingPage />, ['/ranking?descricao=lagoa']);
+
+    expect(await screen.findByRole('heading', { name: 'Lagoa da Conceição' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Barra da Lagoa' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: 'Pântano do Sul' })).not.toBeInTheDocument();
+    });
+    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(2);
+  });
+
+  it('recorta o ranking por descrição e nota mínima pela URL', async () => {
+    getLocations.mockResolvedValue(
+      locationsFixture.map((item) =>
+        item.id === 'pantano_do_sul'
+          ? { ...item, description: 'Costão com acesso pela trilha' }
+          : item,
+      ),
+    );
+    renderWithProviders(<RankingPage />, ['/ranking?descricao=costao&nota=9']);
+
+    expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: 'Molhe da Barra' })).not.toBeInTheDocument();
+    });
+    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(1);
+  });
+
+  it('aplica o filtro antes do limite inicial de 10 locais', async () => {
+    getLocations.mockResolvedValue(
+      locationsFixture.map((item) =>
+        item.id === 'solidao' ? { ...item, description: 'Acesso por trilha reservada' } : item,
+      ),
+    );
+    renderWithProviders(<RankingPage />, ['/ranking?descricao=reservada']);
+
+    expect(await screen.findByRole('heading', { name: 'Solidão' })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Mostrar mais' })).not.toBeInTheDocument();
+  });
+
+  it('usa a previsão salva offline quando a API falha', async () => {
+    getForecast.mockRejectedValue(new Error('offline'));
+    localStorage.setItem(
+      'tanomar.offline-forecast.v1',
+      JSON.stringify({ forecast: forecastFixture }),
+    );
+    renderWithProviders(<RankingPage />, ['/ranking']);
+
+    expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
+    expect(screen.getByText(/Exibindo a última previsão salva neste aparelho/)).toBeInTheDocument();
+  });
+
+  it('usa a previsão salva offline enquanto a API ainda não responde', async () => {
+    getForecast.mockImplementation(() => new Promise(() => undefined));
+    localStorage.setItem(
+      'tanomar.offline-forecast.v1',
+      JSON.stringify({ forecast: forecastFixture }),
+    );
+    renderWithProviders(<RankingPage />, ['/ranking']);
+
+    expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
+    expect(screen.queryByText('Montando o ranking')).not.toBeInTheDocument();
+  });
+
+  it('não usa a previsão salva offline no plano Free quando a API falha', async () => {
+    authState.planCode = 'free';
+    getForecast.mockRejectedValue(new Error('offline'));
+    localStorage.setItem(
+      'tanomar.offline-forecast.v1',
+      JSON.stringify({ forecast: forecastFixture }),
+    );
+    renderWithProviders(<RankingPage />, ['/ranking']);
+
+    expect(await screen.findByText('Ranking indisponível')).toBeInTheDocument();
   });
 });

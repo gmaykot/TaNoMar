@@ -166,9 +166,9 @@ export async function loginWithGoogle(credential: string) {
 }
 
 export async function refreshSession() {
-  const token = await refreshAccessTokenOnce();
-  if (!token) setAccessToken(null);
-  return token;
+  const result = await refreshAccessTokenOnce();
+  if (!result.token) setAccessToken(null);
+  return result;
 }
 
 export async function logoutSession() {
@@ -178,6 +178,8 @@ export async function logoutSession() {
       skipAuth: true,
       skipRefresh: true,
     });
+  } catch {
+    /* offline ou API indisponível: a sessão local ainda encerra */
   } finally {
     setAccessToken(null);
   }

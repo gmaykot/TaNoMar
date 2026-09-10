@@ -18,6 +18,15 @@ services:
       TaNoMar__VapidSubject: ${VAPID_SUBJECT:-}
       Fishing__TabuaMareApiKey: ${TABUA_MARE_API_KEY:-}
       Fishing__GeoapifyApiKey: ${GEOAPIFY_API_KEY:-}
+      Fishing__OpenMeteoApiKey: ${OPEN_METEO_API_KEY:-}
+      Fishing__OpenMeteoWeatherBaseUrl: ${OPEN_METEO_WEATHER_BASE_URL:-https://api.open-meteo.com/v1/forecast}
+      Fishing__OpenMeteoGfsBaseUrl: ${OPEN_METEO_GFS_BASE_URL:-https://api.open-meteo.com/v1/gfs}
+      Fishing__OpenMeteoMarineBaseUrl: ${OPEN_METEO_MARINE_BASE_URL:-https://marine-api.open-meteo.com/v1/marine}
+      Fishing__CacheHours: ${Fishing__CacheHours:-6}
+      Fishing__MaxStaleHours: ${Fishing__MaxStaleHours:-12}
+      Fishing__RefreshBatchSize: ${Fishing__RefreshBatchSize:-10}
+      Fishing__RefreshConcurrency: ${Fishing__RefreshConcurrency:-2}
+      Fishing__RefreshQueueCapacity: ${Fishing__RefreshQueueCapacity:-256}
       Webcams__WindyApiKey: ${WINDY_WEBCAMS_API_KEY:-}
       Webcams__YouTubeApiKey: ${YOUTUBE_API_KEY:-}
       Webcams__SearchRadiusKm: ${Webcams__SearchRadiusKm:-10}

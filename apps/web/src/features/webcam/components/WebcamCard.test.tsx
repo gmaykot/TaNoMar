@@ -36,7 +36,9 @@ describe('WebcamCard', () => {
       'https://images.windy.com/preview.jpg',
     );
     expect(screen.queryByTitle('Câmera ao vivo: Praia do Campeche')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Ver câmera ao vivo' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Ver câmera ao vivo: Praia do Campeche' }),
+    );
     expect(
       screen.getByRole('dialog', { name: 'Câmera ao vivo: Praia do Campeche' }),
     ).toBeInTheDocument();
@@ -64,7 +66,9 @@ describe('WebcamCard', () => {
     renderWithProviders(
       <WebcamCard webcam={{ ...live, isAvailable: false, isLive: false, player: null }} />,
     );
-    expect(screen.queryByRole('button', { name: 'Ver câmera ao vivo' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Ver câmera ao vivo: Praia do Campeche' }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText('A câmera vinculada não está disponível agora.')).toBeInTheDocument();
   });
 });

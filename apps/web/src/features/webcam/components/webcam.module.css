@@ -29,6 +29,12 @@
   padding-right: 5.5rem;
 }
 
+.heading {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
 .header h2,
 .header h3 {
   margin: 0;
@@ -37,12 +43,24 @@
   letter-spacing: -0.03em;
 }
 
+.header .cameraTitle {
+  color: var(--color-ocean-700);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.35;
+}
+
 .meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   color: var(--color-sea-700);
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .status {

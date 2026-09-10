@@ -64,7 +64,10 @@ describe('apiRequest', () => {
     const second = refreshAccessTokenOnce();
     resolveRefresh?.(jsonResponse(200, { accessToken: 'novo' }));
 
-    await expect(Promise.all([first, second])).resolves.toEqual(['novo', 'novo']);
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      { token: 'novo', reason: 'ok' },
+      { token: 'novo', reason: 'ok' },
+    ]);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(getAccessToken()).toBe('novo');
   });
@@ -73,8 +76,34 @@ describe('apiRequest', () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { accessToken: 'novo' }));
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(refreshAccessTokenOnce()).resolves.toBe('novo');
-    await expect(refreshAccessTokenOnce()).resolves.toBe('novo');
+    await expect(refreshAccessTokenOnce()).resolves.toEqual({ token: 'novo', reason: 'ok' });
+    await expect(refreshAccessTokenOnce()).resolves.toEqual({ token: 'novo', reason: 'ok' });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('trata queda de rede no refresh sem encerrar a sessão', async () => {
+    const lost = vi.fn();
+    setOnSessionLost(lost);
+    setAccessToken('expired');
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse(401, {}))
+        .mockRejectedValueOnce(new TypeError('Failed to fetch')),
+    );
+
+    await expect(apiRequest('/me')).rejects.toBeInstanceOf(TypeError);
+    expect(lost).not.toHaveBeenCalled();
+    expect(getAccessToken()).toBe('expired');
+  });
+
+  it('devolve motivo de rede quando o refresh não alcança a API', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+
+    await expect(refreshAccessTokenOnce()).resolves.toEqual({
+      token: null,
+      reason: 'network',
+    });
   });
 });

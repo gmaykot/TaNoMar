@@ -1,18 +1,20 @@
 using System.Globalization;
+using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Options;
 
 namespace TaNoMar.Api.Fishing;
 
-internal sealed class OpenMeteoClient(HttpClient httpClient)
+internal sealed class OpenMeteoClient(
+    HttpClient httpClient,
+    IOptions<FishingOptions> options,
+    ILogger<OpenMeteoClient> logger)
 {
-    private const string WeatherUrl = "https://api.open-meteo.com/v1/forecast";
-    private const string GfsUrl = "https://api.open-meteo.com/v1/gfs";
-    private const string MarineUrl = "https://marine-api.open-meteo.com/v1/marine";
-
     public Task<OpenMeteoResponse> GetWeatherAsync(FishingLocation location, string timezone, int forecastDays, CancellationToken cancellationToken)
         => GetAsync(
-            WeatherUrl,
+            "Weather",
+            options.Value.OpenMeteoWeatherBaseUrl,
             location,
             timezone,
             forecastDays,
@@ -23,7 +25,8 @@ internal sealed class OpenMeteoClient(HttpClient httpClient)
 
     public Task<OpenMeteoResponse> GetGfsRainAsync(FishingLocation location, string timezone, int forecastDays, CancellationToken cancellationToken)
         => GetAsync(
-            GfsUrl,
+            "GFS",
+            options.Value.OpenMeteoGfsBaseUrl,
             location,
             timezone,
             forecastDays,
@@ -33,14 +36,61 @@ internal sealed class OpenMeteoClient(HttpClient httpClient)
 
     public Task<OpenMeteoResponse> GetMarineAsync(FishingLocation location, string timezone, int forecastDays, CancellationToken cancellationToken)
         => GetAsync(
-            MarineUrl,
+            "Marine",
+            options.Value.OpenMeteoMarineBaseUrl,
             location,
             timezone,
             forecastDays,
             "wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature,sea_level_height_msl",
             cancellationToken);
 
+    public Task<IReadOnlyList<OpenMeteoResponse>> GetWeatherBatchAsync(
+        IReadOnlyList<FishingLocation> locations,
+        string timezone,
+        int forecastDays,
+        CancellationToken cancellationToken)
+        => GetBatchAsync(
+            "Weather",
+            options.Value.OpenMeteoWeatherBaseUrl,
+            locations,
+            timezone,
+            forecastDays,
+            "wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,precipitation_probability,temperature_2m,pressure_msl",
+            cancellationToken,
+            ("wind_speed_unit", "kmh"),
+            ("precipitation_unit", "mm"));
+
+    public Task<IReadOnlyList<OpenMeteoResponse>> GetGfsRainBatchAsync(
+        IReadOnlyList<FishingLocation> locations,
+        string timezone,
+        int forecastDays,
+        CancellationToken cancellationToken)
+        => GetBatchAsync(
+            "GFS",
+            options.Value.OpenMeteoGfsBaseUrl,
+            locations,
+            timezone,
+            forecastDays,
+            "precipitation_probability,precipitation",
+            cancellationToken,
+            ("precipitation_unit", "mm"));
+
+    public Task<IReadOnlyList<OpenMeteoResponse>> GetMarineBatchAsync(
+        IReadOnlyList<FishingLocation> locations,
+        string timezone,
+        int forecastDays,
+        CancellationToken cancellationToken)
+        => GetBatchAsync(
+            "Marine",
+            options.Value.OpenMeteoMarineBaseUrl,
+            locations,
+            timezone,
+            forecastDays,
+            "wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature,sea_level_height_msl",
+            cancellationToken);
+
     private async Task<OpenMeteoResponse> GetAsync(
+        string source,
         string baseUrl,
         FishingLocation location,
         string timezone,
@@ -49,23 +99,94 @@ internal sealed class OpenMeteoClient(HttpClient httpClient)
         CancellationToken cancellationToken,
         params (string Name, string Value)[] extraParameters)
     {
+        var response = await GetResponseAsync<OpenMeteoResponse>(
+            source,
+            baseUrl,
+            [location],
+            timezone,
+            forecastDays,
+            hourly,
+            cancellationToken,
+            extraParameters);
+
+        return response;
+    }
+
+    private async Task<IReadOnlyList<OpenMeteoResponse>> GetBatchAsync(
+        string source,
+        string baseUrl,
+        IReadOnlyList<FishingLocation> locations,
+        string timezone,
+        int forecastDays,
+        string hourly,
+        CancellationToken cancellationToken,
+        params (string Name, string Value)[] extraParameters)
+    {
+        if (locations.Count == 0)
+            return [];
+        if (locations.Count == 1)
+            return [await GetAsync(source, baseUrl, locations[0], timezone, forecastDays, hourly, cancellationToken, extraParameters)];
+
+        var response = await GetResponseAsync<List<OpenMeteoResponse>>(
+            source,
+            baseUrl,
+            locations,
+            timezone,
+            forecastDays,
+            hourly,
+            cancellationToken,
+            extraParameters);
+        if (response.Count != locations.Count)
+            throw new InvalidOperationException($"Open-Meteo {source} devolveu {response.Count} locais para um lote de {locations.Count}.");
+        return response;
+    }
+
+    private async Task<T> GetResponseAsync<T>(
+        string source,
+        string baseUrl,
+        IReadOnlyList<FishingLocation> locations,
+        string timezone,
+        int forecastDays,
+        string hourly,
+        CancellationToken cancellationToken,
+        params (string Name, string Value)[] extraParameters)
+    {
         var parameters = new List<(string Name, string Value)>
         {
-            ("latitude", location.Latitude.ToString(CultureInfo.InvariantCulture)),
-            ("longitude", location.Longitude.ToString(CultureInfo.InvariantCulture)),
+            ("latitude", string.Join(',', locations.Select(location => location.Latitude.ToString(CultureInfo.InvariantCulture)))),
+            ("longitude", string.Join(',', locations.Select(location => location.Longitude.ToString(CultureInfo.InvariantCulture)))),
             ("timezone", timezone),
             ("forecast_days", forecastDays.ToString(CultureInfo.InvariantCulture)),
             ("hourly", hourly)
         };
         parameters.AddRange(extraParameters);
+        if (!string.IsNullOrWhiteSpace(options.Value.OpenMeteoApiKey))
+            parameters.Add(("apikey", options.Value.OpenMeteoApiKey));
 
         var query = string.Join("&", parameters.Select(parameter =>
             $"{Uri.EscapeDataString(parameter.Name)}={Uri.EscapeDataString(parameter.Value)}"));
-        var response = await httpClient.GetFromJsonAsync<OpenMeteoResponse>(
-            $"{baseUrl}?{query}",
-            cancellationToken);
-
-        return response ?? throw new InvalidOperationException("Open-Meteo retornou uma resposta vazia.");
+        var started = Stopwatch.StartNew();
+        try
+        {
+            var response = await httpClient.GetFromJsonAsync<T>($"{baseUrl}?{query}", cancellationToken);
+            logger.LogInformation(
+                "Open-Meteo {Source}: {Locations} locais, {ForecastDays} dias, {ElapsedMs}ms.",
+                source,
+                locations.Count,
+                forecastDays,
+                started.ElapsedMilliseconds);
+            return response ?? throw new InvalidOperationException("Open-Meteo retornou uma resposta vazia.");
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning(
+                exception,
+                "Falha no Open-Meteo {Source}: {Locations} locais após {ElapsedMs}ms.",
+                source,
+                locations.Count,
+                started.ElapsedMilliseconds);
+            throw;
+        }
     }
 }
 

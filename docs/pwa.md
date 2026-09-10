@@ -20,9 +20,9 @@ Não existe runtime cache de API nesta etapa:
 - TTL, expiração e comportamento offline devem ser documentados e testados por endpoint.
 
 O usuário da assinatura pode salvar uma cópia explícita da previsão exibida no armazenamento local do aparelho.
-Essa cópia é privada, não substitui a API e mostra um aviso quando é usada sem conexão durante a sessão
-autenticada; o usuário deve salvar novamente para atualizar a previsão. Ela não inclui respostas
-autenticadas no service worker nem mantém a sessão após um reload offline.
+O salvamento pede confirmação e, se já houver cópia, substitui a anterior. Essa cópia é privada, não substitui a API e mostra um aviso quando é usada sem conexão. Endpoints autenticados continuam fora do service worker e o access token permanece só em memória.
+
+Se o aplicativo reabrir sem rede depois de uma cópia salva, o boot não fica preso no refresh: a sessão de leitura usa o último usuário guardado no aparelho (somente com o módulo `offline` e previsão salva) para abrir a Home e o Ranking. Mutações, locais, detalhe do local e parceiros seguem exigindo conexão. Ao voltar online, o app retoma o refresh e o `GET /me`. Logout apaga o snapshot do usuário e a previsão salva.
 
 ## Instalação e atualização
 

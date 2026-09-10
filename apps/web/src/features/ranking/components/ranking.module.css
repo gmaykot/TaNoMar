@@ -1,22 +1,27 @@
 .toolbar {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   gap: var(--space-3);
 }
 
 .filterBar {
-  display: flex;
+  display: grid;
+  min-width: 0;
+  max-width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-2);
+  padding-top: 0.2rem;
+  padding-right: 0.2rem;
 }
 
 .filterBar .filters {
   min-width: 0;
-  flex: 1;
 }
 
 .filterToggleWrap {
   position: relative;
-  flex: 0 0 auto;
 }
 
 .filterToggleActive {
@@ -27,8 +32,8 @@
 
 .filterCount {
   position: absolute;
-  top: -0.2rem;
-  right: -0.2rem;
+  top: 0;
+  right: 0;
   display: grid;
   min-width: 1.15rem;
   height: 1.15rem;
@@ -44,27 +49,58 @@
 
 .advanced {
   display: grid;
-  gap: var(--space-3);
-  padding: var(--space-3);
+  overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .advanced[hidden] {
   display: none;
 }
 
-.advancedGroup {
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  margin: 0;
+.advancedHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
 }
 
-.advancedGroup legend {
-  padding: 0;
-  margin: 0 0 var(--space-2);
+.advancedHeader > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.advancedHeader strong {
+  color: var(--color-ocean-950);
+  font-size: var(--font-size-sm);
+}
+
+.advancedHeader span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+
+.advancedPrimary {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-block: 1px solid var(--color-border);
+  background: var(--color-sea-100);
+}
+
+.primaryField,
+.scoreField {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.primaryField > span,
+.scoreHeader > span {
   color: var(--color-ocean-700);
   font-size: 0.75rem;
   font-weight: 800;
@@ -72,22 +108,186 @@
   text-transform: uppercase;
 }
 
-.advancedOptions {
+.scoreHeader {
   display: flex;
-  flex-wrap: wrap;
+  min-height: 2rem;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--space-2);
 }
 
-.advancedFooter {
+.scoreHeader output {
+  min-width: 3.5rem;
+  padding: 0.3rem var(--space-2);
+  border-radius: var(--radius-pill);
+  color: white;
+  background: var(--color-ocean-950);
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  text-align: center;
+}
+
+.scoreField input {
+  appearance: none;
+  width: 100%;
+  height: 0.5rem;
+  margin: 0;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(
+    to right,
+    var(--color-coral-500) 0 var(--score-progress),
+    var(--color-ocean-100) var(--score-progress) 100%
+  );
+  cursor: pointer;
+}
+
+.scoreField input::-webkit-slider-thumb {
+  appearance: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 3px solid var(--color-surface);
+  border-radius: 50%;
+  background: var(--color-coral-500);
+  box-shadow: var(--shadow-sm);
+}
+
+.scoreField input::-moz-range-thumb {
+  width: 1.15rem;
+  height: 1.15rem;
+  border: 3px solid var(--color-surface);
+  border-radius: 50%;
+  background: var(--color-coral-500);
+  box-shadow: var(--shadow-sm);
+}
+
+.scoreField input:focus-visible {
+  outline: 3px solid var(--color-coral-500);
+  outline-offset: 2px;
+}
+
+.scoreScale {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  color: var(--color-text-muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.advancedChoices {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.multiSelect {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-sand-100);
+}
+
+.multiSelect summary {
+  display: flex;
+  min-height: 3.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-ocean-700);
+  cursor: pointer;
+  list-style: none;
+}
+
+.multiSelect summary::-webkit-details-marker {
+  display: none;
+}
+
+.multiSelect summary > span {
+  display: grid;
+  min-width: 0;
+  gap: 0.15rem;
+}
+
+.multiSelect summary strong {
+  color: var(--color-ocean-700);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.multiSelect summary small {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multiSelect summary svg {
+  flex: 0 0 auto;
+}
+
+.multiSelect[open] summary svg {
+  transform: rotate(180deg);
+}
+
+.multiSelectOptions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-1);
+  padding: 0 var(--space-2) var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+
+.checkOption {
+  display: flex;
+  min-width: 0;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-ocean-700);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.checkOption span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.checkOption input {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+  accent-color: var(--color-ocean-700);
+}
+
+.checkOption:has(input:checked) {
+  color: var(--color-ocean-950);
+  background: var(--color-sea-100);
+}
+
+.checkOption:focus-within {
+  outline: 3px solid var(--color-coral-500);
+  outline-offset: -1px;
 }
 
 .filters {
   display: flex;
+  min-width: 0;
   flex-wrap: nowrap;
   gap: var(--space-2);
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.filters::-webkit-scrollbar {
+  display: none;
 }
 
 .filter {
@@ -326,6 +526,16 @@
 }
 
 @media (min-width: 48rem) {
+  .advancedPrimary {
+    grid-template-columns: minmax(0, 2fr) minmax(10rem, 1fr);
+    align-items: end;
+  }
+
+  .advancedChoices {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
   .item {
     padding: var(--space-5) var(--space-6);
   }

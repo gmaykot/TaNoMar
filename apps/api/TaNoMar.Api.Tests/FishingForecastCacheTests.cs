@@ -38,6 +38,20 @@ public sealed class FishingForecastCacheTests
     }
 
     [Fact]
+    public async Task Serves_expired_snapshot_within_max_stale_window()
+    {
+        using var harness = new CacheHarness(cacheHours: 6, maxStaleHours: 12);
+        var date = new DateOnly(2026, 9, 9);
+        await harness.SeedSnapshotAsync("campeche", date, Forecast("campeche", date), createdAt: DateTimeOffset.UtcNow.AddHours(-8), expiresAt: DateTimeOffset.UtcNow.AddHours(-2));
+
+        var cached = await harness.Cache.TryGetAvailableAsync("campeche", date, CancellationToken.None);
+
+        Assert.NotNull(cached);
+        Assert.False(cached.IsUsable(DateTimeOffset.UtcNow));
+        Assert.True(cached.IsAvailable(harness.Cache.MaxStale, DateTimeOffset.UtcNow));
+    }
+
+    [Fact]
     public async Task Completing_tide_does_not_reset_weather_lifetime()
     {
         using var harness = new CacheHarness();
@@ -76,6 +90,26 @@ public sealed class FishingForecastCacheTests
         Assert.NotNull(row);
         Assert.True(row.CreatedAt > createdAt.AddHours(4));
         Assert.True(row.ExpiresAt > DateTimeOffset.UtcNow.AddHours(20));
+    }
+
+    [Fact]
+    public async Task Persists_multiple_locations_and_days_in_one_batch()
+    {
+        using var harness = new CacheHarness();
+        var firstDay = new DateOnly(2026, 9, 9);
+        var secondDay = firstDay.AddDays(1);
+
+        await harness.Cache.PutBatchAsync(
+            new Dictionary<string, IReadOnlyList<FishingLocationForecast>>
+            {
+                ["campeche"] = [Forecast("campeche", firstDay), Forecast("campeche", secondDay)],
+                ["armacao"] = [Forecast("armacao", firstDay)]
+            },
+            CancellationToken.None);
+
+        Assert.NotNull(await harness.ReadSnapshotAsync("campeche", firstDay));
+        Assert.NotNull(await harness.ReadSnapshotAsync("campeche", secondDay));
+        Assert.NotNull(await harness.ReadSnapshotAsync("armacao", firstDay));
     }
 
     [Fact]
@@ -142,7 +176,7 @@ public sealed class FishingForecastCacheTests
     {
         private readonly ServiceProvider _provider;
 
-        public CacheHarness(int cacheHours = 24, int warmupIntervalHours = 3)
+        public CacheHarness(int cacheHours = 24, int warmupIntervalHours = 3, int maxStaleHours = 24)
         {
             var services = new ServiceCollection();
             var databaseName = Guid.NewGuid().ToString();
@@ -155,6 +189,7 @@ public sealed class FishingForecastCacheTests
                 Microsoft.Extensions.Options.Options.Create(new FishingOptions
                 {
                     CacheHours = cacheHours,
+                    MaxStaleHours = maxStaleHours,
                     WarmupIntervalHours = warmupIntervalHours
                 }),
                 NullLogger<FishingForecastCache>.Instance);

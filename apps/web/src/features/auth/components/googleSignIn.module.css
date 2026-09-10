@@ -1,8 +1,10 @@
 .host {
   display: flex;
-  justify-content: center;
-  min-width: 320px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 40px;
+  justify-content: center;
   pointer-events: auto;
 }
 

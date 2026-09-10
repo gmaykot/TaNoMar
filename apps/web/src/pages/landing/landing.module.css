@@ -1,6 +1,6 @@
 .landing {
   --landing-section-space: var(--space-12);
-  min-width: 320px;
+  max-width: 100%;
   overflow: clip;
   background:
     radial-gradient(

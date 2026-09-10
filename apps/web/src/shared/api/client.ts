@@ -7,8 +7,21 @@ type ApiRequestOptions = RequestInit & {
   skipRefresh?: boolean;
 };
 
-let refreshPromise: Promise<string | null> | null = null;
+export type RefreshFailureReason = 'network' | 'unauthenticated';
+
+export type RefreshResult =
+  { token: string; reason: 'ok' } | { token: null; reason: RefreshFailureReason };
+
+let refreshPromise: Promise<RefreshResult> | null = null;
 let refreshHold: ReturnType<typeof setTimeout> | null = null;
+
+export function isNetworkError(error: unknown) {
+  if (error instanceof TypeError) return true;
+  return (
+    error instanceof Error &&
+    /failed to fetch|networkerror|load failed|network request failed/i.test(error.message)
+  );
+}
 
 function apiUrl(path: string) {
   return `${apiBaseUrl}${path.startsWith('/') ? path : `/${path}`}`;
@@ -29,13 +42,22 @@ async function parseAccessToken(response: Response) {
   return payload.accessToken;
 }
 
-async function refreshAccessToken() {
-  const response = await fetch(apiUrl('/auth/refresh'), {
-    method: 'POST',
-    credentials: 'include',
-  });
-  if (!response.ok) return null;
-  return parseAccessToken(response);
+async function refreshAccessToken(): Promise<RefreshResult> {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return { token: null, reason: 'network' };
+  }
+  try {
+    const response = await fetch(apiUrl('/auth/refresh'), {
+      method: 'POST',
+      credentials: 'include',
+    });
+    if (!response.ok) return { token: null, reason: 'unauthenticated' };
+    const token = await parseAccessToken(response);
+    return token ? { token, reason: 'ok' } : { token: null, reason: 'unauthenticated' };
+  } catch (error) {
+    if (isNetworkError(error)) return { token: null, reason: 'network' };
+    return { token: null, reason: 'unauthenticated' };
+  }
 }
 
 export function refreshAccessTokenOnce() {
@@ -78,9 +100,11 @@ export async function apiRequest<T = unknown>(path: string, options: ApiRequestO
   let response = await send(path, options);
 
   if (response.status === 401 && !options.skipRefresh) {
-    const token = await refreshAccessTokenOnce();
-    if (token) {
+    const refresh = await refreshAccessTokenOnce();
+    if (refresh.token) {
       response = await send(path, { ...options, skipRefresh: true });
+    } else if (refresh.reason === 'network') {
+      throw new TypeError('Failed to fetch');
     } else {
       notifySessionLost();
       throw new ApiError(401, 'Sessão expirada.');

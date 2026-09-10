@@ -47,7 +47,13 @@ function ranking(seeds: ForecastSeed[]): ForecastRankingItem[] {
         time,
         score,
         classification:
-          score >= 8.5 ? 'excellent' : score >= 7 ? 'very-good' : score >= 5 ? 'regular' : 'difficult',
+          score >= 8.5
+            ? 'excellent'
+            : score >= 7
+              ? 'very-good'
+              : score >= 5
+                ? 'regular'
+                : 'difficult',
       };
     });
     return {
@@ -72,6 +78,12 @@ function ranking(seeds: ForecastSeed[]): ForecastRankingItem[] {
 
 export const forecastFixture: FishingForecast = {
   generatedAt: '2026-09-05T08:00:00-03:00',
+  refresh: {
+    state: 'fresh',
+    dataUpdatedAt: '2026-09-05T08:00:00-03:00',
+    pendingSpotIds: [],
+    failedSpotIds: [],
+  },
   days: [
     {
       date: '2026-09-05',

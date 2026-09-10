@@ -73,6 +73,13 @@ A landing define o domínio raiz como canônico: ao abrir por `www`, o `canonica
 | `BOOTSTRAP_ADMIN_GOOGLE_SUBJECT` | `TaNoMar__BootstrapAdminGoogleSubject` | Claim `sub` do Google do admin inicial — não é o e-mail |
 | `Fishing__WarmupEnabled` | `Fishing:WarmupEnabled` | Worker que aquece previsão (padrão `true`) |
 | `Fishing__WarmupIntervalHours` | `Fishing:WarmupIntervalHours` | Idade máxima da previsão antes de renovar (padrão `3`). Também é o intervalo do worker. |
+| `Fishing__CacheHours` | `Fishing:CacheHours` | TTL normal do snapshot (padrão configurado `6`). |
+| `Fishing__MaxStaleHours` | `Fishing:MaxStaleHours` | Janela máxima para servir o último snapshot durante atualização ou falha externa (padrão `12`). |
+| `Fishing__RefreshBatchSize` | `Fishing:RefreshBatchSize` | Coordenadas por lote Open-Meteo (padrão `10`). |
+| `Fishing__RefreshConcurrency` | `Fishing:RefreshConcurrency` | Lotes processados em paralelo (padrão `2`). |
+| `Fishing__RefreshQueueCapacity` | `Fishing:RefreshQueueCapacity` | Capacidade máxima da fila interna deduplicada (padrão `256`). |
+| `OPEN_METEO_API_KEY` | `Fishing:OpenMeteoApiKey` | Chave opcional para endpoint contratado da Open-Meteo. |
+| `OPEN_METEO_WEATHER_BASE_URL`, `OPEN_METEO_GFS_BASE_URL`, `OPEN_METEO_MARINE_BASE_URL` | propriedades `Fishing:OpenMeteo*BaseUrl` | Hosts opcionais da Open-Meteo; os padrões usam os endpoints públicos. |
 | `TANOMAR_PORT` | compose `ports` | Porta do host no Coolify (padrão `8082`). A API continua em `8080` dentro do container. |
 | `VAPID_PUBLIC_KEY` | `TaNoMar__VapidPublicKey` | Chave pública Web Push. Sem ela o toggle de aparelho some; inbox e SSE seguem. |
 | `VAPID_PRIVATE_KEY` | `TaNoMar__VapidPrivateKey` | Chave privada Web Push. Gere o par com `npx web-push generate-vapid-keys`. |
@@ -98,7 +105,7 @@ O preço da assinatura não usa variável de ambiente: o admin edita `Plans.Mont
 
 O volume `tanomar-data` monta em `/var/lib/tanomar` e guarda o log de auditoria (`/var/lib/tanomar/audit.jsonl`). Sem o volume, a auditoria some a cada redeploy.
 
-O cache de previsão fica em memória no processo da API. Cada entrada também é gravada como snapshot no PostgreSQL (`FishingForecastSnapshots`). `Fishing:CacheHours` (padrão 24h) é o TTL de serviço: o snapshot continua válido para responder. `Fishing:WarmupIntervalHours` (padrão 3h) é a idade de atualização: o worker e o request renovam a semana em background sem bloquear o usuário. Completar a tábua não estica o TTL do tempo. Um miss busca 8 dias na Open-Meteo e grava a semana. Pressão e, quando existir, tábua de maré entram nesse snapshot; tábua ausente não o descarta. A tábua mensal do porto ainda é cacheada em memória para caber no limite da Tábua de Maré API. O worker interno `FishingForecastWarmupWorker` preenche e refresca oficiais e compartilhados aprovados (dias 0–7) na subida e a cada intervalo. Local pessoal novo, compartilhado aprovado, local religado nas previsões e edição de coordenadas/orientação/perfil invalidam e aquecem o mesmo cache na hora. Após um restart, a API rehidrata pela tabela antes de chamar a Open-Meteo. Desligue o worker com `Fishing__WarmupEnabled=false`.
+O cache de previsão fica em memória no processo da API e em snapshots no PostgreSQL (`FishingForecastSnapshots`). `Fishing:CacheHours` é o TTL normal; `Fishing:MaxStaleHours` limita o fallback exibido durante atualização ou falha externa. Misses e entradas velhas entram numa fila interna deduplicada: a requisição responde com dados disponíveis e o frontend acompanha `refresh`. O worker agrupa coordenadas, consulta Weather, GFS e Marine em paralelo e grava os oito dias em lote; a tábua é completada por outra fila e não atrasa a previsão principal. O `FishingForecastWarmupWorker` apenas enfileira oficiais e compartilhados aprovados na subida e a cada intervalo. Cadastro, aprovação, reativação e mudanças dos dados que afetam a previsão também enfileiram o local sem aguardar rede externa. Após restart, a API reidrata snapshots antes de chamar a Open-Meteo. Desligue o agendamento periódico com `Fishing__WarmupEnabled=false`.
 
 ## Healthcheck
 

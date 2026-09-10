@@ -1,5 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useOnlineStatus } from '@/app/hooks/useOnlineStatus';
+import { clearOfflineForecast } from '@/features/forecast/utils/offlineForecast';
+import { disableDevicePush } from '@/features/notifications/services/devicePushService';
+import { getAccessToken, setOnSessionLost } from '@/shared/api/session';
 import { clearGoogleSignInSession } from '../googleIdentity';
 import {
   getCurrentUser,
@@ -9,16 +13,26 @@ import {
 } from '../services/authService';
 import { AuthSessionContext } from '../session/authSessionContext';
 import type { AuthStatus } from '../types/auth';
-import { disableDevicePush } from '@/features/notifications/services/devicePushService';
-import { setOnSessionLost } from '@/shared/api/session';
+import {
+  canRestoreOfflineSession,
+  clearOfflineUser,
+  readOfflineUser,
+  saveOfflineUser,
+} from '../utils/offlineSession';
 
 export function AuthSessionProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  const online = useOnlineStatus();
   const [status, setStatus] = useState<AuthStatus>('booting');
+  const [cachedUser, setCachedUser] = useState(() =>
+    canRestoreOfflineSession() ? readOfflineUser() : null,
+  );
 
   useEffect(() => {
     setOnSessionLost(() => {
       clearGoogleSignInSession();
+      clearOfflineUser();
+      setCachedUser(null);
       setStatus('anonymous');
       void queryClient.clear();
     });
@@ -27,27 +41,67 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    void refreshSession().then((token) => {
-      if (cancelled) return;
-      setStatus(token ? 'authenticated' : 'anonymous');
-    });
+    void refreshSession()
+      .then((result) => {
+        if (cancelled) return;
+        if (result.token) {
+          setStatus('authenticated');
+          return;
+        }
+        if (result.reason === 'network' && canRestoreOfflineSession()) {
+          setStatus('authenticated');
+          return;
+        }
+        setStatus('anonymous');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setStatus(canRestoreOfflineSession() ? 'authenticated' : 'anonymous');
+      });
     return () => {
       cancelled = true;
     };
   }, []);
 
+  useEffect(() => {
+    if (status !== 'authenticated' || !online || getAccessToken()) return;
+    let cancelled = false;
+    void refreshSession().then((result) => {
+      if (cancelled) return;
+      if (result.token) {
+        void queryClient.invalidateQueries({ queryKey: ['me'] });
+        return;
+      }
+      if (result.reason === 'unauthenticated') {
+        clearGoogleSignInSession();
+        clearOfflineUser();
+        setCachedUser(null);
+        setStatus('anonymous');
+        void queryClient.clear();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [online, queryClient, status]);
+
   const meQuery = useQuery({
     queryKey: ['me'],
-    queryFn: getCurrentUser,
-    enabled: status === 'authenticated',
+    queryFn: async () => {
+      const user = await getCurrentUser();
+      saveOfflineUser(user);
+      return user;
+    },
+    enabled: status === 'authenticated' && online,
+    initialData: cachedUser ?? undefined,
     staleTime: 0,
   });
 
   const value = useMemo(
     () => ({
       status,
-      user: meQuery.data ?? null,
-      userLoading: status === 'authenticated' && meQuery.isPending,
+      user: status === 'authenticated' ? (meQuery.data ?? cachedUser ?? null) : null,
+      userLoading: status === 'authenticated' && meQuery.isPending && !meQuery.data && !cachedUser,
       loginWithGoogle: async (credential: string) => {
         await loginWithGoogleCredential(credential);
         setStatus('authenticated');
@@ -61,11 +115,14 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
         }
         await logoutSession();
         clearGoogleSignInSession();
+        clearOfflineUser();
+        clearOfflineForecast();
+        setCachedUser(null);
         setStatus('anonymous');
         queryClient.clear();
       },
     }),
-    [meQuery.data, meQuery.isPending, queryClient, status],
+    [cachedUser, meQuery.data, meQuery.isPending, queryClient, status],
   );
 
   return <AuthSessionContext.Provider value={value}>{children}</AuthSessionContext.Provider>;
