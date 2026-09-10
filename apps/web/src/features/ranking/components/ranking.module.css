@@ -1,3 +1,88 @@
+.toolbar {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.filterBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.filterBar .filters {
+  min-width: 0;
+  flex: 1;
+}
+
+.filterToggleWrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.filterToggleActive {
+  color: white;
+  background: var(--color-ocean-950);
+  border-color: var(--color-ocean-950);
+}
+
+.filterCount {
+  position: absolute;
+  top: -0.2rem;
+  right: -0.2rem;
+  display: grid;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.25rem;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  color: white;
+  background: var(--color-coral-500);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.advanced {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.advanced[hidden] {
+  display: none;
+}
+
+.advancedGroup {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  margin: 0;
+}
+
+.advancedGroup legend {
+  padding: 0;
+  margin: 0 0 var(--space-2);
+  color: var(--color-ocean-700);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.advancedOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.advancedFooter {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .filters {
   display: flex;
   flex-wrap: nowrap;

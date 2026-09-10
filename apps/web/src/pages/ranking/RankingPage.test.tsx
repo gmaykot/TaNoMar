@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { forecastFixture } from '@/features/forecast/fixtures/forecast';
+import { locationsFixture } from '@/features/locations/fixtures/locations';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { RankingPage } from './RankingPage';
 
-const { getForecast, authState } = vi.hoisted(() => ({
+const { getForecast, getLocations, authState } = vi.hoisted(() => ({
   getForecast: vi.fn(() => Promise.resolve(forecastFixture)),
+  getLocations: vi.fn(() => Promise.resolve(locationsFixture)),
   authState: {
     planCode: 'premium' as 'free' | 'premium',
     focus: null as string | null,
@@ -18,6 +20,10 @@ const { getForecast, authState } = vi.hoisted(() => ({
 vi.mock('@/features/forecast/services/forecastService', () => ({
   getForecast,
   getLocationForecast: () => Promise.resolve(null),
+}));
+
+vi.mock('@/features/locations/services/locationsService', () => ({
+  getLocations,
 }));
 
 vi.mock('@/features/auth/hooks/useAuth', () => ({
@@ -61,6 +67,8 @@ describe('RankingPage', () => {
     authState.visibleMetrics = undefined;
     getForecast.mockClear();
     getForecast.mockResolvedValue(forecastFixture);
+    getLocations.mockReset();
+    getLocations.mockResolvedValue(locationsFixture);
   });
 
   it('reordena o ranking quando a ênfase muda', async () => {
@@ -189,10 +197,19 @@ describe('RankingPage', () => {
       ),
     };
     getForecast.mockResolvedValue(shared);
+    getLocations.mockResolvedValue(
+      locationsFixture.map((item) =>
+        item.id === 'pantano_do_sul'
+          ? { ...item, isOwner: false, visibility: 'shared' as const }
+          : item,
+      ),
+    );
     renderWithProviders(<RankingPage />, ['/ranking']);
 
     expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
-    expect(screen.getByText('Compartilhado')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Pântano do Sul' }).closest('article'),
+    ).toHaveTextContent('Compartilhado');
     expect(screen.getByText('Meu local')).toBeInTheDocument();
     expect(screen.getAllByText('Meu local')).toHaveLength(1);
   });
@@ -252,5 +269,40 @@ describe('RankingPage', () => {
       screen.getByRole('button', { name: 'Vento. Toque para ordenar com menos vento.' }),
     ).toBeInTheDocument();
     expect(getForecast).toHaveBeenCalledWith(undefined);
+  });
+
+  it('abre os filtros avançados e recorta o ranking por região', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<RankingPage />, ['/ranking']);
+
+    expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Leste' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Filtros avançados' }));
+    await user.click(screen.getByRole('button', { name: 'Leste' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: 'Pântano do Sul' })).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('heading', { name: 'Molhe da Barra' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Joaquina' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Fechar filtros avançados, 1 filtro aplicado' }),
+    ).toBeInTheDocument();
+  });
+
+  it('recorta o ranking por tipo pela URL', async () => {
+    getLocations.mockResolvedValue(
+      locationsFixture.map((item) =>
+        item.id === 'lagoa-conceicao' ? { ...item, type: 'lagoa' } : item,
+      ),
+    );
+    renderWithProviders(<RankingPage />, ['/ranking?tipo=lagoa']);
+
+    expect(await screen.findByRole('heading', { name: 'Lagoa da Conceição' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: 'Pântano do Sul' })).not.toBeInTheDocument();
+    });
+    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(1);
   });
 });

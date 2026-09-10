@@ -30,6 +30,8 @@ Use alias `@/` para imports entre domínios e imports relativos dentro da mesma 
 
 Na interface, o ponto de pesca se chama **local** (plural **locais**): navegação, títulos, formulários, erros e atalhos. Não use “pesqueiro” nem “praia” para nomear essa entidade. O **tipo** (`praia`, `ilha`, `canal`, `lagoa`…) diz o que o ponto é. O **perfil** (`praia_aberta`, `praia_semi_aberta`, `praia_protegida`) descreve só a exposição; na UI use Aberta, Semiaberta e Protegida. A **região** do local é `norte`, `sul`, `leste`, `oeste`, `continente` ou `ilhas` — não use “Ilha de Santa Catarina” como região de um ponto. Identificadores de contrato (`fishing-spots`, `praia_aberta`) não mudam.
 
+O ranking em `/ranking` ordena pela nota da API. A ênfase (vento, chuva, ondas) só reordena. Os filtros avançados (ícone ao lado da ênfase) recortam a lista por tipo, região e exposição, sem recalcular a nota.
+
 O carimbo **Meu local** aparece só para o dono. Em local compartilhado, a comunidade vê **Compartilhado**; o dono continua vendo **Meu local**. O carimbo **Favorito** usa o mesmo padrão e pode aparecer junto de **Meu local** ou **Compartilhado**; não altera nota, ranking nem ordenação.
 
 A área comercial se chama **Assinatura**. Os planos pagos são **Arrais**, **Mestre** e **Capitão**. Não use “Premium” nem “Assinante” como nome do produto: assinante é quem já tem um plano pago. O código estável do Mestre continua `premium`. Bloqueios de recurso usam o rótulo **Assinatura**. Preço, cotas, módulos e disponibilidade são configurados pelo admin em `/admin/planos`; a tela `/premium` lê o catálogo em `GET /billing/catalog`. Um plano só desliga se não houver conta ativa nele.
