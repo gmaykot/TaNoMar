@@ -122,6 +122,6 @@ describe('AdminOfficialSpotsPage', () => {
 
     expect(await screen.findByText('Campeche')).toBeInTheDocument();
     await user.click(screen.getAllByRole('button', { name: 'Excluir' })[0]);
-    expect(deleteAdminOfficialLocation.mock.calls[0]?.[0]).toBe('campeche');
+    expect(deleteAdminOfficialLocation).toHaveBeenCalledWith('campeche', expect.anything());
   });
 });
