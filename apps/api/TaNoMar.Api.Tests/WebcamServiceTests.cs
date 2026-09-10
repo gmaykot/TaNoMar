@@ -104,6 +104,34 @@ public sealed class WebcamServiceTests
     }
 
     [Fact]
+    public async Task Capitao_nao_ve_camera_de_local_oficial_desabilitado()
+    {
+        using var db = WebcamTestHarness.CreateDb();
+        var user = WebcamTestHarness.User(PlanRules.Capitao);
+        var spot = WebcamTestHarness.Official();
+        spot.IsActive = false;
+        db.Users.Add(user);
+        db.FishingSpots.Add(spot);
+        await db.SaveChangesAsync();
+        db.FishingSpotWebcams.Add(new FishingSpotWebcam
+        {
+            FishingSpotId = spot.Id,
+            Provider = "windy",
+            ExternalId = "123456",
+            Name = "Campeche",
+            IsAvailable = true,
+            LastAvailabilityCheck = DateTimeOffset.UtcNow,
+            CreatedByUserId = user.Id
+        });
+        await db.SaveChangesAsync();
+        var service = WebcamTestHarness.CreateService(db, new FakeWebcamProvider());
+
+        var result = await service.ViewAsync(user, spot.Slug, CancellationToken.None);
+
+        Assert.Equal(404, result.Status);
+    }
+
+    [Fact]
     public async Task Free_recebe_403_sem_url()
     {
         using var db = WebcamTestHarness.CreateDb();

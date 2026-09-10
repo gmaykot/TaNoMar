@@ -4,7 +4,7 @@ import { Button } from '@/design-system/components/Button';
 import type { FishingLocation } from '@/features/fishing/types/fishing';
 import { routes } from '@/shared/constants/routes';
 import { islandWideRegion, resolveRegion } from '../regions';
-import type { PersonalSpotInput } from '../services/locationsService';
+import type { SpotFormValues } from '../services/locationsService';
 import { findSimilarLocation } from '../spotProximity';
 import type { PlaceSuggestion } from '../types/place';
 import { PlaceAutocomplete } from './PlaceAutocomplete';
@@ -23,7 +23,10 @@ interface SpotFormProps {
   submitLabel: string;
   pending: boolean;
   error: string | null;
-  onSubmit: (input: PersonalSpotInput) => void;
+  variant?: 'personal' | 'official';
+  isActive?: boolean;
+  isFreeDefault?: boolean;
+  onSubmit: (input: SpotFormValues) => void;
   onDelete?: () => void;
 }
 
@@ -33,9 +36,13 @@ export function SpotForm({
   submitLabel,
   pending,
   error,
+  variant = 'personal',
+  isActive: initialActive = true,
+  isFreeDefault: initialFreeDefault = false,
   onSubmit,
   onDelete,
 }: SpotFormProps) {
+  const official = variant === 'official';
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [placeQuery, setPlaceQuery] = useState(initial?.city ?? 'Florianópolis');
@@ -49,6 +56,8 @@ export function SpotForm({
     initial?.profile ?? 'praia_aberta',
   );
   const [shared, setShared] = useState(initial?.visibility === 'shared');
+  const [isActive, setIsActive] = useState(initialActive);
+  const [isFreeDefault, setIsFreeDefault] = useState(initialFreeDefault);
   const [geoError, setGeoError] = useState<string | null>(null);
   const latitudeValue = Number(latitude);
   const longitudeValue = Number(longitude);
@@ -111,7 +120,9 @@ export function SpotForm({
           longitude: lon,
           seaOrientationDegrees: Number.isFinite(seaOrientationDegrees) ? seaOrientationDegrees : 0,
           profile,
-          shared,
+          shared: official ? false : shared,
+          isActive,
+          isFreeDefault,
         });
       }}
     >
@@ -209,17 +220,44 @@ export function SpotForm({
           </select>
         </label>
       </div>
-      <label className={styles.choice}>
-        <input
-          type="checkbox"
-          checked={shared}
-          onChange={(event) => setShared(event.target.checked)}
-        />
-        <span>
-          Compartilhar com a comunidade
-          <small>O local fica privado até um admin aprovar a publicação.</small>
-        </span>
-      </label>
+      {official ? (
+        <>
+          <label className={styles.choice}>
+            <input
+              type="checkbox"
+              checked={isActive}
+              onChange={(event) => setIsActive(event.target.checked)}
+            />
+            <span>
+              Local habilitado
+              <small>Desligado, some do mapa, do ranking e das previsões.</small>
+            </span>
+          </label>
+          <label className={styles.choice}>
+            <input
+              type="checkbox"
+              checked={isFreeDefault}
+              onChange={(event) => setIsFreeDefault(event.target.checked)}
+            />
+            <span>
+              Aparece no plano Free
+              <small>Os demais planos pagos continuam vendo o local habilitado.</small>
+            </span>
+          </label>
+        </>
+      ) : (
+        <label className={styles.choice}>
+          <input
+            type="checkbox"
+            checked={shared}
+            onChange={(event) => setShared(event.target.checked)}
+          />
+          <span>
+            Compartilhar com a comunidade
+            <small>O local fica privado até um admin aprovar a publicação.</small>
+          </span>
+        </label>
+      )}
       {error ? <p className={styles.error}>{error}</p> : null}
       <div className={styles.actions}>
         <Button type="submit" disabled={pending || Boolean(similar)}>

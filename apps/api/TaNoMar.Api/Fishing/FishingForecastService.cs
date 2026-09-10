@@ -54,7 +54,10 @@ internal sealed class FishingForecastService
             return new FishingForecast(now, targetDate, results, errors);
 
         var query = _db.FishingSpots
-            .Where(spot => spot.Visibility == "official" || (spot.Visibility == "shared" && spot.IsApproved) || (userId.HasValue && spot.OwnerUserId == userId.Value));
+            .Where(spot =>
+                (spot.Visibility == "official" && spot.IsActive && (userId.HasValue || spot.IsFreeDefault))
+                || (spot.Visibility == "shared" && spot.IsApproved)
+                || (userId.HasValue && spot.OwnerUserId == userId.Value));
         if (onlySlugs is not null)
             query = query.Where(spot => onlySlugs.Contains(spot.Slug));
 
@@ -127,7 +130,7 @@ internal sealed class FishingForecastService
         var today = Today();
         var locations = await _db.FishingSpots
             .AsNoTracking()
-            .Where(spot => spot.Visibility == "official" || (spot.Visibility == "shared" && spot.IsApproved))
+            .Where(spot => (spot.Visibility == "official" && spot.IsActive) || (spot.Visibility == "shared" && spot.IsApproved))
             .Select(spot => new FishingLocation
             {
                 Id = spot.Slug,

@@ -6,8 +6,7 @@ import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { forecastPresentation } from '@/features/auth/appFocus';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { WebcamLiveView } from '@/features/webcam/components/WebcamCard';
-import { WebcamManager } from '@/features/webcam/components/WebcamManager';
-import { hasLiveWebcams, hasPlanModule, isAdmin, showsAppFocus } from '@/features/auth/types/auth';
+import { hasLiveWebcams, hasPlanModule, showsAppFocus } from '@/features/auth/types/auth';
 import { CommunityReports } from '@/features/community/components/CommunityReports';
 import { PlanTripAction } from '@/features/diary/components/PlanTripAction';
 import { SubscriptionGateDrawer } from '@/features/subscription/components/SubscriptionGateDrawer';
@@ -30,7 +29,6 @@ export function LocationDetailsPage() {
   const canDiary = hasPlanModule(auth.user, 'diary');
   const canConfigureWind = hasPlanModule(auth.user, 'customWind');
   const canWatchWebcams = hasLiveWebcams(auth.user);
-  const canManageWebcams = isAdmin(auth.user);
   const presentation = forecastPresentation(
     auth.user?.preferences,
     hasPlanModule(auth.user, 'customMetrics'),
@@ -200,9 +198,7 @@ export function LocationDetailsPage() {
           <Navigation size={24} />
         </div>
       </section>
-      {canManageWebcams ? (
-        <WebcamManager spotId={location.id} />
-      ) : canWatchWebcams && location.hasLiveWebcam ? (
+      {canWatchWebcams && location.hasLiveWebcam ? (
         <WebcamLiveView spotId={location.id} />
       ) : canWatchWebcams ? (
         <p className={styles.webcamEmpty}>Sem câmera ao vivo neste local.</p>

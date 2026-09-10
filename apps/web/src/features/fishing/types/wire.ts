@@ -80,6 +80,11 @@ export interface WireSpot {
   hasLiveWebcam?: boolean;
 }
 
+export interface WireAdminOfficialSpot extends WireSpot {
+  isActive: boolean;
+  isFreeDefault: boolean;
+}
+
 export interface WireBestHourWindow {
   time: string;
   score: number;

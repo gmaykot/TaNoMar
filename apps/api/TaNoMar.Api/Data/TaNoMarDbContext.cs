@@ -197,6 +197,8 @@ public sealed class FishingSpot
     public double? Longitude { get; set; }
     public double SeaOrientationDegrees { get; set; }
     public string Profile { get; set; } = "praia_aberta";
+    public bool IsActive { get; set; } = true;
+    public bool IsFreeDefault { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 

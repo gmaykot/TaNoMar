@@ -343,10 +343,11 @@ internal sealed class WebcamService(
         return settings is null || settings.ShowLiveWebcams;
     }
 
-    private Task<FishingSpot?> FindVisibleSpotAsync(string spotId, User user, CancellationToken cancellationToken) =>
-        db.FishingSpots.AsNoTracking().SingleOrDefaultAsync(
-            item => item.Slug == spotId && (item.Visibility == "official" || (item.Visibility == "shared" && item.IsApproved) || item.OwnerUserId == user.Id),
-            cancellationToken);
+    private async Task<FishingSpot?> FindVisibleSpotAsync(string spotId, User user, CancellationToken cancellationToken)
+    {
+        var spot = await db.FishingSpots.AsNoTracking().SingleOrDefaultAsync(item => item.Slug == spotId, cancellationToken);
+        return spot is not null && SpotRules.CanSee(spot, user) ? spot : null;
+    }
 
     private Task<FishingSpotWebcam?> ActiveLinkAsync(Guid fishingSpotId, CancellationToken cancellationToken) =>
         db.FishingSpotWebcams.SingleOrDefaultAsync(

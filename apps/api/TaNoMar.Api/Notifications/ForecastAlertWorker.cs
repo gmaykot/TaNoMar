@@ -41,6 +41,9 @@ internal sealed class ForecastAlertWorker(
                 var preference = await db.UserPreferences.AsNoTracking().SingleOrDefaultAsync(item => item.UserId == alert.UserId, cancellationToken);
                 if (preference?.ForecastNotifications == false) continue;
                 if (!spots.TryGetValue(alert.FishingSpotId, out var spot)) continue;
+                if (!SpotRules.Owns(spot, alert.UserId)
+                    && (!SpotRules.IsCommunityVisible(spot) || !SpotRules.IsIncludedInPlan(spot, planCode)))
+                    continue;
                 var daysAhead = alert.LeadHours <= 12 ? 0 : (alert.LeadHours + 23) / 24;
                 var date = fishing.Today().AddDays(daysAhead);
                 if (alert.LastNotifiedDate == date) continue;

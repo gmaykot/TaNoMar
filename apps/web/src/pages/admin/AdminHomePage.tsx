@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { BadgePercent, ClipboardCheck, Handshake, Shield, Users } from 'lucide-react';
+import { BadgePercent, ClipboardCheck, Handshake, MapPinned, Shield, Users } from 'lucide-react';
 import { showSaveConfirmation } from '@/app/layout/saveConfirmationEvents';
 import { locationsQueryKey } from '@/features/locations/hooks/useLocationMutations';
 import {
@@ -50,7 +50,7 @@ export function AdminHomePage() {
       <PageHeader
         eyebrow="Administração"
         title="Quem entra e o que a comunidade publica."
-        description="Locais compartilhados, contas, planos e parceiros."
+        description="Locais do sistema, moderação, contas, planos e parceiros."
       />
       <label className={formStyles.choice}>
         <input
@@ -81,8 +81,8 @@ export function AdminHomePage() {
         <span>
           Mostrar câmeras ao vivo
           <small>
-            Quando ligado, o plano Capitão vê as transmissões vinculadas. Admin continua
-            pesquisando e vinculando com a opção desligada.
+            Quando ligado, o plano Capitão vê as transmissões vinculadas. Admin continua pesquisando
+            e vinculando com a opção desligada.
           </small>
         </span>
       </label>
@@ -101,6 +101,15 @@ export function AdminHomePage() {
           <div>
             <strong>Auditoria de dados</strong>
             <small>Confira forecast, notas e fontes meteorológicas.</small>
+          </div>
+        </Link>
+        <Link className={adminStyles.shortcut} to={routes.adminOfficialSpots}>
+          <span>
+            <MapPinned size={18} aria-hidden="true" />
+          </span>
+          <div>
+            <strong>Locais do sistema</strong>
+            <small>Cadastre, habilite e marque os padrões do plano Free.</small>
           </div>
         </Link>
         <Link className={adminStyles.shortcut} to={routes.adminSpots}>

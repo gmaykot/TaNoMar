@@ -437,14 +437,14 @@ describe('LocationDetailsPage', () => {
     }
   });
 
-  it('Admin inclui câmera em qualquer local', async () => {
+  it('Admin não inclui câmera nos detalhes do local', async () => {
     authState.role = 'Admin';
     renderLocation();
     expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
     expect(
-      await screen.findByRole('button', { name: 'Procurar câmera próxima' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Incluir do YouTube' })).toBeInTheDocument();
+      screen.queryByRole('button', { name: 'Procurar câmera próxima' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Incluir do YouTube' })).not.toBeInTheDocument();
   });
 
   it('não mostra câmera nem convite no plano Free', async () => {

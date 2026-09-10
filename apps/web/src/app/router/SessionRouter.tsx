@@ -12,6 +12,8 @@ import { AdminHomePage } from '@/pages/admin/AdminHomePage';
 import { AdminAuditPage } from '@/pages/admin/AdminAuditPage';
 import { AdminPartnerFormPage } from '@/pages/admin/AdminPartnerFormPage';
 import { AdminPartnersPage } from '@/pages/admin/AdminPartnersPage';
+import { AdminOfficialSpotFormPage } from '@/pages/admin/AdminOfficialSpotFormPage';
+import { AdminOfficialSpotsPage } from '@/pages/admin/AdminOfficialSpotsPage';
 import { AdminPlansPage } from '@/pages/admin/AdminPlansPage';
 import { AdminSpotsPage } from '@/pages/admin/AdminSpotsPage';
 import { AdminUsersPage } from '@/pages/admin/AdminUsersPage';
@@ -59,6 +61,12 @@ export function SessionRouter() {
                 <Route path={routes.admin} element={<AdminHomePage />} />
                 <Route path={routes.adminAudit} element={<AdminAuditPage />} />
                 <Route path={routes.adminSpots} element={<AdminSpotsPage />} />
+                <Route path={routes.adminOfficialSpots} element={<AdminOfficialSpotsPage />} />
+                <Route path={routes.adminOfficialSpotNew} element={<AdminOfficialSpotFormPage />} />
+                <Route
+                  path="/admin/locais-sistema/:locationId"
+                  element={<AdminOfficialSpotFormPage />}
+                />
                 <Route path={routes.adminUsers} element={<AdminUsersPage />} />
                 <Route path={routes.adminPlans} element={<AdminPlansPage />} />
                 <Route path={routes.adminPartners} element={<AdminPartnersPage />} />

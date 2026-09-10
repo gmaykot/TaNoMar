@@ -4,16 +4,16 @@ Feature exclusiva do plano **Capitão**, ligada pelo módulo `liveWebcams` em `P
 
 ## Responsabilidades
 
-| Peça | Onde | Papel |
-| --- | --- | --- |
-| `WebcamService` | `apps/api/TaNoMar.Api/Webcams/WebcamService.cs` | Autorização, vínculo 1:1, cache de disponibilidade e DTOs. Não fala com a Windy |
-| `WebcamProviderCatalog` | `apps/api/TaNoMar.Api/Webcams/WebcamProviderCatalog.cs` | Resolve o `IWebcamProvider` pelo `Provider` persistido |
-| `IWebcamProvider` | `apps/api/TaNoMar.Api/Webcams/IWebcamProvider.cs` | Pesquisa, lookup e detalhes. Não conhece local nem plano |
-| `WindyWebcamProvider` | `apps/api/TaNoMar.Api/Webcams/WindyWebcamProvider.cs` | HTTP para a Windy Webcams API v3 (proximidade) |
-| `YouTubeWebcamProvider` | `apps/api/TaNoMar.Api/Webcams/YouTubeWebcamProvider.cs` | HTTP para a YouTube Data API v3 (admin, por link) |
-| `FishingSpotWebcam` | `apps/api/TaNoMar.Api/Data/TaNoMarDbContext.cs` | Persistência: `Provider` + `ExternalId`. URL não é identidade |
-| Endpoints | `apps/api/TaNoMar.Api/Webcams/WebcamEndpoints.cs` | Minimal API sob `/api/v1` |
-| UI | `apps/web/src/features/webcam` | Card, player expandido (vire o celular para preencher), pesquisa, gestão, convite do Capitão e aviso de que a transmissão é de terceiros, sem garantia de manutenção ou disponibilidade |
+| Peça                    | Onde                                                    | Papel                                                                                                                                                                                   |
+| ----------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `WebcamService`         | `apps/api/TaNoMar.Api/Webcams/WebcamService.cs`         | Autorização, vínculo 1:1, cache de disponibilidade e DTOs. Não fala com a Windy                                                                                                         |
+| `WebcamProviderCatalog` | `apps/api/TaNoMar.Api/Webcams/WebcamProviderCatalog.cs` | Resolve o `IWebcamProvider` pelo `Provider` persistido                                                                                                                                  |
+| `IWebcamProvider`       | `apps/api/TaNoMar.Api/Webcams/IWebcamProvider.cs`       | Pesquisa, lookup e detalhes. Não conhece local nem plano                                                                                                                                |
+| `WindyWebcamProvider`   | `apps/api/TaNoMar.Api/Webcams/WindyWebcamProvider.cs`   | HTTP para a Windy Webcams API v3 (proximidade)                                                                                                                                          |
+| `YouTubeWebcamProvider` | `apps/api/TaNoMar.Api/Webcams/YouTubeWebcamProvider.cs` | HTTP para a YouTube Data API v3 (admin, por link)                                                                                                                                       |
+| `FishingSpotWebcam`     | `apps/api/TaNoMar.Api/Data/TaNoMarDbContext.cs`         | Persistência: `Provider` + `ExternalId`. URL não é identidade                                                                                                                           |
+| Endpoints               | `apps/api/TaNoMar.Api/Webcams/WebcamEndpoints.cs`       | Minimal API sob `/api/v1`                                                                                                                                                               |
+| UI                      | `apps/web/src/features/webcam`                          | Card, player expandido (vire o celular para preencher), pesquisa, gestão, convite do Capitão e aviso de que a transmissão é de terceiros, sem garantia de manutenção ou disponibilidade |
 
 O frontend **não** envia URL, embed ou stream. A vinculação envia só `{ provider, externalId }`. O backend consulta o provider de novo antes de gravar.
 
@@ -33,7 +33,7 @@ Metadado opcional de origem: `providerDisplayName`. Windy vale `"Windy"`; YouTub
 
 ## Quem faz o quê
 
-- **Admin**: pesquisa Windy por proximidade, consulta live do YouTube pelo link, seleciona, troca e remove a câmera de qualquer local (`/admin/fishing-spots/{id}/…`). Liga ou desliga a feature em `/admin` (`Mostrar câmeras ao vivo`). Só o perfil Admin inclui câmera.
+- **Admin**: pesquisa Windy por proximidade, consulta live do YouTube pelo link, seleciona, troca e remove a câmera dos locais do sistema em `/admin/locais-sistema`. Liga ou desliga a feature em `/admin` (`Mostrar câmeras ao vivo`). Só o perfil Admin inclui câmera. A página de detalhes do local não gerencia vínculo.
 - **Capitão**: vê a transmissão de um local que já tem câmera válida (`GET /fishing-spots/{id}/webcam`), se a feature estiver ligada. Não pesquisa, vincula nem remove câmera.
 - **Demais planos**: `403` nesse GET. O DTO do local pode trazer `hasLiveWebcam` (booleano, sem URL). A web não mostra câmera nem convite no detalhe do local sem `modules.liveWebcams`.
 
@@ -87,10 +87,10 @@ O catálogo aceita novas implementações de `IWebcamProvider` sem migration est
 
 Previsto, **sem código nesta entrega**:
 
-| Id | Classe | Uso |
-| --- | --- | --- |
-| `partner` | `PartnerWebcamProvider` | Câmeras de parceiros locais |
-| `custom` | — | Fonte própria, ainda via seleção no backend |
+| Id        | Classe                  | Uso                                         |
+| --------- | ----------------------- | ------------------------------------------- |
+| `partner` | `PartnerWebcamProvider` | Câmeras de parceiros locais                 |
+| `custom`  | —                       | Fonte própria, ainda via seleção no backend |
 
 Câmeras parceiras poderão vir de pousadas, marinas, lojas de pesca, restaurantes, empresas de monitoramento de praias e redes de webcams. O `PartnerWebcamProvider` devolveria `providerDisplayName` com o nome do parceiro (ex.: "Parceiro XYZ") para a UI mostrar "Câmera fornecida por". **Não implementar agora.**
 

@@ -2,6 +2,7 @@ import type {
   FishingClassification,
   FishingForecast,
   FishingLocation,
+  AdminOfficialLocation,
   FishingMetric,
   ForecastDay,
   ForecastHourWindow,
@@ -22,6 +23,7 @@ import type {
   WireOptionalMetric,
   WireRankingForecast,
   WireSpot,
+  WireAdminOfficialSpot,
   WireTideValue,
   WireBestHourWindow,
 } from '../types/wire';
@@ -254,6 +256,14 @@ export function mapLocation(spot: WireSpot): FishingLocation {
     isApproved: spot.isApproved,
     isOwner: spot.isOwner,
     hasLiveWebcam: spot.hasLiveWebcam === true,
+  };
+}
+
+export function mapAdminOfficialLocation(spot: WireAdminOfficialSpot): AdminOfficialLocation {
+  return {
+    ...mapLocation(spot),
+    isActive: spot.isActive,
+    isFreeDefault: spot.isFreeDefault,
   };
 }
 

@@ -99,6 +99,11 @@ export interface FishingLocation {
   hasLiveWebcam: boolean;
 }
 
+export interface AdminOfficialLocation extends FishingLocation {
+  isActive: boolean;
+  isFreeDefault: boolean;
+}
+
 export interface LocationForecast {
   location: FishingLocation;
   days: Array<Omit<ForecastDay, 'ranking'> & { forecast: ForecastRankingItem }>;

@@ -49,6 +49,10 @@ describe('AdminHomePage', () => {
       'href',
       '/admin/auditoria',
     );
+    expect(screen.getByRole('link', { name: /Locais do sistema/ })).toHaveAttribute(
+      'href',
+      '/admin/locais-sistema',
+    );
     expect(screen.getByRole('link', { name: /Moderação/ })).toHaveAttribute(
       'href',
       '/admin/locais',

@@ -9,6 +9,7 @@ import type {
   WireMarineSeries,
   WireRankingForecast,
   WireSpot,
+  WireAdminOfficialSpot,
   WireTideValue,
 } from '../types/wire';
 
@@ -243,6 +244,21 @@ export function parseSpot(value: unknown): WireSpot {
     isOwner: readBoolean(value.isOwner) ?? false,
     hasLiveWebcam: readBoolean(value.hasLiveWebcam) ?? false,
   };
+}
+
+export function parseAdminOfficialSpot(value: unknown): WireAdminOfficialSpot {
+  const spot = parseSpot(value);
+  if (!isRecord(value)) throw new ContractError('Local inválido.');
+  return {
+    ...spot,
+    isActive: readBoolean(value.isActive) ?? true,
+    isFreeDefault: readBoolean(value.isFreeDefault) ?? false,
+  };
+}
+
+export function parseAdminOfficialSpotList(value: unknown) {
+  if (!Array.isArray(value)) throw new ContractError('Lista de locais inválida.');
+  return value.map(parseAdminOfficialSpot);
 }
 
 export function parseSpotList(value: unknown) {

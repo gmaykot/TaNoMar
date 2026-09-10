@@ -1,7 +1,12 @@
 import { apiRequest } from '@/shared/api/client';
-import { mapLocation } from '@/features/fishing/mappers/forecastMapper';
-import { parseSpot, parseSpotList } from '@/features/fishing/mappers/wireGuards';
-import type { FishingLocation } from '@/features/fishing/types/fishing';
+import { mapAdminOfficialLocation, mapLocation } from '@/features/fishing/mappers/forecastMapper';
+import {
+  parseAdminOfficialSpot,
+  parseAdminOfficialSpotList,
+  parseSpot,
+  parseSpotList,
+} from '@/features/fishing/mappers/wireGuards';
+import type { AdminOfficialLocation, FishingLocation } from '@/features/fishing/types/fishing';
 
 export interface PersonalSpotInput {
   name: string;
@@ -14,6 +19,25 @@ export interface PersonalSpotInput {
   shared: boolean;
   seaOrientationDegrees: number;
   profile: FishingLocation['profile'];
+}
+
+export interface OfficialSpotInput {
+  name: string;
+  latitude: number;
+  longitude: number;
+  description?: string;
+  city?: string;
+  state?: string;
+  region?: string;
+  seaOrientationDegrees: number;
+  profile: FishingLocation['profile'];
+  isActive: boolean;
+  isFreeDefault: boolean;
+}
+
+export interface SpotFormValues extends PersonalSpotInput {
+  isActive: boolean;
+  isFreeDefault: boolean;
 }
 
 export async function getLocations(): Promise<FishingLocation[]> {
@@ -80,4 +104,57 @@ export async function approveLocation(id: string) {
 
 export async function rejectLocation(id: string) {
   await apiRequest(`/admin/fishing-spots/${encodeURIComponent(id)}/reject`, { method: 'POST' });
+}
+
+export async function getAdminOfficialLocations(): Promise<AdminOfficialLocation[]> {
+  return parseAdminOfficialSpotList(await apiRequest('/admin/fishing-spots')).map(
+    mapAdminOfficialLocation,
+  );
+}
+
+function officialPayload(input: OfficialSpotInput) {
+  return {
+    name: input.name,
+    latitude: input.latitude,
+    longitude: input.longitude,
+    description: input.description,
+    city: input.city,
+    state: input.state,
+    region: input.region,
+    seaOrientationDegrees: input.seaOrientationDegrees,
+    profile: input.profile,
+    isActive: input.isActive,
+    isFreeDefault: input.isFreeDefault,
+  };
+}
+
+export async function createAdminOfficialLocation(
+  input: OfficialSpotInput,
+): Promise<AdminOfficialLocation> {
+  return mapAdminOfficialLocation(
+    parseAdminOfficialSpot(
+      await apiRequest('/admin/fishing-spots', {
+        method: 'POST',
+        body: JSON.stringify(officialPayload(input)),
+      }),
+    ),
+  );
+}
+
+export async function updateAdminOfficialLocation(
+  id: string,
+  input: OfficialSpotInput,
+): Promise<AdminOfficialLocation> {
+  return mapAdminOfficialLocation(
+    parseAdminOfficialSpot(
+      await apiRequest(`/admin/fishing-spots/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: JSON.stringify(officialPayload(input)),
+      }),
+    ),
+  );
+}
+
+export async function deleteAdminOfficialLocation(id: string) {
+  await apiRequest(`/admin/fishing-spots/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }

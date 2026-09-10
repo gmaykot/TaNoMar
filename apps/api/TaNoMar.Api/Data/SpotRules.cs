@@ -1,3 +1,7 @@
+using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
+
 namespace TaNoMar.Api.Data;
 
 internal static class SpotRules
@@ -6,12 +10,17 @@ internal static class SpotRules
     public static readonly string[] ReportTypes = ["condicao", "perigo"];
 
     public static bool CanSee(FishingSpot spot, User user) =>
-        spot.Visibility == "official"
-        || (spot.Visibility == "shared" && spot.IsApproved)
-        || spot.OwnerUserId == user.Id;
+        Owns(spot, user)
+        || (IsCommunityVisible(spot) && IsIncludedInPlan(spot, user.PlanCode));
 
     public static bool IsCommunityVisible(FishingSpot spot) =>
-        spot.Visibility == "official" || (spot.Visibility == "shared" && spot.IsApproved);
+        (spot.Visibility == "official" && spot.IsActive)
+        || (spot.Visibility == "shared" && spot.IsApproved);
+
+    public static bool IsIncludedInPlan(FishingSpot spot, string? planCode) =>
+        spot.Visibility != "official"
+        || spot.IsFreeDefault
+        || PlanRules.IsPaid(planCode);
 
     public static bool EnabledByDefault(FishingSpot spot) =>
         IsCommunityVisible(spot) || spot.OwnerUserId is not null;
@@ -33,10 +42,28 @@ internal static class SpotRules
     public static bool IsAdmin(User user) =>
         string.Equals(user.Role, "Admin", StringComparison.Ordinal);
 
-    public static bool Owns(FishingSpot spot, User user) => spot.OwnerUserId == user.Id;
+    public static bool Owns(FishingSpot spot, User user) => Owns(spot, user.Id);
+
+    public static bool Owns(FishingSpot spot, Guid userId) => spot.OwnerUserId == userId;
 
     public static string NormalizeProfile(string? profile) =>
         profile is not null && Profiles.Contains(profile, StringComparer.Ordinal) ? profile : "praia_aberta";
+
+    public static string Slugify(string name)
+    {
+        var normalized = name.Trim().ToLowerInvariant().Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder(normalized.Length);
+        foreach (var character in normalized)
+        {
+            var category = CharUnicodeInfo.GetUnicodeCategory(character);
+            if (category == UnicodeCategory.NonSpacingMark) continue;
+            if (char.IsLetterOrDigit(character)) builder.Append(character);
+            else if (character is ' ' or '-' or '_') builder.Append('-');
+        }
+
+        var slug = Regex.Replace(builder.ToString().Normalize(NormalizationForm.FormC), "-{2,}", "-").Trim('-');
+        return string.IsNullOrWhiteSpace(slug) ? "local" : slug;
+    }
 
     public static bool ForecastInputsChanged(FishingSpot spot, double latitude, double longitude, double seaOrientationDegrees, string? profile)
     {
