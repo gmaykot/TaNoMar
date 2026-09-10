@@ -14,6 +14,8 @@ import { DayCarousel } from '@/features/forecast/components/DayCarousel';
 import { ForecastPresentation } from '@/features/forecast/components/ForecastPresentation';
 import { useLocationForecast } from '@/features/forecast/hooks/useForecast';
 import { LocationStampFor } from '@/features/locations/components/LocationStamp';
+import { regionLabel } from '@/features/locations/regions';
+import { spotTypeLabel } from '@/features/locations/spotCatalog';
 import { IdealWindPreference } from '@/features/locations/components/IdealWindPreference';
 import { useLocationMutations } from '@/features/locations/hooks/useLocationMutations';
 import { routes } from '@/shared/constants/routes';
@@ -180,7 +182,8 @@ export function LocationDetailsPage() {
         />
         <div className={styles.locationIntro}>
           <span>
-            <MapPin size={16} aria-hidden="true" /> {location.region}
+            <MapPin size={16} aria-hidden="true" /> {spotTypeLabel(location.type)} ·{' '}
+            {regionLabel(location.region)}
           </span>
           <h1>{location.name}</h1>
           <p>

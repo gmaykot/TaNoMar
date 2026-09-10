@@ -66,11 +66,14 @@ export interface WireSpot {
   state: string;
   region: string;
   type: string;
+  fishingEnvironment?: string | null;
+  accessType?: string | null;
+  restrictionNotes?: string | null;
   visibility: string;
   profile: string;
   latitude: number | null;
   longitude: number | null;
-  seaOrientationDegrees: number;
+  seaOrientationDegrees: number | null;
   idealWindDirectionDegrees?: number | null;
   isFavorite: boolean;
   isEnabled: boolean;

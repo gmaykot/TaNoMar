@@ -341,8 +341,9 @@ api.MapPost("/fishing-spots", async (PersonalSpotRequest request, ClaimsPrincipa
     var currentCount = await db.FishingSpots.CountAsync(spot => spot.OwnerUserId == user.Id, cancellationToken);
     if (currentCount >= plan.MaxPersonalSpots) return Results.Conflict(new { code = "plan_limit", detail = "Seu plano não permite mais locais pessoais." });
     if (request.Latitude is null || request.Longitude is null || string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Region)) return Results.BadRequest(new { detail = "Nome, região e coordenadas são obrigatórios." });
+    if (!SpotRules.IsValidSpotRegion(request.Region)) return Results.BadRequest(new { detail = "Informe uma região válida: norte, sul, leste, oeste, continente ou ilhas." });
     var existingSpots = await db.FishingSpots.AsNoTracking().ToListAsync(cancellationToken);
-    if (IsDuplicateSpot(existingSpots, request.Name.Trim(), request.Latitude.Value, request.Longitude.Value))
+    if (IsDuplicateSpot(existingSpots, request.Name.Trim(), request.Latitude, request.Longitude))
         return Results.Conflict(new { code = "duplicate_spot", detail = "Já existe um local com esse nome ou muito próximo." });
     var shared = request.Shared;
     var spot = new FishingSpot
@@ -352,14 +353,16 @@ api.MapPost("/fishing-spots", async (PersonalSpotRequest request, ClaimsPrincipa
         Description = request.Description,
         City = request.City ?? "",
         State = request.State ?? "SC",
-        Region = request.Region.Trim(),
-        Type = "personalizado",
+        Region = SpotRules.NormalizeRegion(request.Region),
+        Type = SpotRules.NormalizeType(null),
+        FishingEnvironment = SpotRules.DefaultFishingEnvironment,
+        AccessType = SpotRules.DefaultAccessType,
         Visibility = shared ? "shared" : "private",
         IsApproved = !shared,
         OwnerUserId = user.Id,
         Latitude = request.Latitude,
         Longitude = request.Longitude,
-        SeaOrientationDegrees = request.SeaOrientationDegrees ?? 0,
+        SeaOrientationDegrees = request.SeaOrientationDegrees,
         Profile = SpotRules.NormalizeProfile(request.Profile)
     };
     db.FishingSpots.Add(spot);
@@ -377,14 +380,15 @@ api.MapPut("/fishing-spots/{id}", async (string id, PersonalSpotRequest request,
     if (spot is null) return Results.NotFound();
     if (!SpotRules.Owns(spot, user) || spot.Visibility == "official") return Results.Forbid();
     if (request.Latitude is null || request.Longitude is null || string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Region)) return Results.BadRequest(new { detail = "Nome, região e coordenadas são obrigatórios." });
+    if (!SpotRules.IsValidSpotRegion(request.Region)) return Results.BadRequest(new { detail = "Informe uma região válida: norte, sul, leste, oeste, continente ou ilhas." });
     var others = await db.FishingSpots.AsNoTracking().Where(item => item.Id != spot.Id).ToListAsync(cancellationToken);
-    if (IsDuplicateSpot(others, request.Name.Trim(), request.Latitude.Value, request.Longitude.Value))
+    if (IsDuplicateSpot(others, request.Name.Trim(), request.Latitude, request.Longitude))
         return Results.Conflict(new { code = "duplicate_spot", detail = "Já existe um local com esse nome ou muito próximo." });
     var forecastInputsChanged = SpotRules.ForecastInputsChanged(
         spot,
-        request.Latitude.Value,
-        request.Longitude.Value,
-        request.SeaOrientationDegrees ?? spot.SeaOrientationDegrees,
+        request.Latitude,
+        request.Longitude,
+        request.SeaOrientationDegrees,
         request.Profile);
     ApplyPersonalSpot(spot, request);
     await db.SaveChangesAsync(cancellationToken);
@@ -537,15 +541,14 @@ api.MapPost("/admin/fishing-spots", async (OfficialSpotRequest request, ClaimsPr
     var invalid = ValidateOfficialSpot(request);
     if (invalid is not null) return invalid;
     var existingSpots = await db.FishingSpots.AsNoTracking().ToListAsync(cancellationToken);
-    if (IsDuplicateSpot(existingSpots, request.Name.Trim(), request.Latitude!.Value, request.Longitude!.Value))
+    if (IsDuplicateSpot(existingSpots, request.Name.Trim(), request.Latitude, request.Longitude))
         return Results.Conflict(new { code = "duplicate_spot", detail = "Já existe um local com esse nome ou muito próximo." });
     var usedSlugs = existingSpots.Select(item => item.Slug).ToList();
     var spot = new FishingSpot
     {
         Slug = UniqueOfficialSlug(request.Name, usedSlugs),
         Visibility = "official",
-        IsApproved = true,
-        Type = "praia"
+        IsApproved = true
     };
     ApplyOfficialSpot(spot, request);
     db.FishingSpots.Add(spot);
@@ -564,13 +567,13 @@ api.MapPut("/admin/fishing-spots/{id}", async (string id, OfficialSpotRequest re
     var spot = await db.FishingSpots.SingleOrDefaultAsync(item => item.Slug == id && item.Visibility == "official", cancellationToken);
     if (spot is null) return Results.NotFound();
     var others = await db.FishingSpots.AsNoTracking().Where(item => item.Id != spot.Id).ToListAsync(cancellationToken);
-    if (IsDuplicateSpot(others, request.Name.Trim(), request.Latitude!.Value, request.Longitude!.Value))
+    if (IsDuplicateSpot(others, request.Name.Trim(), request.Latitude, request.Longitude))
         return Results.Conflict(new { code = "duplicate_spot", detail = "Já existe um local com esse nome ou muito próximo." });
     var forecastInputsChanged = SpotRules.ForecastInputsChanged(
         spot,
-        request.Latitude.Value,
-        request.Longitude.Value,
-        request.SeaOrientationDegrees ?? spot.SeaOrientationDegrees,
+        request.Latitude,
+        request.Longitude,
+        request.SeaOrientationDegrees,
         request.Profile);
     var becameActive = !spot.IsActive && request.IsActive;
     ApplyOfficialSpot(spot, request);
@@ -1116,6 +1119,7 @@ api.MapGet("/fishing-spots/{id}/marine", async (string id, DateOnly? date, Claim
     var dayOffset = targetDate.DayNumber - fishing.Today().DayNumber;
     if (dayOffset < 0 || dayOffset >= plan.MaxForecastDays) return Results.BadRequest(new { detail = "Data fora da janela do plano." });
     if (!plan.CanMarine) return Results.Ok(MarineLockedDto(spot.Slug, targetDate));
+    if (!SpotRules.HasCoordinates(spot)) return Results.NotFound();
     var location = new FishingLocation
     {
         Id = spot.Slug,
@@ -1510,6 +1514,9 @@ static object SpotDtoProjection(FishingSpot spot, User user, bool favorite = fal
         state = spot.State,
         region = spot.Region,
         type = spot.Type,
+        fishingEnvironment = spot.FishingEnvironment,
+        accessType = spot.AccessType,
+        restrictionNotes = spot.RestrictionNotes,
         visibility = spot.Visibility,
         profile = spot.Profile,
         latitude = spot.Latitude,
@@ -1535,6 +1542,9 @@ static object AdminOfficialSpotDto(FishingSpot spot, User actor, bool hasLiveWeb
     state = spot.State,
     region = spot.Region,
     type = spot.Type,
+    fishingEnvironment = spot.FishingEnvironment,
+    accessType = spot.AccessType,
+    restrictionNotes = spot.RestrictionNotes,
     visibility = spot.Visibility,
     profile = spot.Profile,
     latitude = spot.Latitude,
@@ -1552,8 +1562,18 @@ static object AdminOfficialSpotDto(FishingSpot spot, User actor, bool hasLiveWeb
 
 static IResult? ValidateOfficialSpot(OfficialSpotRequest request)
 {
-    if (request.Latitude is null || request.Longitude is null || string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Region))
-        return Results.BadRequest(new { detail = "Nome, região e coordenadas são obrigatórios." });
+    if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Region))
+        return Results.BadRequest(new { detail = "Nome e região são obrigatórios." });
+    if (!SpotRules.IsValidSpotRegion(request.Region))
+        return Results.BadRequest(new { detail = "Informe uma região válida: norte, sul, leste, oeste, continente ou ilhas." });
+    if (request.Latitude is null != request.Longitude is null)
+        return Results.BadRequest(new { detail = "Latitude e longitude devem ser informadas juntas." });
+    if (request.Type is not null && !SpotRules.Types.Contains(request.Type, StringComparer.Ordinal))
+        return Results.BadRequest(new { detail = "Tipo de local inválido." });
+    if (request.FishingEnvironment is not null && !SpotRules.FishingEnvironments.Contains(request.FishingEnvironment, StringComparer.Ordinal))
+        return Results.BadRequest(new { detail = "Ambiente de pesca inválido." });
+    if (request.AccessType is not null && !SpotRules.AccessTypes.Contains(request.AccessType, StringComparer.Ordinal))
+        return Results.BadRequest(new { detail = "Tipo de acesso inválido." });
     return null;
 }
 
@@ -1563,17 +1583,20 @@ static void ApplyOfficialSpot(FishingSpot spot, OfficialSpotRequest request)
     spot.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
     spot.City = request.City?.Trim() ?? spot.City;
     spot.State = string.IsNullOrWhiteSpace(request.State) ? (string.IsNullOrWhiteSpace(spot.State) ? "SC" : spot.State) : request.State.Trim();
-    spot.Region = request.Region!.Trim();
+    spot.Region = SpotRules.NormalizeRegion(request.Region);
     spot.Latitude = request.Latitude;
     spot.Longitude = request.Longitude;
-    spot.SeaOrientationDegrees = request.SeaOrientationDegrees ?? spot.SeaOrientationDegrees;
+    spot.SeaOrientationDegrees = request.SeaOrientationDegrees;
     spot.Profile = SpotRules.NormalizeProfile(request.Profile);
+    spot.Type = SpotRules.NormalizeType(request.Type ?? spot.Type);
+    spot.FishingEnvironment = SpotRules.NormalizeFishingEnvironment(request.FishingEnvironment ?? spot.FishingEnvironment);
+    spot.AccessType = SpotRules.NormalizeAccessType(request.AccessType ?? spot.AccessType);
+    spot.RestrictionNotes = SpotRules.NormalizeRestrictionNotes(request.RestrictionNotes);
     spot.IsActive = request.IsActive;
     spot.IsFreeDefault = request.IsFreeDefault;
     spot.Visibility = "official";
     spot.IsApproved = true;
     spot.OwnerUserId = null;
-    spot.Type = "praia";
 }
 
 static string UniqueOfficialSlug(string name, IReadOnlyCollection<string> used)
@@ -1680,9 +1703,13 @@ static async Task WriteSseEvent(HttpContext context, SemaphoreSlim gate, object 
         gate.Release();
     }
 }
-static bool IsDuplicateSpot(IEnumerable<FishingSpot> spots, string name, double latitude, double longitude) =>
+static bool IsDuplicateSpot(IEnumerable<FishingSpot> spots, string name, double? latitude, double? longitude) =>
     spots.Any(spot => spot.Name.Equals(name, StringComparison.OrdinalIgnoreCase)
-        || (spot.Latitude != null && spot.Longitude != null && DistanceMeters(spot.Latitude.Value, spot.Longitude.Value, latitude, longitude) <= 200));
+        || (latitude is not null
+            && longitude is not null
+            && spot.Latitude != null
+            && spot.Longitude != null
+            && DistanceMeters(spot.Latitude.Value, spot.Longitude.Value, latitude.Value, longitude.Value) <= 200));
 static void ApplyPersonalSpot(FishingSpot spot, PersonalSpotRequest request)
 {
     var shared = request.Shared;
@@ -1690,10 +1717,10 @@ static void ApplyPersonalSpot(FishingSpot spot, PersonalSpotRequest request)
     spot.Description = request.Description;
     spot.City = request.City ?? spot.City;
     spot.State = request.State ?? spot.State;
-    spot.Region = request.Region!.Trim();
+    spot.Region = SpotRules.NormalizeRegion(request.Region);
     spot.Latitude = request.Latitude;
     spot.Longitude = request.Longitude;
-    spot.SeaOrientationDegrees = request.SeaOrientationDegrees ?? spot.SeaOrientationDegrees;
+    spot.SeaOrientationDegrees = request.SeaOrientationDegrees;
     spot.Profile = SpotRules.NormalizeProfile(request.Profile);
     if (shared)
     {
@@ -2050,7 +2077,7 @@ record FavoriteRequest(string SpotId, bool IsFavorite);
 record EnabledSpotRequest(string SpotId, bool IsEnabled);
 record IdealWindRequest(string SpotId, int? IdealWindDirectionDegrees);
 record PersonalSpotRequest(string Name, double? Latitude, double? Longitude, string? Description, string? City, string? State, string? Region, bool Shared, double? SeaOrientationDegrees, string? Profile);
-record OfficialSpotRequest(string Name, double? Latitude, double? Longitude, string? Description, string? City, string? State, string? Region, double? SeaOrientationDegrees, string? Profile, bool IsActive = true, bool IsFreeDefault = false);
+record OfficialSpotRequest(string Name, double? Latitude, double? Longitude, string? Description, string? City, string? State, string? Region, double? SeaOrientationDegrees, string? Profile, string? Type, string? FishingEnvironment, string? AccessType, string? RestrictionNotes, bool IsActive = true, bool IsFreeDefault = false);
 record CommunityReportRequest(string SpotId, string Type, string? Comment);
 record PushSubscriptionRequest(string? Endpoint, string? P256dh, string? Auth);
 record AdminPlanRequest(string PlanCode);

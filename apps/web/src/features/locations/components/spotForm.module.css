@@ -19,10 +19,28 @@
   line-height: 1.45;
 }
 
-.form {
+.group {
   display: grid;
   min-width: 0;
   gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.group legend {
+  padding: 0;
+  margin-bottom: var(--space-1);
+  color: var(--color-ocean-950);
+  font-size: var(--font-size-sm);
+  font-weight: 750;
+}
+
+.groupHint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
 }
 
 .field {

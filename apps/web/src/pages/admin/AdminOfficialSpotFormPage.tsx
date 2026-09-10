@@ -13,6 +13,7 @@ import { locationsQueryKey } from '@/features/locations/hooks/useLocationMutatio
 import {
   createAdminOfficialLocation,
   deleteAdminOfficialLocation,
+  toOfficialSpotInput,
   updateAdminOfficialLocation,
   type OfficialSpotInput,
   type SpotFormValues,
@@ -24,19 +25,7 @@ import { routes } from '@/shared/constants/routes';
 import styles from '@/pages/shared/pages.module.css';
 
 function toOfficialInput(input: SpotFormValues): OfficialSpotInput {
-  return {
-    name: input.name,
-    latitude: input.latitude,
-    longitude: input.longitude,
-    description: input.description,
-    city: input.city,
-    state: input.state,
-    region: input.region,
-    seaOrientationDegrees: input.seaOrientationDegrees,
-    profile: input.profile,
-    isActive: input.isActive,
-    isFreeDefault: input.isFreeDefault,
-  };
+  return toOfficialSpotInput(input);
 }
 
 export function AdminOfficialSpotFormPage() {
@@ -100,9 +89,8 @@ export function AdminOfficialSpotFormPage() {
       <PageHeader
         eyebrow="Administração"
         title={isNew ? 'Novo local do sistema' : `Editar ${editing?.name ?? 'local'}`}
-        description="Os mesmos dados de Meus locais, com habilitação, plano Free e câmera ao vivo."
+        description="Identificação, localização, exposição para a previsão, acesso, plano Free e câmera ao vivo."
       />
-      {editing ? <WebcamManager spotId={editing.id} /> : null}
       <SpotForm
         variant="official"
         initial={editing}
@@ -124,6 +112,7 @@ export function AdminOfficialSpotFormPage() {
             : undefined
         }
       />
+      {editing ? <WebcamManager spotId={editing.id} /> : null}
     </div>
   );
 }

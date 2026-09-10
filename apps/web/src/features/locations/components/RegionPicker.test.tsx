@@ -8,7 +8,9 @@ describe('RegionPicker', () => {
   it('mostra a ilha e troca a região ao tocar um setor', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    renderWithProviders(<RegionPicker value="Florianópolis" onChange={onChange} />);
+    renderWithProviders(
+      <RegionPicker mode="preference" value="Florianópolis" onChange={onChange} />,
+    );
 
     expect(screen.getByRole('button', { name: 'Toda a ilha' })).toHaveAttribute(
       'aria-pressed',
@@ -16,13 +18,13 @@ describe('RegionPicker', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'Sul da ilha' }));
-    expect(onChange).toHaveBeenCalledWith('Sul da ilha');
+    expect(onChange).toHaveBeenCalledWith('sul');
   });
 
   it('acumula setores na preferência da conta', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    renderWithProviders(<RegionPicker multiple value={['Sul da ilha']} onChange={onChange} />);
+    renderWithProviders(<RegionPicker multiple value={['sul']} onChange={onChange} />);
 
     expect(screen.getByRole('button', { name: 'Sul da ilha' })).toHaveAttribute(
       'aria-pressed',
@@ -34,6 +36,6 @@ describe('RegionPicker', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'Leste da ilha' }));
-    expect(onChange).toHaveBeenCalledWith(['Sul da ilha', 'Leste da ilha']);
+    expect(onChange).toHaveBeenCalledWith(['sul', 'leste']);
   });
 });

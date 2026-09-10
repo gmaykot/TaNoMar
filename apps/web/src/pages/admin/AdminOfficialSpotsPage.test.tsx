@@ -9,7 +9,9 @@ const campeche = {
   name: 'Campeche',
   city: 'Florianópolis',
   state: 'SC',
-  region: 'Sul da ilha',
+  region: 'sul',
+  fishingEnvironment: 'mar_aberto',
+  accessType: 'terrestre',
   description: null,
   type: 'praia',
   visibility: 'official' as const,
@@ -27,36 +29,66 @@ const campeche = {
   isFreeDefault: true,
 };
 
+const xavier = {
+  ...campeche,
+  id: 'ilha-do-xavier',
+  name: 'Ilha do Xavier',
+  region: 'ilhas',
+  type: 'ilha',
+  fishingEnvironment: 'mar_aberto',
+  accessType: 'embarcado',
+  isFreeDefault: false,
+  hasLiveWebcam: false,
+};
+
 const { updateAdminOfficialLocation } = vi.hoisted(() => ({
   updateAdminOfficialLocation: vi.fn(() => Promise.resolve(campeche)),
 }));
 
-vi.mock('@/features/locations/services/locationsService', () => ({
-  getAdminOfficialLocations: () => Promise.resolve([campeche]),
-  updateAdminOfficialLocation,
-  deleteAdminOfficialLocation: vi.fn(),
-}));
+vi.mock('@/features/locations/services/locationsService', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/features/locations/services/locationsService')>();
+  return {
+    ...actual,
+    getAdminOfficialLocations: () => Promise.resolve([campeche, xavier]),
+    updateAdminOfficialLocation,
+    deleteAdminOfficialLocation: vi.fn(),
+  };
+});
 
 vi.mock('@/app/layout/saveConfirmationEvents', () => ({
   showSaveConfirmation: vi.fn(),
 }));
 
 describe('AdminOfficialSpotsPage', () => {
-  it('lista o local do sistema e liga o plano Free', async () => {
+  it('lista o local do sistema, filtra por tipo e liga o plano Free', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AdminOfficialSpotsPage />);
 
     expect(await screen.findByText('Campeche')).toBeInTheDocument();
+    expect(screen.getByText('Ilha do Xavier')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Novo local' })).toHaveAttribute(
       'href',
       '/admin/locais-sistema/novo',
     );
-    expect(screen.getByRole('link', { name: 'Editar' })).toHaveAttribute(
+    expect(screen.getAllByRole('link', { name: 'Editar' })[0]).toHaveAttribute(
       'href',
       '/admin/locais-sistema/campeche',
     );
 
-    const freeToggle = screen.getByRole('checkbox', { name: /Aparece no plano Free/ });
+    expect(screen.getByRole('combobox', { name: 'Região' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Tipo' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Ambiente' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Status' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Free' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Câmera' })).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Tipo' }), 'ilha');
+    expect(screen.queryByText('Campeche')).not.toBeInTheDocument();
+    expect(screen.getByText('Ilha do Xavier')).toBeInTheDocument();
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Tipo' }), '');
+
+    const freeToggle = screen.getAllByRole('checkbox', { name: /Aparece no plano Free/ })[0];
     expect(freeToggle).toBeChecked();
     await user.click(freeToggle);
     expect(updateAdminOfficialLocation).toHaveBeenCalledWith(

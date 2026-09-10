@@ -348,7 +348,15 @@ namespace TaNoMar.Api.Data.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("AccessType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FishingEnvironment")
+                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<bool>("IsApproved")
@@ -381,7 +389,10 @@ namespace TaNoMar.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<double>("SeaOrientationDegrees")
+                    b.Property<string>("RestrictionNotes")
+                        .HasColumnType("text");
+
+                    b.Property<double?>("SeaOrientationDegrees")
                         .HasColumnType("double precision");
 
                     b.Property<string>("Slug")

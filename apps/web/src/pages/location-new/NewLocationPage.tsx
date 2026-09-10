@@ -4,6 +4,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 import { SpotForm } from '@/features/locations/components/SpotForm';
 import { useLocationMutations } from '@/features/locations/hooks/useLocationMutations';
 import { useLocations } from '@/features/locations/hooks/useLocations';
+import { toPersonalSpotInput } from '@/features/locations/services/locationsService';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { routes } from '@/shared/constants/routes';
 import formStyles from '@/features/locations/components/spotForm.module.css';
@@ -49,7 +50,9 @@ export function NewLocationPage() {
         pending={mutations.create.isPending}
         error={mutations.createError}
         onSubmit={(input) => {
-          mutations.create.mutate(input, {
+          const payload = toPersonalSpotInput(input);
+          if (!payload) return;
+          mutations.create.mutate(payload, {
             onSuccess: (location) => navigate(routes.locationDetails(location.id)),
           });
         }}

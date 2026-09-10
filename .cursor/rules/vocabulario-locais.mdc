@@ -33,7 +33,8 @@ Na interface, erros visíveis e documentação de produto, o ponto de pesca se c
 
 ## Exceções
 
-- Perfil costeiro na UI: Praia aberta, Praia semiaberta, Águas protegidas
+- Tipo do local na UI: Praia, Costão, Canal, Lagoa, Rio, Estuário, Ilha, Píer, Outro
+- Perfil / exposição na UI: Aberta, Semiaberta, Protegida
 - Contratos e IDs: `fishing-spots`, `type: praia`, `praia_aberta`, `praia_semi_aberta`, `praia_protegida`
 - Rotas públicas: `/locais`
 

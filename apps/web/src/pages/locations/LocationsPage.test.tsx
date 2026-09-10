@@ -122,9 +122,9 @@ describe('LocationsPage', () => {
   it('diferencia os locais pelo perfil costeiro', async () => {
     renderWithProviders(<LocationsPage />);
     expect(await screen.findByRole('heading', { name: 'Campeche' })).toBeInTheDocument();
-    expect(screen.getAllByRole('img', { name: 'Praia aberta' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('img', { name: 'Praia semiaberta' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('img', { name: 'Águas protegidas' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('img', { name: 'Aberta' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('img', { name: 'Semiaberta' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('img', { name: 'Protegida' }).length).toBeGreaterThan(0);
   });
 
   it('filtra locais ignorando acentos', async () => {
@@ -155,7 +155,9 @@ describe('LocationsPage', () => {
     expect(
       screen.getByRole('button', { name: 'Meus locais, disponível na assinatura' }),
     ).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Favoritos, disponível na assinatura' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Favoritos, disponível na assinatura' }),
+    ).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Novo local' })).not.toBeInTheDocument();
   });
 

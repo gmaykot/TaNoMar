@@ -103,7 +103,7 @@ public sealed class FishingForecastCacheTests
     [Fact]
     public void Forecast_inputs_change_when_coordinates_orientation_or_profile_change()
     {
-        var spot = new FishingSpot("praia-mole", "Praia Mole", "Leste da ilha", -27.6, -48.4, 90, "praia_aberta");
+        var spot = new FishingSpot("praia-mole", "Praia Mole", "leste", -27.6, -48.4, 90, "praia_aberta");
 
         Assert.False(SpotRules.ForecastInputsChanged(spot, -27.6, -48.4, 90, "praia_aberta"));
         Assert.True(SpotRules.ForecastInputsChanged(spot, -27.61, -48.4, 90, "praia_aberta"));

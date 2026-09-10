@@ -17,25 +17,43 @@ export interface PersonalSpotInput {
   state?: string;
   region?: string;
   shared: boolean;
-  seaOrientationDegrees: number;
+  seaOrientationDegrees: number | null;
   profile: FishingLocation['profile'];
 }
 
 export interface OfficialSpotInput {
   name: string;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   description?: string;
   city?: string;
   state?: string;
   region?: string;
-  seaOrientationDegrees: number;
+  seaOrientationDegrees: number | null;
   profile: FishingLocation['profile'];
+  type: string;
+  fishingEnvironment: string;
+  accessType: string;
+  restrictionNotes?: string;
   isActive: boolean;
   isFreeDefault: boolean;
 }
 
-export interface SpotFormValues extends PersonalSpotInput {
+export interface SpotFormValues {
+  name: string;
+  latitude: number | null;
+  longitude: number | null;
+  description?: string;
+  city?: string;
+  state?: string;
+  region?: string;
+  shared: boolean;
+  seaOrientationDegrees: number | null;
+  profile: FishingLocation['profile'];
+  type: string;
+  fishingEnvironment: string;
+  accessType: string;
+  restrictionNotes?: string;
   isActive: boolean;
   isFreeDefault: boolean;
 }
@@ -112,6 +130,62 @@ export async function getAdminOfficialLocations(): Promise<AdminOfficialLocation
   );
 }
 
+export function toPersonalSpotInput(input: SpotFormValues): PersonalSpotInput | null {
+  if (input.latitude === null || input.longitude === null) return null;
+  return {
+    name: input.name,
+    latitude: input.latitude,
+    longitude: input.longitude,
+    description: input.description,
+    city: input.city,
+    state: input.state,
+    region: input.region,
+    shared: input.shared,
+    seaOrientationDegrees: input.seaOrientationDegrees,
+    profile: input.profile,
+  };
+}
+
+export function toOfficialSpotInput(input: SpotFormValues): OfficialSpotInput {
+  return {
+    name: input.name,
+    latitude: input.latitude,
+    longitude: input.longitude,
+    description: input.description,
+    city: input.city,
+    state: input.state,
+    region: input.region,
+    seaOrientationDegrees: input.seaOrientationDegrees,
+    profile: input.profile,
+    type: input.type,
+    fishingEnvironment: input.fishingEnvironment,
+    accessType: input.accessType,
+    restrictionNotes: input.restrictionNotes,
+    isActive: input.isActive,
+    isFreeDefault: input.isFreeDefault,
+  };
+}
+
+export function officialLocationToInput(location: AdminOfficialLocation): OfficialSpotInput {
+  return {
+    name: location.name,
+    latitude: location.latitude,
+    longitude: location.longitude,
+    description: location.description ?? undefined,
+    city: location.city,
+    state: location.state,
+    region: location.region,
+    seaOrientationDegrees: location.seaOrientationDegrees,
+    profile: location.profile,
+    type: location.type,
+    fishingEnvironment: location.fishingEnvironment ?? 'mar_aberto',
+    accessType: location.accessType ?? 'terrestre',
+    restrictionNotes: location.restrictionNotes ?? undefined,
+    isActive: location.isActive,
+    isFreeDefault: location.isFreeDefault,
+  };
+}
+
 function officialPayload(input: OfficialSpotInput) {
   return {
     name: input.name,
@@ -123,6 +197,10 @@ function officialPayload(input: OfficialSpotInput) {
     region: input.region,
     seaOrientationDegrees: input.seaOrientationDegrees,
     profile: input.profile,
+    type: input.type,
+    fishingEnvironment: input.fishingEnvironment,
+    accessType: input.accessType,
+    restrictionNotes: input.restrictionNotes,
     isActive: input.isActive,
     isFreeDefault: input.isFreeDefault,
   };

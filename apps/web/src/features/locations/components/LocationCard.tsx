@@ -13,20 +13,22 @@ import { Link } from 'react-router-dom';
 import { Card } from '@/design-system/components/Card';
 import { IconButton } from '@/design-system/components/IconButton';
 import type { FishingLocation } from '@/features/fishing/types/fishing';
+import { regionLabel } from '../regions';
+import { coastalProfileLabel, spotTypeLabel } from '../spotCatalog';
 import { LocationStampFor } from './LocationStamp';
 import styles from './locations.module.css';
 
 const profileVisual = {
-  praia_aberta: { label: 'Praia aberta', icon: Waves, className: styles.iconAberta },
-  praia_semi_aberta: { label: 'Praia semiaberta', icon: Sailboat, className: styles.iconSemi },
-  praia_protegida: { label: 'Águas protegidas', icon: Anchor, className: styles.iconProtegida },
+  praia_aberta: { icon: Waves, className: styles.iconAberta },
+  praia_semi_aberta: { icon: Sailboat, className: styles.iconSemi },
+  praia_protegida: { icon: Anchor, className: styles.iconProtegida },
 };
 
 function visibilityLabel(location: FishingLocation) {
   if (location.visibility === 'private') return 'Privado';
   if (location.visibility === 'shared' && !location.isApproved) return 'Pendente';
   if (location.visibility === 'shared') return 'Comunidade';
-  return profileVisual[location.profile].label;
+  return spotTypeLabel(location.type) || coastalProfileLabel(location.profile);
 }
 
 interface LocationCardProps {
@@ -44,16 +46,17 @@ export function LocationCard({
 }: LocationCardProps) {
   const profile = profileVisual[location.profile];
   const ProfileIcon = profile.icon;
+  const profileName = coastalProfileLabel(location.profile);
   return (
     <Card as="article" className={styles.card}>
-      <div className={`${styles.icon} ${profile.className}`} role="img" aria-label={profile.label}>
+      <div className={`${styles.icon} ${profile.className}`} role="img" aria-label={profileName}>
         <ProfileIcon size={24} aria-hidden="true" />
       </div>
       <div className={styles.content}>
         <span>{visibilityLabel(location)}</span>
         <h2>{location.name}</h2>
         <p>
-          <MapPin size={15} aria-hidden="true" /> {location.region}, {location.city}
+          <MapPin size={15} aria-hidden="true" /> {regionLabel(location.region)}, {location.city}
         </p>
       </div>
       <LocationStampFor

@@ -85,11 +85,14 @@ export interface FishingLocation {
   region: string;
   description: string | null;
   type: string;
+  fishingEnvironment?: string | null;
+  accessType?: string | null;
+  restrictionNotes?: string | null;
   visibility: 'official' | 'shared' | 'private';
   profile: 'praia_aberta' | 'praia_semi_aberta' | 'praia_protegida';
-  latitude: number;
-  longitude: number;
-  seaOrientationDegrees: number;
+  latitude: number | null;
+  longitude: number | null;
+  seaOrientationDegrees: number | null;
   idealWindDirectionDegrees?: number | null;
   isFavorite: boolean;
   isEnabled: boolean;

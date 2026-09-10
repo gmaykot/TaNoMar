@@ -135,12 +135,12 @@ export function AccountPreferencesPage() {
           <section className={accountStyles.preferenceGroup} aria-labelledby="region-preferences">
             <div className={accountStyles.preferenceHeading}>
               <h2 id="region-preferences">Regiões acompanhadas</h2>
-              <p>Escolha quais trechos da ilha entram nas suas previsões.</p>
+              <p>Escolha quais regiões entram nas suas previsões.</p>
             </div>
             <RegionPicker
               multiple
               value={regions}
-              hint="Toque em um ou mais trechos da ilha que você acompanha."
+              hint="Toque nos trechos da ilha, no continente ou nas ilhas que você acompanha."
               onChange={setRegions}
             />
           </section>

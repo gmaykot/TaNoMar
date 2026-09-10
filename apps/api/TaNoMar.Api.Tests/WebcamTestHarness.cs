@@ -50,15 +50,15 @@ internal static class WebcamTestHarness
         Role = role
     };
 
-    public static FishingSpot Official(string slug = "campeche") => new(slug, "Campeche", "Sul da ilha", -27.65407, -48.46908, 110, "praia_aberta");
+    public static FishingSpot Official(string slug = "campeche") => new(slug, "Campeche", "sul", -27.65407, -48.46908, 110, "praia_aberta");
 
     public static FishingSpot Personal(User owner, string slug)
     {
-        var spot = new FishingSpot(slug, slug, "Sul da ilha", -27.65407, -48.46908, 110, "praia_aberta")
+        var spot = new FishingSpot(slug, slug, "sul", -27.65407, -48.46908, 110, "praia_aberta")
         {
             Visibility = "private",
             OwnerUserId = owner.Id,
-            Type = "personalizado"
+            Type = "praia"
         };
         return spot;
     }

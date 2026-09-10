@@ -41,6 +41,7 @@ internal sealed class ForecastAlertWorker(
                 var preference = await db.UserPreferences.AsNoTracking().SingleOrDefaultAsync(item => item.UserId == alert.UserId, cancellationToken);
                 if (preference?.ForecastNotifications == false) continue;
                 if (!spots.TryGetValue(alert.FishingSpotId, out var spot)) continue;
+                if (!SpotRules.HasCoordinates(spot)) continue;
                 if (!SpotRules.Owns(spot, alert.UserId)
                     && (!SpotRules.IsCommunityVisible(spot) || !SpotRules.IsIncludedInPlan(spot, planCode)))
                     continue;

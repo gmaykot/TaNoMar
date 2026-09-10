@@ -6,8 +6,37 @@ namespace TaNoMar.Api.Data;
 
 internal static class SpotRules
 {
+    public const string EntireIslandPreference = "Ilha de Santa Catarina";
+    public const string DefaultType = "praia";
+    public const string DefaultProfile = "praia_aberta";
+    public const string DefaultFishingEnvironment = "mar_aberto";
+    public const string DefaultAccessType = "terrestre";
+
     public static readonly string[] Profiles = ["praia_aberta", "praia_semi_aberta", "praia_protegida"];
+    public static readonly string[] Types = ["praia", "costao", "canal", "lagoa", "rio", "estuario", "ilha", "pier", "outro"];
+    public static readonly string[] FishingEnvironments = ["mar_aberto", "baia", "lagunar", "estuarino", "fluvial"];
+    public static readonly string[] AccessTypes = ["terrestre", "trilha", "embarcado", "caiaque", "misto"];
+    public static readonly string[] Regions = ["norte", "sul", "leste", "oeste", "continente", "ilhas"];
+    public static readonly string[] IslandQuadrants = ["norte", "sul", "leste", "oeste"];
     public static readonly string[] ReportTypes = ["condicao", "perigo"];
+
+    private static readonly Dictionary<string, string> RegionAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["norte"] = "norte",
+        ["norte da ilha"] = "norte",
+        ["sul"] = "sul",
+        ["sul da ilha"] = "sul",
+        ["leste"] = "leste",
+        ["leste da ilha"] = "leste",
+        ["oeste"] = "oeste",
+        ["oeste da ilha"] = "oeste",
+        ["continente"] = "continente",
+        ["ilhas"] = "ilhas",
+        ["ilha de santa catarina"] = EntireIslandPreference,
+        ["florianópolis"] = EntireIslandPreference,
+        ["florianopolis"] = EntireIslandPreference,
+        ["meu mapa"] = EntireIslandPreference
+    };
 
     public static bool CanSee(FishingSpot spot, User user) =>
         Owns(spot, user)
@@ -33,10 +62,13 @@ internal static class SpotRules
 
     public static bool IsInPreferredRegion(string spotRegion, string? preferredRegions)
     {
-        var regions = preferredRegions?.Split('|', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) ?? [];
-        return regions.Length == 0
-            || regions.Any(IsEntireIsland)
-            || regions.Contains(spotRegion, StringComparer.OrdinalIgnoreCase);
+        var regions = SplitRegions(preferredRegions);
+        if (regions.Length == 0) return true;
+        var normalizedSpot = NormalizeRegion(spotRegion);
+        if (string.IsNullOrEmpty(normalizedSpot)) return true;
+        return regions.Any(region =>
+            (IsEntireIsland(region) && IslandQuadrants.Contains(normalizedSpot, StringComparer.Ordinal))
+            || string.Equals(NormalizeRegion(region), normalizedSpot, StringComparison.OrdinalIgnoreCase));
     }
 
     public static bool IsAdmin(User user) =>
@@ -46,8 +78,46 @@ internal static class SpotRules
 
     public static bool Owns(FishingSpot spot, Guid userId) => spot.OwnerUserId == userId;
 
+    public static bool HasCoordinates(FishingSpot spot) =>
+        spot.Latitude is not null && spot.Longitude is not null;
+
     public static string NormalizeProfile(string? profile) =>
-        profile is not null && Profiles.Contains(profile, StringComparer.Ordinal) ? profile : "praia_aberta";
+        profile is not null && Profiles.Contains(profile, StringComparer.Ordinal) ? profile : DefaultProfile;
+
+    public static string NormalizeType(string? type)
+    {
+        if (type is not null && Types.Contains(type, StringComparer.Ordinal)) return type;
+        if (string.Equals(type, "personalizado", StringComparison.OrdinalIgnoreCase)) return "outro";
+        return DefaultType;
+    }
+
+    public static string NormalizeFishingEnvironment(string? value) =>
+        value is not null && FishingEnvironments.Contains(value, StringComparer.Ordinal) ? value : DefaultFishingEnvironment;
+
+    public static string NormalizeAccessType(string? value) =>
+        value is not null && AccessTypes.Contains(value, StringComparer.Ordinal) ? value : DefaultAccessType;
+
+    public static string NormalizeRegion(string? region)
+    {
+        var trimmed = region?.Trim() ?? string.Empty;
+        if (trimmed.Length == 0) return string.Empty;
+        return RegionAliases.TryGetValue(trimmed, out var mapped) ? mapped : trimmed;
+    }
+
+    public static bool IsValidSpotRegion(string? region)
+    {
+        var normalized = NormalizeRegion(region);
+        return Regions.Contains(normalized, StringComparer.Ordinal);
+    }
+
+    public static bool IsEntireIsland(string region) =>
+        string.Equals(NormalizeRegion(region), EntireIslandPreference, StringComparison.OrdinalIgnoreCase);
+
+    public static string? NormalizeRestrictionNotes(string? notes)
+    {
+        var trimmed = notes?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? null : trimmed;
+    }
 
     public static string Slugify(string name)
     {
@@ -65,7 +135,12 @@ internal static class SpotRules
         return string.IsNullOrWhiteSpace(slug) ? "local" : slug;
     }
 
-    public static bool ForecastInputsChanged(FishingSpot spot, double latitude, double longitude, double seaOrientationDegrees, string? profile)
+    public static bool ForecastInputsChanged(
+        FishingSpot spot,
+        double? latitude,
+        double? longitude,
+        double? seaOrientationDegrees,
+        string? profile)
     {
         var normalizedProfile = NormalizeProfile(profile);
         return spot.Latitude != latitude
@@ -80,11 +155,6 @@ internal static class SpotRules
     public static bool IsValidReportType(string type) =>
         ReportTypes.Contains(type, StringComparer.OrdinalIgnoreCase);
 
-    private static bool IsEntireIsland(string region) =>
-        string.Equals(region, "Florianópolis", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(region, "Meu mapa", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(region, "Ilha de Santa Catarina", StringComparison.OrdinalIgnoreCase);
-
     public static string? NormalizeReportComment(string? comment)
     {
         var trimmed = comment?.Trim();
@@ -98,4 +168,7 @@ internal static class SpotRules
         var startLocal = new DateTimeOffset(local.Year, local.Month, local.Day, 0, 0, 0, local.Offset);
         return (startLocal.ToUniversalTime(), startLocal.AddDays(1).ToUniversalTime());
     }
+
+    private static string[] SplitRegions(string? preferredRegions) =>
+        preferredRegions?.Split('|', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) ?? [];
 }

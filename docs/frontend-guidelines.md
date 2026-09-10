@@ -28,7 +28,7 @@ Prefira props explícitas, arquivos pequenos e HTML semântico. Não crie `Helpe
 
 Use alias `@/` para imports entre domínios e imports relativos dentro da mesma pasta. Nomes devem expressar o domínio: `forecastService`, não `DataService`.
 
-Na interface, o ponto de pesca se chama **local** (plural **locais**): navegação, títulos, formulários, erros e atalhos. Não use “pesqueiro” nem “praia” para nomear essa entidade. “Praia aberta”, “praia semiaberta” e “águas protegidas” ficam só no perfil costeiro. Identificadores de contrato (`fishing-spots`, `praia_aberta`) não mudam.
+Na interface, o ponto de pesca se chama **local** (plural **locais**): navegação, títulos, formulários, erros e atalhos. Não use “pesqueiro” nem “praia” para nomear essa entidade. O **tipo** (`praia`, `ilha`, `canal`, `lagoa`…) diz o que o ponto é. O **perfil** (`praia_aberta`, `praia_semi_aberta`, `praia_protegida`) descreve só a exposição; na UI use Aberta, Semiaberta e Protegida. A **região** do local é `norte`, `sul`, `leste`, `oeste`, `continente` ou `ilhas` — não use “Ilha de Santa Catarina” como região de um ponto. Identificadores de contrato (`fishing-spots`, `praia_aberta`) não mudam.
 
 O carimbo **Meu local** aparece só para o dono. Em local compartilhado, a comunidade vê **Compartilhado**; o dono continua vendo **Meu local**. O carimbo **Favorito** usa o mesmo padrão e pode aparecer junto de **Meu local** ou **Compartilhado**; não altera nota, ranking nem ordenação.
 

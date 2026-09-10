@@ -70,7 +70,7 @@ const questions = [
   {
     question: 'Quais locais estão disponíveis?',
     answer:
-      'A base inicial reúne locais oficiais da Ilha de Santa Catarina. A lista pode crescer com locais compartilhados aprovados, e os planos pagos permitem cadastrar locais próprios pelas coordenadas.',
+      'A base inicial reúne locais oficiais da Grande Florianópolis — norte, sul, leste, oeste, continente e ilhas. A lista pode crescer com locais compartilhados aprovados, e os planos pagos permitem cadastrar locais próprios pelas coordenadas.',
   },
   {
     question: 'Qual é a diferença entre local pessoal e favorito?',

@@ -34,7 +34,7 @@ public sealed class SpotRulesTests
     public void Owner_still_sees_personal_spot()
     {
         var owner = User("free");
-        var spot = new FishingSpot("molhe", "Molhe", "Leste da ilha", -27.4, -48.5, 90, "praia_aberta")
+        var spot = new FishingSpot("molhe", "Molhe", "leste", -27.4, -48.5, 90, "praia_aberta")
         {
             Visibility = "private",
             OwnerUserId = owner.Id,
@@ -52,8 +52,46 @@ public sealed class SpotRulesTests
         Assert.Equal("local", SpotRules.Slugify("   "));
     }
 
+    [Fact]
+    public void Normalizes_legacy_island_regions()
+    {
+        Assert.Equal("norte", SpotRules.NormalizeRegion("Norte da ilha"));
+        Assert.Equal("sul", SpotRules.NormalizeRegion("Sul da ilha"));
+        Assert.Equal("leste", SpotRules.NormalizeRegion("Leste da ilha"));
+        Assert.Equal("oeste", SpotRules.NormalizeRegion("Oeste da ilha"));
+        Assert.Equal("continente", SpotRules.NormalizeRegion("Continente"));
+        Assert.Equal("ilhas", SpotRules.NormalizeRegion("Ilhas"));
+        Assert.Equal(SpotRules.EntireIslandPreference, SpotRules.NormalizeRegion("Florianópolis"));
+        Assert.True(SpotRules.IsValidSpotRegion("norte"));
+        Assert.False(SpotRules.IsValidSpotRegion("Ilha de Santa Catarina"));
+        Assert.Equal("outro", SpotRules.NormalizeType("personalizado"));
+        Assert.Equal("lagoa", SpotRules.NormalizeType("lagoa"));
+    }
+
+    [Fact]
+    public void Entire_island_preference_matches_quadrants_not_continent_or_islands()
+    {
+        Assert.True(SpotRules.IsInPreferredRegion("norte", SpotRules.EntireIslandPreference));
+        Assert.True(SpotRules.IsInPreferredRegion("sul", "Florianópolis"));
+        Assert.False(SpotRules.IsInPreferredRegion("continente", SpotRules.EntireIslandPreference));
+        Assert.False(SpotRules.IsInPreferredRegion("ilhas", SpotRules.EntireIslandPreference));
+        Assert.True(SpotRules.IsInPreferredRegion("continente", "Ilha de Santa Catarina | continente"));
+        Assert.True(SpotRules.IsInPreferredRegion("leste", "norte | leste"));
+        Assert.False(SpotRules.IsInPreferredRegion("oeste", "norte | leste"));
+    }
+
+    [Fact]
+    public void Free_plan_still_hides_official_spot_without_free_default()
+    {
+        var spot = Official(isActive: true, isFreeDefault: false);
+        spot.Type = "ilha";
+        spot.FishingEnvironment = "mar_aberto";
+        Assert.False(SpotRules.CanSee(spot, User("free")));
+        Assert.True(SpotRules.CanSee(spot, User("premium")));
+    }
+
     private static FishingSpot Official(bool isActive, bool isFreeDefault) =>
-        new("campeche", "Campeche", "Sul da ilha", -27.65, -48.46, 110, "praia_aberta")
+        new("campeche", "Campeche", "sul", -27.65, -48.46, 110, "praia_aberta")
         {
             IsActive = isActive,
             IsFreeDefault = isFreeDefault

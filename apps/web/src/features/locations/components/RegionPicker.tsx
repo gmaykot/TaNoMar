@@ -28,6 +28,7 @@ const islandPath =
 
 interface RegionPickerBase {
   hint?: string;
+  mode?: 'spot' | 'preference';
 }
 
 interface SingleRegionPickerProps extends RegionPickerBase {
@@ -46,8 +47,9 @@ type RegionPickerProps = SingleRegionPickerProps | MultiRegionPickerProps;
 
 export function RegionPicker(props: RegionPickerProps) {
   const clipId = useId().replace(/:/g, '');
-  const selected = props.multiple ? props.value : [resolveRegion(props.value)];
-  const options = regionOptions(selected);
+  const mode = props.mode ?? (props.multiple ? 'preference' : 'spot');
+  const selected = props.multiple ? props.value : props.value ? [resolveRegion(props.value)] : [];
+  const options = regionOptions(selected, mode);
   const islandSelected = selected.includes(islandWideRegion);
 
   function select(next: string) {
@@ -102,7 +104,7 @@ export function RegionPicker(props: RegionPickerProps) {
                 type="button"
                 className={`${styles.hotspot} ${hotspotClass[region.id]}`}
                 aria-pressed={islandSelected || selected.includes(region.value)}
-                aria-label={region.value}
+                aria-label={`${region.shortLabel} da ilha`}
                 onClick={() => select(region.value)}
               />
             ))}
@@ -111,7 +113,7 @@ export function RegionPicker(props: RegionPickerProps) {
         <div
           className={styles.chips}
           role="group"
-          aria-label={props.multiple ? 'Regiões da ilha' : 'Região da ilha'}
+          aria-label={props.multiple ? 'Regiões' : 'Região'}
         >
           {options.map((option) => (
             <button

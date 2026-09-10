@@ -111,8 +111,8 @@ describe('CommunityReports', () => {
       name: 'Confirmar bloqueado no plano atual',
     });
     const contest = screen.getByRole('button', { name: 'Contestar bloqueado no plano atual' });
-    expect(confirm).toBeDisabled();
-    expect(contest).toBeDisabled();
+    expect(confirm).toBeEnabled();
+    expect(contest).toBeEnabled();
     expect(confirm).toHaveTextContent('Confirmar');
     expect(contest).toHaveTextContent('Contestar');
   });

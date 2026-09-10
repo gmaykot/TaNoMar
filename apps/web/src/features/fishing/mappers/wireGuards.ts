@@ -231,11 +231,17 @@ export function parseSpot(value: unknown): WireSpot {
     state,
     region,
     type,
+    fishingEnvironment: readString(value.fishingEnvironment),
+    accessType: readString(value.accessType),
+    restrictionNotes: readString(value.restrictionNotes),
     visibility,
     profile,
     latitude,
     longitude,
-    seaOrientationDegrees: readNumber(value.seaOrientationDegrees) ?? 0,
+    seaOrientationDegrees:
+      value.seaOrientationDegrees === null || value.seaOrientationDegrees === undefined
+        ? null
+        : (readNumber(value.seaOrientationDegrees) ?? null),
     idealWindDirectionDegrees,
     isFavorite: readBoolean(value.isFavorite) ?? false,
     isEnabled: readBoolean(value.isEnabled) ?? readBoolean(value.isInRanking) ?? false,

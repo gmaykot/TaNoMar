@@ -19,7 +19,7 @@ Planos são lidos de `GET /api/v1/plans?includeFree=true`. Sem o parâmetro, o e
 
 A seção de planos mostra o Free como acesso inicial e os cartões dos planos pagos. A tabela de comparação com o Free na primeira coluna fica recolhida até o visitante pedir: o controle “Comparar os planos”, o item “Comparar planos” do menu no celular e o atalho do rodapé abrem essa tabela (`#comparacao-planos`).
 
-A explicação da nota segue a fórmula da API: vento e direção, ondas e período, chuva, horário e perfil costeiro. Maré, temperaturas, espécie e modalidade não entram no cálculo. A seção de dúvidas esclarece acesso Free, cobertura inicial na Ilha de Santa Catarina, locais pessoais, favoritos, alertas ativos, câmeras (stream de terceiros, sem responsabilidade pelas imagens e sem garantia de manutenção ou disponibilidade) e cancelamento (Conta → Gerenciar assinatura → Cancelar renovação, sem estorno).
+A explicação da nota segue a fórmula da API: vento e direção, ondas e período, chuva, horário e perfil costeiro. Maré, temperaturas, espécie e modalidade não entram no cálculo. A seção de dúvidas esclarece acesso Free, cobertura inicial na Grande Florianópolis, locais pessoais, favoritos, alertas ativos, câmeras (stream de terceiros, sem responsabilidade pelas imagens e sem garantia de manutenção ou disponibilidade) e cancelamento (Conta → Gerenciar assinatura → Cancelar renovação, sem estorno).
 
 ## Instalação PWA
 

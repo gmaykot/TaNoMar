@@ -5,7 +5,7 @@ internal static class FishingWindPreference
     public static FishingLocationForecast Apply(
         FishingLocationForecast forecast,
         int? idealWindDirectionDegrees,
-        double seaOrientationDegrees,
+        double? seaOrientationDegrees,
         string profile)
     {
         if (idealWindDirectionDegrees is null) return forecast;

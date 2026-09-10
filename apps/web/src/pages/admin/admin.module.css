@@ -68,8 +68,44 @@
   gap: var(--space-2);
 }
 
+.filters {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.filter {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.filter span {
+  color: var(--color-ocean-700);
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+}
+
+.filter select {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
 @media (min-width: 48rem) {
   .shortcuts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filters {
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    align-items: end;
+  }
+
+  .filters > :first-child {
+    grid-column: 1 / -1;
   }
 }

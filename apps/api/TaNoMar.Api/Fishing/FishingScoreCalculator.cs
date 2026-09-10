@@ -6,7 +6,7 @@ internal static class FishingScoreCalculator
         double speed,
         double gust,
         double windFrom,
-        double seaOrientation,
+        double? seaOrientation,
         double waveHeight,
         double wavePeriod,
         double rainProbability,
@@ -31,10 +31,12 @@ internal static class FishingScoreCalculator
         return Math.Round(Math.Clamp(score, 0.0, 10.0), 1, MidpointRounding.ToEven);
     }
 
-    public static string WindOrigin(double windFrom, double seaOrientation)
+    public static string WindOrigin(double windFrom, double? seaOrientation)
     {
-        var onshoreDifference = AngularDifference(windFrom, seaOrientation);
-        var offshoreDirection = (seaOrientation + 180) % 360;
+        if (seaOrientation is null) return string.Empty;
+
+        var onshoreDifference = AngularDifference(windFrom, seaOrientation.Value);
+        var offshoreDirection = (seaOrientation.Value + 180) % 360;
         var offshoreDifference = AngularDifference(windFrom, offshoreDirection);
 
         if (offshoreDifference <= 80) return "terra";
@@ -68,10 +70,14 @@ internal static class FishingScoreCalculator
         return 0.0;
     }
 
-    private static double WindDirectionScore(double windFrom, double seaOrientation)
+    private static double WindDirectionScore(double windFrom, double? seaOrientation)
     {
-        var onshoreDifference = AngularDifference(windFrom, seaOrientation);
-        var offshoreDirection = (seaOrientation + 180) % 360;
+        // Sem orientação do mar, usa o valor já existente da fórmula para vento
+        // que não é nem onshore nem offshore (cruzado). Não altera os demais pesos.
+        if (seaOrientation is null) return 6.5;
+
+        var onshoreDifference = AngularDifference(windFrom, seaOrientation.Value);
+        var offshoreDirection = (seaOrientation.Value + 180) % 360;
         var offshoreDifference = AngularDifference(windFrom, offshoreDirection);
 
         if (offshoreDifference <= 25) return 10.0;

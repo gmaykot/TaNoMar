@@ -57,6 +57,7 @@ export function findSimilarLocation(
     Number.isFinite(longitude)
   ) {
     for (const location of candidates) {
+      if (location.latitude == null || location.longitude == null) continue;
       if (!Number.isFinite(location.latitude) || !Number.isFinite(location.longitude)) continue;
       const meters = distanceMeters(location.latitude, location.longitude, latitude, longitude);
       if (meters > duplicateSpotMeters) continue;

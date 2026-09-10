@@ -4,6 +4,7 @@ import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { SpotForm } from '@/features/locations/components/SpotForm';
 import { useLocationMutations } from '@/features/locations/hooks/useLocationMutations';
 import { useLocations } from '@/features/locations/hooks/useLocations';
+import { toPersonalSpotInput } from '@/features/locations/services/locationsService';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { routes } from '@/shared/constants/routes';
 import styles from '@/pages/shared/pages.module.css';
@@ -43,8 +44,10 @@ export function EditLocationPage() {
         pending={mutations.update.isPending || mutations.remove.isPending}
         error={mutations.updateError}
         onSubmit={(input) => {
+          const payload = toPersonalSpotInput(input);
+          if (!payload) return;
           mutations.update.mutate(
-            { id: location.id, input },
+            { id: location.id, input: payload },
             { onSuccess: () => navigate(routes.locationDetails(location.id)) },
           );
         }}

@@ -37,18 +37,18 @@ describe('SpotForm', () => {
     await user.click(screen.getByRole('option', { name: /Praia do Campeche/ }));
 
     expect(screen.getByLabelText('Nome do local')).toHaveValue('Praia do Campeche');
+    expect(screen.getByLabelText('Cidade')).toHaveValue('Florianópolis');
+    expect(screen.getByLabelText('Estado')).toHaveValue('SC');
     expect(screen.getByLabelText('Latitude')).toHaveValue('-27.68123');
     expect(screen.getByLabelText('Longitude')).toHaveValue('-48.48111');
     expect(screen.getByRole('combobox', { name: /Buscar local/i })).toHaveValue(sample.formatted);
 
+    await user.click(screen.getByRole('button', { name: 'Sul da ilha' }));
     await user.click(screen.getByRole('button', { name: 'Salvar local' }));
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'Praia do Campeche',
-        city: 'Florianópolis',
-        state: 'SC',
-        latitude: -27.68123,
-        longitude: -48.48111,
+        region: 'sul',
       }),
     );
   });
@@ -77,7 +77,7 @@ describe('SpotForm', () => {
             name: 'Campeche',
             city: 'Florianópolis',
             state: 'SC',
-            region: 'Sul da ilha',
+            region: 'sul',
             description: null,
             type: 'praia',
             visibility: 'official',

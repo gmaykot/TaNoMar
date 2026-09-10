@@ -55,9 +55,11 @@ internal sealed class FishingForecastService
 
         var query = _db.FishingSpots
             .Where(spot =>
-                (spot.Visibility == "official" && spot.IsActive && (userId.HasValue || spot.IsFreeDefault))
+                ((spot.Visibility == "official" && spot.IsActive && (userId.HasValue || spot.IsFreeDefault))
                 || (spot.Visibility == "shared" && spot.IsApproved)
-                || (userId.HasValue && spot.OwnerUserId == userId.Value));
+                || (userId.HasValue && spot.OwnerUserId == userId.Value))
+                && spot.Latitude != null
+                && spot.Longitude != null);
         if (onlySlugs is not null)
             query = query.Where(spot => onlySlugs.Contains(spot.Slug));
 
@@ -130,7 +132,9 @@ internal sealed class FishingForecastService
         var today = Today();
         var locations = await _db.FishingSpots
             .AsNoTracking()
-            .Where(spot => (spot.Visibility == "official" && spot.IsActive) || (spot.Visibility == "shared" && spot.IsApproved))
+            .Where(spot => ((spot.Visibility == "official" && spot.IsActive) || (spot.Visibility == "shared" && spot.IsApproved))
+                && spot.Latitude != null
+                && spot.Longitude != null)
             .Select(spot => new FishingLocation
             {
                 Id = spot.Slug,
@@ -169,7 +173,9 @@ internal sealed class FishingForecastService
     }
 
     public Task<bool> WarmSpotAsync(FishingSpot spot, CancellationToken cancellationToken)
-        => WarmLocationAsync(ToFishingLocation(spot), Today(), cancellationToken);
+        => SpotRules.HasCoordinates(spot)
+            ? WarmLocationAsync(ToFishingLocation(spot), Today(), cancellationToken)
+            : Task.FromResult(false);
 
     public static FishingLocation ToFishingLocation(FishingSpot spot) => new()
     {

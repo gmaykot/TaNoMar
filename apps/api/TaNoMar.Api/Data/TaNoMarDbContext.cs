@@ -180,7 +180,7 @@ public sealed class RefreshToken
 public sealed class FishingSpot
 {
     public FishingSpot() { }
-    public FishingSpot(string slug, string name, string region, double latitude, double longitude, double seaOrientationDegrees, string profile)
+    public FishingSpot(string slug, string name, string region, double latitude, double longitude, double? seaOrientationDegrees, string profile)
     { Slug = slug; Name = name; Region = region; Latitude = latitude; Longitude = longitude; SeaOrientationDegrees = seaOrientationDegrees; Profile = profile; Visibility = "official"; City = "Florianópolis"; State = "SC"; }
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Slug { get; set; } = string.Empty;
@@ -190,12 +190,15 @@ public sealed class FishingSpot
     public string State { get; set; } = string.Empty;
     public string Region { get; set; } = string.Empty;
     public string Type { get; set; } = "praia";
+    public string FishingEnvironment { get; set; } = "mar_aberto";
+    public string AccessType { get; set; } = "terrestre";
+    public string? RestrictionNotes { get; set; }
     public string Visibility { get; set; } = "official";
     public bool IsApproved { get; set; } = true;
     public Guid? OwnerUserId { get; set; }
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
-    public double SeaOrientationDegrees { get; set; }
+    public double? SeaOrientationDegrees { get; set; }
     public string Profile { get; set; } = "praia_aberta";
     public bool IsActive { get; set; } = true;
     public bool IsFreeDefault { get; set; } = true;
