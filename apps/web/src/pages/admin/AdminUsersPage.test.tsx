@@ -171,9 +171,9 @@ describe('AdminUsersPage', () => {
       within(beto as HTMLElement).getByRole('button', { name: 'Ações da conta de Beto Lima' }),
     );
     expect(screen.getByRole('menu', { name: 'Ações de Beto Lima' })).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: 'Plano Mestre' })).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: 'Tornar admin' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Tornar admin' })).toBeEnabled();
     expect(screen.getByRole('menuitem', { name: 'Bloquear' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Plano Mestre' })).toBeInTheDocument();
   });
 
   it('promove um usuário para Mestre depois da confirmação', async () => {
@@ -244,10 +244,13 @@ describe('AdminUsersPage', () => {
     expect(setAdminUserRole).toHaveBeenCalledWith('user-2', 'Admin');
   });
 
-  it('não oferece rebaixar a própria conta inicial', async () => {
+  it('mostra rebaixar desabilitado na própria conta inicial', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AdminUsersPage />);
     await openAccountMenu(user, 'Ana Costa');
-    expect(screen.queryByRole('menuitem', { name: 'Rebaixar' })).not.toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Rebaixar' })).toBeDisabled();
+    await user.click(screen.getByRole('menuitem', { name: 'Rebaixar' }));
+    expect(setAdminUserRole).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog', { name: 'Rebaixar admin' })).not.toBeInTheDocument();
   });
 });
