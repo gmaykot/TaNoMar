@@ -41,8 +41,9 @@ const xavier = {
   hasLiveWebcam: false,
 };
 
-const { updateAdminOfficialLocation } = vi.hoisted(() => ({
+const { updateAdminOfficialLocation, deleteAdminOfficialLocation } = vi.hoisted(() => ({
   updateAdminOfficialLocation: vi.fn(() => Promise.resolve(campeche)),
+  deleteAdminOfficialLocation: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('@/features/locations/services/locationsService', async (importOriginal) => {
@@ -52,7 +53,7 @@ vi.mock('@/features/locations/services/locationsService', async (importOriginal)
     ...actual,
     getAdminOfficialLocations: () => Promise.resolve([campeche, xavier]),
     updateAdminOfficialLocation,
-    deleteAdminOfficialLocation: vi.fn(),
+    deleteAdminOfficialLocation,
   };
 });
 
@@ -88,6 +89,23 @@ describe('AdminOfficialSpotsPage', () => {
     expect(screen.getByText('Ilha do Xavier')).toBeInTheDocument();
     await user.selectOptions(screen.getByRole('combobox', { name: 'Tipo' }), '');
 
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Região' }), 'ilhas');
+    expect(screen.queryByText('Campeche')).not.toBeInTheDocument();
+    expect(screen.getByText('Ilha do Xavier')).toBeInTheDocument();
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Região' }), '');
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Ambiente' }), 'estuarino');
+    expect(screen.getByText('Nenhum local encontrado')).toBeInTheDocument();
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Ambiente' }), '');
+
+    const enabledToggle = screen.getAllByRole('checkbox', { name: 'Habilitado' })[0];
+    expect(enabledToggle).toBeChecked();
+    await user.click(enabledToggle);
+    expect(updateAdminOfficialLocation).toHaveBeenCalledWith(
+      'campeche',
+      expect.objectContaining({ isActive: false, isFreeDefault: true }),
+    );
+
     const freeToggle = screen.getAllByRole('checkbox', { name: /Aparece no plano Free/ })[0];
     expect(freeToggle).toBeChecked();
     await user.click(freeToggle);
@@ -95,5 +113,15 @@ describe('AdminOfficialSpotsPage', () => {
       'campeche',
       expect.objectContaining({ isFreeDefault: false, isActive: true }),
     );
+  });
+
+  it('exclui o local do sistema depois da confirmação', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderWithProviders(<AdminOfficialSpotsPage />);
+
+    expect(await screen.findByText('Campeche')).toBeInTheDocument();
+    await user.click(screen.getAllByRole('button', { name: 'Excluir' })[0]);
+    expect(deleteAdminOfficialLocation.mock.calls[0]?.[0]).toBe('campeche');
   });
 });

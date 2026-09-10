@@ -39,24 +39,32 @@ describe('AdminOfficialSpotFormPage', () => {
     expect(screen.getByRole('checkbox', { name: /Aparece no plano Free/ })).not.toBeChecked();
     expect(screen.getByRole('combobox', { name: 'Tipo' })).toHaveValue('praia');
     expect(screen.getByRole('combobox', { name: 'Ambiente' })).toHaveValue('mar_aberto');
+    expect(screen.getByRole('combobox', { name: 'Tipo de acesso' })).toHaveValue('terrestre');
+    expect(
+      screen.queryByRole('button', { name: 'Procurar câmera próxima' }),
+    ).not.toBeInTheDocument();
 
-    await user.type(screen.getByLabelText('Nome do local'), 'Praia Mole');
+    await user.type(screen.getByLabelText('Nome do local'), 'Canal da Barra da Lagoa');
     await user.click(screen.getByRole('button', { name: 'Leste da ilha' }));
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Tipo' }), 'praia');
-    await user.type(screen.getByLabelText('Latitude'), '-27.601');
-    await user.type(screen.getByLabelText('Longitude'), '-48.432');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Tipo' }), 'canal');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Ambiente' }), 'estuarino');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Tipo de acesso' }), 'misto');
+    await user.type(screen.getByLabelText('Restrições e observações'), 'Acesso pelo molhe.');
+    await user.type(screen.getByLabelText('Latitude'), '-27.5738');
+    await user.type(screen.getByLabelText('Longitude'), '-48.4265');
     await user.click(screen.getByRole('checkbox', { name: /Aparece no plano Free/ }));
     await user.click(screen.getByRole('button', { name: 'Cadastrar local' }));
 
     expect(createAdminOfficialLocation).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: 'Praia Mole',
+        name: 'Canal da Barra da Lagoa',
         region: 'leste',
-        type: 'praia',
-        fishingEnvironment: 'mar_aberto',
-        accessType: 'terrestre',
-        latitude: -27.601,
-        longitude: -48.432,
+        type: 'canal',
+        fishingEnvironment: 'estuarino',
+        accessType: 'misto',
+        restrictionNotes: 'Acesso pelo molhe.',
+        latitude: -27.5738,
+        longitude: -48.4265,
         isActive: true,
         isFreeDefault: true,
       }),

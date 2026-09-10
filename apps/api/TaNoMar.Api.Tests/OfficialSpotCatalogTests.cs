@@ -113,6 +113,25 @@ public sealed class OfficialSpotCatalogTests
     }
 
     [Fact]
+    public void ToSpot_persists_classification_and_skips_unreliable_coordinates()
+    {
+        var canal = OfficialSpotCatalog.All.Single(item => item.Slug == "canal-da-barra-da-lagoa");
+        var spot = OfficialSpotCatalog.ToSpot(canal);
+        Assert.Equal("canal", spot.Type);
+        Assert.Equal("estuarino", spot.FishingEnvironment);
+        Assert.Equal("terrestre", spot.AccessType);
+        Assert.Equal("leste", spot.Region);
+        Assert.True(spot.IsFreeDefault);
+        Assert.True(SpotRules.HasCoordinates(spot));
+
+        var campanhas = OfficialSpotCatalog.ToSpot(OfficialSpotCatalog.All.Single(item => item.Slug == "ilha-das-campanhas"));
+        Assert.Equal("ilha", campanhas.Type);
+        Assert.False(SpotRules.HasCoordinates(campanhas));
+        Assert.Null(campanhas.SeaOrientationDegrees);
+        Assert.Null(campanhas.RestrictionNotes);
+    }
+
+    [Fact]
     public void New_spot_types_do_not_break_score_calculator()
     {
         var withOrientation = FishingScoreCalculator.Calculate(8, 10, 90, 90, 0.8, 8, 10, 0, 7, "praia_protegida");
