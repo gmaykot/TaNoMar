@@ -46,6 +46,16 @@
   gap: var(--space-3);
 }
 
+.listWrap {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.more {
+  display: flex;
+  justify-content: center;
+}
+
 .item {
   position: relative;
   padding: var(--space-4);

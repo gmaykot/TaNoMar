@@ -9,7 +9,7 @@ import { hasPlanModule, showsAppFocus } from '@/features/auth/types/auth';
 import { DayCarousel } from '@/features/forecast/components/DayCarousel';
 import { useForecast } from '@/features/forecast/hooks/useForecast';
 import { RankingEmphasisFilters } from '@/features/ranking/components/RankingEmphasisFilters';
-import { RankingList } from '@/features/ranking/components/RankingList';
+import { RankingList, rankingPageSize } from '@/features/ranking/components/RankingList';
 import {
   parseRankingEmphasis,
   rankingEmphasisMetric,
@@ -96,6 +96,7 @@ export function RankingPage() {
             {day.ranking.length ? (
               <RankingList
                 items={day.ranking}
+                pageSize={rankingPageSize}
                 emphasisKey={rankingEmphasisMetricKey(emphasis)}
                 visibleMetricKeys={visibleMetricKeys}
                 windUnit={auth.user?.preferences.windUnit}

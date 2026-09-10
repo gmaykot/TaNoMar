@@ -211,6 +211,22 @@ describe('RankingPage', () => {
     expect(screen.getAllByRole('link', { name: /Abrir local/ }).length).toBeGreaterThan(0);
   });
 
+  it('mostra no máximo 10 locais e revela o restante com Mostrar mais', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<RankingPage />, ['/ranking']);
+
+    expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(10);
+    expect(screen.queryByRole('heading', { name: 'Joaquina' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Solidão' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Mostrar mais' }));
+
+    expect(screen.getByRole('heading', { name: 'Joaquina' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Solidão' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Mostrar mais' })).not.toBeInTheDocument();
+  });
+
   it('bloqueia a ênfase no plano Free', async () => {
     authState.planCode = 'free';
     renderWithProviders(<RankingPage />, ['/ranking?enfase=vento']);
