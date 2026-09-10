@@ -6,22 +6,27 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using TaNoMar.Api.Data;
 using TaNoMar.Api.Options;
+using TaNoMar.Api.Workers;
 
 namespace TaNoMar.Api.Notifications;
 
-public sealed class WebPushDispatchWorker(
+internal sealed class WebPushDispatchWorker(
     WebPushQueue queue,
     IServiceScopeFactory scopes,
     PushServiceClient push,
     IOptions<TaNoMarOptions> options,
+    WorkerSettingsService workerSettings,
     ILogger<WebPushDispatchWorker> logger) : BackgroundService
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await foreach (var job in queue.Reader.ReadAllAsync(stoppingToken))
+        while (!stoppingToken.IsCancellationRequested)
         {
+            await workerSettings.WaitUntilEnabledAsync(WorkerCatalog.WebPushDispatch, stoppingToken);
+            var job = await queue.Reader.ReadAsync(stoppingToken);
+            await workerSettings.WaitUntilEnabledAsync(WorkerCatalog.WebPushDispatch, stoppingToken);
             if (!options.Value.HasVapid)
                 continue;
             try

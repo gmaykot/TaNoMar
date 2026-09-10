@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
 using Microsoft.Extensions.Options;
+using TaNoMar.Api.Workers;
 
 namespace TaNoMar.Api.Fishing;
 
@@ -115,6 +116,7 @@ internal sealed class FishingForecastRefreshWorker(
     IServiceScopeFactory scopeFactory,
     FishingForecastRefreshQueue queue,
     IOptions<FishingOptions> options,
+    WorkerSettingsService workerSettings,
     ILogger<FishingForecastRefreshWorker> logger) : BackgroundService
 {
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
@@ -129,10 +131,12 @@ internal sealed class FishingForecastRefreshWorker(
         var batchSize = Math.Max(1, options.Value.RefreshBatchSize);
         while (!cancellationToken.IsCancellationRequested)
         {
+            await workerSettings.WaitUntilEnabledAsync(WorkerCatalog.ForecastRefresh, cancellationToken);
             var batch = new List<FishingLocation>
             {
                 await queue.ReadAsync(cancellationToken)
             };
+            await workerSettings.WaitUntilEnabledAsync(WorkerCatalog.ForecastRefresh, cancellationToken);
             await Task.Delay(TimeSpan.FromMilliseconds(50), cancellationToken);
             while (batch.Count < batchSize && queue.TryRead(out var location))
                 batch.Add(location);
@@ -174,13 +178,16 @@ internal sealed class FishingForecastRefreshWorker(
 internal sealed class FishingTideEnrichmentWorker(
     IServiceScopeFactory scopeFactory,
     FishingTideEnrichmentQueue queue,
+    WorkerSettingsService workerSettings,
     ILogger<FishingTideEnrichmentWorker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
+            await workerSettings.WaitUntilEnabledAsync(WorkerCatalog.TideEnrichment, stoppingToken);
             var location = await queue.ReadAsync(stoppingToken);
+            await workerSettings.WaitUntilEnabledAsync(WorkerCatalog.TideEnrichment, stoppingToken);
             try
             {
                 await using var scope = scopeFactory.CreateAsyncScope();

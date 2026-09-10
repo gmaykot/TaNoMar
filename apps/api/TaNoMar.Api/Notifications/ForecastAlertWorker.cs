@@ -1,19 +1,24 @@
 using Microsoft.EntityFrameworkCore;
 using TaNoMar.Api.Data;
 using TaNoMar.Api.Fishing;
+using TaNoMar.Api.Workers;
 
 namespace TaNoMar.Api.Notifications;
 
 internal sealed class ForecastAlertWorker(
     IServiceScopeFactory scopeFactory,
+    WorkerSettingsService workerSettings,
     ILogger<ForecastAlertWorker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromHours(1));
-        await CheckOnceAsync(stoppingToken);
-        while (await timer.WaitForNextTickAsync(stoppingToken))
+        if ((await workerSettings.GetAsync(WorkerCatalog.ForecastAlerts, stoppingToken)).IsEnabled)
             await CheckOnceAsync(stoppingToken);
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            await workerSettings.WaitForNextRunAsync(WorkerCatalog.ForecastAlerts, stoppingToken);
+            await CheckOnceAsync(stoppingToken);
+        }
     }
 
     private async Task CheckOnceAsync(CancellationToken cancellationToken)

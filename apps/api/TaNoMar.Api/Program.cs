@@ -15,6 +15,7 @@ using TaNoMar.Api.Fishing;
 using TaNoMar.Api.Notifications;
 using TaNoMar.Api.Options;
 using TaNoMar.Api.Webcams;
+using TaNoMar.Api.Workers;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<TaNoMarOptions>(builder.Configuration.GetSection(TaNoMarOptions.SectionName));
@@ -119,6 +120,7 @@ builder.Services.AddTransient<IWebcamProvider>(provider => provider.GetRequiredS
 builder.Services.AddScoped<WebcamProviderCatalog>();
 builder.Services.AddScoped<WebcamService>();
 builder.Services.AddTransient<FishingForecastService>();
+builder.Services.AddSingleton<WorkerSettingsService>();
 builder.Services.AddSingleton<FishingForecastRefreshQueue>();
 builder.Services.AddSingleton<FishingTideEnrichmentQueue>();
 builder.Services.AddHostedService<FishingForecastRefreshWorker>();
@@ -1092,6 +1094,54 @@ api.MapGet("/forecasts/ranking", async (string? emphasis, ClaimsPrincipal princi
     return Results.Ok(new { generatedAt = DateTimeOffset.UtcNow, availableFrom = DateOnly.FromDateTime(DateTime.UtcNow), availableTo = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(plan.MaxForecastDays - 1)), refresh = ForecastRefreshDto(forecasts, forecastQueue.Snapshot(enabledSlugs)), days });
 }).RequireAuthorization();
 
+api.MapGet("/admin/workers", async (ClaimsPrincipal principal, TaNoMarDbContext db, WorkerSettingsService workerSettings, CancellationToken cancellationToken) =>
+{
+    var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
+    if (failure is not null) return failure;
+    var items = new List<object>();
+    foreach (var definition in WorkerCatalog.All)
+    {
+        var settings = await workerSettings.GetAsync(definition.Key, cancellationToken);
+        items.Add(WorkerDto(definition, settings, workerSettings.TimeZoneId));
+    }
+    return Results.Ok(items);
+}).RequireAuthorization();
+
+api.MapPut("/admin/workers/{key}", async (string key, AdminWorkerRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, WorkerSettingsService workerSettings, CancellationToken cancellationToken) =>
+{
+    var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
+    if (failure is not null) return failure;
+    var definition = WorkerCatalog.Find(key);
+    if (definition is null) return Results.NotFound();
+
+    string? cronExpression = null;
+    if (definition.Kind == WorkerKind.Scheduled
+        && !WorkerCatalog.TryNormalizeCron(request.CronExpression, out cronExpression!))
+    {
+        return Results.BadRequest(new
+        {
+            code = "invalid_cron",
+            detail = "Informe uma expressão CRON válida com cinco campos: minuto, hora, dia, mês e dia da semana."
+        });
+    }
+
+    var configuration = await db.WorkerConfigurations.SingleOrDefaultAsync(item => item.Key == key, cancellationToken);
+    if (configuration is null)
+    {
+        configuration = new WorkerConfiguration { Key = key };
+        db.WorkerConfigurations.Add(configuration);
+    }
+    configuration.IsEnabled = request.IsEnabled;
+    configuration.CronExpression = cronExpression;
+    configuration.UpdatedAt = DateTimeOffset.UtcNow;
+    await db.SaveChangesAsync(cancellationToken);
+    workerSettings.Invalidate(key);
+    return Results.Ok(WorkerDto(
+        definition,
+        new WorkerSettingsSnapshot(key, configuration.IsEnabled, configuration.CronExpression),
+        workerSettings.TimeZoneId));
+}).RequireAuthorization();
+
 api.MapGet("/fishing-spots/{id}/forecast", async (string id, ClaimsPrincipal principal, TaNoMarDbContext db, FishingForecastService fishing, FishingForecastRefreshQueue forecastQueue, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
@@ -1499,6 +1549,19 @@ static void QueueForecastRefresh(FishingForecastRefreshQueue queue, FishingSpot 
     if (SpotRules.HasCoordinates(spot))
         queue.Enqueue(FishingForecastService.ToFishingLocation(spot));
 }
+
+static object WorkerDto(WorkerDefinition definition, WorkerSettingsSnapshot settings, string timeZone) => new
+{
+    definition.Key,
+    definition.Name,
+    kind = definition.Kind == WorkerKind.Scheduled ? "scheduled" : "queue",
+    enabled = settings.IsEnabled,
+    cronExpression = settings.CronExpression,
+    timeZone,
+    description = definition.Description,
+    usedBy = definition.UsedBy,
+    dataSource = definition.DataSource
+};
 
 static object SpotDtoProjection(FishingSpot spot, User user, bool favorite = false, bool? enabled = null, bool hasLiveWebcam = false, int? idealWindDirectionDegrees = null)
 {
@@ -2124,6 +2187,7 @@ record AdminPlanConfigRequest(
     bool CanLiveWebcams);
 record AdminActiveRequest(bool IsActive);
 record AdminRoleRequest(string Role);
+record AdminWorkerRequest(bool IsEnabled, string? CronExpression);
 record PartnerOfferRequest(string Title, string? Description, string? PriceLabel, DateTimeOffset? EndsAt, int? SortOrder);
 record PartnerRequest(string? Slug, string Name, string Category, string? Tagline, string? About, string? City, string? WhatsApp, string? Instagram, string? Website, string? MapsUrl, string? CoverImageUrl, bool IsPublished, bool IsFeatured, int SortOrder, PartnerOfferRequest[]? Offers);
 record PlatformSettingsRequest(bool? ShowPartners, bool? ShowAppFocus, bool? ShowLiveWebcams);

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TaNoMar.Api.Workers;
 
 namespace TaNoMar.Api.Data;
 
@@ -24,6 +25,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
     public DbSet<BillingSubscription> BillingSubscriptions => Set<BillingSubscription>();
     public DbSet<BillingWebhookEvent> BillingWebhookEvents => Set<BillingWebhookEvent>();
     public DbSet<FishingSpotWebcam> FishingSpotWebcams => Set<FishingSpotWebcam>();
+    public DbSet<WorkerConfiguration> WorkerConfigurations => Set<WorkerConfiguration>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -51,6 +53,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
         modelBuilder.Entity<BillingWebhookEvent>().HasIndex(item => item.AsaasEventId).IsUnique();
         modelBuilder.Entity<FishingSpotWebcam>().HasIndex(item => item.FishingSpotId).IsUnique().HasFilter("\"IsActive\" = TRUE");
         modelBuilder.Entity<FishingSpotWebcam>().HasIndex(item => new { item.FishingSpotId, item.Provider, item.ExternalId }).IsUnique();
+        modelBuilder.Entity<WorkerConfiguration>().HasIndex(item => item.Key).IsUnique();
         modelBuilder.Entity<FishingSpotWebcam>()
             .HasOne<FishingSpot>()
             .WithMany()

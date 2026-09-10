@@ -1,18 +1,23 @@
 using Microsoft.EntityFrameworkCore;
 using TaNoMar.Api.Data;
+using TaNoMar.Api.Workers;
 
 namespace TaNoMar.Api.Billing;
 
 internal sealed class BillingPeriodWorker(
     IServiceScopeFactory scopeFactory,
+    WorkerSettingsService workerSettings,
     ILogger<BillingPeriodWorker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromHours(1));
-        await RunAsync(stoppingToken);
-        while (await timer.WaitForNextTickAsync(stoppingToken))
+        if ((await workerSettings.GetAsync(WorkerCatalog.BillingPeriods, stoppingToken)).IsEnabled)
             await RunAsync(stoppingToken);
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            await workerSettings.WaitForNextRunAsync(WorkerCatalog.BillingPeriods, stoppingToken);
+            await RunAsync(stoppingToken);
+        }
     }
 
     private async Task RunAsync(CancellationToken cancellationToken)

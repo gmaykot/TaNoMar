@@ -27,6 +27,7 @@ export const routes = {
   adminOfficialSpotEdit: (locationId: string) => `/admin/locais-sistema/${locationId}`,
   adminUsers: '/admin/usuarios',
   adminPlans: '/admin/planos',
+  adminWorkers: '/admin/workers',
   adminPartners: '/admin/parceiros',
   adminPartnerNew: '/admin/parceiros/novo',
   adminPartnerEdit: (slug: string) => `/admin/parceiros/${slug}`,

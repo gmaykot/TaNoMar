@@ -1,6 +1,14 @@
 import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { BadgePercent, ClipboardCheck, Handshake, MapPinned, Shield, Users } from 'lucide-react';
+import {
+  BadgePercent,
+  ClipboardCheck,
+  Handshake,
+  MapPinned,
+  Shield,
+  Timer,
+  Users,
+} from 'lucide-react';
 import { showSaveConfirmation } from '@/app/layout/saveConfirmationEvents';
 import { locationsQueryKey } from '@/features/locations/hooks/useLocationMutations';
 import {
@@ -137,6 +145,15 @@ export function AdminHomePage() {
           <div>
             <strong>Planos</strong>
             <small>Preço, cotas e módulos da assinatura.</small>
+          </div>
+        </Link>
+        <Link className={adminStyles.shortcut} to={routes.adminWorkers}>
+          <span>
+            <Timer size={18} aria-hidden="true" />
+          </span>
+          <div>
+            <strong>Workers</strong>
+            <small>Habilite processos e ajuste suas periodicidades.</small>
           </div>
         </Link>
         <Link className={adminStyles.shortcut} to={routes.adminPartners}>
