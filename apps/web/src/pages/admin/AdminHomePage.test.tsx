@@ -66,6 +66,10 @@ describe('AdminHomePage', () => {
       '/admin/parceiros',
     );
     expect(screen.getByRole('link', { name: /Planos/ })).toHaveAttribute('href', '/admin/planos');
+    expect(screen.getByRole('link', { name: /WhatsApp/ })).toHaveAttribute(
+      'href',
+      '/admin/integracoes/whatsapp',
+    );
     expect(screen.getByRole('link', { name: /Workers/ })).toHaveAttribute(
       'href',
       '/admin/workers',

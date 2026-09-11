@@ -962,6 +962,65 @@ namespace TaNoMar.Api.Data.Migrations
                     b.ToTable("UserPreferences");
                 });
 
+            modelBuilder.Entity("TaNoMar.Api.Data.WhatsAppSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DefaultDestinationId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DefaultDestinationName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DefaultDestinationType")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("NotifyByEmail")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("InstanceName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("NotifyNewUser")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("NotifyPlanChanged")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("NotifyPlanRequested")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("WhatsAppSettings");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0011"),
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 9, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Enabled = false,
+                            InstanceName = "TaNoMar",
+                            NotifyByEmail = true,
+                            NotifyNewUser = true,
+                            NotifyPlanChanged = true,
+                            NotifyPlanRequested = true,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 9, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        });
+                });
+
             modelBuilder.Entity("TaNoMar.Api.Workers.WorkerConfiguration", b =>
                 {
                     b.Property<Guid>("Id")

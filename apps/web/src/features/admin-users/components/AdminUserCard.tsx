@@ -7,8 +7,8 @@ import { AdminUserActionsSheet } from './AdminUserActionsSheet';
 import styles from './adminUsers.module.css';
 
 const protectionLabel = {
-  self: 'Você não pode bloquear a própria conta.',
-  bootstrap: 'A conta inicial do bootstrap não pode ser bloqueada.',
+  self: 'Você não pode bloquear nem excluir a própria conta.',
+  bootstrap: 'A conta inicial do bootstrap não pode ser bloqueada nem excluída.',
   last_admin: 'Mantenha pelo menos um admin ativo.',
 } as const;
 
@@ -20,6 +20,7 @@ interface AdminUserCardProps {
   onPlanChange: (planCode: AdminPlanCode) => void;
   onActiveChange: (isActive: boolean) => void;
   onRoleChange: (role: 'Admin' | 'User') => void;
+  onDelete: () => void;
 }
 
 function isAdminRole(role: string) {
@@ -34,9 +35,14 @@ export function AdminUserCard({
   onPlanChange,
   onActiveChange,
   onRoleChange,
+  onDelete,
 }: AdminUserCardProps) {
   const initials = user.name.trim().charAt(0).toUpperCase() || 'T';
-  const protectionText = user.protection ? protectionLabel[user.protection] : null;
+  const protectionText = user.protection
+    ? protectionLabel[user.protection]
+    : user.canDelete
+      ? null
+      : protectionLabel.last_admin;
   const [menuOpen, setMenuOpen] = useState(false);
   const admin = isAdminRole(user.role);
 
@@ -81,7 +87,7 @@ export function AdminUserCard({
           </IconButton>
         </div>
       </div>
-      {protectionText && (!user.canChangePlan || !user.canDeactivate) ? (
+      {protectionText && (!user.canChangePlan || !user.canDeactivate || !user.canDelete) ? (
         <p className={styles.note}>{protectionText}</p>
       ) : null}
       {error ? <p className={styles.error}>{error}</p> : null}
@@ -94,6 +100,7 @@ export function AdminUserCard({
           onPlanChange={onPlanChange}
           onActiveChange={onActiveChange}
           onRoleChange={onRoleChange}
+          onDelete={onDelete}
         />
       ) : null}
     </Card>

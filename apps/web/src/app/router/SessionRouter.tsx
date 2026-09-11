@@ -18,6 +18,7 @@ import { AdminPlansPage } from '@/pages/admin/AdminPlansPage';
 import { AdminSpotsPage } from '@/pages/admin/AdminSpotsPage';
 import { AdminUsersPage } from '@/pages/admin/AdminUsersPage';
 import { AdminWorkersPage } from '@/pages/admin/AdminWorkersPage';
+import { AdminWhatsAppPage } from '@/pages/admin/AdminWhatsAppPage';
 import { AboutPage } from '@/pages/about/AboutPage';
 import { DiaryPage } from '@/pages/diary/DiaryPage';
 import { HomePage } from '@/pages/home/HomePage';
@@ -71,6 +72,7 @@ export function SessionRouter() {
                 <Route path={routes.adminUsers} element={<AdminUsersPage />} />
                 <Route path={routes.adminPlans} element={<AdminPlansPage />} />
                 <Route path={routes.adminWorkers} element={<AdminWorkersPage />} />
+                <Route path={routes.adminWhatsApp} element={<AdminWhatsAppPage />} />
                 <Route path={routes.adminPartners} element={<AdminPartnersPage />} />
                 <Route path={routes.adminPartnerNew} element={<AdminPartnerFormPage />} />
                 <Route path="/admin/parceiros/:partnerSlug" element={<AdminPartnerFormPage />} />

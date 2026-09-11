@@ -57,6 +57,15 @@ internal sealed class FishingForecastCache
 
     public TimeSpan MaxStale => _maxStale;
 
+    public bool NeedsExternalRefresh(CachedForecast? cached)
+    {
+        var now = DateTimeOffset.UtcNow;
+        return cached is null
+            || !cached.IsAvailable(_maxStale, now)
+            || !cached.IsUsable(now)
+            || cached.IsStale(RefreshAfter, now);
+    }
+
     public int Generation(string locationId)
         => _generations.GetOrAdd(locationId, 0);
 
@@ -170,10 +179,21 @@ internal sealed class FishingForecastCache
                     && snapshot.CreatedAt > minimumCreatedAt)
                 .OrderBy(snapshot => snapshot.Date)
                 .ToListAsync(cancellationToken);
-            return rows.Select(Deserialize)
-                .Where(cached => cached is not null && cached.IsAvailable(_maxStale, now))
-                .Cast<CachedForecast>()
-                .ToArray();
+            var week = new List<CachedForecast>();
+            foreach (var row in rows)
+            {
+                var cached = Deserialize(row);
+                if (cached is null || !cached.IsAvailable(_maxStale, now))
+                    continue;
+                week.Add(cached);
+                SetMemory(
+                    MemoryKey(locationId, cached.Forecast.Date),
+                    locationId,
+                    cached,
+                    cached.CreatedAt + _maxStale - now);
+            }
+
+            return week;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -184,6 +204,92 @@ internal sealed class FishingForecastCache
             _logger.LogWarning(exception, "Falha ao ler semana de previsão {LocationId}.", locationId);
             return [];
         }
+    }
+
+    public async Task<IReadOnlyDictionary<string, IReadOnlyList<CachedForecast>>> GetAvailableWeeksAsync(
+        IReadOnlyCollection<string> locationIds,
+        DateOnly today,
+        CancellationToken cancellationToken)
+    {
+        var dates = Enumerable.Range(0, 8).Select(today.AddDays).ToArray();
+        var now = DateTimeOffset.UtcNow;
+        var result = new Dictionary<string, List<CachedForecast>>(StringComparer.Ordinal);
+        var missing = new List<string>();
+        foreach (var locationId in locationIds.Distinct(StringComparer.Ordinal))
+        {
+            var week = new List<CachedForecast>(dates.Length);
+            var complete = true;
+            foreach (var date in dates)
+            {
+                if (!TryGetMemory(MemoryKey(locationId, date), out var cached) || !cached.IsAvailable(_maxStale, now))
+                {
+                    complete = false;
+                    break;
+                }
+
+                week.Add(cached);
+            }
+
+            if (complete)
+                result[locationId] = week;
+            else
+                missing.Add(locationId);
+        }
+
+        if (missing.Count == 0)
+            return ToReadOnlyWeeks(result);
+
+        try
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<TaNoMarDbContext>();
+            var minimumCreatedAt = now - _maxStale;
+            var rows = await db.FishingForecastSnapshots
+                .AsNoTracking()
+                .Where(snapshot => missing.Contains(snapshot.LocationId)
+                    && dates.Contains(snapshot.Date)
+                    && snapshot.CreatedAt > minimumCreatedAt)
+                .OrderBy(snapshot => snapshot.LocationId)
+                .ThenBy(snapshot => snapshot.Date)
+                .ToListAsync(cancellationToken);
+            foreach (var row in rows)
+            {
+                var cached = Deserialize(row);
+                if (cached is null || !cached.IsAvailable(_maxStale, now))
+                    continue;
+                if (!result.TryGetValue(row.LocationId, out var week))
+                {
+                    week = [];
+                    result[row.LocationId] = week;
+                }
+
+                week.Add(cached);
+                SetMemory(
+                    MemoryKey(row.LocationId, cached.Forecast.Date),
+                    row.LocationId,
+                    cached,
+                    cached.CreatedAt + _maxStale - now);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Falha ao ler semanas de previsão em lote.");
+        }
+
+        return ToReadOnlyWeeks(result);
+    }
+
+    private static IReadOnlyDictionary<string, IReadOnlyList<CachedForecast>> ToReadOnlyWeeks(
+        Dictionary<string, List<CachedForecast>> source)
+    {
+        var result = new Dictionary<string, IReadOnlyList<CachedForecast>>(source.Count, StringComparer.Ordinal);
+        foreach (var (locationId, week) in source)
+            result[locationId] = week;
+        return result;
     }
 
     public async Task PutAsync(

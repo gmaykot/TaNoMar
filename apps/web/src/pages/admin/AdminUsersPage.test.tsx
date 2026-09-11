@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { AdminUsersPage } from './AdminUsersPage';
 
-const { setAdminUserPlan, setAdminUserActive, setAdminUserRole } = vi.hoisted(() => ({
+const { setAdminUserPlan, setAdminUserActive, setAdminUserRole, deleteAdminUser } = vi.hoisted(() => ({
   setAdminUserPlan: vi.fn(() =>
     Promise.resolve({
       id: 'user-2',
@@ -19,6 +19,7 @@ const { setAdminUserPlan, setAdminUserActive, setAdminUserRole } = vi.hoisted(()
       protection: null,
       canChangePlan: true,
       canDeactivate: true,
+      canDelete: true,
       canChangeRole: true,
     }),
   ),
@@ -36,6 +37,7 @@ const { setAdminUserPlan, setAdminUserActive, setAdminUserRole } = vi.hoisted(()
       protection: null,
       canChangePlan: true,
       canDeactivate: true,
+      canDelete: true,
       canChangeRole: true,
     }),
   ),
@@ -53,9 +55,11 @@ const { setAdminUserPlan, setAdminUserActive, setAdminUserRole } = vi.hoisted(()
       protection: null,
       canChangePlan: true,
       canDeactivate: true,
+      canDelete: true,
       canChangeRole: true,
     }),
   ),
+  deleteAdminUser: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('@/features/admin-users/services/adminUsersService', () => ({
@@ -74,6 +78,7 @@ vi.mock('@/features/admin-users/services/adminUsersService', () => ({
         protection: 'bootstrap',
         canChangePlan: true,
         canDeactivate: false,
+        canDelete: false,
         canChangeRole: false,
       },
       {
@@ -89,6 +94,7 @@ vi.mock('@/features/admin-users/services/adminUsersService', () => ({
         protection: null,
         canChangePlan: true,
         canDeactivate: true,
+        canDelete: true,
         canChangeRole: true,
       },
       {
@@ -104,12 +110,14 @@ vi.mock('@/features/admin-users/services/adminUsersService', () => ({
         protection: null,
         canChangePlan: true,
         canDeactivate: true,
+        canDelete: true,
         canChangeRole: true,
       },
     ]),
   setAdminUserPlan,
   setAdminUserActive,
   setAdminUserRole,
+  deleteAdminUser,
 }));
 
 vi.mock('@/features/auth/hooks/useAuth', () => ({
@@ -135,6 +143,7 @@ describe('AdminUsersPage', () => {
     setAdminUserPlan.mockClear();
     setAdminUserActive.mockClear();
     setAdminUserRole.mockClear();
+    deleteAdminUser.mockClear();
   });
 
   it('lista contas e filtra por nome sem acento', async () => {
@@ -173,6 +182,7 @@ describe('AdminUsersPage', () => {
     expect(screen.getByRole('dialog', { name: 'Ações de Beto Lima' })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'Tornar admin' })).toBeEnabled();
     expect(screen.getByRole('menuitem', { name: 'Bloquear' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Excluir' })).toBeEnabled();
     expect(screen.getByRole('menuitem', { name: 'Plano Mestre' })).toBeInTheDocument();
   });
 
@@ -252,5 +262,31 @@ describe('AdminUsersPage', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Rebaixar' }));
     expect(setAdminUserRole).not.toHaveBeenCalled();
     expect(screen.queryByRole('dialog', { name: 'Rebaixar admin' })).not.toBeInTheDocument();
+  });
+
+  it('pede confirmação antes de excluir uma conta', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AdminUsersPage />);
+    await openAccountMenu(user, 'Beto Lima');
+    await user.click(screen.getByRole('menuitem', { name: 'Excluir' }));
+    expect(deleteAdminUser).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Excluir conta' })).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Excluir a conta de Beto Lima? Locais pessoais, sessões e dados da conta somem. A cobrança recorrente, se existir, é encerrada. Esta ação não tem volta.',
+      ),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Confirmar exclusão' }));
+    expect(deleteAdminUser).toHaveBeenCalledWith('user-2');
+  });
+
+  it('não oferece excluir a própria conta inicial', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AdminUsersPage />);
+    await openAccountMenu(user, 'Ana Costa');
+    expect(screen.getByRole('menuitem', { name: 'Excluir' })).toBeDisabled();
+    await user.click(screen.getByRole('menuitem', { name: 'Excluir' }));
+    expect(deleteAdminUser).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog', { name: 'Excluir conta' })).not.toBeInTheDocument();
   });
 });

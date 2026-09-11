@@ -14,9 +14,8 @@ internal sealed class WorkerSettingsService(
     IOptions<FishingOptions> fishingOptions,
     ILogger<WorkerSettingsService> logger)
 {
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan RecheckDelay = TimeSpan.FromSeconds(5);
-    private readonly ConcurrentDictionary<string, CachedWorkerSettings> _cache = new();
+    private readonly ConcurrentDictionary<string, WorkerSettingsSnapshot> _cache = new();
+    private readonly ConcurrentDictionary<string, CancellationTokenSource> _changeSignals = new();
     private readonly FishingOptions _fishingOptions = fishingOptions.Value;
     private readonly TimeZoneInfo _timeZone = TimeZoneInfo.FindSystemTimeZoneById(fishingOptions.Value.TimeZone);
 
@@ -26,9 +25,8 @@ internal sealed class WorkerSettingsService(
     {
         var definition = WorkerCatalog.Find(key)
             ?? throw new InvalidOperationException($"Worker desconhecido: {key}.");
-        var now = DateTimeOffset.UtcNow;
-        if (_cache.TryGetValue(key, out var cached) && cached.ExpiresAt > now)
-            return cached.Settings;
+        if (_cache.TryGetValue(key, out var cached))
+            return cached;
 
         try
         {
@@ -39,7 +37,7 @@ internal sealed class WorkerSettingsService(
             var settings = configured is null
                 ? DefaultSettings(definition)
                 : new WorkerSettingsSnapshot(key, configured.IsEnabled, configured.CronExpression);
-            _cache[key] = new CachedWorkerSettings(settings, now.Add(CacheDuration));
+            _cache[key] = settings;
             return settings;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -49,26 +47,34 @@ internal sealed class WorkerSettingsService(
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Falha ao ler a configuração do worker {WorkerKey}.", key);
-            return cached?.Settings ?? DefaultSettings(definition);
+            return cached ?? DefaultSettings(definition);
         }
     }
 
-    public void Invalidate(string key) => _cache.TryRemove(key, out _);
+    public void Invalidate(string key)
+    {
+        _cache.TryRemove(key, out _);
+        if (!_changeSignals.TryRemove(key, out var signal))
+            return;
+        signal.Cancel();
+        signal.Dispose();
+    }
 
     public async Task WaitUntilEnabledAsync(string key, CancellationToken cancellationToken)
     {
         while (!(await GetAsync(key, cancellationToken)).IsEnabled)
-            await Task.Delay(RecheckDelay, cancellationToken);
+            await WaitForChangeOrDelayAsync(key, null, cancellationToken);
     }
 
     public async Task WaitForNextRunAsync(string key, CancellationToken cancellationToken)
     {
         while (true)
         {
+            var changed = Watch(key);
             var settings = await GetAsync(key, cancellationToken);
             if (!settings.IsEnabled || settings.CronExpression is null)
             {
-                await Task.Delay(RecheckDelay, cancellationToken);
+                await WaitForChangeOrDelayAsync(changed, null, cancellationToken);
                 continue;
             }
 
@@ -76,21 +82,38 @@ internal sealed class WorkerSettingsService(
             var nextRun = expression.GetNextOccurrence(DateTimeOffset.UtcNow, _timeZone);
             if (nextRun is null)
             {
-                await Task.Delay(RecheckDelay, cancellationToken);
+                await WaitForChangeOrDelayAsync(changed, null, cancellationToken);
                 continue;
             }
 
-            while (true)
-            {
-                var remaining = nextRun.Value - DateTimeOffset.UtcNow;
-                if (remaining <= TimeSpan.Zero)
-                    return;
+            var remaining = nextRun.Value - DateTimeOffset.UtcNow;
+            if (remaining <= TimeSpan.Zero)
+                return;
 
-                await Task.Delay(remaining < RecheckDelay ? remaining : RecheckDelay, cancellationToken);
-                var latest = await GetAsync(key, cancellationToken);
-                if (latest != settings)
-                    break;
-            }
+            await WaitForChangeOrDelayAsync(changed, remaining, cancellationToken);
+            if (!changed.IsCancellationRequested)
+                return;
+        }
+    }
+
+    private CancellationToken Watch(string key) =>
+        _changeSignals.GetOrAdd(key, static _ => new CancellationTokenSource()).Token;
+
+    private Task WaitForChangeOrDelayAsync(string key, TimeSpan? delay, CancellationToken cancellationToken) =>
+        WaitForChangeOrDelayAsync(Watch(key), delay, cancellationToken);
+
+    private static async Task WaitForChangeOrDelayAsync(
+        CancellationToken changed,
+        TimeSpan? delay,
+        CancellationToken cancellationToken)
+    {
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(changed, cancellationToken);
+        try
+        {
+            await Task.Delay(delay ?? Timeout.InfiniteTimeSpan, linked.Token);
+        }
+        catch (OperationCanceledException) when (changed.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
         }
     }
 
@@ -102,6 +125,4 @@ internal sealed class WorkerSettingsService(
             : definition.DefaultCronExpression;
         return new WorkerSettingsSnapshot(definition.Key, enabled, cron);
     }
-
-    private sealed record CachedWorkerSettings(WorkerSettingsSnapshot Settings, DateTimeOffset ExpiresAt);
 }

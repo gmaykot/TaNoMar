@@ -165,7 +165,30 @@ internal sealed class FishingForecastService
             .ToListAsync(cancellationToken);
 
         await _cache.PruneAsync(cancellationToken);
-        var queued = locations.Count(location => _refreshQueue.Enqueue(location));
+        if (locations.Count == 0)
+            return (0, 0);
+
+        var today = Today();
+        var weeks = await _cache.GetAvailableWeeksAsync(
+            locations.Select(location => location.Id).ToArray(),
+            today,
+            cancellationToken);
+        var queued = 0;
+        foreach (var location in locations)
+        {
+            weeks.TryGetValue(location.Id, out var week);
+            var todayCached = week?.FirstOrDefault(item => item.Forecast.Date == today);
+            if (_cache.NeedsExternalRefresh(todayCached))
+            {
+                if (_refreshQueue.Enqueue(location))
+                    queued++;
+                continue;
+            }
+
+            if (week!.Any(item => !HasTide(item.Forecast)))
+                _tideQueue.Enqueue(location);
+        }
+
         return (locations.Count, queued);
     }
 
@@ -186,23 +209,42 @@ internal sealed class FishingForecastService
         if (locations.Count == 0)
             return new HashSet<string>(StringComparer.Ordinal);
 
-        var generations = locations.ToDictionary(
+        var today = Today();
+        var succeeded = new HashSet<string>(StringComparer.Ordinal);
+        var toRefresh = new List<FishingLocation>();
+        foreach (var location in locations)
+        {
+            var cached = await _cache.TryGetAvailableAsync(location.Id, today, cancellationToken);
+            if (!_cache.NeedsExternalRefresh(cached))
+            {
+                succeeded.Add(location.Id);
+                if (cached is not null && !HasTide(cached.Forecast))
+                    _tideQueue.Enqueue(location);
+                continue;
+            }
+
+            toRefresh.Add(location);
+        }
+
+        if (toRefresh.Count == 0)
+            return succeeded;
+
+        var generations = toRefresh.ToDictionary(
             location => location.Id,
             location => _cache.Generation(location.Id),
             StringComparer.Ordinal);
-        var weatherTask = _openMeteo.GetWeatherBatchAsync(locations, _options.TimeZone, 8, cancellationToken);
-        var gfsRainTask = _openMeteo.GetGfsRainBatchAsync(locations, _options.TimeZone, 8, cancellationToken);
-        var marineTask = _openMeteo.GetMarineBatchAsync(locations, _options.TimeZone, 8, cancellationToken);
+        var weatherTask = _openMeteo.GetWeatherBatchAsync(toRefresh, _options.TimeZone, 8, cancellationToken);
+        var gfsRainTask = _openMeteo.GetGfsRainBatchAsync(toRefresh, _options.TimeZone, 8, cancellationToken);
+        var marineTask = _openMeteo.GetMarineBatchAsync(toRefresh, _options.TimeZone, 8, cancellationToken);
         await Task.WhenAll(weatherTask, gfsRainTask, marineTask);
         var weather = await weatherTask;
         var gfsRain = await gfsRainTask;
         var marine = await marineTask;
-        var today = Today();
         var forecastsByLocation = new Dictionary<string, IReadOnlyList<FishingLocationForecast>>(StringComparer.Ordinal);
 
-        for (var locationIndex = 0; locationIndex < locations.Count; locationIndex++)
+        for (var locationIndex = 0; locationIndex < toRefresh.Count; locationIndex++)
         {
-            var location = locations[locationIndex];
+            var location = toRefresh[locationIndex];
             if (!_cache.IsCurrentGeneration(location.Id, generations[location.Id]))
                 continue;
 
@@ -226,9 +268,10 @@ internal sealed class FishingForecastService
         }
 
         await _cache.PutBatchAsync(forecastsByLocation, cancellationToken);
-        foreach (var location in locations.Where(location => forecastsByLocation.ContainsKey(location.Id)))
+        foreach (var location in toRefresh.Where(location => forecastsByLocation.ContainsKey(location.Id)))
             _tideQueue.Enqueue(location);
-        return forecastsByLocation.Keys.ToHashSet(StringComparer.Ordinal);
+        succeeded.UnionWith(forecastsByLocation.Keys);
+        return succeeded;
     }
 
     public async Task EnrichTidesAsync(FishingLocation location, CancellationToken cancellationToken)

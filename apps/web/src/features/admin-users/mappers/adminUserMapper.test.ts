@@ -15,6 +15,7 @@ const sample = {
   protection: null,
   canChangePlan: true,
   canDeactivate: true,
+  canDelete: true,
   canChangeRole: false,
 };
 
@@ -35,6 +36,12 @@ describe('parseAdminUser', () => {
   it('rejeita usuário sem canChangeRole', () => {
     const incomplete = { ...sample };
     delete (incomplete as { canChangeRole?: boolean }).canChangeRole;
+    expect(() => parseAdminUser(incomplete)).toThrow(ContractError);
+  });
+
+  it('rejeita usuário sem canDelete', () => {
+    const incomplete = { ...sample };
+    delete (incomplete as { canDelete?: boolean }).canDelete;
     expect(() => parseAdminUser(incomplete)).toThrow(ContractError);
   });
 });

@@ -11,6 +11,7 @@ import userStyles from '@/features/admin-users/components/adminUsers.module.css'
 import { adminUsersQueryKey, useAdminUsers } from '@/features/admin-users/hooks/useAdminUsers';
 import { useAdminPlans } from '@/features/admin-plans/hooks/useAdminPlans';
 import {
+  deleteAdminUser,
   setAdminUserActive,
   setAdminUserPlan,
   setAdminUserRole,
@@ -29,7 +30,8 @@ type Filter = 'all' | 'paid' | 'free' | 'blocked';
 type PendingAccountChange =
   | { kind: 'plan'; id: string; name: string; planCode: AdminPlanCode; planName: string }
   | { kind: 'active'; id: string; name: string; isActive: boolean }
-  | { kind: 'role'; id: string; name: string; role: 'Admin' | 'User' };
+  | { kind: 'role'; id: string; name: string; role: 'Admin' | 'User' }
+  | { kind: 'delete'; id: string; name: string };
 
 const planLabel: Record<AdminPlanCode, string> = {
   free: 'Free',
@@ -65,6 +67,13 @@ function accountChangeCopy(change: PendingAccountChange) {
       title: 'Rebaixar admin',
       description: `Rebaixar ${change.name}? A conta deixa de ser admin e volta a ser usuário.`,
       confirmLabel: 'Confirmar rebaixamento',
+    };
+  }
+  if (change.kind === 'delete') {
+    return {
+      title: 'Excluir conta',
+      description: `Excluir a conta de ${change.name}? Locais pessoais, sessões e dados da conta somem. A cobrança recorrente, se existir, é encerrada. Esta ação não tem volta.`,
+      confirmLabel: 'Confirmar exclusão',
     };
   }
   if (change.isActive) {
@@ -180,6 +189,27 @@ export function AdminUsersPage() {
     onSettled: () => setPendingId(null),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: ({ id }: { id: string }) => deleteAdminUser(id),
+    onMutate: ({ id }) => {
+      setPendingId(id);
+      setErrorById((current) => ({ ...current, [id]: '' }));
+    },
+    onSuccess: async (_, { id }) => {
+      await refresh(id);
+      showSaveConfirmation('Conta excluída.');
+      setPendingChange(null);
+    },
+    onError: (error, { id }) => {
+      setErrorById((current) => ({
+        ...current,
+        [id]: error instanceof ApiError ? error.message : 'Não foi possível excluir a conta.',
+      }));
+      setPendingChange(null);
+    },
+    onSettled: () => setPendingId(null),
+  });
+
   if (users.isPending) {
     return (
       <FeedbackState
@@ -200,7 +230,11 @@ export function AdminUsersPage() {
   }
 
   const confirmation = pendingChange ? accountChangeCopy(pendingChange) : null;
-  const changeBusy = planMutation.isPending || activeMutation.isPending || roleMutation.isPending;
+  const changeBusy =
+    planMutation.isPending ||
+    activeMutation.isPending ||
+    roleMutation.isPending ||
+    deleteMutation.isPending;
 
   return (
     <div className={styles.page}>
@@ -211,7 +245,7 @@ export function AdminUsersPage() {
       <PageHeader
         eyebrow="Administração"
         title="Quem pode pescar no app."
-        description="Plano, cargo, liberação e bloqueio de contas. Só a conta inicial altera o cargo de admin."
+        description="Plano, cargo, liberação, bloqueio e exclusão de contas. Só a conta inicial altera o cargo de admin."
       />
       <SearchField
         label="Buscar usuários"
@@ -274,6 +308,13 @@ export function AdminUsersPage() {
                   role,
                 })
               }
+              onDelete={() =>
+                setPendingChange({
+                  kind: 'delete',
+                  id: user.id,
+                  name: user.name,
+                })
+              }
             />
           ))}
         </div>
@@ -294,6 +335,10 @@ export function AdminUsersPage() {
             }
             if (pendingChange.kind === 'role') {
               roleMutation.mutate({ id: pendingChange.id, role: pendingChange.role });
+              return;
+            }
+            if (pendingChange.kind === 'delete') {
+              deleteMutation.mutate({ id: pendingChange.id });
               return;
             }
             activeMutation.mutate({ id: pendingChange.id, isActive: pendingChange.isActive });

@@ -26,6 +26,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
     public DbSet<BillingWebhookEvent> BillingWebhookEvents => Set<BillingWebhookEvent>();
     public DbSet<FishingSpotWebcam> FishingSpotWebcams => Set<FishingSpotWebcam>();
     public DbSet<WorkerConfiguration> WorkerConfigurations => Set<WorkerConfiguration>();
+    public DbSet<WhatsAppSettings> WhatsAppSettings => Set<WhatsAppSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -153,6 +154,14 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 ShowPartners = false,
                 ShowAppFocus = false,
                 ShowLiveWebcams = true
+            });
+        modelBuilder.Entity<WhatsAppSettings>().HasData(
+            new WhatsAppSettings
+            {
+                Id = Guid.Parse("7a4c1e87-3184-4fd6-8b38-4a6d0e0b0011"),
+                InstanceName = "TaNoMar",
+                CreatedAt = new DateTimeOffset(2026, 9, 10, 0, 0, 0, TimeSpan.Zero),
+                UpdatedAt = new DateTimeOffset(2026, 9, 10, 0, 0, 0, TimeSpan.Zero)
             });
 
     }
@@ -377,6 +386,22 @@ public sealed class PlatformSettings
     public bool ShowPartners { get; set; }
     public bool ShowAppFocus { get; set; }
     public bool ShowLiveWebcams { get; set; } = true;
+}
+
+public sealed class WhatsAppSettings
+{
+    public Guid Id { get; set; }
+    public bool Enabled { get; set; }
+    public bool NotifyByEmail { get; set; } = true;
+    public string InstanceName { get; set; } = "TaNoMar";
+    public string? DefaultDestinationType { get; set; }
+    public string? DefaultDestinationId { get; set; }
+    public string? DefaultDestinationName { get; set; }
+    public bool NotifyNewUser { get; set; } = true;
+    public bool NotifyPlanRequested { get; set; } = true;
+    public bool NotifyPlanChanged { get; set; } = true;
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
 }
 
 public sealed class ForecastAlert

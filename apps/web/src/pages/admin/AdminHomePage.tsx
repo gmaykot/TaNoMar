@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   Handshake,
   MapPinned,
+  MessageCircle,
   Shield,
   Timer,
   Users,
@@ -135,7 +136,7 @@ export function AdminHomePage() {
           </span>
           <div>
             <strong>Usuários</strong>
-            <small>Troque o plano ou bloqueie uma conta.</small>
+            <small>Troque o plano, bloqueie ou exclua uma conta.</small>
           </div>
         </Link>
         <Link className={adminStyles.shortcut} to={routes.adminPlans}>
@@ -154,6 +155,15 @@ export function AdminHomePage() {
           <div>
             <strong>Workers</strong>
             <small>Habilite processos e ajuste suas periodicidades.</small>
+          </div>
+        </Link>
+        <Link className={adminStyles.shortcut} to={routes.adminWhatsApp}>
+          <span>
+            <MessageCircle size={18} aria-hidden="true" />
+          </span>
+          <div>
+            <strong>WhatsApp</strong>
+            <small>Conecte a integração e escolha o destino dos avisos.</small>
           </div>
         </Link>
         <Link className={adminStyles.shortcut} to={routes.adminPartners}>

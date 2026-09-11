@@ -53,6 +53,7 @@ interface AdminUserActionsSheetProps {
   onPlanChange: (planCode: AdminPlanCode) => void;
   onActiveChange: (isActive: boolean) => void;
   onRoleChange: (role: 'Admin' | 'User') => void;
+  onDelete: () => void;
 }
 
 export function AdminUserActionsSheet({
@@ -63,6 +64,7 @@ export function AdminUserActionsSheet({
   onPlanChange,
   onActiveChange,
   onRoleChange,
+  onDelete,
 }: AdminUserActionsSheetProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -143,6 +145,13 @@ export function AdminUserActionsSheet({
               Liberar
             </ActionMenuItem>
           )}
+          <ActionMenuItem
+            danger
+            disabled={pending || !user.canDelete}
+            onSelect={() => choose(onDelete)}
+          >
+            Excluir
+          </ActionMenuItem>
           <div className={styles.menuDivider} role="separator" />
           <p className={styles.menuLabel}>Plano</p>
           {planActions.map((plan) => (

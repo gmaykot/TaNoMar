@@ -29,6 +29,7 @@
             "if ($env:JWT_KEY) { $env:TaNoMar__JwtKey = $env:JWT_KEY }",
             "if ($env:BOOTSTRAP_ADMIN_EMAIL) { $env:TaNoMar__BootstrapAdminEmail = $env:BOOTSTRAP_ADMIN_EMAIL }",
             "if ($env:BOOTSTRAP_ADMIN_GOOGLE_SUBJECT) { $env:TaNoMar__BootstrapAdminGoogleSubject = $env:BOOTSTRAP_ADMIN_GOOGLE_SUBJECT }",
+            "if (-not $env:WHATSAPP_BASE_URL) { $env:WHATSAPP_BASE_URL = 'http://127.0.0.1:3000' }",
             "dotnet run --project apps/api/TaNoMar.Api/TaNoMar.Api.csproj"
           ],
           "env": {
@@ -39,6 +40,21 @@
           "autoExecuteCommands": true,
           "icon": "server-process",
           "color": "terminal.ansiYellow"
+        },
+        {
+          "name": "whatsapp",
+          "commands": [
+            "if (Test-Path .env) { Get-Content .env | ForEach-Object { $line = $_.Trim(); if ($line -and -not $line.StartsWith('#')) { $i = $line.IndexOf('='); if ($i -gt 0) { Set-Item -Path ('Env:' + $line.Substring(0, $i).Trim()) -Value $line.Substring($i + 1).Trim() } } } }",
+            "if ($env:WHATSAPP_API_KEY) { $env:INTERNAL_API_KEY = $env:WHATSAPP_API_KEY }",
+            "if (-not $env:INSTANCE_NAME) { $env:INSTANCE_NAME = 'TaNoMar-Local' }",
+            "if (-not $env:SESSION_PATH) { $env:SESSION_PATH = (Join-Path $PWD 'services/tanomar-whatsapp/data/session') }",
+            "if (-not $env:PORT) { $env:PORT = '3000' }",
+            "npm --prefix services/tanomar-whatsapp run dev"
+          ],
+          "joinOperator": ";",
+          "autoExecuteCommands": true,
+          "icon": "comment-discussion",
+          "color": "terminal.ansiCyan"
         }
       ]
     ],
@@ -47,6 +63,7 @@
         "name": "install",
         "commands": [
           "npm --prefix apps/web install",
+          "npm --prefix services/tanomar-whatsapp install",
           "dotnet restore apps/api/TaNoMar.Api/TaNoMar.Api.csproj"
         ],
         "joinOperator": ";",

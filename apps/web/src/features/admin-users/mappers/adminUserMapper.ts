@@ -33,6 +33,7 @@ export function parseAdminUser(value: unknown): AdminUser {
   const isSelf = readBoolean(value.isSelf);
   const canChangePlan = readBoolean(value.canChangePlan);
   const canDeactivate = readBoolean(value.canDeactivate);
+  const canDelete = readBoolean(value.canDelete);
   const canChangeRole = readBoolean(value.canChangeRole);
   if (
     !id ||
@@ -46,6 +47,7 @@ export function parseAdminUser(value: unknown): AdminUser {
     isSelf === null ||
     canChangePlan === null ||
     canDeactivate === null ||
+    canDelete === null ||
     canChangeRole === null
   ) {
     throw new ContractError('Usuário admin incompleto.');
@@ -64,6 +66,7 @@ export function parseAdminUser(value: unknown): AdminUser {
     protection: parseProtection(value.protection),
     canChangePlan,
     canDeactivate,
+    canDelete,
     canChangeRole,
   };
 }

@@ -63,6 +63,31 @@ builder.Services.PostConfigure<WebcamOptions>(options =>
     if (string.IsNullOrWhiteSpace(options.YouTubeApiKey))
         options.YouTubeApiKey = builder.Configuration["YOUTUBE_API_KEY"] ?? string.Empty;
 });
+builder.Services.Configure<ResendOptions>(builder.Configuration.GetSection(ResendOptions.SectionName));
+builder.Services.PostConfigure<ResendOptions>(options =>
+{
+    if (string.IsNullOrWhiteSpace(options.ApiKey))
+        options.ApiKey = builder.Configuration["RESEND_API_KEY"] ?? string.Empty;
+    if (string.IsNullOrWhiteSpace(options.FromEmail))
+        options.FromEmail = builder.Configuration["RESEND_FROM_EMAIL"] ?? string.Empty;
+    if (!string.IsNullOrWhiteSpace(builder.Configuration["RESEND_FROM_NAME"]))
+        options.FromName = builder.Configuration["RESEND_FROM_NAME"]!;
+    if (string.IsNullOrWhiteSpace(options.NotificationEmail))
+        options.NotificationEmail = builder.Configuration["RESEND_NOTIFICATION_EMAIL"]
+            ?? builder.Configuration[$"{TaNoMarOptions.SectionName}:BootstrapAdminEmail"]
+            ?? builder.Configuration["BOOTSTRAP_ADMIN_EMAIL"]
+            ?? string.Empty;
+});
+builder.Services.Configure<WhatsAppOptions>(builder.Configuration.GetSection(WhatsAppOptions.SectionName));
+builder.Services.PostConfigure<WhatsAppOptions>(options =>
+{
+    if (!options.Enabled && bool.TryParse(builder.Configuration["WHATSAPP_ENABLED"], out var enabled))
+        options.Enabled = enabled;
+    if (string.IsNullOrWhiteSpace(options.BaseUrl))
+        options.BaseUrl = builder.Configuration["WHATSAPP_BASE_URL"] ?? string.Empty;
+    if (string.IsNullOrWhiteSpace(options.ApiKey))
+        options.ApiKey = builder.Configuration["WHATSAPP_API_KEY"] ?? string.Empty;
+});
 builder.Services.AddDbContext<TaNoMarDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 builder.Services.AddScoped<AuthTokenService>();
 builder.Services.AddMemoryCache();
@@ -92,6 +117,31 @@ builder.Services.AddHttpClient<AsaasClient>((provider, client) =>
     client.Timeout = TimeSpan.FromSeconds(20);
     client.DefaultRequestHeaders.UserAgent.ParseAdd("tanomar/2.0");
 });
+builder.Services.AddHttpClient<ResendEmailNotifier>(client =>
+{
+    client.BaseAddress = new Uri("https://api.resend.com/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("tanomar/2.0");
+});
+builder.Services.AddHttpClient<BaileysWhatsAppGateway>((provider, client) =>
+{
+    var whatsApp = provider.GetRequiredService<IOptions<WhatsAppOptions>>().Value;
+    var baseUrl = string.IsNullOrWhiteSpace(whatsApp.BaseUrl)
+        ? "http://127.0.0.1:3000/"
+        : whatsApp.BaseUrl.Trim().TrimEnd('/') + "/";
+    client.BaseAddress = new Uri(baseUrl);
+    client.Timeout = TimeSpan.FromSeconds(8);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("tanomar/2.0");
+});
+builder.Services.AddTransient<IWhatsAppGateway>(provider => provider.GetRequiredService<BaileysWhatsAppGateway>());
+builder.Services.AddSingleton<IAdminNotificationFormatter, AdminNotificationFormatter>();
+builder.Services.AddTransient<IAdminNotificationChannel>(provider => provider.GetRequiredService<ResendEmailNotifier>());
+builder.Services.AddTransient<IAdminNotificationChannel, WhatsAppNotificationChannel>();
+builder.Services.AddScoped<AdminNotificationDispatcher>();
+builder.Services.AddScoped<WhatsAppAdminService>();
+builder.Services.AddSingleton<AdminNotificationQueue>();
+builder.Services.AddSingleton<IAdminNotificationService>(provider => provider.GetRequiredService<AdminNotificationQueue>());
+builder.Services.AddHostedService<AdminNotificationWorker>();
 builder.Services.AddScoped<BillingService>();
 builder.Services.AddHttpClient<WindyWebcamProvider>((provider, client) =>
 {
@@ -194,7 +244,8 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "ok", at = DateTimeOff
 
 var api = app.MapGroup("/api/v1");
 WebcamEndpoints.Map(api);
-api.MapPost("/auth/google", async (GoogleLoginRequest request, TaNoMarDbContext db, AuthTokenService tokens, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, HttpContext context, CancellationToken cancellationToken) =>
+WhatsAppEndpoints.Map(api);
+api.MapPost("/auth/google", async (GoogleLoginRequest request, TaNoMarDbContext db, AuthTokenService tokens, IAdminNotificationService adminNotifications, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, HttpContext context, CancellationToken cancellationToken) =>
 {
     if (string.IsNullOrWhiteSpace(request.Credential)) return Results.BadRequest(new { title = "Credencial ausente." });
     GoogleJsonWebSignature.Payload payload;
@@ -221,9 +272,16 @@ api.MapPost("/auth/google", async (GoogleLoginRequest request, TaNoMarDbContext 
     }
     ApplyBootstrapAdmin(user, payload.Email, payload.Subject, options.Value, assignDefaultPlan: created);
     if (!user.IsActive) return Results.Forbid();
+    var totalUsers = created ? await db.Users.CountAsync(cancellationToken) + 1 : 0;
     var refresh = tokens.CreateRefreshToken();
     db.RefreshTokens.Add(new RefreshToken { UserId = user.Id, TokenHash = tokens.HashRefreshToken(refresh), ExpiresAt = DateTimeOffset.UtcNow.AddDays(options.Value.RefreshTokenDays) });
     await db.SaveChangesAsync(cancellationToken);
+    if (created)
+        adminNotifications.NotifyNewUserRegistered(
+            user.Name,
+            user.Email,
+            user.CreatedAt,
+            totalUsers);
     SetRefreshCookie(context, refresh, app.Environment.IsDevelopment());
     return Results.Ok(new { accessToken = tokens.IssueAccessToken(user) });
 });
@@ -616,10 +674,11 @@ api.MapGet("/admin/users", async (ClaimsPrincipal principal, TaNoMarDbContext db
     var users = await db.Users.AsNoTracking().OrderBy(item => item.Name).ToListAsync(cancellationToken);
     var plans = await db.Plans.AsNoTracking().ToDictionaryAsync(item => item.Code, cancellationToken);
     var activeAdmins = users.Count(item => item.IsActive && string.Equals(item.Role, "Admin", StringComparison.Ordinal));
-    return Results.Ok(users.Select(item => AdminUserDto(item, ResolvePlan(plans, item.PlanCode), actor!, options.Value, activeAdmins)).ToList());
+    var adminCount = users.Count(item => string.Equals(item.Role, "Admin", StringComparison.Ordinal));
+    return Results.Ok(users.Select(item => AdminUserDto(item, ResolvePlan(plans, item.PlanCode), actor!, options.Value, activeAdmins, adminCount)).ToList());
 }).RequireAuthorization();
 
-api.MapPut("/admin/users/{id:guid}/plan", async (Guid id, AdminPlanRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, NotificationRealtimeHub hub, WebPushQueue push, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
+api.MapPut("/admin/users/{id:guid}/plan", async (Guid id, AdminPlanRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, NotificationRealtimeHub hub, WebPushQueue push, IAdminNotificationService adminNotifications, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
 {
     var (actor, failure) = await AdminActorAsync(principal, db, cancellationToken);
     if (failure is not null) return failure;
@@ -632,15 +691,26 @@ api.MapPut("/admin/users/{id:guid}/plan", async (Guid id, AdminPlanRequest reque
         return Results.Conflict(new { code = "plan_disabled", detail = "Esse plano está desligado." });
     if (!string.Equals(target.PlanCode, plan.Code, StringComparison.Ordinal))
     {
+        var previousPlanName = await db.Plans.AsNoTracking()
+            .Where(item => item.Code == target.PlanCode)
+            .Select(item => item.Name)
+            .SingleOrDefaultAsync(cancellationToken) ?? target.PlanCode;
         target.PlanCode = plan.Code;
         const string title = "Plano atualizado";
         var body = $"Seu plano agora é {plan.Name}.";
         AddNotification(db, target.Id, title, body);
         await db.SaveChangesAsync(cancellationToken);
+        adminNotifications.NotifyUserPlanChanged(
+            target.Name,
+            target.Email,
+            previousPlanName,
+            plan.Name,
+            DateTimeOffset.UtcNow);
         DispatchCreated(hub, push, target.Id, title, body);
     }
     var activeAdmins = await db.Users.CountAsync(item => item.IsActive && item.Role == "Admin", cancellationToken);
-    return Results.Ok(AdminUserDto(target, plan, actor!, options.Value, activeAdmins));
+    var adminCount = await db.Users.CountAsync(item => item.Role == "Admin", cancellationToken);
+    return Results.Ok(AdminUserDto(target, plan, actor!, options.Value, activeAdmins, adminCount));
 }).RequireAuthorization();
 
 api.MapGet("/admin/plans", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
@@ -749,7 +819,8 @@ api.MapPut("/admin/users/{id:guid}/active", async (Guid id, AdminActiveRequest r
     }
     var plan = await db.Plans.SingleAsync(item => item.Code == target.PlanCode, cancellationToken);
     var activeAdmins = await db.Users.CountAsync(item => item.IsActive && item.Role == "Admin", cancellationToken);
-    return Results.Ok(AdminUserDto(target, plan, actor, options.Value, activeAdmins));
+    var adminCount = await db.Users.CountAsync(item => item.Role == "Admin", cancellationToken);
+    return Results.Ok(AdminUserDto(target, plan, actor, options.Value, activeAdmins, adminCount));
 }).RequireAuthorization();
 
 api.MapPut("/admin/users/{id:guid}/role", async (Guid id, AdminRoleRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, NotificationRealtimeHub hub, WebPushQueue push, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
@@ -779,7 +850,24 @@ api.MapPut("/admin/users/{id:guid}/role", async (Guid id, AdminRoleRequest reque
     }
     var plan = await db.Plans.SingleAsync(item => item.Code == target.PlanCode, cancellationToken);
     var activeAdmins = await db.Users.CountAsync(item => item.IsActive && item.Role == "Admin", cancellationToken);
-    return Results.Ok(AdminUserDto(target, plan, actor, options.Value, activeAdmins));
+    var adminCount = await db.Users.CountAsync(item => item.Role == "Admin", cancellationToken);
+    return Results.Ok(AdminUserDto(target, plan, actor, options.Value, activeAdmins, adminCount));
+}).RequireAuthorization();
+
+api.MapDelete("/admin/users/{id:guid}", async (Guid id, ClaimsPrincipal principal, TaNoMarDbContext db, BillingService billing, FishingForecastCache cache, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
+{
+    var (actor, failure) = await AdminActorAsync(principal, db, cancellationToken);
+    if (failure is not null) return failure;
+    var target = await db.Users.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+    if (target is null) return Results.NotFound();
+    if (target.Id == actor!.Id) return Results.Conflict(new { code = "self_locked", detail = "Você não pode excluir a própria conta." });
+    if (MatchesBootstrapAdmin(target.Email, target.GoogleSubject, options.Value))
+        return Results.Conflict(new { code = "bootstrap_locked", detail = "A conta inicial do bootstrap não pode ser excluída." });
+    if (SpotRules.IsAdmin(target) && await db.Users.CountAsync(item => item.Role == "Admin" && item.Id != target.Id, cancellationToken) == 0)
+        return Results.Conflict(new { code = "last_admin", detail = "Mantenha pelo menos um admin ativo." });
+    await billing.StopRecurringForDeletedUserAsync(target.Id, cancellationToken);
+    await RemoveUserAccountAsync(db, cache, target, cancellationToken);
+    return Results.NoContent();
 }).RequireAuthorization();
 
 api.MapGet("/partners", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
@@ -1419,7 +1507,7 @@ static string? AdminProtection(User item, User actor, TaNoMarOptions options, in
     if (item.IsActive && SpotRules.IsAdmin(item) && activeAdmins <= 1) return "last_admin";
     return null;
 }
-static object AdminUserDto(User item, Plan plan, User actor, TaNoMarOptions options, int activeAdmins)
+static object AdminUserDto(User item, Plan plan, User actor, TaNoMarOptions options, int activeAdmins, int adminCount)
 {
     var protection = AdminProtection(item, actor, options, activeAdmins);
     return new
@@ -1436,9 +1524,14 @@ static object AdminUserDto(User item, Plan plan, User actor, TaNoMarOptions opti
         protection,
         canChangePlan = true,
         canDeactivate = protection is null,
+        canDelete = CanDeleteAdminUser(item, actor, options, adminCount),
         canChangeRole = CanChangeAdminRole(actor, item, options)
     };
 }
+static bool CanDeleteAdminUser(User item, User actor, TaNoMarOptions options, int adminCount) =>
+    !MatchesBootstrapAdmin(item.Email, item.GoogleSubject, options)
+    && item.Id != actor.Id
+    && !(SpotRules.IsAdmin(item) && adminCount <= 1);
 static bool CanChangeAdminRole(User actor, User target, TaNoMarOptions options) =>
     MatchesBootstrapAdmin(actor.Email, actor.GoogleSubject, options)
     && actor.Id != target.Id
@@ -1672,6 +1765,50 @@ static string UniqueOfficialSlug(string name, IReadOnlyCollection<string> used)
         index++;
     }
     return slug;
+}
+
+static async Task RemoveUserAccountAsync(TaNoMarDbContext db, FishingForecastCache cache, User target, CancellationToken cancellationToken)
+{
+    var userId = target.Id;
+    var ownedSpots = await db.FishingSpots.Where(spot => spot.OwnerUserId == userId).ToListAsync(cancellationToken);
+    var personalSpots = ownedSpots.Where(spot => spot.Visibility != "official").ToList();
+    foreach (var spot in personalSpots)
+        await RemoveSpotDependentsAsync(db, spot.Id, cancellationToken);
+    foreach (var official in ownedSpots.Where(spot => spot.Visibility == "official"))
+        official.OwnerUserId = null;
+    db.FishingSpots.RemoveRange(personalSpots);
+
+    var authoredReportIds = await db.CommunityReports.Where(report => report.UserId == userId).Select(report => report.Id).ToListAsync(cancellationToken);
+    var votesOnOthers = await db.CommunityReportVotes
+        .Where(vote => vote.UserId == userId && !authoredReportIds.Contains(vote.ReportId))
+        .ToListAsync(cancellationToken);
+    if (votesOnOthers.Count > 0)
+    {
+        var reportIds = votesOnOthers.Select(vote => vote.ReportId).Distinct().ToList();
+        var reports = await db.CommunityReports.Where(report => reportIds.Contains(report.Id)).ToListAsync(cancellationToken);
+        foreach (var vote in votesOnOthers)
+        {
+            var report = reports.SingleOrDefault(item => item.Id == vote.ReportId);
+            if (report is null) continue;
+            if (vote.Kind == "confirm") report.Confirmations = Math.Max(0, report.Confirmations - 1);
+            else report.Contested = Math.Max(0, report.Contested - 1);
+        }
+    }
+    db.CommunityReportVotes.RemoveRange(db.CommunityReportVotes.Where(vote => authoredReportIds.Contains(vote.ReportId) || vote.UserId == userId));
+    db.CommunityReports.RemoveRange(db.CommunityReports.Where(report => report.UserId == userId));
+    db.FavoriteSpots.RemoveRange(db.FavoriteSpots.Where(item => item.UserId == userId));
+    db.EnabledSpots.RemoveRange(db.EnabledSpots.Where(item => item.UserId == userId));
+    db.ForecastAlerts.RemoveRange(db.ForecastAlerts.Where(item => item.UserId == userId));
+    db.Notifications.RemoveRange(db.Notifications.Where(item => item.UserId == userId));
+    db.PushSubscriptions.RemoveRange(db.PushSubscriptions.Where(item => item.UserId == userId));
+    db.UserPreferences.RemoveRange(db.UserPreferences.Where(item => item.UserId == userId));
+    db.RefreshTokens.RemoveRange(db.RefreshTokens.Where(item => item.UserId == userId));
+    db.BillingSubscriptions.RemoveRange(db.BillingSubscriptions.Where(item => item.UserId == userId));
+    db.BillingCustomers.RemoveRange(db.BillingCustomers.Where(item => item.UserId == userId));
+    db.Users.Remove(target);
+    await db.SaveChangesAsync(cancellationToken);
+    foreach (var slug in personalSpots.Select(spot => spot.Slug))
+        await cache.InvalidateLocationAsync(slug, cancellationToken);
 }
 
 static async Task RemoveSpotDependentsAsync(TaNoMarDbContext db, Guid spotId, CancellationToken cancellationToken)

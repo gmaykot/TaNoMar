@@ -135,6 +135,37 @@ public sealed class FishingForecastCacheTests
     }
 
     [Fact]
+    public async Task Needs_external_refresh_only_when_missing_unusable_or_stale()
+    {
+        using var harness = new CacheHarness(cacheHours: 24, warmupIntervalHours: 3, maxStaleHours: 24);
+        var date = new DateOnly(2026, 9, 9);
+        Assert.True(harness.Cache.NeedsExternalRefresh(null));
+
+        await harness.SeedSnapshotAsync("campeche", date, Forecast("campeche", date), createdAt: DateTimeOffset.UtcNow.AddHours(-1), expiresAt: DateTimeOffset.UtcNow.AddHours(23));
+        var fresh = await harness.Cache.TryGetUsableAsync("campeche", date, CancellationToken.None);
+        Assert.False(harness.Cache.NeedsExternalRefresh(fresh));
+
+        await harness.SeedSnapshotAsync("joaquina", date, Forecast("joaquina", date), createdAt: DateTimeOffset.UtcNow.AddHours(-4), expiresAt: DateTimeOffset.UtcNow.AddHours(20));
+        var stale = await harness.Cache.TryGetUsableAsync("joaquina", date, CancellationToken.None);
+        Assert.True(harness.Cache.NeedsExternalRefresh(stale));
+    }
+
+    [Fact]
+    public async Task Loads_available_weeks_in_one_pass_and_hydrates_memory()
+    {
+        using var harness = new CacheHarness();
+        var today = new DateOnly(2026, 9, 9);
+        await harness.SeedSnapshotAsync("campeche", today, Forecast("campeche", today), DateTimeOffset.UtcNow.AddHours(-1), DateTimeOffset.UtcNow.AddHours(23));
+        await harness.SeedSnapshotAsync("campeche", today.AddDays(1), Forecast("campeche", today.AddDays(1)), DateTimeOffset.UtcNow.AddHours(-1), DateTimeOffset.UtcNow.AddHours(23));
+
+        var weeks = await harness.Cache.GetAvailableWeeksAsync(["campeche"], today, CancellationToken.None);
+
+        Assert.Equal(2, weeks["campeche"].Count);
+        Assert.NotNull(await harness.Cache.TryGetUsableAsync("campeche", today, CancellationToken.None));
+        Assert.NotNull(await harness.Cache.TryGetUsableAsync("campeche", today.AddDays(1), CancellationToken.None));
+    }
+
+    [Fact]
     public void Forecast_inputs_change_when_coordinates_orientation_or_profile_change()
     {
         var spot = new FishingSpot("praia-mole", "Praia Mole", "leste", -27.6, -48.4, 90, "praia_aberta");

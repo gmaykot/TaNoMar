@@ -32,3 +32,7 @@ export async function setAdminUserRole(id: string, role: 'Admin' | 'User'): Prom
     }),
   );
 }
+
+export async function deleteAdminUser(id: string): Promise<void> {
+  await apiRequest(`/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}

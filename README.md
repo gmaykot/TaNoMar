@@ -11,6 +11,8 @@ apps/
 ├── web/                    # React + TypeScript + Vite + PWA
 └── api/
     └── TaNoMar.Api/        # ASP.NET Core + EF Core + PostgreSQL
+services/
+└── tanomar-whatsapp/       # Adapter Node.js + Baileys, somente rede interna
 docs/                       # Arquitetura, contratos, deploy e decisões
 ```
 
@@ -24,7 +26,7 @@ npm install
 npm run dev
 ```
 
-Rotas: `/` (landing pública), `/entrar`, `/app` (início autenticado), `/ranking`, `/locais`, `/locais/novo`, `/locais/:locationId`, `/conta`, `/conta/preferencias`, `/conta/notificacoes`, `/premium`, `/diario`, `/admin`, `/admin/locais` e `/admin/usuarios`. O Vite encaminha `/api` para `http://127.0.0.1:5000`. No celular use `http://<ip-lan>.nip.io:5173/` e, para instalar o PWA, `https://<ip-lan>.nip.io:5174/` — detalhes em [docs/pwa.md](docs/pwa.md). A landing, o catálogo público e a configuração de domínio estão em [docs/landing.md](docs/landing.md).
+Rotas: `/` (landing pública), `/entrar`, `/app` (início autenticado), `/ranking`, `/locais`, `/locais/novo`, `/locais/:locationId`, `/conta`, `/conta/preferencias`, `/conta/notificacoes`, `/premium`, `/diario`, `/admin`, `/admin/locais`, `/admin/usuarios` e `/admin/integracoes/whatsapp`. O Vite encaminha `/api` para `http://127.0.0.1:5000`. No celular use `http://<ip-lan>.nip.io:5173/` e, para instalar o PWA, `https://<ip-lan>.nip.io:5174/` — detalhes em [docs/pwa.md](docs/pwa.md). A landing, o catálogo público e a configuração de domínio estão em [docs/landing.md](docs/landing.md).
 
 | Comando             | Uso                            |
 | ------------------- | ------------------------------ |
@@ -49,7 +51,7 @@ dotnet run
 
 A API expõe `/api/v1`; Swagger fica disponível em Development. Identificadores de runtime e contratos estão em [docs/api-contracts.md](docs/api-contracts.md).
 
-Para desenvolvimento local, execute React e .NET diretamente nos dois terminais acima. Docker não faz parte do fluxo local; a sessão `default` de `.vscode/sessions.json` já inicia ambos os processos.
+Para desenvolvimento local, execute React, .NET e o adapter WhatsApp diretamente. Docker não faz parte do fluxo local; a sessão `default` de `.vscode/sessions.json` já inicia os três processos. Detalhes do adapter em [services/tanomar-whatsapp/README.md](services/tanomar-whatsapp/README.md).
 
 ## Live Webcams
 
@@ -77,7 +79,7 @@ Guia completo: [docs/features/webcams.md](docs/features/webcams.md).
 
 ## Produção no Coolify
 
-O deploy usa `docker-compose.yml` na raiz. Web e API sobem no **mesmo container** — o build do React vira arquivos estáticos servidos pela API em `wwwroot/`. O PostgreSQL continua externo.
+O deploy usa `docker-compose.yml` na raiz. Web e API sobem no **mesmo container** — o build do React vira arquivos estáticos servidos pela API em `wwwroot/` — e o adapter WhatsApp sobe isolado em outro container interno. O PostgreSQL continua externo.
 
 Guia completo: **[docs/deployment.md](docs/deployment.md)**.
 

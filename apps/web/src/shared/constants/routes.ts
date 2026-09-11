@@ -28,6 +28,7 @@ export const routes = {
   adminUsers: '/admin/usuarios',
   adminPlans: '/admin/planos',
   adminWorkers: '/admin/workers',
+  adminWhatsApp: '/admin/integracoes/whatsapp',
   adminPartners: '/admin/parceiros',
   adminPartnerNew: '/admin/parceiros/novo',
   adminPartnerEdit: (slug: string) => `/admin/parceiros/${slug}`,

@@ -1,5 +1,6 @@
 using TaNoMar.Api.Fishing;
 using TaNoMar.Api.Workers;
+using Xunit;
 
 namespace TaNoMar.Api.Tests;
 

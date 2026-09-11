@@ -15,6 +15,7 @@ internal sealed class BillingService(
     AsaasClient asaas,
     NotificationRealtimeHub hub,
     WebPushQueue push,
+    IAdminNotificationService adminNotifications,
     IOptions<BillingOptions> billingOptions,
     IOptions<TaNoMarOptions> appOptions,
     ILogger<BillingService> logger)
@@ -54,8 +55,11 @@ internal sealed class BillingService(
         var plan = await db.Plans.AsNoTracking().SingleOrDefaultAsync(item => item.Code == normalizedPlan, cancellationToken);
         if (plan is null || !plan.IsEnabled)
             return Results.Conflict(new { code = "plan_disabled", detail = "Este plano não está disponível." });
-
         await ApplyDueAccessAsync(user, cancellationToken);
+        var currentPlanName = await db.Plans.AsNoTracking()
+            .Where(item => item.Code == user.PlanCode)
+            .Select(item => item.Name)
+            .SingleOrDefaultAsync(cancellationToken) ?? user.PlanCode;
         var current = await CurrentPaidAsync(user.Id, cancellationToken);
         if (current is not null
             && string.Equals(current.PlanCode, normalizedPlan, StringComparison.Ordinal)
@@ -153,7 +157,30 @@ internal sealed class BillingService(
         };
         db.BillingSubscriptions.Add(pending);
         await db.SaveChangesAsync(cancellationToken);
+        adminNotifications.NotifyPlanRequested(
+            user.Name,
+            user.Email,
+            currentPlanName,
+            plan.Name,
+            normalizedCycle,
+            firstCharge,
+            now);
         return Results.Ok(new { checkoutId = created.Id, checkoutUrl = created.Link, expiresAt = pending.ExpiresAt });
+    }
+
+    public async Task StopRecurringForDeletedUserAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var subscriptions = await db.BillingSubscriptions
+            .Where(item => item.UserId == userId)
+            .ToListAsync(cancellationToken);
+        foreach (var item in subscriptions)
+        {
+            if (!string.IsNullOrWhiteSpace(item.AsaasSubscriptionId))
+                await asaas.DeleteSubscriptionAsync(item.AsaasSubscriptionId, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(item.PreviousAsaasSubscriptionId)
+                && item.PreviousAsaasSubscriptionId != item.AsaasSubscriptionId)
+                await asaas.DeleteSubscriptionAsync(item.PreviousAsaasSubscriptionId, cancellationToken);
+        }
     }
 
     public async Task<IResult> CancelAsync(User user, CancellationToken cancellationToken)

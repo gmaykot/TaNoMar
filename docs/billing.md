@@ -147,6 +147,7 @@ Base `/api/v1`. Autenticados, exceto o webhook.
 - **upgrade** (tabela maior, ou mensal→anual do mesmo plano): permitido; `PlanCode` novo no `PAYMENT_CONFIRMED`; primeira parcela proporcional; `RecurringPrice` do destino = catálogo da hora (a renovação seguinte pode acompanhar tabela nova); assinatura antiga removida **sem** `/refund`;
 - **downgrade** (tabela menor ou anual→mensal no meio do período): recusa (`plan_downgrade_period`);
 - recusa checkout `ACTIVE` não expirado do mesmo usuário, `planCode` e `cycle`;
+- após gravar um novo checkout pendente, enfileira o aviso administrativo; e-mail e WhatsApp são tentados independentemente quando configurados, sem atrasar nem desfazer a solicitação;
 - a chave Asaas nunca sai da API;
 - falha no Asaas responde `502` (`checkout_failed`).
 
@@ -219,7 +220,7 @@ Ausente ou `inactive` = comportamento atual da conta.
 
 ## Cancelamento da recorrência (sem estorno)
 
-Cancelar **para a renovação**. O valor do período já pago não volta. Não existe botão de reembolso.
+Cancelar **para a renovação**. O valor do período já pago não volta. Não existe botão de reembolso. Excluir a conta em `DELETE /admin/users/{id}` também encerra a recorrência no Asaas, sem estorno, e apaga o registro local de cobrança.
 
 `POST /billing/subscription/cancel`:
 
