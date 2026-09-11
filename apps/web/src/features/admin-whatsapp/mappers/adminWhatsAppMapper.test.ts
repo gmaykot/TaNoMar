@@ -14,6 +14,7 @@ describe('adminWhatsAppMapper', () => {
         defaultDestinationName: 'TaNoMar Admin',
         notifyNewUser: true,
         notifyPlanRequested: true,
+        notifyPlanPaid: true,
         notifyPlanChanged: true,
         createdAt: '2026-09-10T12:00:00Z',
         updatedAt: '2026-09-10T12:00:00Z',

@@ -1,19 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import type { BillingSubscription } from '../billing';
 import { SubscriptionBillingCard } from './SubscriptionBillingCard';
 
-const { cancelSubscription } = vi.hoisted(() => ({
+const { cancelSubscription, startCheckout } = vi.hoisted(() => ({
   cancelSubscription: vi.fn(),
+  startCheckout: vi.fn(),
 }));
 
 vi.mock('../services/billingService', () => ({
   cancelBillingSubscription: (...args: unknown[]) => cancelSubscription(...args),
   getBillingCatalog: vi.fn(),
   getBillingSubscription: vi.fn(),
-  startBillingCheckout: vi.fn(),
+  startBillingCheckout: (...args: unknown[]) => startCheckout(...args),
 }));
 
 const activeYearly: BillingSubscription = {
@@ -31,9 +32,17 @@ const activeYearly: BillingSubscription = {
   enabled: true,
 };
 
+const pendingYearly: BillingSubscription = {
+  ...activeYearly,
+  status: 'pending',
+  renewsAt: null,
+  accessUntil: null,
+};
+
 describe('SubscriptionBillingCard', () => {
   beforeEach(() => {
     cancelSubscription.mockReset();
+    startCheckout.mockReset();
   });
 
   it('cancela a renovação sem estorno e explica a volta ao Free', async () => {
@@ -82,6 +91,25 @@ describe('SubscriptionBillingCard', () => {
   it('não renderiza quando a cobrança está desligada e a conta é Free', () => {
     renderWithProviders(<SubscriptionBillingCard billing={{ ...activeYearly, enabled: false }} />);
     expect(screen.queryByRole('heading', { name: 'Sua assinatura' })).not.toBeInTheDocument();
+  });
+
+  it('reabre o checkout pendente no Asaas', async () => {
+    startCheckout.mockResolvedValue({
+      checkoutId: 'chk_1',
+      checkoutUrl: 'https://asaas.com/checkoutSession/show?id=chk_1',
+      expiresAt: '2026-09-10T23:00:00Z',
+    });
+    const assign = vi.fn();
+    vi.stubGlobal('location', { ...window.location, assign });
+    const user = userEvent.setup();
+    renderWithProviders(<SubscriptionBillingCard billing={pendingYearly} />);
+
+    expect(screen.getByText(/pagamento em aberto do Mestre · anual/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Continuar pagamento' }));
+    expect(startCheckout).toHaveBeenCalledWith('premium', 'YEARLY');
+    await waitFor(() =>
+      expect(assign).toHaveBeenCalledWith('https://asaas.com/checkoutSession/show?id=chk_1'),
+    );
   });
 
   it('explica a ausência de renovação quando o plano pago não tem cobrança', () => {

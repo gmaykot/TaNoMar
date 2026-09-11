@@ -35,6 +35,8 @@ export function SubscriptionPlanCards({
   currentStatus,
   cancelAtPeriodEnd = false,
   billingEnabled,
+  pendingPlanCode,
+  pendingCycle,
   pendingKey,
   onCheckout,
 }: {
@@ -45,6 +47,8 @@ export function SubscriptionPlanCards({
   currentStatus?: BillingStatus | null;
   cancelAtPeriodEnd?: boolean;
   billingEnabled: boolean;
+  pendingPlanCode?: string | null;
+  pendingCycle?: BillingCycle | null;
   pendingKey?: string | null;
   onCheckout?: (planCode: string, cycle: BillingCycle) => void;
 }) {
@@ -74,6 +78,8 @@ export function SubscriptionPlanCards({
                     currentPlanCode={currentPlanCode}
                     currentCycle={currentCycle}
                     hasPaidPeriod={hasPaidPeriod}
+                    pendingPlanCode={pendingPlanCode}
+                    pendingCycle={pendingCycle}
                     pendingKey={pendingKey}
                     onCheckout={onCheckout}
                   />
@@ -83,6 +89,8 @@ export function SubscriptionPlanCards({
                     currentPlanCode={currentPlanCode}
                     currentCycle={currentCycle}
                     hasPaidPeriod={hasPaidPeriod}
+                    pendingPlanCode={pendingPlanCode}
+                    pendingCycle={pendingCycle}
                     pendingKey={pendingKey}
                     onCheckout={onCheckout}
                   />
@@ -124,6 +132,8 @@ function CycleAction({
   currentPlanCode,
   currentCycle,
   hasPaidPeriod,
+  pendingPlanCode,
+  pendingCycle,
   pendingKey,
   onCheckout,
 }: {
@@ -132,6 +142,8 @@ function CycleAction({
   currentPlanCode?: string;
   currentCycle?: BillingCycle | null;
   hasPaidPeriod: boolean;
+  pendingPlanCode?: string | null;
+  pendingCycle?: BillingCycle | null;
   pendingKey?: string | null;
   onCheckout?: (planCode: string, cycle: BillingCycle) => void;
 }) {
@@ -150,8 +162,10 @@ function CycleAction({
   const firstCharge =
     quote?.firstChargeCents ??
     (cycle === 'YEARLY' ? plan.annualPriceCents : plan.monthlyPriceCents);
-  const label =
-    cycle === 'YEARLY'
+  const isPendingCheckout = pendingPlanCode === plan.code && pendingCycle === cycle;
+  const label = isPendingCheckout
+    ? 'Continuar pagamento'
+    : cycle === 'YEARLY'
       ? quote
         ? `Pagar ${formatBrlFromCents(firstCharge)} no ano`
         : `Assinar no ano · ${formatBrlFromCents(plan.annualPriceCents)}`

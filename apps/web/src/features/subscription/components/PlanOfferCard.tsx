@@ -1,22 +1,10 @@
 import type { ReactNode } from 'react';
-import { Anchor, Check, Compass, Ship, Sparkles, Video } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { Check, Sparkles, Video } from 'lucide-react';
 import { Card } from '@/design-system/components/Card';
 import { ANNUAL_DISCOUNT_PERCENT, annualCents } from '@/features/billing/billing';
-import {
-  formatBrlFromCents,
-  planFeatureList,
-  subscriptionPlanIcon,
-  type PlanCatalog,
-  type SubscriptionPlanIcon,
-} from '../subscriptionPlans';
+import { formatBrlFromCents, planFeatureList, type PlanCatalog } from '../subscriptionPlans';
+import { PlanIcon } from './PlanIcon';
 import styles from './planOffer.module.css';
-
-const planIcons: Record<SubscriptionPlanIcon, LucideIcon> = {
-  anchor: Anchor,
-  compass: Compass,
-  ship: Ship,
-};
 
 export function planAnnualCaption(monthlyPriceCents: number) {
   return `No anual, ${formatBrlFromCents(annualCents(monthlyPriceCents))} com ${ANNUAL_DISCOUNT_PERCENT}% de desconto`;
@@ -34,7 +22,6 @@ export function PlanOfferCard({
   children?: ReactNode;
 }) {
   const featured = plan.featured && !isCurrent;
-  const Icon = planIcons[subscriptionPlanIcon(plan.code)];
 
   return (
     <Card
@@ -48,9 +35,7 @@ export function PlanOfferCard({
         {featured ? <Sparkles size={18} aria-hidden="true" /> : null}
       </div>
       <h3 id={headingId} className={styles.planName}>
-        <span className={styles.planIcon} aria-hidden="true">
-          <Icon size={20} />
-        </span>
+        <PlanIcon code={plan.code} />
         {plan.name}
       </h3>
       <p className={styles.planTagline}>{plan.tagline}</p>

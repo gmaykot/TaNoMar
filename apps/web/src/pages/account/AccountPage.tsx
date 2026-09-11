@@ -86,6 +86,7 @@ export function AccountPage() {
   const favoriteCount = locations.data?.filter((item) => item.isFavorite).length ?? 0;
   const paid = isPaidPlan(user);
   const billingEnabled = user?.billing?.enabled === true;
+  const pendingCheckout = user?.billing?.status === 'pending';
 
   return (
     <div className={styles.page}>
@@ -123,15 +124,23 @@ export function AccountPage() {
         />
         <div className={accountStyles.shortcuts}>
           <AccountShortcut
-            to={paid ? `${routes.premium}#assinatura` : routes.premium}
+            to={paid || pendingCheckout ? `${routes.premium}#assinatura` : routes.premium}
             icon={Sparkles}
-            title={paid ? 'Gerenciar assinatura' : 'Conhecer os planos'}
+            title={
+              pendingCheckout
+                ? 'Continuar pagamento'
+                : paid
+                  ? 'Gerenciar assinatura'
+                  : 'Conhecer os planos'
+            }
             description={
-              paid
-                ? billingEnabled
-                  ? 'Cancele a renovação para voltar ao Free no fim do período, ou troque de plano.'
-                  : 'Abra a página da assinatura para ver o plano atual e os demais comandos.'
-                : 'Arrais, Mestre ou Capitão: mais contexto para planejar a saída.'
+              pendingCheckout
+                ? 'Há um checkout aberto. Continue no Asaas para concluir.'
+                : paid
+                  ? billingEnabled
+                    ? 'Cancele a renovação para voltar ao Free no fim do período, ou troque de plano.'
+                    : 'Abra a página da assinatura para ver o plano atual e os demais comandos.'
+                  : 'Arrais, Mestre ou Capitão: mais contexto para planejar a saída.'
             }
           />
         </div>

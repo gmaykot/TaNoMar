@@ -282,6 +282,7 @@ export function AdminUsersPage() {
               user={user}
               pending={pendingId === user.id}
               error={errorById[user.id] || null}
+              plans={catalog.data}
               enabledPlanCodes={enabledPlanCodes}
               onPlanChange={(planCode) =>
                 setPendingChange({

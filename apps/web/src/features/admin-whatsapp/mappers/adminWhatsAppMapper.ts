@@ -48,6 +48,7 @@ export function parseWhatsAppIntegration(value: unknown): WhatsAppIntegration {
     destinationName === undefined ||
     typeof value.notifyNewUser !== 'boolean' ||
     typeof value.notifyPlanRequested !== 'boolean' ||
+    typeof value.notifyPlanPaid !== 'boolean' ||
     typeof value.notifyPlanChanged !== 'boolean' ||
     typeof value.createdAt !== 'string' ||
     typeof value.updatedAt !== 'string' ||
@@ -66,6 +67,7 @@ export function parseWhatsAppIntegration(value: unknown): WhatsAppIntegration {
     defaultDestinationName: destinationName,
     notifyNewUser: value.notifyNewUser,
     notifyPlanRequested: value.notifyPlanRequested,
+    notifyPlanPaid: value.notifyPlanPaid,
     notifyPlanChanged: value.notifyPlanChanged,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,

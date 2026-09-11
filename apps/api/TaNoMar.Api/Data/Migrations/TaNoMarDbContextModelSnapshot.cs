@@ -996,6 +996,9 @@ namespace TaNoMar.Api.Data.Migrations
                     b.Property<bool>("NotifyPlanChanged")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("NotifyPlanPaid")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("NotifyPlanRequested")
                         .HasColumnType("boolean");
 
@@ -1016,6 +1019,7 @@ namespace TaNoMar.Api.Data.Migrations
                             NotifyByEmail = true,
                             NotifyNewUser = true,
                             NotifyPlanChanged = true,
+                            NotifyPlanPaid = true,
                             NotifyPlanRequested = true,
                             UpdatedAt = new DateTimeOffset(new DateTime(2026, 9, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
                         });

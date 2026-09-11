@@ -86,6 +86,22 @@ export function billingCycleLabel(cycle: BillingCycle | null | undefined) {
   return null;
 }
 
+export function billingPlanLabel(code: string | null | undefined) {
+  if (code === 'arrais') return 'Arrais';
+  if (code === 'premium') return 'Mestre';
+  if (code === 'capitao') return 'Capitão';
+  return null;
+}
+
+export function canResumePendingCheckout(billing: BillingSubscription | null | undefined) {
+  return (
+    billing?.enabled === true &&
+    billing.status === 'pending' &&
+    Boolean(billing.planCode) &&
+    Boolean(billing.cycle)
+  );
+}
+
 export function canCancelRenewal(billing: BillingSubscription | null | undefined) {
   if (!billing?.enabled) return false;
   return (

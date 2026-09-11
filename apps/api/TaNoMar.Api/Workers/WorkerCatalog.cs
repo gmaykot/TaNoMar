@@ -66,7 +66,7 @@ internal static class WorkerCatalog
             "Períodos de assinatura",
             WorkerKind.Scheduled,
             "0 * * * *",
-            "Atualiza acessos vencidos e sincroniza os preços futuros das assinaturas.",
+            "Atualiza acessos vencidos, avisa atraso todos os dias da carência e sincroniza os preços futuros das assinaturas.",
             "Planos e acesso às funcionalidades pagas.",
             "Usuários, assinaturas e planos no PostgreSQL; sincronização do catálogo com o Asaas."),
         new(

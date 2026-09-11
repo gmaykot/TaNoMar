@@ -3,15 +3,29 @@ import { createPortal } from 'react-dom';
 import { Check } from 'lucide-react';
 import { Button } from '@/design-system/components/Button';
 import sheetStyles from '@/design-system/components/confirmDrawer.module.css';
+import { PlanIcon } from '@/features/subscription/components/PlanIcon';
+import type { PlanCatalog } from '@/features/subscription/subscriptionPlans';
 import type { AdminPlanCode, AdminUser } from '../types/adminUser';
 import styles from './adminUsers.module.css';
 
-const planActions = [
-  { code: 'free', label: 'Plano Free' },
-  { code: 'arrais', label: 'Plano Arrais' },
-  { code: 'premium', label: 'Plano Mestre' },
-  { code: 'capitao', label: 'Plano Capitão' },
+const planFallbacks = [
+  { code: 'free', name: 'Free' },
+  { code: 'arrais', name: 'Arrais' },
+  { code: 'premium', name: 'Mestre' },
+  { code: 'capitao', name: 'Capitão' },
 ] as const;
+
+function planOptions(catalog?: PlanCatalog[] | null) {
+  return planFallbacks.map((fallback) => {
+    const fromCatalog = catalog?.find((plan) => plan.code === fallback.code);
+    return {
+      code: fallback.code,
+      name: fromCatalog?.name ?? fallback.name,
+      tagline: fromCatalog?.tagline ?? '',
+      featured: fromCatalog?.featured ?? false,
+    };
+  });
+}
 
 function isAdminRole(role: string) {
   return role.toLowerCase() === 'admin';
@@ -48,6 +62,7 @@ function ActionMenuItem({
 interface AdminUserActionsSheetProps {
   user: AdminUser;
   pending?: boolean;
+  plans?: PlanCatalog[] | null;
   enabledPlanCodes?: ReadonlySet<string> | null;
   onClose: () => void;
   onPlanChange: (planCode: AdminPlanCode) => void;
@@ -59,6 +74,7 @@ interface AdminUserActionsSheetProps {
 export function AdminUserActionsSheet({
   user,
   pending = false,
+  plans = null,
   enabledPlanCodes = null,
   onClose,
   onPlanChange,
@@ -154,16 +170,29 @@ export function AdminUserActionsSheet({
           </ActionMenuItem>
           <div className={styles.menuDivider} role="separator" />
           <p className={styles.menuLabel}>Plano</p>
-          {planActions.map((plan) => (
-            <ActionMenuItem
-              key={plan.code}
-              current={user.plan.code === plan.code}
-              disabled={!canAssign(plan.code)}
-              onSelect={() => choose(() => onPlanChange(plan.code))}
-            >
-              {plan.label}
-            </ActionMenuItem>
-          ))}
+          <div className={styles.planPicker}>
+            {planOptions(plans).map((plan) => {
+              const current = user.plan.code === plan.code;
+              return (
+                <button
+                  key={plan.code}
+                  type="button"
+                  role="menuitem"
+                  className={`${styles.planOption} ${current ? styles.planOptionCurrent : ''} ${plan.featured && !current ? styles.planOptionFeatured : ''}`}
+                  disabled={!canAssign(plan.code)}
+                  aria-current={current ? 'true' : undefined}
+                  onClick={() => choose(() => onPlanChange(plan.code))}
+                >
+                  <PlanIcon code={plan.code} size={18} />
+                  <span className={styles.planOptionCopy}>
+                    <strong>Plano {plan.name}</strong>
+                    {plan.tagline ? <small>{plan.tagline}</small> : null}
+                  </span>
+                  {current ? <Check size={16} aria-hidden="true" /> : null}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <Button type="button" variant="quiet" onClick={onClose}>
           Fechar

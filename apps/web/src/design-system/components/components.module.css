@@ -94,6 +94,33 @@
   text-transform: none;
 }
 
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  width: fit-content;
+  min-height: 1.5rem;
+  padding: 0.22rem 0.55rem;
+  border-radius: var(--radius-pill);
+  color: white;
+  background: var(--color-coral-500);
+  font-size: 0.62rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.stampOcean {
+  background: var(--color-ocean-700);
+}
+
+.stampSea {
+  background: var(--color-sea-700);
+}
+
 .badge.excellent {
   color: var(--color-success);
   background: var(--color-success-soft);

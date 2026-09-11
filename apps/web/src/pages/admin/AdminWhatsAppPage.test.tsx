@@ -18,6 +18,7 @@ const integration = {
   defaultDestinationName: 'TaNoMar Admin',
   notifyNewUser: true,
   notifyPlanRequested: true,
+  notifyPlanPaid: true,
   notifyPlanChanged: true,
   createdAt: '2026-09-10T12:00:00Z',
   updatedAt: '2026-09-10T12:00:00Z',
@@ -60,6 +61,7 @@ describe('AdminWhatsAppPage', () => {
     expect(within(status).getByText('5511999999999')).toBeInTheDocument();
     expect(within(status).getByText('Destino configurado')).toBeInTheDocument();
     expect(await screen.findByRole('option', { name: 'TaNoMar Admin' })).toBeInTheDocument();
+    expect(screen.getByText('Pagamento de plano confirmado')).toBeInTheDocument();
     expect(screen.getByText('Plano de usuário alterado')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Salvar configuração' }));
@@ -70,6 +72,7 @@ describe('AdminWhatsAppPage', () => {
         defaultDestinationName: 'TaNoMar Admin',
         enabled: true,
         notifyByEmail: true,
+        notifyPlanPaid: true,
         notifyPlanChanged: true,
       }),
     );

@@ -11,6 +11,7 @@ internal sealed class AdminNotificationFormatter : IAdminNotificationFormatter
     {
         AdminNotificationKind.NewUserRegistered => NewUser(notification),
         AdminNotificationKind.PlanRequested => PlanRequested(notification),
+        AdminNotificationKind.PlanPaid => PlanPaid(notification),
         AdminNotificationKind.UserPlanChanged => UserPlanChanged(notification),
         _ => throw new ArgumentOutOfRangeException(nameof(notification))
     };
@@ -37,6 +38,17 @@ internal sealed class AdminNotificationFormatter : IAdminNotificationFormatter
             "Nova solicitação de plano no TáNoMar",
             $"Um usuário solicitou um plano no TáNoMar.\n\nNome: {notification.UserName}\nE-mail: {notification.UserEmail}\nPlano atual: {notification.CurrentPlan}\nPlano solicitado: {notification.RequestedPlan}\nCiclo: {cycle}\nValor inicial: {price}\nData: {date}",
             $"💳 TaNoMar\n\nNova solicitação de plano\n\nUsuário: {notification.UserName}\nE-mail: {notification.UserEmail}\n\nPlano atual: {notification.CurrentPlan}\nPlano solicitado: {notification.RequestedPlan}\nCiclo: {cycle}\nValor inicial: {price}\n\nData: {date}");
+    }
+
+    private static AdminNotificationContent PlanPaid(AdminNotification notification)
+    {
+        var date = LocalDate(notification.OccurredAt);
+        var cycle = notification.Cycle == "YEARLY" ? "Anual" : "Mensal";
+        var price = ((notification.PriceCents ?? 0) / 100m).ToString("C", Portuguese);
+        return new AdminNotificationContent(
+            "Pagamento de plano confirmado no TáNoMar",
+            $"O pagamento de um plano foi confirmado no TáNoMar.\n\nNome: {notification.UserName}\nE-mail: {notification.UserEmail}\nPlano anterior: {notification.CurrentPlan}\nPlano pago: {notification.RequestedPlan}\nCiclo: {cycle}\nValor: {price}\nData: {date}",
+            $"💳 TaNoMar\n\nPagamento de plano confirmado\n\nUsuário: {notification.UserName}\nE-mail: {notification.UserEmail}\n\nPlano anterior: {notification.CurrentPlan}\nPlano pago: {notification.RequestedPlan}\nCiclo: {cycle}\nValor: {price}\n\nData: {date}");
     }
 
     private static AdminNotificationContent UserPlanChanged(AdminNotification notification)

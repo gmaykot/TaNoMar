@@ -348,4 +348,34 @@ describe('PremiumPage', () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it('retoma o checkout pendente pelo card e pelo plano escolhido', async () => {
+    billingState.enabled = true;
+    authState.user = {
+      plan: { code: 'free', name: 'Free' },
+      billing: {
+        status: 'pending',
+        planCode: 'arrais',
+        cycle: 'MONTHLY',
+        catalogMonthlyPrice: 14.9,
+        catalogAnnualPrice: 143.04,
+        contractedPrice: 14.9,
+        renewalPrice: 14.9,
+        discountPercent: 20,
+        renewsAt: null,
+        accessUntil: null,
+        cancelAtPeriodEnd: false,
+        enabled: true,
+      },
+    };
+    renderWithProviders(<PremiumPage />);
+
+    expect(await screen.findByText(/pagamento em aberto do Arrais · mensal/)).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Continuar pagamento' })).toHaveLength(2);
+    expect(
+      within(screen.getByRole('article', { name: 'Arrais' })).getByRole('button', {
+        name: 'Continuar pagamento',
+      }),
+    ).toBeInTheDocument();
+  });
 });

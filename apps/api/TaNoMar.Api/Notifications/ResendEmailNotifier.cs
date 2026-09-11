@@ -39,6 +39,7 @@ internal sealed class ResendEmailNotifier(
             || !settings.NotifyByEmail
             || notification.Kind == AdminNotificationKind.NewUserRegistered && !settings.NotifyNewUser
             || notification.Kind == AdminNotificationKind.PlanRequested && !settings.NotifyPlanRequested
+            || notification.Kind == AdminNotificationKind.PlanPaid && !settings.NotifyPlanPaid
             || notification.Kind == AdminNotificationKind.UserPlanChanged && !settings.NotifyPlanChanged)
             return;
 

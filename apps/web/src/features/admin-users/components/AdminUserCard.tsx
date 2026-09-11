@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { EllipsisVertical } from 'lucide-react';
+import { EllipsisVertical, Shield, UserRound } from 'lucide-react';
 import { Card } from '@/design-system/components/Card';
 import { IconButton } from '@/design-system/components/IconButton';
+import { Stamp } from '@/design-system/components/Stamp';
+import { PlanIcon } from '@/features/subscription/components/PlanIcon';
+import type { PlanCatalog } from '@/features/subscription/subscriptionPlans';
 import type { AdminPlanCode, AdminUser } from '../types/adminUser';
 import { AdminUserActionsSheet } from './AdminUserActionsSheet';
 import styles from './adminUsers.module.css';
@@ -16,6 +19,7 @@ interface AdminUserCardProps {
   user: AdminUser;
   pending?: boolean;
   error?: string | null;
+  plans?: PlanCatalog[] | null;
   enabledPlanCodes?: ReadonlySet<string> | null;
   onPlanChange: (planCode: AdminPlanCode) => void;
   onActiveChange: (isActive: boolean) => void;
@@ -31,6 +35,7 @@ export function AdminUserCard({
   user,
   pending = false,
   error,
+  plans = null,
   enabledPlanCodes = null,
   onPlanChange,
   onActiveChange,
@@ -61,16 +66,25 @@ export function AdminUserCard({
             <strong>{user.name}</strong>
             <span>{user.email}</span>
             <div className={styles.meta}>
-              <span className={styles.chip}>{user.plan.name}</span>
+              <span
+                className={`${styles.chip} ${user.plan.code !== 'free' ? styles.chipPlan : ''}`}
+              >
+                <PlanIcon code={user.plan.code} size={12} framed={false} />
+                {user.plan.name}
+              </span>
               <span className={styles.chip}>{admin ? 'Admin' : 'Usuário'}</span>
               <span className={user.isActive ? styles.chip : `${styles.chip} ${styles.chipWarn}`}>
                 {user.isActive ? 'Ativo' : 'Bloqueado'}
               </span>
               {user.isSelf ? (
-                <span className={`${styles.chip} ${styles.chipSelf}`}>Você</span>
+                <Stamp icon={UserRound} tone="coral">
+                  Você
+                </Stamp>
               ) : null}
               {user.protection === 'bootstrap' ? (
-                <span className={`${styles.chip} ${styles.chipBootstrap}`}>Conta inicial</span>
+                <Stamp icon={Shield} tone="ocean">
+                  Conta inicial
+                </Stamp>
               ) : null}
             </div>
           </div>
@@ -95,6 +109,7 @@ export function AdminUserCard({
         <AdminUserActionsSheet
           user={user}
           pending={pending}
+          plans={plans}
           enabledPlanCodes={enabledPlanCodes}
           onClose={() => setMenuOpen(false)}
           onPlanChange={onPlanChange}

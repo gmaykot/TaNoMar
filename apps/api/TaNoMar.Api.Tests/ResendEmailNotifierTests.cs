@@ -51,6 +51,31 @@ public sealed class ResendEmailNotifierTests
     }
 
     [Fact]
+    public async Task SendsPlanPaidDetails()
+    {
+        var handler = new RecordingHandler();
+        var notifier = CreateNotifier(handler);
+
+        await notifier.SendAsync(new AdminNotification(
+            AdminNotificationKind.PlanPaid,
+            "João Souza",
+            "joao@example.com",
+            new DateTimeOffset(2026, 9, 10, 12, 0, 0, TimeSpan.Zero),
+            CurrentPlan: "Free",
+            RequestedPlan: "Mestre",
+            Cycle: "YEARLY",
+            PriceCents: 19104), CancellationToken.None);
+
+        using var payload = JsonDocument.Parse(Assert.Single(handler.Bodies));
+        Assert.Equal("Pagamento de plano confirmado no TáNoMar", payload.RootElement.GetProperty("subject").GetString());
+        var text = payload.RootElement.GetProperty("text").GetString();
+        Assert.Contains("Plano anterior: Free", text);
+        Assert.Contains("Plano pago: Mestre", text);
+        Assert.Contains("Ciclo: Anual", text);
+        Assert.Contains("R$ 191,04", text);
+    }
+
+    [Fact]
     public async Task DoesNotCallResendWhenConfigurationIsIncomplete()
     {
         var handler = new RecordingHandler();

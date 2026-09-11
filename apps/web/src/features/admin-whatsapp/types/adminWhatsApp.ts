@@ -10,6 +10,7 @@ export interface WhatsAppIntegration {
   defaultDestinationName: string | null;
   notifyNewUser: boolean;
   notifyPlanRequested: boolean;
+  notifyPlanPaid: boolean;
   notifyPlanChanged: boolean;
   createdAt: string;
   updatedAt: string;
@@ -40,5 +41,6 @@ export interface WhatsAppSettingsUpdate {
   defaultDestinationName: string | null;
   notifyNewUser: boolean;
   notifyPlanRequested: boolean;
+  notifyPlanPaid: boolean;
   notifyPlanChanged: boolean;
 }

@@ -399,6 +399,7 @@ public sealed class WhatsAppSettings
     public string? DefaultDestinationName { get; set; }
     public bool NotifyNewUser { get; set; } = true;
     public bool NotifyPlanRequested { get; set; } = true;
+    public bool NotifyPlanPaid { get; set; } = true;
     public bool NotifyPlanChanged { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }

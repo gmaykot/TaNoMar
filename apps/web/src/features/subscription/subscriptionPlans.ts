@@ -23,7 +23,7 @@ export interface PlanCatalog {
   modules: PlanModules;
 }
 
-export type SubscriptionPlanIcon = 'anchor' | 'compass' | 'ship';
+export type SubscriptionPlanIcon = 'fish' | 'anchor' | 'compass' | 'ship';
 
 export function formatBrlFromCents(cents: number) {
   const value = (Math.round(cents) / 100).toFixed(2).replace('.', ',');
@@ -50,6 +50,7 @@ export function plansWithFreeBaseline(paidPlans: PlanCatalog[], catalog?: PlanCa
 }
 
 export function subscriptionPlanIcon(code: string): SubscriptionPlanIcon {
+  if (code === 'free') return 'fish';
   if (code === 'arrais') return 'anchor';
   if (code === 'capitao') return 'ship';
   return 'compass';

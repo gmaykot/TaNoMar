@@ -70,4 +70,27 @@ internal static class BillingPricing
 
     public static string ExternalReference(Guid userId, string planCode, string cycle) =>
         $"{userId:D}:{planCode}:{cycle}";
+
+    public static bool IsConfirmedPaymentStatus(string? status) =>
+        status is "CONFIRMED" or "RECEIVED";
+
+    public const string PastDueTitle = "Pagamento atrasado";
+
+    public static int PastDueDaysRemaining(DateTimeOffset pastDueSince, DateTimeOffset now, int graceDays = BillingOptions.PastDueGraceDays)
+    {
+        var deadline = pastDueSince.AddDays(graceDays);
+        return Math.Max(0, (int)Math.Ceiling((deadline - now).TotalDays));
+    }
+
+    public static string PastDueReminderBody(int daysRemaining) =>
+        daysRemaining <= 1
+            ? "A renovação da assinatura está atrasada. Atualize o pagamento hoje para manter o plano."
+            : $"A renovação da assinatura está atrasada. Atualize o pagamento em até {daysRemaining} dias para manter o plano.";
+
+    public static DateTimeOffset StartOfLocalDay(DateTimeOffset now, TimeZoneInfo zone)
+    {
+        var local = TimeZoneInfo.ConvertTime(now, zone);
+        var startLocal = new DateTimeOffset(local.Year, local.Month, local.Day, 0, 0, 0, local.Offset);
+        return startLocal.ToUniversalTime();
+    }
 }

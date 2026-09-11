@@ -38,6 +38,24 @@ internal sealed class AdminNotificationQueue : IAdminNotificationService
             Cycle: cycle,
             PriceCents: priceCents));
 
+    public void NotifyPlanPaid(
+        string name,
+        string email,
+        string currentPlan,
+        string paidPlan,
+        string cycle,
+        int priceCents,
+        DateTimeOffset occurredAt) =>
+        _notifications.Writer.TryWrite(new AdminNotification(
+            AdminNotificationKind.PlanPaid,
+            name,
+            email,
+            occurredAt,
+            CurrentPlan: currentPlan,
+            RequestedPlan: paidPlan,
+            Cycle: cycle,
+            PriceCents: priceCents));
+
     public void NotifyUserPlanChanged(
         string name,
         string email,

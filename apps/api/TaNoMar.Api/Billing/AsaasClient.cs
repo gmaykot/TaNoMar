@@ -64,6 +64,32 @@ internal sealed class AsaasClient(HttpClient http, IOptions<BillingOptions> opti
         }
     }
 
+    public async Task<AsaasConfirmedCheckout?> FindConfirmedCheckoutAsync(string checkoutId, CancellationToken cancellationToken)
+    {
+        var payments = await ListAsync<AsaasListedPayment>("payments?limit=50", cancellationToken);
+        var paid = payments.Find(item =>
+            string.Equals(item.CheckoutSession, checkoutId, StringComparison.OrdinalIgnoreCase)
+            && BillingPricing.IsConfirmedPaymentStatus(item.Status));
+        if (paid is not null)
+            return new AsaasConfirmedCheckout(paid.Subscription, paid.Customer);
+        return null;
+    }
+
+    private async Task<List<T>> ListAsync<T>(string path, CancellationToken cancellationToken)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, path);
+        ApplyAuth(message);
+        using var response = await http.SendAsync(message, cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            logger.LogWarning("Asaas GET {Path} falhou ({Status}): {Body}", path, (int)response.StatusCode, body);
+            return [];
+        }
+        var list = JsonSerializer.Deserialize<AsaasListResponse<T>>(body, Json);
+        return list?.Data ?? [];
+    }
+
     private void ApplyAuth(HttpRequestMessage message)
     {
         var key = options.Value.AsaasApiKey;
@@ -124,3 +150,18 @@ internal sealed class AsaasCheckoutCreated
     public string Id { get; set; } = string.Empty;
     public string? Link { get; set; }
 }
+
+internal sealed class AsaasListResponse<T>
+{
+    public List<T> Data { get; set; } = [];
+}
+
+internal sealed class AsaasListedPayment
+{
+    public string? Status { get; set; }
+    public string? Customer { get; set; }
+    public string? Subscription { get; set; }
+    public string? CheckoutSession { get; set; }
+}
+
+internal sealed record AsaasConfirmedCheckout(string? SubscriptionId, string? CustomerId);

@@ -36,6 +36,27 @@ public sealed class AdminNotificationTests
     }
 
     [Fact]
+    public void Formatter_includes_payment_confirmation_details()
+    {
+        var content = new AdminNotificationFormatter().Format(new AdminNotification(
+            AdminNotificationKind.PlanPaid,
+            "Maria Silva",
+            "maria@example.com",
+            new DateTimeOffset(2026, 9, 10, 12, 0, 0, TimeSpan.Zero),
+            CurrentPlan: "Free",
+            RequestedPlan: "Mestre",
+            Cycle: "YEARLY",
+            PriceCents: 19104));
+
+        Assert.Contains("Pagamento de plano confirmado", content.WhatsAppText);
+        Assert.Contains("Plano anterior: Free", content.WhatsAppText);
+        Assert.Contains("Plano pago: Mestre", content.WhatsAppText);
+        Assert.Contains("Ciclo: Anual", content.WhatsAppText);
+        Assert.Contains("R$ 191,04", content.WhatsAppText);
+        Assert.Equal("Pagamento de plano confirmado no TáNoMar", content.EmailSubject);
+    }
+
+    [Fact]
     public async Task Dispatcher_attempts_next_channel_when_first_one_fails()
     {
         var failing = new RecordingChannel("Email", shouldFail: true);
@@ -79,6 +100,7 @@ public sealed class AdminNotificationTests
             DefaultDestinationName = "TaNoMar Admin",
             NotifyNewUser = true,
             NotifyPlanRequested = false,
+            NotifyPlanPaid = false,
             NotifyPlanChanged = true
         });
         await db.SaveChangesAsync();
@@ -105,6 +127,15 @@ public sealed class AdminNotificationTests
             RequestedPlan: "Mestre",
             Cycle: "MONTHLY",
             PriceCents: 1990), CancellationToken.None);
+        await channel.SendAsync(new AdminNotification(
+            AdminNotificationKind.PlanPaid,
+            "Maria Silva",
+            "maria@example.com",
+            DateTimeOffset.UtcNow,
+            CurrentPlan: "Free",
+            RequestedPlan: "Mestre",
+            Cycle: "YEARLY",
+            PriceCents: 19104), CancellationToken.None);
         db.WhatsAppSettings.Single().NotifyPlanChanged = false;
         await db.SaveChangesAsync();
         await channel.SendAsync(new AdminNotification(

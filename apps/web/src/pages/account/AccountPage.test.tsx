@@ -172,6 +172,33 @@ describe('AccountPage', () => {
     );
   });
 
+  it('leva o pagamento em aberto de volta ao checkout', () => {
+    authState.maxPersonalSpots = 0;
+    authState.maxFavorites = 0;
+    authState.billing = {
+      status: 'pending',
+      planCode: 'arrais',
+      cycle: 'MONTHLY',
+      catalogMonthlyPrice: 14.9,
+      catalogAnnualPrice: 143.04,
+      contractedPrice: 14.9,
+      renewalPrice: 14.9,
+      discountPercent: 20,
+      renewsAt: null,
+      accessUntil: null,
+      cancelAtPeriodEnd: false,
+      enabled: true,
+    };
+    renderWithProviders(<AccountPage />);
+
+    expect(screen.getByText(/pagamento em aberto do Arrais · mensal/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continuar pagamento' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Continuar pagamento/ })).toHaveAttribute(
+      'href',
+      '/premium#assinatura',
+    );
+  });
+
   it('cancela a renovação sem estorno e mantém o acesso até o fim do período', async () => {
     authState.billing = {
       status: 'active',

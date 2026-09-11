@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   annualCents,
   billingCycleLabel,
+  billingPlanLabel,
   canCancelRenewal,
+  canResumePendingCheckout,
   cancelRenewalConfirmMessage,
   isBillingUpgrade,
   type BillingSubscription,
@@ -49,6 +51,9 @@ describe('canCancelRenewal', () => {
     );
     expect(canCancelRenewal({ ...activeYearly, enabled: false })).toBe(false);
     expect(billingCycleLabel('YEARLY')).toBe('anual');
+    expect(billingPlanLabel('premium')).toBe('Mestre');
+    expect(canResumePendingCheckout({ ...activeYearly, status: 'pending' })).toBe(true);
+    expect(canResumePendingCheckout(activeYearly)).toBe(false);
     expect(cancelRenewalConfirmMessage('08/09/2027')).toContain('permanece vigente até 08/09/2027');
   });
 });

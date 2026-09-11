@@ -5,6 +5,7 @@ import {
   planFeatureList,
   plansWithFreeBaseline,
   reaisFromCents,
+  subscriptionPlanIcon,
   type PlanCatalog,
 } from './subscriptionPlans';
 
@@ -48,6 +49,15 @@ describe('centsFromReaisInput', () => {
     expect(centsFromReaisInput('19.90')).toBe(1990);
     expect(reaisFromCents(2490)).toBe('24.90');
     expect(centsFromReaisInput('abc')).toBeNull();
+  });
+});
+
+describe('subscriptionPlanIcon', () => {
+  it('usa o ícone náutico de cada plano', () => {
+    expect(subscriptionPlanIcon('free')).toBe('fish');
+    expect(subscriptionPlanIcon('arrais')).toBe('anchor');
+    expect(subscriptionPlanIcon('premium')).toBe('compass');
+    expect(subscriptionPlanIcon('capitao')).toBe('ship');
   });
 });
 

@@ -4,6 +4,7 @@ internal enum AdminNotificationKind
 {
     NewUserRegistered,
     PlanRequested,
+    PlanPaid,
     UserPlanChanged
 }
 
@@ -44,6 +45,15 @@ internal interface IAdminNotificationService
         string email,
         string currentPlan,
         string requestedPlan,
+        string cycle,
+        int priceCents,
+        DateTimeOffset occurredAt);
+
+    void NotifyPlanPaid(
+        string name,
+        string email,
+        string currentPlan,
+        string paidPlan,
         string cycle,
         int priceCents,
         DateTimeOffset occurredAt);

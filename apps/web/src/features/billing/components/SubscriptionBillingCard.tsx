@@ -8,12 +8,14 @@ import { ApiError } from '@/shared/api/errors';
 import { routes } from '@/shared/constants/routes';
 import {
   billingCycleLabel,
+  billingPlanLabel,
   canCancelRenewal,
+  canResumePendingCheckout,
   cancelRenewalConfirmMessage,
   formatBillingDate,
   type BillingSubscription,
 } from '../billing';
-import { useCancelBillingSubscription } from '../hooks/useBillingCheckout';
+import { useBillingCheckout, useCancelBillingSubscription } from '../hooks/useBillingCheckout';
 import styles from './subscriptionBilling.module.css';
 
 function formatReais(value: number | null | undefined) {
@@ -33,12 +35,14 @@ export function SubscriptionBillingCard({
   showPlansLink?: boolean;
 }) {
   const cancel = useCancelBillingSubscription();
+  const checkout = useBillingCheckout();
   const [confirmCancel, setConfirmCancel] = useState(false);
   const accessUntil = formatBillingDate(billing?.accessUntil);
   const cycle = billingCycleLabel(billing?.cycle);
   const contracted = formatReais(billing?.contractedPrice);
   const renewal = formatReais(billing?.renewalPrice);
   const canCancel = canCancelRenewal(billing);
+  const canResume = canResumePendingCheckout(billing);
   const canceled = billing?.cancelAtPeriodEnd === true && Boolean(accessUntil);
   const priceChanged = Boolean(contracted && renewal && contracted !== renewal);
   const pending = billing?.status === 'pending';
@@ -47,7 +51,8 @@ export function SubscriptionBillingCard({
   const showCard = isPaid || canCancel || canceled || pending || pastDue || priceChanged;
   if (!showCard) return null;
 
-  const planLabel = planName ?? 'plano pago';
+  const planLabel =
+    (pending ? billingPlanLabel(billing?.planCode) : null) ?? planName ?? 'plano pago';
   const cycleLabel = cycle ? ` · ${cycle}` : '';
   const cancelError =
     cancel.error instanceof ApiError
@@ -55,20 +60,32 @@ export function SubscriptionBillingCard({
       : cancel.isError
         ? 'Não foi possível cancelar a renovação.'
         : null;
+  const checkoutError =
+    checkout.error instanceof ApiError
+      ? checkout.error.message
+      : checkout.isError
+        ? 'Não foi possível abrir o pagamento.'
+        : null;
 
   function handleConfirmCancel() {
     cancel.mutate(undefined, { onSuccess: () => setConfirmCancel(false) });
+  }
+
+  function handleResumeCheckout() {
+    if (!billing?.planCode || !billing.cycle) return;
+    checkout.mutate({ planCode: billing.planCode, cycle: billing.cycle });
   }
 
   return (
     <Card as="section" className={styles.card} id="assinatura" aria-labelledby="assinatura-title">
       <h2 id="assinatura-title">Sua assinatura</h2>
       {pending ? (
-        <p>Há um pagamento em aberto. Conclua ou gere outro checkout na página de Assinatura.</p>
+        <p>
+          Há um pagamento em aberto do {planLabel}
+          {cycleLabel}. Continue no Asaas para concluir.
+        </p>
       ) : null}
-      {pastDue ? (
-        <p>A renovação está atrasada. Atualize o pagamento para manter o plano.</p>
-      ) : null}
+      {pastDue ? <p>A renovação está atrasada. Atualize o pagamento para manter o plano.</p> : null}
       {canceled ? (
         <p>
           Renovação cancelada · {planLabel} até {accessUntil}. Depois disso, a conta volta para
@@ -95,10 +112,15 @@ export function SubscriptionBillingCard({
           cobrada agora.
         </p>
       ) : null}
-      {cancelError ? (
+      {cancelError || checkoutError ? (
         <p className={styles.error} role="alert">
-          {cancelError}
+          {cancelError ?? checkoutError}
         </p>
+      ) : null}
+      {canResume ? (
+        <Button onClick={handleResumeCheckout} disabled={checkout.isPending}>
+          {checkout.isPending ? 'Abrindo o pagamento…' : 'Continuar pagamento'}
+        </Button>
       ) : null}
       {canCancel ? (
         <Button

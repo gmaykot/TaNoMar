@@ -102,7 +102,7 @@ A landing define o domínio raiz como canônico: ao abrir por `www`, o `canonica
 | `RESEND_API_KEY` | `Resend:ApiKey` | Chave da API Resend. Sem a configuração completa, os avisos por e-mail ficam desativados. |
 | `RESEND_FROM_EMAIL` | `Resend:FromEmail` | Remetente em um domínio verificado no Resend. |
 | `RESEND_FROM_NAME` | `Resend:FromName` | Nome do remetente (padrão `TáNoMar`). |
-| `RESEND_NOTIFICATION_EMAIL` | `Resend:NotificationEmail` | Destinatário dos avisos de novo usuário e nova solicitação de plano. Se omitido, usa `BOOTSTRAP_ADMIN_EMAIL`. |
+| `RESEND_NOTIFICATION_EMAIL` | `Resend:NotificationEmail` | Destinatário dos avisos de novo usuário, solicitação e pagamento de plano. Se omitido, usa `BOOTSTRAP_ADMIN_EMAIL`. |
 | `WHATSAPP_ENABLED` | `WhatsApp:Enabled` | Habilita o canal na API. Padrão `false`; a tela Admin ainda exige ativação e destino. |
 | `WHATSAPP_INSTANCE_NAME` | adapter Node | Nome do aparelho em produção, padrão `TaNoMar`. O adapter local usa `TaNoMar-Local` e sessão própria; não copie a pasta de sessão entre ambientes. |
 

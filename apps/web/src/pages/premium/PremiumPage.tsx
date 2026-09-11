@@ -244,6 +244,10 @@ export function PremiumPage() {
         currentStatus={auth.user?.billing?.status}
         cancelAtPeriodEnd={auth.user?.billing?.cancelAtPeriodEnd === true}
         billingEnabled={billing?.enabled === true}
+        pendingPlanCode={
+          auth.user?.billing?.status === 'pending' ? auth.user.billing.planCode : null
+        }
+        pendingCycle={auth.user?.billing?.status === 'pending' ? auth.user.billing.cycle : null}
         pendingKey={pendingKey}
         onCheckout={handleCheckout}
       />

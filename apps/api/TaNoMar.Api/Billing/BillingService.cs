@@ -250,8 +250,36 @@ internal sealed class BillingService(
         var now = DateTimeOffset.UtcNow;
         var items = await db.BillingSubscriptions.Where(item => item.UserId == user.Id).ToListAsync(cancellationToken);
         var changed = false;
+        var saoPaulo = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+        var remindedPastDueToday = items.Exists(item => item.Status == BillingPricing.PastDue)
+            && await db.Notifications.AnyAsync(
+                entry => entry.UserId == user.Id
+                    && entry.Title == BillingPricing.PastDueTitle
+                    && entry.CreatedAt >= BillingPricing.StartOfLocalDay(now, saoPaulo),
+                cancellationToken);
         foreach (var item in items)
         {
+            if (item.Status == BillingPricing.PendingCheckout
+                && !string.IsNullOrWhiteSpace(item.AsaasCheckoutId)
+                && Enabled)
+            {
+                try
+                {
+                    var confirmed = await asaas.FindConfirmedCheckoutAsync(item.AsaasCheckoutId, cancellationToken);
+                    if (confirmed is not null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(confirmed.CustomerId))
+                            await UpsertCustomerAsync(user.Id, confirmed.CustomerId, cancellationToken);
+                        await ActivateAsync(user, item, confirmed.SubscriptionId, cancellationToken);
+                        changed = true;
+                        continue;
+                    }
+                }
+                catch (Exception exception)
+                {
+                    logger.LogWarning(exception, "Falha ao reconciliar checkout {CheckoutId}.", item.AsaasCheckoutId);
+                }
+            }
             if (item.Status == BillingPricing.PendingCheckout && item.ExpiresAt is not null && item.ExpiresAt <= now)
             {
                 item.Status = BillingPricing.Expired;
@@ -280,6 +308,17 @@ internal sealed class BillingService(
                 item.UpdatedAt = now;
                 changed = true;
                 Notify(user.Id, "Plano atualizado", "Seu plano agora é Free.");
+            }
+            else if (item.Status == BillingPricing.PastDue
+                && item.PastDueSince is not null
+                && !remindedPastDueToday
+                && PlanRules.IsPaid(user.PlanCode)
+                && !IsBootstrap(user))
+            {
+                var remaining = BillingPricing.PastDueDaysRemaining(item.PastDueSince.Value, now);
+                Notify(user.Id, BillingPricing.PastDueTitle, BillingPricing.PastDueReminderBody(remaining));
+                remindedPastDueToday = true;
+                changed = true;
             }
         }
         if (changed) await db.SaveChangesAsync(cancellationToken);
@@ -390,8 +429,19 @@ internal sealed class BillingService(
         var checkoutId = NestedId(payload, "checkout") ?? NestedString(payload, "payment", "checkoutSession");
         var subscriptionId = NestedId(payload, "subscription") ?? NestedString(payload, "payment", "subscription");
         var customerId = NestedId(payload, "customer") ?? NestedString(payload, "payment", "customer") ?? NestedString(payload, "subscription", "customer");
-        var item = await FindSubscriptionAsync(checkoutId, subscriptionId, cancellationToken);
-        if (item is null) return;
+        var externalReference = NestedString(payload, "checkout", "externalReference")
+            ?? NestedString(payload, "payment", "externalReference")
+            ?? ReadString(payload, "externalReference");
+        var item = await FindSubscriptionAsync(checkoutId, subscriptionId, externalReference, cancellationToken);
+        if (item is null)
+        {
+            logger.LogWarning(
+                "Webhook Asaas {Event} sem assinatura local (checkout {CheckoutId}, subscription {SubscriptionId}).",
+                eventName,
+                checkoutId,
+                subscriptionId);
+            return;
+        }
         var user = await db.Users.SingleOrDefaultAsync(entry => entry.Id == item.UserId, cancellationToken);
         if (user is null) return;
         if (!string.IsNullOrWhiteSpace(customerId))
@@ -419,6 +469,7 @@ internal sealed class BillingService(
                 break;
             case "CHECKOUT_PAID":
             case "PAYMENT_CONFIRMED":
+            case "PAYMENT_RECEIVED":
                 await ActivateAsync(user, item, subscriptionId, cancellationToken);
                 break;
             case "PAYMENT_OVERDUE":
@@ -427,7 +478,10 @@ internal sealed class BillingService(
                     item.Status = BillingPricing.PastDue;
                     item.PastDueSince = DateTimeOffset.UtcNow;
                     item.UpdatedAt = DateTimeOffset.UtcNow;
-                    Notify(user.Id, "Pagamento atrasado", "A renovação da assinatura está atrasada. Atualize o pagamento para manter o plano.");
+                    Notify(
+                        user.Id,
+                        BillingPricing.PastDueTitle,
+                        BillingPricing.PastDueReminderBody(BillingOptions.PastDueGraceDays));
                 }
                 break;
             case "PAYMENT_REFUNDED":
@@ -456,6 +510,8 @@ internal sealed class BillingService(
 
     private async Task ActivateAsync(User user, BillingSubscription item, string? subscriptionId, CancellationToken cancellationToken)
     {
+        var firstPayment = item.Status != BillingPricing.Active;
+        var previousPlanCode = user.PlanCode;
         if (!string.IsNullOrWhiteSpace(subscriptionId))
             item.AsaasSubscriptionId = subscriptionId;
         var now = DateTimeOffset.UtcNow;
@@ -481,6 +537,21 @@ internal sealed class BillingService(
             user.PlanCode = item.PlanCode;
             Notify(user.Id, "Plano atualizado", $"Seu plano agora é {plan.Name}.");
         }
+        if (firstPayment)
+        {
+            var previousPlanName = await db.Plans.AsNoTracking()
+                .Where(entry => entry.Code == previousPlanCode)
+                .Select(entry => entry.Name)
+                .SingleOrDefaultAsync(cancellationToken) ?? previousPlanCode;
+            adminNotifications.NotifyPlanPaid(
+                user.Name,
+                user.Email,
+                previousPlanName,
+                plan.Name,
+                item.Cycle,
+                item.PriceCents,
+                now);
+        }
     }
 
     private async Task UpsertCustomerAsync(Guid userId, string asaasCustomerId, CancellationToken cancellationToken)
@@ -492,7 +563,11 @@ internal sealed class BillingService(
             row.AsaasCustomerId = asaasCustomerId;
     }
 
-    private async Task<BillingSubscription?> FindSubscriptionAsync(string? checkoutId, string? subscriptionId, CancellationToken cancellationToken)
+    private async Task<BillingSubscription?> FindSubscriptionAsync(
+        string? checkoutId,
+        string? subscriptionId,
+        string? externalReference,
+        CancellationToken cancellationToken)
     {
         if (!string.IsNullOrWhiteSpace(checkoutId))
         {
@@ -500,7 +575,15 @@ internal sealed class BillingService(
             if (byCheckout is not null) return byCheckout;
         }
         if (!string.IsNullOrWhiteSpace(subscriptionId))
-            return await db.BillingSubscriptions.SingleOrDefaultAsync(item => item.AsaasSubscriptionId == subscriptionId, cancellationToken);
+        {
+            var bySubscription = await db.BillingSubscriptions.SingleOrDefaultAsync(item => item.AsaasSubscriptionId == subscriptionId, cancellationToken);
+            if (bySubscription is not null) return bySubscription;
+        }
+        if (!string.IsNullOrWhiteSpace(externalReference))
+            return await db.BillingSubscriptions
+                .Where(item => item.ExternalReference == externalReference)
+                .OrderByDescending(item => item.UpdatedAt)
+                .FirstOrDefaultAsync(cancellationToken);
         return null;
     }
 

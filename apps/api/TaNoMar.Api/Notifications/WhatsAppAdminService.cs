@@ -45,6 +45,7 @@ internal sealed class WhatsAppAdminService(
         settings.DefaultDestinationName = destinationName;
         settings.NotifyNewUser = request.NotifyNewUser;
         settings.NotifyPlanRequested = request.NotifyPlanRequested;
+        settings.NotifyPlanPaid = request.NotifyPlanPaid;
         settings.NotifyPlanChanged = request.NotifyPlanChanged;
         settings.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
@@ -184,6 +185,7 @@ internal sealed class WhatsAppAdminService(
         defaultDestinationName = settings.DefaultDestinationName,
         notifyNewUser = settings.NotifyNewUser,
         notifyPlanRequested = settings.NotifyPlanRequested,
+        notifyPlanPaid = settings.NotifyPlanPaid,
         notifyPlanChanged = settings.NotifyPlanChanged,
         createdAt = settings.CreatedAt,
         updatedAt = settings.UpdatedAt,
@@ -214,4 +216,5 @@ internal sealed record WhatsAppSettingsRequest(
     string? DefaultDestinationName,
     bool NotifyNewUser,
     bool NotifyPlanRequested,
+    bool NotifyPlanPaid,
     bool NotifyPlanChanged);

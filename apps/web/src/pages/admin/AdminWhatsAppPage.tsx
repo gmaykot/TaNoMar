@@ -59,6 +59,7 @@ function WhatsAppSettingsForm({ integration }: { integration: WhatsAppIntegratio
   );
   const [notifyNewUser, setNotifyNewUser] = useState(integration.notifyNewUser);
   const [notifyPlanRequested, setNotifyPlanRequested] = useState(integration.notifyPlanRequested);
+  const [notifyPlanPaid, setNotifyPlanPaid] = useState(integration.notifyPlanPaid);
   const [notifyPlanChanged, setNotifyPlanChanged] = useState(integration.notifyPlanChanged);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const personalChats = destinations.data?.personal ?? [];
@@ -79,6 +80,7 @@ function WhatsAppSettingsForm({ integration }: { integration: WhatsAppIntegratio
           defaultDestinationName: selected?.name ?? (id ? personalDestinationDisplay(id) : null),
           notifyNewUser,
           notifyPlanRequested,
+          notifyPlanPaid,
           notifyPlanChanged,
         });
       }
@@ -98,6 +100,7 @@ function WhatsAppSettingsForm({ integration }: { integration: WhatsAppIntegratio
             : groupId || null),
         notifyNewUser,
         notifyPlanRequested,
+        notifyPlanPaid,
         notifyPlanChanged,
       });
     },
@@ -299,6 +302,14 @@ function WhatsAppSettingsForm({ integration }: { integration: WhatsAppIntegratio
                 onChange={(event) => setNotifyPlanRequested(event.target.checked)}
               />
               <span>Novo plano solicitado</span>
+            </label>
+            <label className={formStyles.choice}>
+              <input
+                type="checkbox"
+                checked={notifyPlanPaid}
+                onChange={(event) => setNotifyPlanPaid(event.target.checked)}
+              />
+              <span>Pagamento de plano confirmado</span>
             </label>
             <label className={formStyles.choice}>
               <input

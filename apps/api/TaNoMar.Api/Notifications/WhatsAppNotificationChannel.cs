@@ -31,6 +31,7 @@ internal sealed class WhatsAppNotificationChannel(
             || string.IsNullOrWhiteSpace(settings.DefaultDestinationId)
             || notification.Kind == AdminNotificationKind.NewUserRegistered && !settings.NotifyNewUser
             || notification.Kind == AdminNotificationKind.PlanRequested && !settings.NotifyPlanRequested
+            || notification.Kind == AdminNotificationKind.PlanPaid && !settings.NotifyPlanPaid
             || notification.Kind == AdminNotificationKind.UserPlanChanged && !settings.NotifyPlanChanged)
             return;
 
