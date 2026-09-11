@@ -97,7 +97,7 @@ A landing define o domínio raiz como canônico: ao abrir por `www`, o `canonica
 | `Webcams__AvailabilityCacheMinutes` | `Webcams:AvailabilityCacheMinutes` | Intervalo do cache de disponibilidade/embed, padrão `15`. |
 | `ASAAS_API_KEY` | `Billing:AsaasApiKey` | Chave da API Asaas. Sem ela o checkout some e `/premium` permanece vitrine. No Coolify cole **sem o `$` inicial** (`aact_prod_...`): o Compose trata `$aact_...` como variável e envia a chave vazia. A API recoloca o `$`. |
 | `ASAAS_BASE_URL` | `Billing:AsaasBaseUrl` | Produção `https://api.asaas.com/v3`; sandbox `https://api-sandbox.asaas.com/v3`. O compose já usa produção se a variável faltar. |
-| `ASAAS_WEBHOOK_TOKEN` | `Billing:AsaasWebhookToken` | Token do header `asaas-access-token`. Diferente da API key. |
+| `ASAAS_WEBHOOK_TOKEN` | `Billing:AsaasWebhookToken` | Token do header `asaas-access-token`. Diferente da API key. Se o valor tiver `$`, cole `$$` no Coolify (`$$Rt6`). |
 | `PUBLIC_APP_ORIGIN` | `Billing:PublicAppOrigin` | Origem HTTPS dos callbacks do checkout (`/premium?checkout=`). |
 | `RESEND_API_KEY` | `Resend:ApiKey` | Chave da API Resend. Sem a configuração completa, os avisos por e-mail ficam desativados. |
 | `RESEND_FROM_EMAIL` | `Resend:FromEmail` | Remetente em um domínio verificado no Resend. |
@@ -162,9 +162,9 @@ docker build -f apps/api/TaNoMar.Api/Dockerfile -t tanomar \
 
 ## Troubleshooting
 
-**Build falha no `npm ci` do WhatsApp** — o Baileys declara `libsignal` via GitHub (`git+ssh`/`git+https`). O npm tenta `ls-remote` por SSH e o Coolify sai com código 1. O adapter instala `libsignal` do tarball em `services/tanomar-whatsapp/vendor/` e o Dockerfile copia essa pasta antes do `npm ci`. Não rode `npm ci` de novo no estágio final: copie `node_modules` já podado.
+**Build falha no `npm ci` do WhatsApp** — o Baileys declara `libsignal` via GitHub. O Dockerfile instala a cópia em `services/tanomar-whatsapp/vendor/libsignal` e roda o npm com `env -i`, para os ARG/segredos do Coolify não vazarem no install. Se o build ainda falhar, o log do Coolify passa a incluir `/root/.npm/_logs`. Não rode `npm ci` de novo no estágio final: copie `node_modules` já podado.
 
-**Compose avisa `The "Rt6" variable is not set`** — algum segredo no Coolify contém `$Rt6` (comum em `ASAAS_API_KEY` e tokens longos). O Compose interpola `$nome` e esvazia aquele trecho. Cole a chave Asaas **sem** o `$` inicial (`aact_prod_...`) e, em qualquer outro valor, escape `$` como `$$`.
+**Compose avisa `The "Rt6" variable is not set`** — `ASAAS_WEBHOOK_TOKEN` (ou outro segredo) contém `$Rt6`. O Compose interpola `$nome` e esvazia aquele trecho. No Coolify cole `$$Rt6` no lugar de `$Rt6`. Evite `& ! * ^` no token, ou o valor chega cortado. A chave Asaas vai **sem** o `$` inicial (`aact_prod_...`). Segredos (webhook, JWT, API keys) devem estar **só em runtime** no Coolify; no build só `GOOGLE_CLIENT_ID` precisa ser build-time.
 
 **Build falha no estágio web** — verifique `GOOGLE_CLIENT_ID` como build arg; o Vite embute essa variável no bundle.
 
