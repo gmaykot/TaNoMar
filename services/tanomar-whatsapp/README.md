@@ -58,6 +58,8 @@ npm run build
 
 Os testes cobrem autenticação HTTP, healthcheck, listagem e envio usando um gateway falso. A conexão real e a leitura do QR dependem de um aparelho WhatsApp e devem ser validadas manualmente no ambiente de implantação.
 
+O Dockerfile do Coolify instala `libsignal` a partir de `vendor/libsignal-6.0.0.tgz`. Sem esse tarball, o `npm ci` tenta clonar o GitHub por SSH e o deploy falha.
+
 ## Limitações
 
 - É uma conexão não oficial baseada no WhatsApp Web, sem SLA da Meta.

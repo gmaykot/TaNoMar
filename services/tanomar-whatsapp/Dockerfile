@@ -1,16 +1,11 @@
 FROM node:22-bookworm-slim AS build
-
-# Baileys depende de libsignal via GitHub. Sem git, `npm ci` falha;
-# o lockfile local costuma gravar git+ssh, que o build não autentica.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends git ca-certificates \
-    && rm -rf /var/lib/apt/lists/* \
-    && git config --global url."https://github.com/".insteadOf "ssh://git@github.com/" \
-    && git config --global url."https://github.com/".insteadOf "git@github.com:"
-
 WORKDIR /app
 COPY services/tanomar-whatsapp/package*.json ./
-RUN npm ci
+COPY services/tanomar-whatsapp/vendor ./vendor
+# Baileys puxa libsignal do GitHub via git/SSH. O Coolify não autentica isso
+# e `npm ci` sai com código 1. O tarball em vendor/ evita git no build.
+# --include=dev cobre o caso do Coolify injetar NODE_ENV=production como ARG.
+RUN npm ci --include=dev --no-audit --no-fund
 COPY services/tanomar-whatsapp/tsconfig.json ./
 COPY services/tanomar-whatsapp/src ./src
 RUN npm run build \
