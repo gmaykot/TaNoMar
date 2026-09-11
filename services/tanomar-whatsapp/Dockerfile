@@ -14,6 +14,8 @@ RUN env -i \
     || (echo "--- vendor ---" && ls -la vendor vendor/libsignal && echo "--- npm log ---" && cat /root/.npm/_logs/*.log && exit 1)
 COPY services/tanomar-whatsapp/tsconfig.json ./
 COPY services/tanomar-whatsapp/src ./src
+# file:vendor vira symlink; o estágio final não leva vendor/ e o Node
+# não acha libsignal. Copia o pacote para dentro de node_modules.
 RUN env -i \
     PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
     HOME="/root" \
@@ -23,7 +25,9 @@ RUN env -i \
     PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
     HOME="/root" \
     NODE_ENV=production \
-    npm prune --omit=dev
+    npm prune --omit=dev \
+    && rm -rf node_modules/libsignal \
+    && cp -a vendor/libsignal node_modules/libsignal
 
 FROM node:22-bookworm-slim AS runtime
 ENV NODE_ENV=production

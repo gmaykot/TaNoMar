@@ -162,7 +162,7 @@ docker build -f apps/api/TaNoMar.Api/Dockerfile -t tanomar \
 
 ## Troubleshooting
 
-**Build falha no `npm ci` do WhatsApp** — o Baileys declara `libsignal` via GitHub. O Dockerfile instala a cópia em `services/tanomar-whatsapp/vendor/libsignal` e roda o npm com `env -i`, para os ARG/segredos do Coolify não vazarem no install. Se o build ainda falhar, o log do Coolify passa a incluir `/root/.npm/_logs`. Não rode `npm ci` de novo no estágio final: copie `node_modules` já podado.
+**Build falha no `npm ci` do WhatsApp** — o Baileys declara `libsignal` via GitHub. O Dockerfile instala a cópia em `services/tanomar-whatsapp/vendor/libsignal` e roda o npm com `env -i`, para os ARG/segredos do Coolify não vazarem no install. Se o build ainda falhar, o log do Coolify passa a incluir `/root/.npm/_logs`. Não rode `npm ci` de novo no estágio final: copie `node_modules` já podado. Depois do prune, o Dockerfile substitui o symlink `file:vendor` por uma cópia real — sem isso o container sobe e o Node não acha `libsignal`.
 
 **Compose avisa `The "Rt6" variable is not set`** — `ASAAS_WEBHOOK_TOKEN` (ou outro segredo) contém `$Rt6`. O Compose interpola `$nome` e esvazia aquele trecho. No Coolify cole `$$Rt6` no lugar de `$Rt6`. Evite `& ! * ^` no token, ou o valor chega cortado. A chave Asaas vai **sem** o `$` inicial (`aact_prod_...`). Segredos (webhook, JWT, API keys) devem estar **só em runtime** no Coolify; no build só `GOOGLE_CLIENT_ID` precisa ser build-time.
 
