@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Route, Routes } from 'react-router-dom';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -12,6 +12,12 @@ import { RequireAuth } from '@/app/router/RequireAuth';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { resetApiClientState } from '@/shared/api/client';
 import { resetApiSession } from '@/shared/api/session';
+
+const { disableDevicePush } = vi.hoisted(() => ({
+  disableDevicePush: vi.fn<() => Promise<void>>(),
+}));
+
+vi.mock('@/features/notifications/services/devicePushService', () => ({ disableDevicePush }));
 
 function jsonResponse(status: number, body: unknown = {}) {
   return new Response(JSON.stringify(body), {
@@ -48,6 +54,10 @@ function LoggedArea() {
 }
 
 describe('AuthSessionProvider offline', () => {
+  beforeEach(() => {
+    disableDevicePush.mockResolvedValue();
+  });
+
   afterEach(() => {
     localStorage.clear();
     resetApiSession();
@@ -97,6 +107,33 @@ describe('AuthSessionProvider offline', () => {
         if (url.includes('/auth/logout')) {
           return Promise.resolve(jsonResponse(204));
         }
+        return Promise.resolve(jsonResponse(200, {}));
+      }),
+    );
+
+    renderSession('/app');
+    expect(await screen.findByText('Área logada')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Sair' }));
+
+    expect(await screen.findByText('Tela de login')).toBeInTheDocument();
+    expect(localStorage.getItem('tanomar.offline-session.v1')).toBeNull();
+    expect(localStorage.getItem('tanomar.offline-forecast.v1')).toBeNull();
+  });
+
+  it('encerra a sessão local mesmo quando a desinscrição de push não conclui', async () => {
+    disableDevicePush.mockReturnValue(new Promise(() => undefined));
+    saveOfflineUser(offlineAuthUser);
+    saveOfflineForecast(forecastFixture);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/auth/refresh')) {
+          return Promise.resolve(jsonResponse(200, { accessToken: 'token' }));
+        }
+        if (url.includes('/me')) return Promise.resolve(jsonResponse(200, offlineAuthUser));
+        if (url.includes('/auth/logout')) return Promise.resolve(jsonResponse(204));
         return Promise.resolve(jsonResponse(200, {}));
       }),
     );

@@ -7,6 +7,7 @@ import {
   Lock,
   MapPin,
   Sailboat,
+  Trash2,
   Waves,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -33,6 +34,7 @@ function visibilityLabel(location: FishingLocation) {
 
 interface LocationCardProps {
   location: FishingLocation;
+  onDelete?: () => void;
   onToggleFavorite?: () => void;
   onToggleEnabled?: () => void;
   favoriteLocked?: boolean;
@@ -40,6 +42,7 @@ interface LocationCardProps {
 
 export function LocationCard({
   location,
+  onDelete,
   onToggleFavorite,
   onToggleEnabled,
   favoriteLocked = false,
@@ -67,7 +70,7 @@ export function LocationCard({
         visibility={location.visibility}
         isFavorite={location.isFavorite}
       />
-      {onToggleEnabled || onToggleFavorite ? (
+      {onToggleEnabled || onToggleFavorite || onDelete ? (
         <div className={styles.actions}>
           {onToggleEnabled ? (
             <IconButton
@@ -111,6 +114,11 @@ export function LocationCard({
                   aria-hidden="true"
                 />
               )}
+            </IconButton>
+          ) : null}
+          {onDelete ? (
+            <IconButton label={`Excluir ${location.name}`} onClick={onDelete}>
+              <Trash2 size={18} aria-hidden="true" />
             </IconButton>
           ) : null}
         </div>

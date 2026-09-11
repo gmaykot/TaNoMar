@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { locationsFixture } from '@/features/locations/fixtures/locations';
 import { renderWithProviders } from '@/test/renderWithProviders';
@@ -10,13 +10,17 @@ const authState = vi.hoisted(() => ({
   maxFavorites: 20,
 }));
 
+const { deleteLocation } = vi.hoisted(() => ({
+  deleteLocation: vi.fn(() => Promise.resolve()),
+}));
+
 vi.mock('@/features/locations/services/locationsService', () => ({
   getLocations: () => Promise.resolve(locationsFixture),
   setFavorite: () => Promise.resolve(),
   setEnabled: () => Promise.resolve(),
   createLocation: vi.fn(),
   updateLocation: vi.fn(),
-  deleteLocation: vi.fn(),
+  deleteLocation,
 }));
 
 vi.mock('@/features/auth/hooks/useAuth', () => ({
@@ -50,6 +54,7 @@ describe('LocationsPage', () => {
   beforeEach(() => {
     authState.maxPersonalSpots = 10;
     authState.maxFavorites = 20;
+    deleteLocation.mockClear();
   });
 
   it('mostra novo local só dentro de meus locais', async () => {
@@ -70,6 +75,21 @@ describe('LocationsPage', () => {
     expect(screen.getByText('Meu local')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Campeche' })).toBeInTheDocument();
     expect(screen.getAllByText('Meu local')).toHaveLength(1);
+  });
+
+  it('permite excluir um local pessoal após confirmação', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<LocationsPage />);
+
+    await user.click(await screen.findByRole('button', { name: 'Excluir Molhe da Barra' }));
+    expect(screen.getByRole('dialog')).toHaveTextContent('Excluir Molhe da Barra?');
+
+    await user.click(screen.getByRole('button', { name: 'Excluir local' }));
+
+    await waitFor(() =>
+      expect(deleteLocation).toHaveBeenCalledWith('molhe-da-barra', expect.anything()),
+    );
+    expect(screen.queryByRole('button', { name: 'Excluir Campeche' })).not.toBeInTheDocument();
   });
 
   it('marca o local favorito com o selo Favorito sem substituir Meu local', async () => {

@@ -2,6 +2,7 @@ import { Lock, MapPinned } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/design-system/components/Button';
+import { ConfirmDrawer } from '@/design-system/components/ConfirmDrawer';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { SearchField } from '@/design-system/components/SearchField';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -9,6 +10,7 @@ import { SUBSCRIPTION_LOCK_LABEL } from '@/features/auth/types/auth';
 import { LocationCard } from '@/features/locations/components/LocationCard';
 import { useLocationMutations } from '@/features/locations/hooks/useLocationMutations';
 import { useLocations } from '@/features/locations/hooks/useLocations';
+import type { FishingLocation } from '@/features/fishing/types/fishing';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { routes } from '@/shared/constants/routes';
 import { normalizeText } from '@/shared/utils/normalizeText';
@@ -30,6 +32,7 @@ export function LocationsPage() {
   const locations = useLocations();
   const mutations = useLocationMutations();
   const [search, setSearch] = useState('');
+  const [locationToDelete, setLocationToDelete] = useState<FishingLocation | null>(null);
   const canCreate = (auth.user?.entitlements.maxPersonalSpots ?? 0) > 0;
   const canFavorite = (auth.user?.entitlements.maxFavorites ?? 0) > 0;
   const filter = parseFilter(searchParams.get('filtro'), canCreate, canFavorite);
@@ -124,6 +127,7 @@ export function LocationsPage() {
       </div>
       {mutations.favoriteError ? <p>{mutations.favoriteError}</p> : null}
       {mutations.enabledError ? <p>{mutations.enabledError}</p> : null}
+      {mutations.removeError ? <p>{mutations.removeError}</p> : null}
       <div className={styles.resultCount}>
         {filtered.length} {filtered.length === 1 ? 'local encontrado' : 'locais encontrados'}
       </div>
@@ -139,6 +143,7 @@ export function LocationsPage() {
               key={location.id}
               location={location}
               favoriteLocked={!canFavorite}
+              onDelete={location.isOwner ? () => setLocationToDelete(location) : undefined}
               onToggleEnabled={() => {
                 mutations.enabled.mutate({
                   spotId: location.id,
@@ -165,6 +170,21 @@ export function LocationsPage() {
           }
         />
       )}
+      {locationToDelete ? (
+        <ConfirmDrawer
+          title="Excluir meu local?"
+          description={`Excluir ${locationToDelete.name}? Esta ação não pode ser desfeita.`}
+          confirmLabel="Excluir local"
+          busy={mutations.remove.isPending}
+          onCancel={() => setLocationToDelete(null)}
+          onConfirm={() => {
+            mutations.remove.mutate(locationToDelete.id, {
+              onSuccess: () => setLocationToDelete(null),
+              onError: () => setLocationToDelete(null),
+            });
+          }}
+        />
+      ) : null}
     </div>
   );
 }

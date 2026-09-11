@@ -90,6 +90,9 @@ export function useLocationMutations() {
     updateError: update.isError
       ? mutationError(update.error, 'Não foi possível atualizar o local.')
       : null,
+    removeError: remove.isError
+      ? mutationError(remove.error, 'Não foi possível excluir o local.')
+      : null,
     favoriteError: favorite.isError
       ? mutationError(favorite.error, 'Não foi possível atualizar os favoritos.')
       : null,

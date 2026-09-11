@@ -108,18 +108,17 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
         await queryClient.invalidateQueries({ queryKey: ['me'] });
       },
       logout: async () => {
-        try {
-          await disableDevicePush();
-        } catch {
+        const pushLogout = disableDevicePush().catch(() => {
           /* o logout segue mesmo se o aparelho não desinscrever */
-        }
-        await logoutSession();
+        });
+        const sessionLogout = logoutSession();
         clearGoogleSignInSession();
         clearOfflineUser();
         clearOfflineForecast();
         setCachedUser(null);
         setStatus('anonymous');
         queryClient.clear();
+        await Promise.all([pushLogout, sessionLogout]);
       },
     }),
     [cachedUser, meQuery.data, meQuery.isPending, queryClient, status],
