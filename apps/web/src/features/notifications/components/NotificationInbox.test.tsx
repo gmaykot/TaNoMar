@@ -147,4 +147,21 @@ describe('NotificationInbox', () => {
       kind: 'confirm',
     });
   });
+
+  it('fecha ao selecionar outro botão', async () => {
+    const user = userEvent.setup();
+    inbox.refetchList.mockResolvedValue(undefined);
+    renderWithProviders(
+      <>
+        <button type="button">Outro</button>
+        <NotificationInbox />
+      </>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Notificações' }));
+    expect(await screen.findByRole('region', { name: 'Notificações' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Outro' }));
+    expect(screen.queryByRole('region', { name: 'Notificações' })).not.toBeInTheDocument();
+  });
 });

@@ -1,13 +1,15 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cancelBillingSubscription, startBillingCheckout } from '../services/billingService';
 import type { BillingCycle } from '../billing';
+import { saveCheckoutIntent } from '../checkoutIntent';
 import { billingCatalogQueryKey } from './useBillingCatalog';
 
 export function useBillingCheckout() {
   return useMutation({
     mutationFn: ({ planCode, cycle }: { planCode: string; cycle: BillingCycle }) =>
       startBillingCheckout(planCode, cycle),
-    onSuccess: (checkout) => {
+    onSuccess: (checkout, { planCode, cycle }) => {
+      saveCheckoutIntent({ planCode, cycle });
       window.location.assign(checkout.checkoutUrl);
     },
   });

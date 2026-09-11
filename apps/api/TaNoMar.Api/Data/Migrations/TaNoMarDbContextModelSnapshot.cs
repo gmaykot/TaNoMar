@@ -1002,6 +1002,9 @@ namespace TaNoMar.Api.Data.Migrations
                     b.Property<bool>("NotifyPlanRequested")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("NotifyRenewalCanceled")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1021,6 +1024,7 @@ namespace TaNoMar.Api.Data.Migrations
                             NotifyPlanChanged = true,
                             NotifyPlanPaid = true,
                             NotifyPlanRequested = true,
+                            NotifyRenewalCanceled = true,
                             UpdatedAt = new DateTimeOffset(new DateTime(2026, 9, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
                         });
                 });

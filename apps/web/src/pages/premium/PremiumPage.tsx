@@ -12,7 +12,7 @@ import {
   Waves,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Card } from '@/design-system/components/Card';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -20,6 +20,7 @@ import { isPaidPlan } from '@/features/auth/types/auth';
 import { useBillingCatalog } from '@/features/billing/hooks/useBillingCatalog';
 import { useBillingCheckout } from '@/features/billing/hooks/useBillingCheckout';
 import type { BillingCycle } from '@/features/billing/billing';
+import { CheckoutReturnPanel } from '@/features/billing/components/CheckoutReturnPanel';
 import { SubscriptionBillingCard } from '@/features/billing/components/SubscriptionBillingCard';
 import { useSubscriptionPlans } from '@/features/subscription/hooks/useSubscriptionPlans';
 import { plansWithFreeBaseline } from '@/features/subscription/subscriptionPlans';
@@ -85,26 +86,12 @@ function maxForecastCaption(plans: { name: string; entitlements: { maxForecastDa
   };
 }
 
-function checkoutMessage(value: string | null) {
-  if (value === 'success') {
-    return 'Recebemos o retorno do pagamento. O plano entra quando a cobrança for confirmada.';
-  }
-  if (value === 'cancel') {
-    return 'O pagamento foi cancelado. Você pode escolher o plano de novo.';
-  }
-  if (value === 'expired') {
-    return 'O checkout expirou. Gere um novo pagamento.';
-  }
-  return null;
-}
-
 export function PremiumPage() {
   const auth = useAuth();
   const catalog = useBillingCatalog();
   const publicPlans = useSubscriptionPlans();
   const checkout = useBillingCheckout();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const isPaid = isPaidPlan(auth.user);
   const currentPlanName = isPaid ? auth.user?.plan.name : undefined;
@@ -112,7 +99,6 @@ export function PremiumPage() {
   const plans = billing?.plans ?? [];
   const comparisonPlans = plansWithFreeBaseline(plans, publicPlans.data);
   const highlight = maxForecastCaption(plans);
-  const returnMessage = checkoutMessage(searchParams.get('checkout'));
   const checkoutError =
     checkout.error instanceof ApiError
       ? checkout.error.message
@@ -139,20 +125,26 @@ export function PremiumPage() {
 
   if (catalog.isPending) {
     return (
-      <FeedbackState
-        title="Assinatura"
-        description="Carregando os planos disponíveis."
-        icon={Sparkles}
-        busy
-      />
+      <>
+        <CheckoutReturnPanel />
+        <FeedbackState
+          title="Assinatura"
+          description="Carregando os planos disponíveis."
+          icon={Sparkles}
+          busy
+        />
+      </>
     );
   }
   if (catalog.isError) {
     return (
-      <FeedbackState
-        title="Planos indisponíveis"
-        description="Não foi possível carregar os planos da assinatura."
-      />
+      <>
+        <CheckoutReturnPanel />
+        <FeedbackState
+          title="Planos indisponíveis"
+          description="Não foi possível carregar os planos da assinatura."
+        />
+      </>
     );
   }
 
@@ -170,11 +162,7 @@ export function PremiumPage() {
             : 'Arrais, Mestre ou Capitão. Três planos para ver mais dias, guardar seus locais e sair com mais contexto.'
         }
       />
-      {returnMessage ? (
-        <p className={premiumStyles.checkoutBanner} role="status">
-          {returnMessage}
-        </p>
-      ) : null}
+      <CheckoutReturnPanel />
       {checkoutError ? (
         <p className={premiumStyles.checkoutError} role="alert">
           {checkoutError}

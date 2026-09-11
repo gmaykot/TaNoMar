@@ -401,6 +401,7 @@ public sealed class WhatsAppSettings
     public bool NotifyPlanRequested { get; set; } = true;
     public bool NotifyPlanPaid { get; set; } = true;
     public bool NotifyPlanChanged { get; set; } = true;
+    public bool NotifyRenewalCanceled { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }

@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Options;
+using TaNoMar.Api.Admin;
 using TaNoMar.Api.Auth;
 using TaNoMar.Api.Billing;
 using TaNoMar.Api.Data;
@@ -665,6 +666,13 @@ api.MapDelete("/admin/fishing-spots/{id}", async (string id, ClaimsPrincipal pri
     await db.SaveChangesAsync(cancellationToken);
     await cache.InvalidateLocationAsync(slug, cancellationToken);
     return Results.NoContent();
+}).RequireAuthorization();
+
+api.MapGet("/admin/dashboard", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
+    if (failure is not null) return failure;
+    return Results.Ok(await AdminDashboard.SnapshotAsync(db, DateTimeOffset.UtcNow, cancellationToken));
 }).RequireAuthorization();
 
 api.MapGet("/admin/users", async (ClaimsPrincipal principal, TaNoMarDbContext db, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>

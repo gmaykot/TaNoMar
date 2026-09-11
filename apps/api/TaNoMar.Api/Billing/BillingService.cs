@@ -208,6 +208,13 @@ internal sealed class BillingService(
         await db.SaveChangesAsync(cancellationToken);
         hub.Publish(user.Id, true);
         push.Enqueue(user.Id, title, body);
+        adminNotifications.NotifyRenewalCanceled(
+            user.Name,
+            user.Email,
+            plan.Name,
+            current.Cycle,
+            current.CurrentPeriodEnd,
+            DateTimeOffset.UtcNow);
         return Results.Ok(await DtoAsync(user, cancellationToken));
     }
 
@@ -503,6 +510,17 @@ internal sealed class BillingService(
                     item.Status = BillingPricing.Canceled;
                     item.CancelAtPeriodEnd = true;
                     item.UpdatedAt = DateTimeOffset.UtcNow;
+                    var planName = await db.Plans.AsNoTracking()
+                        .Where(entry => entry.Code == item.PlanCode)
+                        .Select(entry => entry.Name)
+                        .SingleOrDefaultAsync(cancellationToken) ?? item.PlanCode;
+                    adminNotifications.NotifyRenewalCanceled(
+                        user.Name,
+                        user.Email,
+                        planName,
+                        item.Cycle,
+                        item.CurrentPeriodEnd,
+                        DateTimeOffset.UtcNow);
                 }
                 break;
         }

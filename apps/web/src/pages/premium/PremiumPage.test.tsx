@@ -159,6 +159,7 @@ vi.mock('@/features/subscription/services/subscriptionPlansService', () => ({
 
 describe('PremiumPage', () => {
   beforeEach(() => {
+    sessionStorage.clear();
     authState.user = { plan: { code: 'free', name: 'Free' } };
     billingState.enabled = false;
     startCheckout.mockReset();
@@ -343,10 +344,38 @@ describe('PremiumPage', () => {
     renderWithProviders(<PremiumPage />, ['/premium?checkout=success']);
 
     expect(
-      await screen.findByText(
-        'Recebemos o retorno do pagamento. O plano entra quando a cobrança for confirmada.',
-      ),
+      await screen.findByText(/Recebemos o retorno do pagamento. Estamos confirmando a cobrança/),
     ).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: /Seu plano agora é/ })).not.toBeInTheDocument();
+  });
+
+  it('mostra o comprovante quando o pagamento já confirmou o plano', async () => {
+    authState.user = {
+      plan: { code: 'premium', name: 'Mestre' },
+      billing: {
+        status: 'active',
+        planCode: 'premium',
+        cycle: 'YEARLY',
+        catalogMonthlyPrice: 19.9,
+        catalogAnnualPrice: 191.04,
+        contractedPrice: 191.04,
+        renewalPrice: 191.04,
+        discountPercent: 20,
+        renewsAt: '2027-09-08T12:00:00.000Z',
+        accessUntil: '2027-09-08T12:00:00.000Z',
+        cancelAtPeriodEnd: false,
+        enabled: true,
+      },
+    };
+    sessionStorage.setItem(
+      'tanomar.checkoutIntent',
+      JSON.stringify({ planCode: 'premium', cycle: 'YEARLY' }),
+    );
+    renderWithProviders(<PremiumPage />, ['/premium?checkout=success']);
+
+    expect(await screen.findByRole('dialog', { name: 'Seu plano agora é Mestre.' })).toHaveTextContent(
+      'Você pagou R$ 191,04 no ciclo anual.',
+    );
   });
 
   it('retoma o checkout pendente pelo card e pelo plano escolhido', async () => {

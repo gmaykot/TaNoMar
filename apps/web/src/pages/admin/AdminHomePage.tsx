@@ -21,6 +21,8 @@ import {
   setPlatformShowLiveWebcams,
 } from '@/features/partners/services/partnersService';
 import formStyles from '@/features/locations/components/spotForm.module.css';
+import { AdminDashboard } from '@/features/admin-dashboard/components/AdminDashboard';
+import { useAdminDashboard } from '@/features/admin-dashboard/hooks/useAdminDashboard';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { ApiError } from '@/shared/api/errors';
 import { routes } from '@/shared/constants/routes';
@@ -28,6 +30,7 @@ import adminStyles from './admin.module.css';
 import styles from '@/pages/shared/pages.module.css';
 
 export function AdminHomePage() {
+  const dashboard = useAdminDashboard();
   const settings = usePlatformSettings();
   const queryClient = useQueryClient();
   const toggleFocus = useMutation({
@@ -58,8 +61,13 @@ export function AdminHomePage() {
     <div className={styles.page}>
       <PageHeader
         eyebrow="Administração"
-        title="Quem entra e o que a comunidade publica."
-        description="Locais do sistema, moderação, contas, planos e parceiros."
+        title="Painel gerencial."
+        description="Contas, locais, assinaturas e o que pede atenção agora."
+      />
+      <AdminDashboard
+        snapshot={dashboard.data}
+        pending={dashboard.isPending}
+        error={dashboard.isError}
       />
       <label className={formStyles.choice}>
         <input

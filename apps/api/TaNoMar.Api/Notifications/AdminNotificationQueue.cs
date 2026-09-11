@@ -69,6 +69,22 @@ internal sealed class AdminNotificationQueue : IAdminNotificationService
             occurredAt,
             CurrentPlan: currentPlan,
             RequestedPlan: newPlan));
+
+    public void NotifyRenewalCanceled(
+        string name,
+        string email,
+        string plan,
+        string cycle,
+        DateTimeOffset? accessUntil,
+        DateTimeOffset occurredAt) =>
+        _notifications.Writer.TryWrite(new AdminNotification(
+            AdminNotificationKind.RenewalCanceled,
+            name,
+            email,
+            occurredAt,
+            CurrentPlan: plan,
+            Cycle: cycle,
+            AccessUntil: accessUntil));
 }
 
 internal sealed class AdminNotificationWorker(

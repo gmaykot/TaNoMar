@@ -70,7 +70,7 @@ Mensal usa o mesmo payload com `"cycle": "MONTHLY"`, `value` da tabela mensal e 
 
 Não envia `customerData`. Nome, CPF, telefone e endereço ficam na tela hospedada do Asaas. Se já existir `BillingCustomer.AsaasCustomerId`, o checkout manda só `customer`. `customerData` incompleto (só nome e e-mail) faz o Asaas responder 400.
 
-`endDate` fica de fora para renovar até o pescador cancelar. O `successUrl` só mostra “estamos confirmando”. `GET /me` continua `free` (ou o plano anterior) até `PAYMENT_CONFIRMED` / `PAYMENT_RECEIVED` / `CHECKOUT_PAID`, ou até a reconciliação ver a cobrança paga no Asaas.
+`endDate` fica de fora para renovar até o pescador cancelar. O `successUrl` não libera o plano. `GET /me` continua `free` (ou o plano anterior) até `PAYMENT_CONFIRMED` / `PAYMENT_RECEIVED` / `CHECKOUT_PAID`, ou até a reconciliação ver a cobrança paga no Asaas. Em `/premium?checkout=success` a web consulta `GET /me` até o plano confirmar e então mostra o comprovante (valor pago, se foi só a diferença do upgrade, e a próxima cobrança integral).
 
 No **upgrade**, o `items[].value` da primeira cobrança é o valor proporcional (abaixo). A recorrência **não** pode ficar nesse valor reduzido: depois do pagamento ela vai para `RecurringPrice` (anual ou mensal de catálogo na hora do upgrade). Renovação futura acompanha o catálogo.
 
@@ -229,7 +229,8 @@ Cancelar **para a renovação**. O valor do período já pago não volta. Não e
 3. **Não** chama `POST /v3/payments/{id}/refund`.
 4. Grava `CancelAtPeriodEnd = true`, `Status = canceled`, mantém `CurrentPeriodEnd` e o `PlanCode` comprado (`arrais`, `premium` ou `capitao`).
 5. Inbox: “A renovação do {nome do plano} foi cancelada. Você continua com o plano até {data}. Não há estorno.”
-6. Idempotente: segundo POST devolve o mesmo estado (`200`).
+6. Aviso administrativo “Renovação cancelada” pelos canais configurados, com plano, ciclo e acesso até o fim do período.
+7. Idempotente: segundo POST devolve o mesmo estado (`200`) e não reenvia o aviso.
 
 No vencimento, um worker rebaixa para `free` e notifica. `GET /me` também aplica o vencimento se o worker ainda não rodou.
 
@@ -283,7 +284,7 @@ Token próprio em `asaas-access-token`, **diferente** da API key. Sem token vál
 | `CHECKOUT_PAID` | Liga checkout à assinatura; se `PAYMENT_CONFIRMED` ainda não chegou, pode aplicar o `PlanCode` do item |
 | `CHECKOUT_CANCELED` / `CHECKOUT_EXPIRED` | Marca o checkout; o pescador gera outro |
 | `SUBSCRIPTION_CREATED` | Grava `sub_…`; no upgrade, `PUT` para `RecurringPrice` sem alterar a cobrança já paga; `DELETE` da assinatura antiga sem `/refund` |
-| `SUBSCRIPTION_INACTIVATED` / `SUBSCRIPTION_DELETED` | Se `CancelAtPeriodEnd`, só confirma o fim da recorrência. Senão, carência e depois `free` |
+| `SUBSCRIPTION_INACTIVATED` / `SUBSCRIPTION_DELETED` | Se `CancelAtPeriodEnd`, só confirma o fim da recorrência. Senão, marca `canceled` até o fim do período e enfileira o aviso administrativo “Renovação cancelada”. |
 | `PAYMENT_CONFIRMED` / `PAYMENT_RECEIVED` | `PlanCode` do item na **hora**; `PeriodStart = agora`; `CurrentPeriodEnd` = +1 mês ou +1 ano; inbox “Seu plano agora é {nome}.”; aviso administrativo “Pagamento de plano confirmado” pelos canais configurados |
 | `PAYMENT_OVERDUE` | `past_due`; inbox e push avisam no dia; carência de 3 dias antes de `free`. O worker (e o `GET /me`) repetem o aviso **uma vez por dia** (fuso de São Paulo) até o fim da carência, com os dias restantes. No vencimento, só o aviso de Free. |
 | `PAYMENT_REFUNDED` / `PAYMENT_CHARGEBACK_REQUESTED` | Rebaixa na hora |
@@ -316,7 +317,7 @@ O webhook no painel Asaas aponta para `https://<domínio>/api/v1/webhooks/asaas`
 ## Frontend
 
 - `/premium`: cada card oferece **mês** (tabela) e **ano** (−20%). Depois dos planos, a página explica cartão só no Asaas, cancelamento sem estorno, reajuste só na renovação e que as câmeras do Capitão são transmissões de terceiros, sem garantia de manutenção ou disponibilidade. No upgrade, o CTA usa `quotes[].firstChargeCents` e deixa claro que o plano novo começa na hora. Se a tabela mudar no meio do anual, a Conta mostra o valor deste período e o da renovação, sem cobrar a diferença agora. Sem chave, permanece “A cobrança ainda não começa por aqui.”
-- Retornos `?checkout=success|cancel|expired`: copy local; o plano vem de `GET /me`.
+- Retornos `?checkout=success|cancel|expired`: copy local. Em `success`, a página consulta `GET /me` (que também reconcilia o checkout no Asaas) até `billing.status === active` e o `PlanCode` bater; só então troca o aviso de “estamos confirmando” pelo comprovante. O comprovante usa `contractedPrice` (o que saiu agora) e `renewalPrice` (a próxima cobrança integral). Se os dois diferem, o texto deixa claro que o valor de hoje foi a diferença da troca e que a renovação não é parcial de novo. O frontend não promove o plano sozinho.
 - Conta e Assinatura (`/premium#assinatura`): a seção **Sua assinatura** aparece para qualquer conta paga. Checkout `pending` mostra “Continuar pagamento” e reabre o mesmo link do Asaas (`POST /billing/checkout` reutiliza o checkout vigente). Com recorrência Asaas, “Cancelar renovação” abre o drawer de confirmação: o plano permanece vigente até o fim do período já pago, depois volta para Free, sem estorno. Depois, “Renovação cancelada · {nome} até {data}”. Sem cobrança automática (plano só pelo admin), a seção explica que não há renovação para cancelar. Atalhos: menu da conta “Gerenciar assinatura” ou “Continuar pagamento”, Conta → Assinatura, e o link “Cancelar renovação” no hero de `/premium`.
 - Upgrade: CTA só nos cards de tabela maior. Downgrade: copy apontando para o cancelamento e a nova assinatura após o vencimento.
 - Components não falam com o Asaas. Page → hook → `billingService` → `/api/v1`.

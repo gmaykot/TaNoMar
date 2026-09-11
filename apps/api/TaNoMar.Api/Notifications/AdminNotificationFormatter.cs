@@ -13,6 +13,7 @@ internal sealed class AdminNotificationFormatter : IAdminNotificationFormatter
         AdminNotificationKind.PlanRequested => PlanRequested(notification),
         AdminNotificationKind.PlanPaid => PlanPaid(notification),
         AdminNotificationKind.UserPlanChanged => UserPlanChanged(notification),
+        AdminNotificationKind.RenewalCanceled => RenewalCanceled(notification),
         _ => throw new ArgumentOutOfRangeException(nameof(notification))
     };
 
@@ -58,6 +59,17 @@ internal sealed class AdminNotificationFormatter : IAdminNotificationFormatter
             "Plano de usuário alterado no TáNoMar",
             $"Um administrador alterou o plano de um usuário no TáNoMar.\n\nNome: {notification.UserName}\nE-mail: {notification.UserEmail}\nPlano anterior: {notification.CurrentPlan}\nNovo plano: {notification.RequestedPlan}\nData: {date}",
             $"💳 TaNoMar\n\nPlano de usuário alterado\n\nUsuário: {notification.UserName}\nE-mail: {notification.UserEmail}\n\nPlano anterior: {notification.CurrentPlan}\nNovo plano: {notification.RequestedPlan}\n\nData: {date}");
+    }
+
+    private static AdminNotificationContent RenewalCanceled(AdminNotification notification)
+    {
+        var date = LocalDate(notification.OccurredAt);
+        var cycle = notification.Cycle == "YEARLY" ? "Anual" : "Mensal";
+        var accessUntil = notification.AccessUntil is { } until ? LocalDate(until) : "o fim do período";
+        return new AdminNotificationContent(
+            "Renovação cancelada no TáNoMar",
+            $"Um usuário cancelou a renovação no TáNoMar.\n\nNome: {notification.UserName}\nE-mail: {notification.UserEmail}\nPlano: {notification.CurrentPlan}\nCiclo: {cycle}\nAcesso até: {accessUntil}\nData: {date}",
+            $"💳 TaNoMar\n\nRenovação cancelada\n\nUsuário: {notification.UserName}\nE-mail: {notification.UserEmail}\n\nPlano: {notification.CurrentPlan}\nCiclo: {cycle}\nAcesso até: {accessUntil}\n\nData: {date}");
     }
 
     private static string LocalDate(DateTimeOffset value) =>

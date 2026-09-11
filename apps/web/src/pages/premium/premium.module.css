@@ -234,18 +234,12 @@
   font-weight: 750;
 }
 
-.checkoutBanner,
 .checkoutError {
   margin: 0;
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   font-size: var(--font-size-sm);
   font-weight: 700;
-}
-
-.checkoutBanner {
-  color: var(--color-ocean-950);
-  background: var(--color-sea-100);
 }
 
 .checkoutError {

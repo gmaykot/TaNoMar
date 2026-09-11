@@ -61,6 +61,9 @@ function WhatsAppSettingsForm({ integration }: { integration: WhatsAppIntegratio
   const [notifyPlanRequested, setNotifyPlanRequested] = useState(integration.notifyPlanRequested);
   const [notifyPlanPaid, setNotifyPlanPaid] = useState(integration.notifyPlanPaid);
   const [notifyPlanChanged, setNotifyPlanChanged] = useState(integration.notifyPlanChanged);
+  const [notifyRenewalCanceled, setNotifyRenewalCanceled] = useState(
+    integration.notifyRenewalCanceled,
+  );
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const personalChats = destinations.data?.personal ?? [];
   const groups = destinations.data?.groups ?? [];
@@ -82,6 +85,7 @@ function WhatsAppSettingsForm({ integration }: { integration: WhatsAppIntegratio
           notifyPlanRequested,
           notifyPlanPaid,
           notifyPlanChanged,
+          notifyRenewalCanceled,
         });
       }
 
@@ -102,6 +106,7 @@ function WhatsAppSettingsForm({ integration }: { integration: WhatsAppIntegratio
         notifyPlanRequested,
         notifyPlanPaid,
         notifyPlanChanged,
+        notifyRenewalCanceled,
       });
     },
     onSuccess: async () => {
@@ -318,6 +323,14 @@ function WhatsAppSettingsForm({ integration }: { integration: WhatsAppIntegratio
                 onChange={(event) => setNotifyPlanChanged(event.target.checked)}
               />
               <span>Plano de usuário alterado</span>
+            </label>
+            <label className={formStyles.choice}>
+              <input
+                type="checkbox"
+                checked={notifyRenewalCanceled}
+                onChange={(event) => setNotifyRenewalCanceled(event.target.checked)}
+              />
+              <span>Renovação cancelada</span>
             </label>
           </fieldset>
           {save.isError ? (

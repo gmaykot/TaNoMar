@@ -20,6 +20,7 @@ const integration = {
   notifyPlanRequested: true,
   notifyPlanPaid: true,
   notifyPlanChanged: true,
+  notifyRenewalCanceled: true,
   createdAt: '2026-09-10T12:00:00Z',
   updatedAt: '2026-09-10T12:00:00Z',
   status: {
@@ -63,6 +64,7 @@ describe('AdminWhatsAppPage', () => {
     expect(await screen.findByRole('option', { name: 'TaNoMar Admin' })).toBeInTheDocument();
     expect(screen.getByText('Pagamento de plano confirmado')).toBeInTheDocument();
     expect(screen.getByText('Plano de usuário alterado')).toBeInTheDocument();
+    expect(screen.getByText('Renovação cancelada')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Salvar configuração' }));
     expect(updateWhatsAppIntegration).toHaveBeenCalledWith(
@@ -74,6 +76,7 @@ describe('AdminWhatsAppPage', () => {
         notifyByEmail: true,
         notifyPlanPaid: true,
         notifyPlanChanged: true,
+        notifyRenewalCanceled: true,
       }),
     );
 

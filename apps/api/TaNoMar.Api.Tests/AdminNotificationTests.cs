@@ -36,6 +36,25 @@ public sealed class AdminNotificationTests
     }
 
     [Fact]
+    public void Formatter_includes_renewal_canceled_details()
+    {
+        var content = new AdminNotificationFormatter().Format(new AdminNotification(
+            AdminNotificationKind.RenewalCanceled,
+            "Maria Silva",
+            "maria@example.com",
+            new DateTimeOffset(2026, 9, 10, 12, 0, 0, TimeSpan.Zero),
+            CurrentPlan: "Mestre",
+            Cycle: "YEARLY",
+            AccessUntil: new DateTimeOffset(2026, 10, 10, 12, 0, 0, TimeSpan.Zero)));
+
+        Assert.Contains("Renovação cancelada", content.WhatsAppText);
+        Assert.Contains("Plano: Mestre", content.WhatsAppText);
+        Assert.Contains("Ciclo: Anual", content.WhatsAppText);
+        Assert.Contains("Acesso até: 10/10/2026", content.WhatsAppText);
+        Assert.Equal("Renovação cancelada no TáNoMar", content.EmailSubject);
+    }
+
+    [Fact]
     public void Formatter_includes_payment_confirmation_details()
     {
         var content = new AdminNotificationFormatter().Format(new AdminNotification(
@@ -101,7 +120,8 @@ public sealed class AdminNotificationTests
             NotifyNewUser = true,
             NotifyPlanRequested = false,
             NotifyPlanPaid = false,
-            NotifyPlanChanged = true
+            NotifyPlanChanged = true,
+            NotifyRenewalCanceled = true
         });
         await db.SaveChangesAsync();
         var gateway = new RecordingGateway();
@@ -137,6 +157,7 @@ public sealed class AdminNotificationTests
             Cycle: "YEARLY",
             PriceCents: 19104), CancellationToken.None);
         db.WhatsAppSettings.Single().NotifyPlanChanged = false;
+        db.WhatsAppSettings.Single().NotifyRenewalCanceled = false;
         await db.SaveChangesAsync();
         await channel.SendAsync(new AdminNotification(
             AdminNotificationKind.UserPlanChanged,
@@ -145,6 +166,14 @@ public sealed class AdminNotificationTests
             DateTimeOffset.UtcNow,
             CurrentPlan: "Free",
             RequestedPlan: "Mestre"), CancellationToken.None);
+        await channel.SendAsync(new AdminNotification(
+            AdminNotificationKind.RenewalCanceled,
+            "Maria Silva",
+            "maria@example.com",
+            DateTimeOffset.UtcNow,
+            CurrentPlan: "Mestre",
+            Cycle: "MONTHLY",
+            AccessUntil: DateTimeOffset.UtcNow.AddMonths(1)), CancellationToken.None);
 
         var sent = Assert.Single(gateway.Sent);
         Assert.Equal("120363000000@g.us", sent.DestinationId);

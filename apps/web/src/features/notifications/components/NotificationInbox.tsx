@@ -1,5 +1,5 @@
 import { Bell, Lock } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/design-system/components/Button';
 import { IconButton } from '@/design-system/components/IconButton';
@@ -17,7 +17,28 @@ const typeLabel: Record<ReportType, string> = {
 
 export function NotificationInbox() {
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const inbox = useNotificationInbox(open);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function onPointerDown(event: PointerEvent) {
+      if (rootRef.current?.contains(event.target as Node)) return;
+      setOpen(false);
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
 
   async function toggleOpen() {
     const next = !open;
@@ -28,7 +49,7 @@ export function NotificationInbox() {
   const empty = inbox.items.length === 0 && inbox.reports.length === 0;
 
   return (
-    <div className={styles.inbox}>
+    <div className={styles.inbox} ref={rootRef}>
       <div className={styles.trigger}>
         <IconButton label="Notificações" onClick={() => void toggleOpen()}>
           <Bell size={18} aria-hidden="true" />

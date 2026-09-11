@@ -1,4 +1,5 @@
-import type { PlanCatalog } from '@/features/subscription/subscriptionPlans';
+import { formatBrlFromCents, type PlanCatalog } from '@/features/subscription/subscriptionPlans';
+import type { CheckoutIntent } from './checkoutIntent';
 
 export type BillingCycle = 'MONTHLY' | 'YEARLY';
 export type BillingStatus = 'inactive' | 'pending' | 'active' | 'past_due' | 'canceled';
@@ -112,4 +113,81 @@ export function canCancelRenewal(billing: BillingSubscription | null | undefined
 export function cancelRenewalConfirmMessage(accessUntilLabel: string | null) {
   const until = accessUntilLabel ?? 'o fim da vigência já paga';
   return `O plano permanece vigente até ${until}. Depois disso, a conta volta para Free. O valor já pago não é estornado.`;
+}
+
+export function formatBillingReais(value: number | null | undefined) {
+  if (value === null || value === undefined) return null;
+  return formatBrlFromCents(Math.round(value * 100));
+}
+
+export function isPartialFirstCharge(billing: BillingSubscription) {
+  if (billing.contractedPrice === null || billing.renewalPrice === null) return false;
+  return Math.round(billing.contractedPrice * 100) !== Math.round(billing.renewalPrice * 100);
+}
+
+export function isCheckoutConfirmed(
+  user:
+    | {
+        plan: { code: string; name: string };
+        billing?: BillingSubscription;
+      }
+    | null
+    | undefined,
+  intent: CheckoutIntent | null,
+) {
+  const billing = user?.billing;
+  if (!user || !billing) return false;
+  if (billing.status !== 'active') return false;
+  if (user.plan.code === 'free') return false;
+  if (billing.planCode !== user.plan.code) return false;
+  if (!intent) return true;
+  return user.plan.code === intent.planCode && billing.cycle === intent.cycle;
+}
+
+export interface CheckoutConfirmation {
+  planName: string;
+  cycleLabel: string | null;
+  paidLabel: string | null;
+  renewalLabel: string | null;
+  renewsAtLabel: string | null;
+  isPartialFirstCharge: boolean;
+}
+
+export function checkoutConfirmationFromBilling(
+  billing: BillingSubscription,
+  planName: string,
+): CheckoutConfirmation {
+  return {
+    planName,
+    cycleLabel: billingCycleLabel(billing.cycle),
+    paidLabel: formatBillingReais(billing.contractedPrice),
+    renewalLabel: formatBillingReais(billing.renewalPrice),
+    renewsAtLabel: formatBillingDate(billing.renewsAt),
+    isPartialFirstCharge: isPartialFirstCharge(billing),
+  };
+}
+
+export function checkoutConfirmationCopy(info: CheckoutConfirmation) {
+  const cycle = info.cycleLabel ? ` ${info.cycleLabel}` : '';
+  const nextWhen = info.renewsAtLabel
+    ? `em ${info.renewsAtLabel}`
+    : info.cycleLabel === 'mensal'
+      ? 'no próximo mês'
+      : 'na próxima renovação';
+
+  if (info.isPartialFirstCharge && info.paidLabel && info.renewalLabel) {
+    return {
+      title: `Seu plano agora é ${info.planName}.`,
+      paid: `Você pagou ${info.paidLabel} agora — só a diferença desta troca.`,
+      next: `A próxima cobrança, ${nextWhen}, será o valor integral do ${info.planName}${cycle}: ${info.renewalLabel}. Não é a diferença de novo.`,
+    };
+  }
+
+  return {
+    title: `Seu plano agora é ${info.planName}.`,
+    paid: info.paidLabel
+      ? `Você pagou ${info.paidLabel}${info.cycleLabel ? ` no ciclo ${info.cycleLabel}` : ''}.`
+      : `O ${info.planName} já está ativo na conta.`,
+    next: info.renewalLabel ? `A próxima cobrança, ${nextWhen}, será ${info.renewalLabel}.` : null,
+  };
 }
