@@ -162,6 +162,10 @@ docker build -f apps/api/TaNoMar.Api/Dockerfile -t tanomar \
 
 ## Troubleshooting
 
+**Build falha no `npm ci` do WhatsApp** — o Baileys instala `libsignal` a partir do GitHub. A imagem de build instala `git` e força clone por HTTPS; sem isso, `npm ci` sai com código 1. Não rode `npm ci` de novo no estágio final: copie `node_modules` já podado.
+
+**Compose avisa `The "Rt6" variable is not set`** — algum segredo no Coolify contém `$Rt6` (comum em `ASAAS_API_KEY` e tokens longos). O Compose interpola `$nome` e esvazia aquele trecho. Cole a chave Asaas **sem** o `$` inicial (`aact_prod_...`) e, em qualquer outro valor, escape `$` como `$$`.
+
 **Build falha no estágio web** — verifique `GOOGLE_CLIENT_ID` como build arg; o Vite embute essa variável no bundle.
 
 **Container sobe mas retorna 500** — confira `ConnectionStrings__Default` e se o PostgreSQL aceita conexões do host do Coolify.

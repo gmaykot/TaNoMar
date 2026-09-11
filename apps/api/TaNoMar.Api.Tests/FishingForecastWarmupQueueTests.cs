@@ -92,8 +92,9 @@ public sealed class FishingForecastWarmupQueueTests
         public WarmupHarness()
         {
             var services = new ServiceCollection();
+            var databaseName = Guid.NewGuid().ToString();
             services.AddDbContext<TaNoMarDbContext>(options =>
-                options.UseInMemoryDatabase(Guid.NewGuid().ToString()));
+                options.UseInMemoryDatabase(databaseName));
             _provider = services.BuildServiceProvider();
             _scope = _provider.CreateScope();
             var fishingOptions = Microsoft.Extensions.Options.Options.Create(new FishingOptions
@@ -131,24 +132,17 @@ public sealed class FishingForecastWarmupQueueTests
         public FishingForecastService Fishing { get; }
         public CountingHandler Http { get; }
 
-        public DateOnly Today
-        {
-            get
-            {
-                var zone = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
-                return DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, zone).DateTime);
-            }
-        }
-
         public async Task AddOfficialAsync(string slug)
         {
-            Db.FishingSpots.Add(new FishingSpot(slug, slug, "sul", -27.6, -48.4, 90, "praia_aberta"));
-            await Db.SaveChangesAsync();
+            await using var scope = _provider.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<TaNoMarDbContext>();
+            db.FishingSpots.Add(new FishingSpot(slug, slug, "sul", -27.6, -48.4, 90, "praia_aberta"));
+            await db.SaveChangesAsync();
         }
 
         public async Task SeedTodayAsync(string locationId, int createdHoursAgo, bool withTide = true)
         {
-            var forecast = Forecast(locationId, Today);
+            var forecast = Forecast(locationId, Fishing.Today());
             if (withTide)
             {
                 forecast = forecast with
@@ -158,17 +152,19 @@ public sealed class FishingForecastWarmupQueueTests
                 };
             }
 
-            Db.FishingForecastSnapshots.Add(new FishingForecastSnapshot
+            await using var scope = _provider.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<TaNoMarDbContext>();
+            db.FishingForecastSnapshots.Add(new FishingForecastSnapshot
             {
                 LocationId = locationId,
-                Date = Today,
+                Date = Fishing.Today(),
                 PayloadJson = System.Text.Json.JsonSerializer.Serialize(
                     forecast,
                     new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)),
                 CreatedAt = DateTimeOffset.UtcNow.AddHours(-createdHoursAgo),
                 ExpiresAt = DateTimeOffset.UtcNow.AddHours(20)
             });
-            await Db.SaveChangesAsync();
+            await db.SaveChangesAsync();
         }
 
         public void Dispose()

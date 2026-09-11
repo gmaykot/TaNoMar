@@ -169,15 +169,13 @@ internal sealed class FishingForecastService
             return (0, 0);
 
         var today = Today();
-        var weeks = await _cache.GetAvailableWeeksAsync(
-            locations.Select(location => location.Id).ToArray(),
-            today,
-            cancellationToken);
+        var locationIds = locations.Select(location => location.Id).ToArray();
+        var todayCachedByLocation = await _cache.GetAvailableAsync(locationIds, today, cancellationToken);
+        var weeks = await _cache.GetAvailableWeeksAsync(locationIds, today, cancellationToken);
         var queued = 0;
         foreach (var location in locations)
         {
-            weeks.TryGetValue(location.Id, out var week);
-            var todayCached = week?.FirstOrDefault(item => item.Forecast.Date == today);
+            todayCachedByLocation.TryGetValue(location.Id, out var todayCached);
             if (_cache.NeedsExternalRefresh(todayCached))
             {
                 if (_refreshQueue.Enqueue(location))
@@ -185,7 +183,9 @@ internal sealed class FishingForecastService
                 continue;
             }
 
-            if (week!.Any(item => !HasTide(item.Forecast)))
+            if (!weeks.TryGetValue(location.Id, out var week))
+                week = todayCached is null ? [] : [todayCached];
+            if (week.Any(item => !HasTide(item.Forecast)))
                 _tideQueue.Enqueue(location);
         }
 
