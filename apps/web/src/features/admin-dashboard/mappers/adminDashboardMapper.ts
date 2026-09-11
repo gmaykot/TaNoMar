@@ -26,7 +26,8 @@ function parseCount(value: unknown): AdminDashboardCount {
   const code = readString(value.code);
   const name = readString(value.name);
   const count = readInteger(value.count);
-  if (!code || !name || count === null) throw new ContractError('Contagem do dashboard incompleta.');
+  if (!code || !name || count === null)
+    throw new ContractError('Contagem do dashboard incompleta.');
   return { code, name, count };
 }
 

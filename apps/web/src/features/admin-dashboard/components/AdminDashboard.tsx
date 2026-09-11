@@ -66,7 +66,15 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Bars({ items, total, labelOf }: { items: AdminDashboardCount[]; total: number; labelOf?: (item: AdminDashboardCount) => string }) {
+function Bars({
+  items,
+  total,
+  labelOf,
+}: {
+  items: AdminDashboardCount[];
+  total: number;
+  labelOf?: (item: AdminDashboardCount) => string;
+}) {
   return (
     <ul className={styles.bars}>
       {items.map((item) => (
@@ -101,27 +109,26 @@ export function AdminDashboard({ snapshot, pending, error }: AdminDashboardProps
 
   const { users, spots, billing, engagement, partners } = snapshot;
   const updated = new Date(snapshot.generatedAt);
-  const notices = [
-    spots.sharedPending > 0
-      ? {
-          to: routes.adminSpots,
-          text: `${quantity(spots.sharedPending, 'local na fila de moderação', 'locais na fila de moderação')}.`,
-        }
-      : null,
-    billing.pastDue > 0
-      ? {
-          to: routes.adminUsers,
-          danger: true,
-          text: `${quantity(billing.pastDue, 'assinatura atrasada', 'assinaturas atrasadas')}.`,
-        }
-      : null,
-    spots.officialWithoutCoordinates > 0
-      ? {
-          to: routes.adminOfficialSpots,
-          text: `${quantity(spots.officialWithoutCoordinates, 'local do sistema sem coordenadas', 'locais do sistema sem coordenadas')}.`,
-        }
-      : null,
-  ].filter((item): item is { to: string; text: string; danger?: boolean } => item !== null);
+  const notices: Array<{ to: string; text: string; danger?: boolean }> = [];
+  if (spots.sharedPending > 0) {
+    notices.push({
+      to: routes.adminSpots,
+      text: `${quantity(spots.sharedPending, 'local na fila de moderação', 'locais na fila de moderação')}.`,
+    });
+  }
+  if (billing.pastDue > 0) {
+    notices.push({
+      to: routes.adminUsers,
+      danger: true,
+      text: `${quantity(billing.pastDue, 'assinatura atrasada', 'assinaturas atrasadas')}.`,
+    });
+  }
+  if (spots.officialWithoutCoordinates > 0) {
+    notices.push({
+      to: routes.adminOfficialSpots,
+      text: `${quantity(spots.officialWithoutCoordinates, 'local do sistema sem coordenadas', 'locais do sistema sem coordenadas')}.`,
+    });
+  }
 
   return (
     <div className={styles.dashboard}>
@@ -151,7 +158,7 @@ export function AdminDashboard({ snapshot, pending, error }: AdminDashboardProps
         <HeroKpi
           label="Assinantes"
           value={formatCount(users.paid)}
-          detail={`${formatCount(users.total - users.paid)} no Free`}
+          detail={`${formatCount(Math.max(0, users.total - users.paid))} sem plano pago ativo`}
           to={routes.adminUsers}
         />
         <HeroKpi
@@ -195,7 +202,11 @@ export function AdminDashboard({ snapshot, pending, error }: AdminDashboardProps
             <Stat label="Pessoais" value={formatCount(spots.personal)} />
             <Stat label="Com câmera" value={formatCount(spots.officialWithWebcam)} />
           </div>
-          <Bars items={spots.byRegion} total={spots.official} labelOf={(item) => regionLabel(item.code)} />
+          <Bars
+            items={spots.byRegion}
+            total={spots.official}
+            labelOf={(item) => regionLabel(item.code)}
+          />
         </Card>
         <Card as="section" className={styles.section} aria-labelledby="dashboard-billing">
           <div className={styles.sectionHeader}>
@@ -205,9 +216,15 @@ export function AdminDashboard({ snapshot, pending, error }: AdminDashboardProps
           <div className={styles.stats}>
             <Stat label="Mensais" value={formatCount(billing.monthlyCount)} />
             <Stat label="Anuais" value={formatCount(billing.yearlyCount)} />
-            <Stat label="Cancelam no fim do período" value={formatCount(billing.cancelAtPeriodEnd)} />
+            <Stat
+              label="Cancelam no fim do período"
+              value={formatCount(billing.cancelAtPeriodEnd)}
+            />
             <Stat label="Checkout pendente" value={formatCount(billing.pendingCheckout)} />
-            <Stat label="Acesso até o fim do ciclo" value={formatCount(billing.canceledWithAccess)} />
+            <Stat
+              label="Acesso até o fim do ciclo"
+              value={formatCount(billing.canceledWithAccess)}
+            />
           </div>
         </Card>
         <Card as="section" className={styles.section} aria-labelledby="dashboard-usage">

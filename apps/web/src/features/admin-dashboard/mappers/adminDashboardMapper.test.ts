@@ -70,7 +70,9 @@ describe('parseAdminDashboard', () => {
   });
 
   it('rejeita payload incompleto', () => {
-    expect(() => parseAdminDashboard({ ...dashboardSample, generatedAt: '' })).toThrow(ContractError);
+    expect(() => parseAdminDashboard({ ...dashboardSample, generatedAt: '' })).toThrow(
+      ContractError,
+    );
   });
 
   it('rejeita contagem negativa', () => {

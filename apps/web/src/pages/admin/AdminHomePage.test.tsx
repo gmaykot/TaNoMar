@@ -123,10 +123,7 @@ describe('AdminHomePage', () => {
       'href',
       '/admin/integracoes/whatsapp',
     );
-    expect(screen.getByRole('link', { name: /Workers/ })).toHaveAttribute(
-      'href',
-      '/admin/workers',
-    );
+    expect(screen.getByRole('link', { name: /Workers/ })).toHaveAttribute('href', '/admin/workers');
     expect(screen.getByRole('checkbox', { name: /Mostrar câmeras ao vivo/ })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: /Permitir escolha de perfil/ })).not.toBeChecked();
     expect(screen.getByRole('heading', { name: 'Painel gerencial.' })).toBeInTheDocument();

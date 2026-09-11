@@ -8,10 +8,17 @@ import { AdminDashboard } from './AdminDashboard';
 describe('AdminDashboard', () => {
   it('mostra KPIs e o que pede atenção', () => {
     renderWithProviders(
-      <AdminDashboard snapshot={parseAdminDashboard(dashboardSample)} pending={false} error={false} />,
+      <AdminDashboard
+        snapshot={parseAdminDashboard(dashboardSample)}
+        pending={false}
+        error={false}
+      />,
     );
 
-    expect(screen.getByRole('link', { name: /Contas ativas/ })).toHaveAttribute('href', '/admin/usuarios');
+    expect(screen.getByRole('link', { name: /Contas ativas/ })).toHaveAttribute(
+      'href',
+      '/admin/usuarios',
+    );
     expect(screen.getByRole('link', { name: /Contas ativas/ })).toHaveTextContent('10');
     expect(screen.getByRole('link', { name: /Assinantes/ })).toHaveTextContent('4');
     expect(screen.getByRole('link', { name: /Fila de locais/ })).toHaveTextContent('2');
