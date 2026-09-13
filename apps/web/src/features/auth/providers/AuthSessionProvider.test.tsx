@@ -17,7 +17,22 @@ const { disableDevicePush } = vi.hoisted(() => ({
   disableDevicePush: vi.fn<() => Promise<void>>(),
 }));
 
+const biometric = vi.hoisted(() => ({
+  required: false,
+  verify: vi.fn(() => Promise.resolve()),
+  activate: vi.fn(),
+  deactivate: vi.fn(),
+  markJustLoggedIn: vi.fn(),
+}));
+
 vi.mock('@/features/notifications/services/devicePushService', () => ({ disableDevicePush }));
+vi.mock('@/features/auth/services/biometricUnlock', () => ({
+  isBiometricUnlockRequired: () => biometric.required,
+  verifyBiometricUnlock: () => biometric.verify(),
+  activateBiometricUnlockForUser: (userId: string) => biometric.activate(userId),
+  deactivateBiometricUnlock: () => biometric.deactivate(),
+  markJustLoggedIn: () => biometric.markJustLoggedIn(),
+}));
 
 function jsonResponse(status: number, body: unknown = {}) {
   return new Response(JSON.stringify(body), {
@@ -56,6 +71,11 @@ function LoggedArea() {
 describe('AuthSessionProvider offline', () => {
   beforeEach(() => {
     disableDevicePush.mockResolvedValue();
+    biometric.required = false;
+    biometric.verify.mockResolvedValue(undefined);
+    biometric.activate.mockClear();
+    biometric.deactivate.mockClear();
+    biometric.markJustLoggedIn.mockClear();
   });
 
   afterEach(() => {
@@ -146,5 +166,15 @@ describe('AuthSessionProvider offline', () => {
     expect(await screen.findByText('Tela de login')).toBeInTheDocument();
     expect(localStorage.getItem('tanomar.offline-session.v1')).toBeNull();
     expect(localStorage.getItem('tanomar.offline-forecast.v1')).toBeNull();
+  });
+
+  it('segura a sessão no celular até a biometria confirmar', async () => {
+    biometric.required = true;
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { accessToken: 'token' }));
+    vi.stubGlobal('fetch', fetchMock);
+    renderSession('/app');
+
+    expect(await screen.findByText('Tela de login')).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

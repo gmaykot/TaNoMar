@@ -44,3 +44,13 @@
   font-size: var(--font-size-sm);
   font-weight: 700;
 }
+
+.unlockActions {
+  display: grid;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.unlockActions button {
+  width: 100%;
+}

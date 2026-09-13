@@ -15,6 +15,7 @@ import { usePwaLifecycle } from '@/app/hooks/usePwaLifecycle';
 import { SaveConfirmation } from './SaveConfirmation';
 import { Button } from '@/design-system/components/Button';
 import { TaNoMarLogo } from '@/design-system/brand/TaNoMarLogo';
+import { BiometricOfferDrawer } from '@/features/auth/components/BiometricOfferDrawer';
 import { UserMenu } from '@/features/auth/components/UserMenu';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { isAdmin } from '@/features/auth/types/auth';
@@ -60,6 +61,7 @@ export function AppShell() {
   return (
     <div className={styles.app}>
       <SaveConfirmation />
+      <BiometricOfferDrawer />
       {!pwa.online && (
         <div className={styles.offline} role="status">
           <WifiOff size={15} aria-hidden="true" /> Você está offline. Conecte-se para atualizar a

@@ -51,7 +51,7 @@ Localmente, web e API são processos independentes: Vite executa o React em HTTP
 
 Quando habilitado, `services/tanomar-whatsapp` executa separadamente e recebe somente chamadas internas autenticadas da API. Baileys e suas credenciais não entram na API nem no frontend; `IWhatsAppGateway` mantém o adapter substituível.
 
-A sessão usa Google Sign-In. O access token fica só em memória; o refresh token segue no cookie HttpOnly `tanomar_refresh`. Endpoints autenticados não entram no cache do service worker.
+A sessão usa Google Sign-In. O access token fica só em memória; o refresh token segue no cookie HttpOnly `tanomar_refresh`. No celular, o usuário pode exigir biometria (WebAuthn: Face ID, Touch ID ou digital) neste aparelho antes de restaurar a sessão; a opção fica em Conta e não altera o cookie nem o login Google. Endpoints autenticados não entram no cache do service worker.
 
 Cobrança da assinatura: Checkout hospedado do Asaas, só cartão, Arrais/Mestre/Capitão em mensal ou anual (−20%). O preço mensal de tabela vive em `Plans`. Reajuste de tabela não cobra a diferença no meio do período já pago; a renovação anual e a próxima fatura mensal usam o catálogo novo. Upgrade começa na hora com desconto proporcional. Cancelar a recorrência não estorna. Ver [billing.md](billing.md) e [ADR-004](decisions/ADR-004-asaas-checkout.md).
 

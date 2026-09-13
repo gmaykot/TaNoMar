@@ -6,6 +6,7 @@ import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { GoogleSignInButton } from '@/features/auth/components/GoogleSignInButton';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { routes } from '@/shared/constants/routes';
+import { BiometricUnlockPanel } from './BiometricUnlockPanel';
 import styles from './login.module.css';
 
 export function LoginPage() {
@@ -29,6 +30,23 @@ export function LoginPage() {
 
   if (auth.status === 'authenticated') {
     return <Navigate to={from} replace />;
+  }
+
+  if (auth.status === 'locked') {
+    return (
+      <BiometricUnlockPanel
+        unlocking={submitting}
+        onUnlock={async () => {
+          setSubmitting(true);
+          try {
+            await auth.unlockWithBiometrics();
+          } finally {
+            setSubmitting(false);
+          }
+        }}
+        onUseGoogle={() => void auth.logout()}
+      />
+    );
   }
 
   return (
@@ -55,7 +73,8 @@ export function LoginPage() {
         }}
       />
       <small>
-      © 2026 TáNoMar. Todos os direitos reservados.<Compass size={14} aria-hidden="true" />
+        © 2026 TáNoMar. Todos os direitos reservados.
+        <Compass size={14} aria-hidden="true" />
       </small>
     </main>
   );
