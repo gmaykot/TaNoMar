@@ -80,7 +80,7 @@ export function LocationHeadingPage() {
         userLongitude={geo.longitude}
         accuracy={geo.accuracy}
         heading={compass.heading}
-        needsCompassPermission={compass.needsPermission}
+        compassTracking={compass.tracking}
         onEnableCompass={() => void compass.enableCompass()}
       />
     </div>

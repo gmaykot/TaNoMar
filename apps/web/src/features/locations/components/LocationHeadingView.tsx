@@ -26,7 +26,7 @@ interface LocationHeadingViewProps {
   userLongitude: number | null;
   accuracy: number | null;
   heading: number | null;
-  needsCompassPermission: boolean;
+  compassTracking: boolean;
   onEnableCompass: () => void;
 }
 
@@ -70,9 +70,14 @@ export function LocationHeadingView({
   userLongitude,
   accuracy,
   heading,
-  needsCompassPermission,
+  compassTracking,
   onEnableCompass,
 }: LocationHeadingViewProps) {
+  const keepLabel = compassTracking
+    ? heading == null
+      ? 'Calibrando…'
+      : 'Rumo ativo'
+    : 'Manter rumo';
   const pinHref = mapsPinUrl(latitude, longitude, name, currentMapsUserAgent());
   const ready = geoStatus === 'ready' && userLatitude != null && userLongitude != null;
   const bearing = ready ? bearingDegrees(userLatitude, userLongitude, latitude, longitude) : null;
@@ -191,19 +196,14 @@ export function LocationHeadingView({
         <a className={styles.mapButton} href={pinHref} rel="noopener noreferrer" target="_blank">
           <Navigation size={16} aria-hidden="true" /> Abrir no mapa
         </a>
-        {needsCompassPermission ? (
-          <button
-            type="button"
-            className={styles.keepButton}
-            onClick={() => void onEnableCompass()}
-          >
-            Ativar bússola
-          </button>
-        ) : (
-          <span className={styles.keepButton} role="status">
-            Manter rumo
-          </span>
-        )}
+        <button
+          type="button"
+          className={styles.keepButton}
+          aria-pressed={compassTracking}
+          onClick={() => void onEnableCompass()}
+        >
+          {keepLabel}
+        </button>
       </div>
     </div>
   );

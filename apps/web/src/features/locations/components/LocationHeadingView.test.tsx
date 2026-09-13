@@ -9,7 +9,7 @@ const base = {
   latitude: -27.65407,
   longitude: -48.46908,
   heading: null as number | null,
-  needsCompassPermission: false,
+  compassTracking: false,
   onEnableCompass: vi.fn(),
 };
 
@@ -33,6 +33,10 @@ describe('LocationHeadingView', () => {
       'href',
       'https://www.google.com/maps/search/?api=1&query=-27.65407%2C-48.46908',
     );
+    expect(screen.getByRole('button', { name: 'Manter rumo' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
   });
 
   it('explica quando a localização foi bloqueada', () => {
@@ -50,7 +54,7 @@ describe('LocationHeadingView', () => {
     expect(screen.getByText('—')).toBeInTheDocument();
   });
 
-  it('pede permissão da bússola no iOS', async () => {
+  it('liga a bússola ao tocar em manter rumo', async () => {
     const user = userEvent.setup();
     const onEnableCompass = vi.fn();
     renderWithProviders(
@@ -60,12 +64,30 @@ describe('LocationHeadingView', () => {
         userLatitude={null}
         userLongitude={null}
         accuracy={null}
-        needsCompassPermission
         onEnableCompass={onEnableCompass}
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: 'Ativar bússola' }));
+    await user.click(screen.getByRole('button', { name: 'Manter rumo' }));
     expect(onEnableCompass).toHaveBeenCalled();
+  });
+
+  it('mostra rumo ativo quando a bússola está ligada', () => {
+    renderWithProviders(
+      <LocationHeadingView
+        {...base}
+        geoStatus="ready"
+        userLatitude={-27.65407}
+        userLongitude={-48.47908}
+        accuracy={12}
+        heading={40}
+        compassTracking
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Rumo ativo' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 });

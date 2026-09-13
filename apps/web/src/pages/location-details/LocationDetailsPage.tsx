@@ -161,6 +161,8 @@ export function LocationDetailsPage() {
           variant="secondary"
           locked={favoriteLocked}
           data-kind="stamp"
+          data-favorite={location.isFavorite ? 'on' : undefined}
+          aria-pressed={favoriteLocked ? undefined : location.isFavorite}
           aria-label={favoriteLocked ? 'Favoritar. Disponível na assinatura.' : undefined}
           onClick={() => {
             if (favoriteLocked) {

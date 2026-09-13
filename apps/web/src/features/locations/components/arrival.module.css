@@ -36,13 +36,21 @@
 }
 
 .modeIcon {
-  display: grid;
+  display: flex;
+  flex-shrink: 0;
   width: 2.75rem;
   height: 2.75rem;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius-pill);
   color: white;
   background: var(--color-coral-500);
+  line-height: 0;
+}
+
+.modeIcon :global(svg) {
+  display: block;
+  flex-shrink: 0;
 }
 
 .mode[data-kind='boat'] .modeIcon {
@@ -54,7 +62,7 @@
 }
 
 .mode strong,
-.mode span {
+.mode span:not(.modeIcon) {
   display: block;
 }
 
@@ -441,9 +449,11 @@
   justify-content: center;
   gap: var(--space-2);
   padding: 0.5rem 1rem;
+  border: 0;
   border-radius: var(--radius-pill);
   font-size: var(--font-size-sm);
   font-weight: 750;
+  cursor: pointer;
 }
 
 .mapButton {
@@ -456,6 +466,12 @@
   color: white;
   background: var(--color-coral-500);
   box-shadow: var(--shadow-coral);
+}
+
+.keepButton[aria-pressed='true'] {
+  box-shadow:
+    var(--shadow-coral),
+    inset 0 0 0 2px rgb(250 247 239 / 35%);
 }
 
 .cancel {

@@ -267,6 +267,11 @@
   box-shadow: var(--shadow-coral);
 }
 
+.locationToolbar button[data-favorite='on'] :global(svg) {
+  color: var(--color-coral-500);
+  fill: var(--color-coral-500);
+}
+
 .locationToolbar button[aria-label*='Assinatura'] {
   color: var(--color-warning);
   background: var(--color-warning-soft);

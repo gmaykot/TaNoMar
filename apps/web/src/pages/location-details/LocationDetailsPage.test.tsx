@@ -495,6 +495,9 @@ describe('LocationDetailsPage', () => {
       expect(document.querySelector('[data-location-stamp="favorite"]')).toHaveTextContent(
         'Favorito',
       );
+      const favoriteAction = screen.getByRole('button', { name: 'Favorito' });
+      expect(favoriteAction).toHaveAttribute('data-favorite', 'on');
+      expect(favoriteAction).toHaveAttribute('aria-pressed', 'true');
       expect(screen.queryByText('Compartilhado')).not.toBeInTheDocument();
     } finally {
       location.isOwner = false;
