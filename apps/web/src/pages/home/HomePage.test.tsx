@@ -169,7 +169,9 @@ describe('HomePage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Salvar offline' }));
 
     expect(localStorage.getItem('tanomar.offline-forecast.v1')).toContain('"forecast"');
-    expect(screen.getByRole('button', { name: /Previsão salva neste aparelho/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Previsão salva neste aparelho/ }),
+    ).toBeInTheDocument();
   });
 
   it('não oferece salvar a previsão offline para o plano Free', async () => {
@@ -226,6 +228,10 @@ describe('HomePage', () => {
     await user.click(screen.getByRole('button', { name: /Amanhã/ }));
     expect(screen.getByRole('heading', { name: 'Armação' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Onde vale pescar?' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Ver todos/ })).toHaveAttribute(
+      'href',
+      '/ranking?data=2026-09-06',
+    );
   });
 
   it('expõe a previsão do dia como carrossel', async () => {
@@ -247,6 +253,10 @@ describe('HomePage', () => {
     expect(screen.getByRole('link', { name: /Ver previsão completa/ })).toHaveAttribute(
       'href',
       '/locais/pantano_do_sul?data=2026-09-05',
+    );
+    expect(screen.getByRole('link', { name: /Ver todos/ })).toHaveAttribute(
+      'href',
+      '/ranking?data=2026-09-05',
     );
   });
 

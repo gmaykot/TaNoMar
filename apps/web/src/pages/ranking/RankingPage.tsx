@@ -1,5 +1,5 @@
 import { BarChart3 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useOnlineStatus } from '@/app/hooks/useOnlineStatus';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
@@ -9,7 +9,9 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 import { hasPlanModule, showsAppFocus } from '@/features/auth/types/auth';
 import { DayCarousel } from '@/features/forecast/components/DayCarousel';
 import { ForecastRefreshNotice } from '@/features/forecast/components/ForecastRefreshNotice';
+import { resolveForecastDate } from '@/features/forecast/forecastDate';
 import { useForecast } from '@/features/forecast/hooks/useForecast';
+import { useForecastDateParam } from '@/features/forecast/hooks/useForecastDateParam';
 import {
   readOfflineForecast,
   shouldUseOfflineForecast,
@@ -39,7 +41,7 @@ export function RankingPage() {
   const auth = useAuth();
   const online = useOnlineStatus();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedDate, setSelectedDate] = useState('');
+  const { requestedDate, setForecastDate } = useForecastDateParam();
   const canCustomizeMetrics = hasPlanModule(auth.user, 'customMetrics');
   const canEmphasis = hasPlanModule(auth.user, 'rankingEmphasis');
   const canSaveOffline = hasPlanModule(auth.user, 'offline');
@@ -120,7 +122,10 @@ export function RankingPage() {
       />
     );
 
-  const activeDate = selectedDate || data.days[0]?.date || '';
+  const activeDate = resolveForecastDate(
+    requestedDate,
+    data.days.map((day) => day.date),
+  );
   return (
     <div className={styles.page}>
       <PageHeader
@@ -142,7 +147,7 @@ export function RankingPage() {
         filters={filters}
         onFiltersChange={setFilters}
       />
-      <DayCarousel days={data.days} selectedDate={activeDate} onSelect={setSelectedDate}>
+      <DayCarousel days={data.days} selectedDate={activeDate} onSelect={setForecastDate}>
         {(day) => {
           const items = filterRankingBySpot(day.ranking, locationById, filters);
           if (items.length) {

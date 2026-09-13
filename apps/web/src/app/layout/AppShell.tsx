@@ -10,7 +10,7 @@ import {
   WifiOff,
 } from 'lucide-react';
 import { useLayoutEffect } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useSearchParams } from 'react-router-dom';
 import { usePwaLifecycle } from '@/app/hooks/usePwaLifecycle';
 import { SaveConfirmation } from './SaveConfirmation';
 import { Button } from '@/design-system/components/Button';
@@ -19,6 +19,7 @@ import { BiometricOfferDrawer } from '@/features/auth/components/BiometricOfferD
 import { UserMenu } from '@/features/auth/components/UserMenu';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { isAdmin } from '@/features/auth/types/auth';
+import { pathWithForecastDate, readForecastDate } from '@/features/forecast/forecastDate';
 import { NotificationInbox } from '@/features/notifications/components/NotificationInbox';
 import { routes } from '@/shared/constants/routes';
 import styles from './AppShell.module.css';
@@ -45,8 +46,17 @@ function scrollToPageTop() {
   window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
 }
 
+function navPath(path: string, forecastDate: string) {
+  if (path === routes.home || path === routes.ranking) {
+    return pathWithForecastDate(path, forecastDate);
+  }
+  return path;
+}
+
 export function AppShell() {
   const { pathname } = useLocation();
+  const [searchParams] = useSearchParams();
+  const forecastDate = readForecastDate(searchParams);
   const pwa = usePwaLifecycle();
   const auth = useAuth();
 
@@ -94,14 +104,18 @@ export function AppShell() {
       )}
       <header className={styles.header}>
         <div className={styles.headerStart}>
-          <NavLink className={styles.brand} to={routes.home} aria-label="Ir para o início">
+          <NavLink
+            className={styles.brand}
+            to={navPath(routes.home, forecastDate)}
+            aria-label="Ir para o início"
+          >
             <TaNoMarLogo decorative />
           </NavLink>
           <nav className={styles.desktopNav} aria-label="Navegação principal">
             {desktopItems.map(({ to, label, end }) => (
               <NavLink
                 key={to}
-                to={to}
+                to={navPath(to, forecastDate)}
                 end={end}
                 className={({ isActive }) => (isActive ? styles.active : '')}
               >
@@ -129,7 +143,7 @@ export function AppShell() {
           {mobileNavigation.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
-              to={to}
+              to={navPath(to, forecastDate)}
               end={end}
               onClick={scrollToPageTop}
               className={({ isActive }) => (isActive ? styles.active : '')}

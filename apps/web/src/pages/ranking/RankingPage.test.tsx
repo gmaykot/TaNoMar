@@ -148,6 +148,13 @@ describe('RankingPage', () => {
     });
   });
 
+  it('abre no dia pedido pela URL', async () => {
+    renderWithProviders(<RankingPage />, ['/ranking?data=2026-09-06']);
+
+    expect(await screen.findByRole('heading', { name: 'Armação' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Amanhã/, pressed: true })).toBeInTheDocument();
+  });
+
   it('marca o local pessoal com o selo Meu local', async () => {
     renderWithProviders(<RankingPage />, ['/ranking']);
 
