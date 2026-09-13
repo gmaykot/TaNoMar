@@ -100,7 +100,8 @@ export function AboutPage() {
         </h2>
         <p>
           A previsão pode mudar. Olhe o mar antes de entrar — o TáNoMar não substitui o que você vê
-          no local.
+          no local. Como chegar de barco mostra rumo e distância; não substitui carta náutica nem
+          GPS marítimo.
         </p>
       </Card>
     </div>
