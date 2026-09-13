@@ -25,5 +25,6 @@ describe('AboutPage', () => {
     expect(attribution).toHaveAttribute('target', '_blank');
 
     expect(screen.getByText(/não substitui o que você vê no local/)).toBeInTheDocument();
+    expect(screen.getByText(/não substitui carta náutica nem GPS marítimo/)).toBeInTheDocument();
   });
 });

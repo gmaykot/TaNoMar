@@ -524,6 +524,19 @@ describe('LocationDetailsPage', () => {
     expect(enabled).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('oferece como chegar quando o local tem coordenadas', async () => {
+    const user = userEvent.setup();
+    renderLocation();
+
+    await user.click(await screen.findByRole('button', { name: 'Como chegar' }));
+    expect(screen.getByRole('dialog', { name: 'Pântano do Sul' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /De carro/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /De barco/ })).toHaveAttribute(
+      'href',
+      '/locais/pantano_do_sul/rumo',
+    );
+  });
+
   it('posiciona a câmera antes das ações e o vento ideal junto dos relatos', async () => {
     authState.liveWebcams = true;
     renderLocation();
@@ -587,7 +600,7 @@ describe('LocationDetailsPage', () => {
       .getAllByRole('button')
       .map((item) => item.textContent?.replace(/\s+/g, ' ').trim());
 
-    expect(actions).toEqual(['Nas previsões', 'Planejar saída', 'Favoritar']);
+    expect(actions).toEqual(['Como chegar', 'Nas previsões', 'Planejar saída', 'Favoritar']);
   });
 
   it('permite trocar o dia arrastando o carrossel nos detalhes', async () => {
