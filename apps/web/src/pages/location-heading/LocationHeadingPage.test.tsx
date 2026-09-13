@@ -29,6 +29,10 @@ describe('LocationHeadingPage', () => {
       'href',
       '/locais/campeche',
     );
+    expect(screen.getByRole('button', { name: 'Manter rumo' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
   });
 
   it('mostra estado amigável para local inexistente', async () => {

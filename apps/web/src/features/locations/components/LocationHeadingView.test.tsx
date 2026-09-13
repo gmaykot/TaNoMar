@@ -10,7 +10,7 @@ const base = {
   longitude: -48.46908,
   heading: null as number | null,
   compassTracking: false,
-  onEnableCompass: vi.fn(),
+  onToggleCompass: vi.fn(),
 };
 
 describe('LocationHeadingView', () => {
@@ -56,7 +56,7 @@ describe('LocationHeadingView', () => {
 
   it('liga a bússola ao tocar em manter rumo', async () => {
     const user = userEvent.setup();
-    const onEnableCompass = vi.fn();
+    const onToggleCompass = vi.fn();
     renderWithProviders(
       <LocationHeadingView
         {...base}
@@ -64,15 +64,17 @@ describe('LocationHeadingView', () => {
         userLatitude={null}
         userLongitude={null}
         accuracy={null}
-        onEnableCompass={onEnableCompass}
+        onToggleCompass={onToggleCompass}
       />,
     );
 
     await user.click(screen.getByRole('button', { name: 'Manter rumo' }));
-    expect(onEnableCompass).toHaveBeenCalled();
+    expect(onToggleCompass).toHaveBeenCalled();
   });
 
-  it('mostra rumo ativo quando a bússola está ligada', () => {
+  it('mostra rumo ativo quando a bússola está ligada', async () => {
+    const user = userEvent.setup();
+    const onToggleCompass = vi.fn();
     renderWithProviders(
       <LocationHeadingView
         {...base}
@@ -82,12 +84,13 @@ describe('LocationHeadingView', () => {
         accuracy={12}
         heading={40}
         compassTracking
+        onToggleCompass={onToggleCompass}
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Rumo ativo' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    const keep = screen.getByRole('button', { name: 'Rumo ativo' });
+    expect(keep).toHaveAttribute('aria-pressed', 'true');
+    await user.click(keep);
+    expect(onToggleCompass).toHaveBeenCalled();
   });
 });

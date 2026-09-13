@@ -81,7 +81,7 @@ export function LocationHeadingPage() {
         accuracy={geo.accuracy}
         heading={compass.heading}
         compassTracking={compass.tracking}
-        onEnableCompass={() => void compass.enableCompass()}
+        onToggleCompass={() => void compass.toggleCompass()}
       />
     </div>
   );

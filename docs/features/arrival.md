@@ -11,7 +11,7 @@ No detalhe do local, **Como chegar** oferece rota pelo mapa do aparelho ou rumo 
   - `embarcado` / `caiaque`: rumo na água
   - `misto` ou ausente: de carro e de barco
 - De carro e a pé abrem Google Maps (ou Apple Mapas no iPhone) com o destino nas coordenadas do local.
-- De barco abre `/locais/{id}/rumo`: bússola, distância e mapa em linha reta a partir do GPS do aparelho. **Manter rumo** pede a permissão da bússola no iOS, escuta `deviceorientationabsolute` no Android e tenta manter a tela ligada.
+- De barco abre `/locais/{id}/rumo`: bússola, distância e mapa em linha reta a partir do GPS do aparelho. **Manter rumo** liga a bússola (permissão no iOS, orientação absoluta no Android, tela ligada). Um segundo toque em **Rumo ativo** desliga e a rosa volta ao norte. Se o sinal absoluto parar, o rumo volta a usar a orientação relativa.
 - A gaveta mostra um preview do ponto no OpenStreetMap. A tela de rumo avisa que **não substitui carta náutica**.
 
 ## Fora de escopo

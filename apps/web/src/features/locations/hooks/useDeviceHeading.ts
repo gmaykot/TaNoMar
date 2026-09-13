@@ -8,6 +8,8 @@ type OrientationPermission = {
   requestPermission?: () => Promise<'granted' | 'denied' | 'default'>;
 };
 
+const ABSOLUTE_STALE_MS = 400;
+
 function orientationCtor() {
   if (typeof window === 'undefined') return undefined;
   return window.DeviceOrientationEvent as
@@ -54,24 +56,26 @@ async function requestScreenWakeLock() {
 export function useDeviceHeading() {
   const [heading, setHeading] = useState<number | null>(null);
   const [needsPermission, setNeedsPermission] = useState(needsOrientationPermission);
-  const [tracking, setTracking] = useState(
-    () => canUseOrientation() && !needsOrientationPermission(),
-  );
+  const [tracking, setTracking] = useState(false);
+  const trackingRef = useRef(false);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
   useEffect(() => {
     if (!tracking) return;
 
-    let gotAbsolute = false;
+    let lastAbsoluteAt = 0;
 
     function onOrientation(event: Event) {
       const orientation = event as WebkitDeviceOrientationEvent;
-      const absolute = isAbsoluteOrientation(orientation);
-      if (gotAbsolute && !absolute) return;
-      if (absolute) gotAbsolute = true;
       const next = headingFromEvent(orientation);
       if (next == null) return;
-      setHeading(next);
+      const now = Date.now();
+      if (isAbsoluteOrientation(orientation)) {
+        lastAbsoluteAt = now;
+        setHeading(next);
+        return;
+      }
+      if (now - lastAbsoluteAt > ABSOLUTE_STALE_MS) setHeading(next);
     }
 
     window.addEventListener('deviceorientationabsolute', onOrientation, true);
@@ -107,15 +111,23 @@ export function useDeviceHeading() {
     };
   }, [tracking]);
 
-  const enableCompass = useCallback(async () => {
+  const toggleCompass = useCallback(async () => {
+    if (trackingRef.current) {
+      trackingRef.current = false;
+      setTracking(false);
+      setHeading(null);
+      return;
+    }
     const ctor = orientationCtor();
     if (ctor?.requestPermission) {
       const result = await ctor.requestPermission();
       if (result !== 'granted') return;
       setNeedsPermission(false);
     }
-    setTracking(canUseOrientation());
+    if (!canUseOrientation()) return;
+    trackingRef.current = true;
+    setTracking(true);
   }, []);
 
-  return { heading, tracking, needsPermission, enableCompass };
+  return { heading, tracking, needsPermission, toggleCompass };
 }

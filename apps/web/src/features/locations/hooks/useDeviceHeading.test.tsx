@@ -39,6 +39,7 @@ describe('useDeviceHeading', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
     Object.defineProperty(window, 'DeviceOrientationEvent', {
       configurable: true,
@@ -53,10 +54,18 @@ describe('useDeviceHeading', () => {
     listeners.get(type)?.forEach((listener) => listener(event));
   }
 
-  it('lê o rumo absoluto no Android', async () => {
+  async function startTracking() {
     const { result } = renderHook(() => useDeviceHeading());
-
+    expect(result.current.tracking).toBe(false);
+    await act(async () => {
+      await result.current.toggleCompass();
+    });
     expect(result.current.tracking).toBe(true);
+    return result;
+  }
+
+  it('lê o rumo absoluto no Android depois de ligar a bússola', async () => {
+    const result = await startTracking();
 
     act(() => {
       dispatch('deviceorientationabsolute', { alpha: 90, absolute: true });
@@ -65,13 +74,51 @@ describe('useDeviceHeading', () => {
     await waitFor(() => expect(result.current.heading).toBe(270));
   });
 
-  it('ignora orientação relativa depois de receber rumo absoluto', async () => {
-    const { result } = renderHook(() => useDeviceHeading());
+  it('desliga a bússola e zera o rumo', async () => {
+    const result = await startTracking();
+
+    act(() => {
+      dispatch('deviceorientationabsolute', { alpha: 90, absolute: true });
+    });
+    await waitFor(() => expect(result.current.heading).toBe(270));
+
+    await act(async () => {
+      await result.current.toggleCompass();
+    });
+
+    expect(result.current.tracking).toBe(false);
+    expect(result.current.heading).toBeNull();
 
     act(() => {
       dispatch('deviceorientationabsolute', { alpha: 0, absolute: true });
     });
-    await waitFor(() => expect(result.current.heading).toBe(0));
+    expect(result.current.heading).toBeNull();
+  });
+
+  it('volta a usar orientação relativa se o rumo absoluto parar', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const result = await startTracking();
+
+    act(() => {
+      dispatch('deviceorientationabsolute', { alpha: 0, absolute: true });
+    });
+    expect(result.current.heading).toBe(0);
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+      dispatch('deviceorientation', { alpha: 90, absolute: false });
+    });
+
+    expect(result.current.heading).toBe(270);
+  });
+
+  it('ignora orientação relativa enquanto o rumo absoluto continua chegando', async () => {
+    const result = await startTracking();
+
+    act(() => {
+      dispatch('deviceorientationabsolute', { alpha: 0, absolute: true });
+    });
+    expect(result.current.heading).toBe(0);
 
     act(() => {
       dispatch('deviceorientation', { alpha: 90, absolute: false });
@@ -93,7 +140,7 @@ describe('useDeviceHeading', () => {
     expect(result.current.needsPermission).toBe(true);
 
     await act(async () => {
-      await result.current.enableCompass();
+      await result.current.toggleCompass();
     });
 
     expect(requestPermission).toHaveBeenCalled();

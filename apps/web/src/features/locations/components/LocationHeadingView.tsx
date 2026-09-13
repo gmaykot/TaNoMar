@@ -27,7 +27,7 @@ interface LocationHeadingViewProps {
   accuracy: number | null;
   heading: number | null;
   compassTracking: boolean;
-  onEnableCompass: () => void;
+  onToggleCompass: () => void;
 }
 
 function geoCopy(status: GeolocationWatchStatus) {
@@ -71,7 +71,7 @@ export function LocationHeadingView({
   accuracy,
   heading,
   compassTracking,
-  onEnableCompass,
+  onToggleCompass,
 }: LocationHeadingViewProps) {
   const keepLabel = compassTracking
     ? heading == null
@@ -200,7 +200,7 @@ export function LocationHeadingView({
           type="button"
           className={styles.keepButton}
           aria-pressed={compassTracking}
-          onClick={() => void onEnableCompass()}
+          onClick={() => void onToggleCompass()}
         >
           {keepLabel}
         </button>
