@@ -1,19 +1,21 @@
-import { Compass, Navigation } from 'lucide-react';
-import { Button } from '@/design-system/components/Button';
+import { AlertTriangle, Compass, Navigation } from 'lucide-react';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
-import { boatDisclaimer } from '../arrival/arrivalModes';
+import { headingDisclaimer } from '../arrival/arrivalModes';
 import {
   bearingDegrees,
   compassLabel,
+  compassPoint,
   distanceToSpotMeters,
   formatBearing,
-  formatCoordinatePair,
   formatDistance,
   headingDelta,
 } from '../arrival/geoMath';
 import { currentMapsUserAgent, mapsPinUrl } from '../arrival/mapsLinks';
 import type { GeolocationWatchStatus } from '../hooks/useGeolocationWatch';
+import { SpotMapPreview } from './SpotMapPreview';
 import styles from './arrival.module.css';
+
+const compassTicks = Array.from({ length: 72 }, (_, index) => index * 5);
 
 interface LocationHeadingViewProps {
   name: string;
@@ -54,7 +56,7 @@ function geoCopy(status: GeolocationWatchStatus) {
 }
 
 function headingInstruction(turn: number | null) {
-  if (turn == null) return 'Norte no topo da rosa.';
+  if (turn == null) return null;
   if (Math.abs(turn) < 20) return 'Siga em frente.';
   return turn > 0 ? 'Vire à direita.' : 'Vire à esquerda.';
 }
@@ -74,18 +76,20 @@ export function LocationHeadingView({
   const pinHref = mapsPinUrl(latitude, longitude, name, currentMapsUserAgent());
   const ready = geoStatus === 'ready' && userLatitude != null && userLongitude != null;
   const bearing = ready ? bearingDegrees(userLatitude, userLongitude, latitude, longitude) : null;
-  const distance = ready
-    ? formatDistance(distanceToSpotMeters(userLatitude, userLongitude, latitude, longitude))
+  const meters = ready
+    ? distanceToSpotMeters(userLatitude, userLongitude, latitude, longitude)
     : null;
+  const distance = meters == null ? null : formatDistance(meters);
   const roseRotation = heading == null ? 0 : -heading;
   const turn = heading != null && bearing != null ? headingDelta(heading, bearing) : null;
+  const instruction = headingInstruction(turn);
+  const copy = geoCopy(geoStatus);
   const accuracyLabel =
     accuracy != null && Number.isFinite(accuracy)
       ? accuracy >= 50
         ? `Posição aproximada · precisão ${formatDistance(accuracy)}`
         : `Precisão ${formatDistance(accuracy)}`
       : null;
-  const copy = geoCopy(geoStatus);
 
   return (
     <div className={styles.heading}>
@@ -103,7 +107,19 @@ export function LocationHeadingView({
               style={{ transform: `rotate(${roseRotation}deg)` }}
               aria-hidden="true"
             >
-              <span className={styles.compassPoint}>N</span>
+              {compassTicks.map((deg) => (
+                <span
+                  key={deg}
+                  className={styles.tick}
+                  data-major={deg % 30 === 0}
+                  style={{ transform: `rotate(${deg}deg)` }}
+                >
+                  <i />
+                </span>
+              ))}
+              <span className={styles.compassPoint} data-cardinal="n">
+                N
+              </span>
               <span className={styles.compassPoint} data-cardinal="l">
                 L
               </span>
@@ -113,6 +129,18 @@ export function LocationHeadingView({
               <span className={styles.compassPoint} data-cardinal="o">
                 O
               </span>
+              <span className={styles.compassInter} data-dir="ne">
+                NE
+              </span>
+              <span className={styles.compassInter} data-dir="se">
+                SE
+              </span>
+              <span className={styles.compassInter} data-dir="so">
+                SO
+              </span>
+              <span className={styles.compassInter} data-dir="no">
+                NO
+              </span>
               <span
                 className={styles.needle}
                 style={{ transform: `translate(-50%, -100%) rotate(${bearing}deg)` }}
@@ -121,8 +149,11 @@ export function LocationHeadingView({
             </div>
           </div>
           <p className={styles.bearing}>
-            {formatBearing(bearing)} {compassLabel(bearing)}
-            <span>{headingInstruction(turn)}</span>
+            {formatBearing(bearing)}
+            <span>
+              {compassPoint(bearing)}
+              {instruction ? ` · ${instruction}` : ''}
+            </span>
           </p>
         </div>
       ) : (
@@ -133,31 +164,46 @@ export function LocationHeadingView({
           busy={geoStatus === 'locating'}
         />
       )}
-      <div className={styles.metrics}>
-        <div className={styles.metric}>
-          <span>Distância em linha reta</span>
-          <strong>{distance ?? '—'}</strong>
-        </div>
-        <div className={styles.metric}>
-          <span>Coordenadas do local</span>
-          <strong>{formatCoordinatePair(latitude, longitude)}</strong>
-        </div>
-        {accuracyLabel ? (
-          <p className={styles.coords} role="status">
-            {accuracyLabel}
-          </p>
+      <div className={styles.metric}>
+        <strong>{distance ?? '—'}</strong>
+        <span>Distância em linha reta</span>
+        {bearing != null ? (
+          <span className={styles.metricHint}>
+            <Navigation size={14} aria-hidden="true" />
+            Rumo {formatBearing(bearing)} {compassLabel(bearing)}
+            {accuracyLabel ? ` · ${accuracyLabel}` : ''}
+          </span>
         ) : null}
       </div>
-      {needsCompassPermission ? (
-        <Button type="button" variant="secondary" onClick={() => void onEnableCompass()}>
-          Ativar bússola
-        </Button>
-      ) : null}
-      <p className={styles.notice}>{boatDisclaimer()}</p>
+      <SpotMapPreview
+        latitude={latitude}
+        longitude={longitude}
+        name={name}
+        fromLatitude={userLatitude}
+        fromLongitude={userLongitude}
+        variant="dark"
+      />
+      <p className={styles.headingNotice}>
+        <AlertTriangle size={16} aria-hidden="true" />
+        {headingDisclaimer()}
+      </p>
       <div className={styles.actions}>
         <a className={styles.mapButton} href={pinHref} rel="noopener noreferrer" target="_blank">
           <Navigation size={16} aria-hidden="true" /> Abrir no mapa
         </a>
+        {needsCompassPermission ? (
+          <button
+            type="button"
+            className={styles.keepButton}
+            onClick={() => void onEnableCompass()}
+          >
+            Ativar bússola
+          </button>
+        ) : (
+          <span className={styles.keepButton} role="status">
+            Manter rumo
+          </span>
+        )}
       </div>
     </div>
   );

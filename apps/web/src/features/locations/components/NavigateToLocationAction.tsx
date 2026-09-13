@@ -24,8 +24,8 @@ export function NavigateToLocationAction({
 
   return (
     <>
-      <Button type="button" variant="secondary" onClick={() => setOpen(true)}>
-        <Navigation size={16} aria-hidden="true" /> Como chegar
+      <Button type="button" variant="primary" data-kind="arrive" onClick={() => setOpen(true)}>
+        <Navigation size={20} aria-hidden="true" /> Como chegar
       </Button>
       {open ? (
         <ArrivalDrawer

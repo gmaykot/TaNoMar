@@ -3,7 +3,7 @@ export type ArrivalMode = 'driving' | 'walking' | 'boat';
 const modeCopy = {
   driving: {
     title: 'De carro',
-    description: 'Abre o mapa do celular com rota até o local.',
+    description: 'Abre o mapa do celular com rota até o ponto. Google Maps, Apple Mapas ou Waze.',
   },
   walking: {
     title: 'A pé',
@@ -11,7 +11,7 @@ const modeCopy = {
   },
   boat: {
     title: 'De barco',
-    description: 'Mostra rumo e distância até o ponto na água.',
+    description: 'Rumo e distância até o ponto na água. Sem carta náutica.',
   },
 } as const;
 
@@ -41,5 +41,18 @@ export function arrivalModeDescription(mode: ArrivalMode) {
 }
 
 export function boatDisclaimer() {
-  return 'Referência visual. Não substitui carta náutica nem GPS marítimo.';
+  return 'Não substitui carta náutica nem GPS marítimo.';
+}
+
+export function headingDisclaimer() {
+  return 'Referência visual. Não use para navegação oficial.';
+}
+
+export function arrivalAccessHint(accessType?: string | null) {
+  if (accessType === 'misto') return 'Acesso misto · escolha como ir até o local.';
+  if (accessType === 'terrestre') return 'Acesso terrestre · rota até o local.';
+  if (accessType === 'trilha') return 'Acesso por trilha · carro ou a pé.';
+  if (accessType === 'embarcado') return 'Acesso embarcado · rumo até o ponto na água.';
+  if (accessType === 'caiaque') return 'Acesso de caiaque · rumo até o ponto na água.';
+  return 'Escolha como ir até o local.';
 }

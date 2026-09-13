@@ -4,6 +4,7 @@ import {
   arrivalModeTitle,
   arrivalModesForAccess,
   boatDisclaimer,
+  headingDisclaimer,
 } from './arrivalModes';
 
 describe('arrivalModesForAccess', () => {
@@ -19,7 +20,8 @@ describe('arrivalModesForAccess', () => {
   it('usa rótulo de caiaque quando o acesso é de caiaque', () => {
     expect(arrivalModeTitle('boat', 'caiaque')).toBe('De caiaque');
     expect(arrivalModeTitle('boat', 'embarcado')).toBe('De barco');
-    expect(arrivalModeDescription('driving')).toMatch(/rota até o local/);
+    expect(arrivalModeDescription('driving')).toMatch(/Google Maps/);
     expect(boatDisclaimer()).toMatch(/carta náutica/);
+    expect(headingDisclaimer()).toMatch(/navegação oficial/);
   });
 });

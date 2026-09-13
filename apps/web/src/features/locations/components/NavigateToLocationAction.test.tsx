@@ -19,7 +19,8 @@ describe('NavigateToLocationAction', () => {
     await user.click(screen.getByRole('button', { name: 'Como chegar' }));
 
     const dialog = screen.getByRole('dialog', { name: 'Campeche' });
-    expect(dialog).toHaveTextContent('27,65407° S · 48,46908° O');
+    expect(screen.getByRole('img', { name: 'Mapa de Campeche' })).toBeInTheDocument();
+    expect(dialog).toHaveTextContent('Escolha como ir até o local.');
     expect(screen.getByRole('link', { name: /De carro/ })).toHaveAttribute(
       'href',
       'https://www.google.com/maps/dir/?api=1&destination=-27.65407%2C-48.46908&travelmode=driving',

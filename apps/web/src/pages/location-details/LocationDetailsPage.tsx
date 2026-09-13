@@ -134,6 +134,7 @@ export function LocationDetailsPage() {
         <Button
           type="button"
           variant="secondary"
+          data-kind="stamp"
           aria-pressed={location.isEnabled}
           onClick={() => {
             mutations.enabled.mutate({
@@ -159,6 +160,7 @@ export function LocationDetailsPage() {
           type="button"
           variant="secondary"
           locked={favoriteLocked}
+          data-kind="stamp"
           aria-label={favoriteLocked ? 'Favoritar. Disponível na assinatura.' : undefined}
           onClick={() => {
             if (favoriteLocked) {

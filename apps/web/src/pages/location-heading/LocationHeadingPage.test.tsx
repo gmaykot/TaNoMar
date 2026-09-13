@@ -22,12 +22,10 @@ describe('LocationHeadingPage', () => {
   it('mostra o rumo do local com aviso de carta náutica', async () => {
     renderHeading('/locais/campeche/rumo');
 
-    expect(await screen.findByRole('heading', { name: 'Campeche' })).toBeInTheDocument();
-    expect(
-      screen.getByText('Distância em linha reta a partir da sua posição.'),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Não substitui carta náutica/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Voltar ao local' })).toHaveAttribute(
+    expect(await screen.findByRole('heading', { name: 'Rumo ao local' })).toBeInTheDocument();
+    expect(screen.getByText('Campeche')).toBeInTheDocument();
+    expect(screen.getByText(/Não use para navegação oficial/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Voltar' })).toHaveAttribute(
       'href',
       '/locais/campeche',
     );

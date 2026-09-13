@@ -27,8 +27,8 @@ describe('LocationHeadingView', () => {
 
     expect(screen.getByRole('img', { name: /Rumo/ })).toHaveAccessibleName(/Leste/);
     expect(screen.getByText('Distância em linha reta').parentElement).toHaveTextContent(/km| m/);
-    expect(screen.getByText('27,65407° S · 48,46908° O')).toBeInTheDocument();
-    expect(screen.getByText(/Não substitui carta náutica/)).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Mapa de Campeche' })).toBeInTheDocument();
+    expect(screen.getByText(/Não use para navegação oficial/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Abrir no mapa' })).toHaveAttribute(
       'href',
       'https://www.google.com/maps/search/?api=1&query=-27.65407%2C-48.46908',

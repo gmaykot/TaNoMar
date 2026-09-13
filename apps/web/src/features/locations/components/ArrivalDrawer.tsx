@@ -1,18 +1,19 @@
-import { Car, Footprints, Navigation, Sailboat } from 'lucide-react';
+import { AlertTriangle, Car, Footprints, Sailboat } from 'lucide-react';
 import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { Button } from '@/design-system/components/Button';
 import drawerStyles from '@/design-system/components/confirmDrawer.module.css';
 import {
+  arrivalAccessHint,
   arrivalModeDescription,
   arrivalModeTitle,
   boatDisclaimer,
   type ArrivalMode,
 } from '../arrival/arrivalModes';
-import { formatCoordinatePair } from '../arrival/geoMath';
-import { currentMapsUserAgent, directionsUrl, mapsPinUrl } from '../arrival/mapsLinks';
+import { currentMapsUserAgent, directionsUrl } from '../arrival/mapsLinks';
 import { routes } from '@/shared/constants/routes';
+import { SpotMapPreview } from './SpotMapPreview';
 import styles from './arrival.module.css';
 
 const modeIcon = {
@@ -45,7 +46,6 @@ export function ArrivalDrawer({
   const panelRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
   const userAgent = currentMapsUserAgent();
-  const pinHref = mapsPinUrl(latitude, longitude, name, userAgent);
   const showBoatNotice = modes.includes('boat');
 
   useEffect(() => {
@@ -78,7 +78,7 @@ export function ArrivalDrawer({
       />
       <div
         ref={panelRef}
-        className={drawerStyles.drawer}
+        className={`${drawerStyles.drawer} ${styles.arrivalPanel}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -88,8 +88,8 @@ export function ArrivalDrawer({
         <div className={drawerStyles.handle} aria-hidden="true" />
         <span className={drawerStyles.meta}>Como chegar</span>
         <h2 id={titleId}>{name}</h2>
-        <p id={descriptionId}>Escolha como ir até o local.</p>
-        <p className={styles.coords}>{formatCoordinatePair(latitude, longitude)}</p>
+        <p id={descriptionId}>{arrivalAccessHint(accessType)}</p>
+        <SpotMapPreview latitude={latitude} longitude={longitude} name={name} />
         <div className={styles.modeList}>
           {modes.map((mode) => {
             const Icon = modeIcon[mode];
@@ -122,6 +122,7 @@ export function ArrivalDrawer({
               <a
                 key={mode}
                 className={styles.mode}
+                data-kind={mode}
                 href={directionsUrl({
                   latitude,
                   longitude,
@@ -137,11 +138,13 @@ export function ArrivalDrawer({
             );
           })}
         </div>
-        <a className={styles.pinLink} href={pinHref} rel="noopener noreferrer" target="_blank">
-          <Navigation size={16} aria-hidden="true" /> Ver o ponto no mapa
-        </a>
-        {showBoatNotice ? <p className={styles.notice}>{boatDisclaimer()}</p> : null}
-        <Button type="button" variant="quiet" onClick={onClose}>
+        {showBoatNotice ? (
+          <p className={styles.notice}>
+            <AlertTriangle size={16} aria-hidden="true" />
+            {boatDisclaimer()}
+          </p>
+        ) : null}
+        <Button type="button" variant="quiet" className={styles.cancel} onClick={onClose}>
           Cancelar
         </Button>
       </div>
