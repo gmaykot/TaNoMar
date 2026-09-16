@@ -18,6 +18,7 @@ export const routes = {
   diary: '/diario',
   about: '/sobre',
   partners: '/parceiros',
+  partnerApplication: '/seja-um-parceiro',
   partnerDetails: (slug: string) => `/parceiros/${slug}`,
   admin: '/admin',
   adminAudit: '/admin/auditoria',

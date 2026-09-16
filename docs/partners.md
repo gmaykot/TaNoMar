@@ -21,6 +21,11 @@ O CRUD em `/admin/parceiros` continua ativo. `GET/PUT /admin/settings` troca a f
 - Ofertas com preço em texto e validade opcional
 - Endereço ou link conferido no Google Maps e publicado como “Como chegar”
 - Destaque (`isFeatured`): Home, entre o ranking e “Explore todos os locais”, e no topo do diretório
+- Pré-cadastro autenticado em `/seja-um-parceiro`, acessível pela Home mesmo com a vitrine desligada
+
+## Solicitação de parceria
+
+O formulário solicita nome do negócio, categoria, cidade e WhatsApp. `POST /partners/applications` sempre cria o parceiro não publicado e sem destaque ou ofertas; somente o admin pode ativá-lo no cadastro. Depois da gravação, a API envia ao admin uma notificação de nova solicitação pelos mesmos canais habilitados para solicitações de plano (e-mail e WhatsApp). Falha de notificação não desfaz o cadastro.
 
 ## O que fica de fora
 

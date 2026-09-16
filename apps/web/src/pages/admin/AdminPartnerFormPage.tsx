@@ -197,7 +197,7 @@ export function AdminPartnerFormPage() {
             checked={value.isPublished}
             onChange={(event) => patch('isPublished', event.target.checked)}
           />
-          <span>Publicado na vitrine</span>
+          <span>Parceiro ativo e publicado na vitrine</span>
         </label>
         <label className={formStyles.choice}>
           <input

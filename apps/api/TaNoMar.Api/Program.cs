@@ -895,6 +895,41 @@ api.MapGet("/partners", async (ClaimsPrincipal principal, TaNoMarDbContext db, C
     return Results.Ok(partners.Select(item => PartnerDto(item, PartnerRules.VisibleOffers(offers.Where(offer => offer.PartnerId == item.Id), now))).ToList());
 }).RequireAuthorization();
 
+api.MapPost("/partners/applications", async (PartnerApplicationRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, IAdminNotificationService adminNotifications, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    var name = PartnerRules.TrimToNull(request.Name);
+    var category = request.Category?.Trim().ToLowerInvariant();
+    var city = PartnerRules.TrimToNull(request.City);
+    var whatsApp = PartnerRules.DigitsOrNull(request.WhatsApp);
+    if (name is null) return Results.BadRequest(new { code = "invalid_partner", detail = "Informe o nome do parceiro." });
+    if (!PartnerRules.IsCategory(category)) return Results.BadRequest(new { code = "invalid_category", detail = "Escolha uma categoria válida." });
+    if (city is null) return Results.BadRequest(new { code = "invalid_city", detail = "Informe a cidade." });
+    if (whatsApp is null || whatsApp.Length < 10 || whatsApp.Length > 15)
+        return Results.BadRequest(new { code = "invalid_whatsapp", detail = "Informe um WhatsApp válido com DDD." });
+
+    var usedSlugs = await db.Partners.AsNoTracking().Select(item => item.Slug).ToListAsync(cancellationToken);
+    var slugSeed = PartnerRules.Slugify(name);
+    var slug = slugSeed;
+    var index = 2;
+    while (usedSlugs.Contains(slug, StringComparer.OrdinalIgnoreCase)) slug = $"{slugSeed}-{index++}";
+    var partner = new Partner
+    {
+        Slug = slug,
+        Name = name,
+        Category = category!,
+        City = city,
+        WhatsApp = whatsApp,
+        IsPublished = false,
+        IsFeatured = false
+    };
+    db.Partners.Add(partner);
+    await db.SaveChangesAsync(cancellationToken);
+    adminNotifications.NotifyPartnerRequested(user.Name, user.Email, partner.Name, partner.Category, partner.City, partner.WhatsApp!, partner.CreatedAt);
+    return Results.Created($"/api/v1/admin/partners/{partner.Slug}", new { partner.Id, status = "pending" });
+}).RequireAuthorization();
+
 api.MapGet("/partners/{slug}", async (string slug, ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
@@ -2338,5 +2373,6 @@ record AdminActiveRequest(bool IsActive);
 record AdminRoleRequest(string Role);
 record AdminWorkerRequest(bool IsEnabled, string? CronExpression);
 record PartnerOfferRequest(string Title, string? Description, string? PriceLabel, DateTimeOffset? EndsAt, int? SortOrder);
+record PartnerApplicationRequest(string Name, string Category, string City, string WhatsApp);
 record PartnerRequest(string? Slug, string Name, string Category, string? Tagline, string? About, string? City, string? WhatsApp, string? Instagram, string? Website, string? MapsUrl, string? CoverImageUrl, bool IsPublished, bool IsFeatured, int SortOrder, PartnerOfferRequest[]? Offers);
 record PlatformSettingsRequest(bool? ShowPartners, bool? ShowAppFocus, bool? ShowLiveWebcams);

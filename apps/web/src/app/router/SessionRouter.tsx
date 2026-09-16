@@ -30,6 +30,7 @@ import { LoginPage } from '@/pages/login/LoginPage';
 import { FocusOnboardingPage } from '@/pages/onboarding/FocusOnboardingPage';
 import { PartnerDetailsPage } from '@/pages/partners/PartnerDetailsPage';
 import { PartnersPage } from '@/pages/partners/PartnersPage';
+import { PartnerApplicationPage } from '@/pages/partners/PartnerApplicationPage';
 import { PremiumPage } from '@/pages/premium/PremiumPage';
 import { RankingPage } from '@/pages/ranking/RankingPage';
 import { routes } from '@/shared/constants/routes';
@@ -58,6 +59,7 @@ export function SessionRouter() {
               </Route>
               <Route path={routes.about} element={<AboutPage />} />
               <Route path={routes.partners} element={<PartnersPage />} />
+              <Route path={routes.partnerApplication} element={<PartnerApplicationPage />} />
               <Route path="/parceiros/:partnerSlug" element={<PartnerDetailsPage />} />
               <Route element={<RequireAdmin />}>
                 <Route path={routes.admin} element={<AdminHomePage />} />

@@ -11,6 +11,7 @@ internal sealed class AdminNotificationFormatter : IAdminNotificationFormatter
     {
         AdminNotificationKind.NewUserRegistered => NewUser(notification),
         AdminNotificationKind.PlanRequested => PlanRequested(notification),
+        AdminNotificationKind.PartnerRequested => PartnerRequested(notification),
         AdminNotificationKind.PlanPaid => PlanPaid(notification),
         AdminNotificationKind.UserPlanChanged => UserPlanChanged(notification),
         AdminNotificationKind.RenewalCanceled => RenewalCanceled(notification),
@@ -50,6 +51,22 @@ internal sealed class AdminNotificationFormatter : IAdminNotificationFormatter
             "Pagamento de plano confirmado no TáNoMar",
             $"O pagamento de um plano foi confirmado no TáNoMar.\n\nNome: {notification.UserName}\nE-mail: {notification.UserEmail}\nPlano anterior: {notification.CurrentPlan}\nPlano pago: {notification.RequestedPlan}\nCiclo: {cycle}\nValor: {price}\nData: {date}",
             $"💳 TaNoMar\n\nPagamento de plano confirmado\n\nUsuário: {notification.UserName}\nE-mail: {notification.UserEmail}\n\nPlano anterior: {notification.CurrentPlan}\nPlano pago: {notification.RequestedPlan}\nCiclo: {cycle}\nValor: {price}\n\nData: {date}");
+    }
+
+    private static AdminNotificationContent PartnerRequested(AdminNotification notification)
+    {
+        var date = LocalDate(notification.OccurredAt);
+        var category = notification.PartnerCategory switch
+        {
+            "loja" => "Loja de pesca",
+            "guia" => "Guia de pesca",
+            "hospedagem" => "Hospedagem",
+            _ => "Outro"
+        };
+        return new AdminNotificationContent(
+            "Nova solicitação de parceria no TáNoMar",
+            $"Uma nova solicitação de parceria foi enviada.\n\nParceiro: {notification.PartnerName}\nCategoria: {category}\nCidade: {notification.PartnerCity}\nWhatsApp: {notification.PartnerWhatsApp}\nSolicitante: {notification.UserName}\nE-mail: {notification.UserEmail}\nData: {date}",
+            $"🤝 TáNoMar\n\nNova solicitação de parceria\n\nParceiro: {notification.PartnerName}\nCategoria: {category}\nCidade: {notification.PartnerCity}\nWhatsApp: {notification.PartnerWhatsApp}\n\nSolicitante: {notification.UserName}\nE-mail: {notification.UserEmail}\nData: {date}");
     }
 
     private static AdminNotificationContent UserPlanChanged(AdminNotification notification)

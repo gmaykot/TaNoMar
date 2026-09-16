@@ -6,7 +6,7 @@ import {
   parsePartnerList,
 } from '../mappers/partnerMapper';
 import { parsePlatformSettings } from '../mappers/platformSettingsMapper';
-import type { PartnerInput } from '../types/partner';
+import type { PartnerApplicationInput, PartnerInput } from '../types/partner';
 
 function toPayload(input: PartnerInput) {
   return {
@@ -37,6 +37,18 @@ function toPayload(input: PartnerInput) {
 
 export async function getPartners() {
   return parsePartnerList(await apiRequest('/partners'));
+}
+
+export async function createPartnerApplication(input: PartnerApplicationInput) {
+  await apiRequest('/partners/applications', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: input.name.trim(),
+      category: input.category,
+      city: input.city.trim(),
+      whatsApp: input.whatsApp.trim(),
+    }),
+  });
 }
 
 export async function getPartner(slug: string) {

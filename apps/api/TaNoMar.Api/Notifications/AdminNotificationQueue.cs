@@ -38,6 +38,24 @@ internal sealed class AdminNotificationQueue : IAdminNotificationService
             Cycle: cycle,
             PriceCents: priceCents));
 
+    public void NotifyPartnerRequested(
+        string userName,
+        string userEmail,
+        string partnerName,
+        string category,
+        string city,
+        string whatsApp,
+        DateTimeOffset occurredAt) =>
+        _notifications.Writer.TryWrite(new AdminNotification(
+            AdminNotificationKind.PartnerRequested,
+            userName,
+            userEmail,
+            occurredAt,
+            PartnerName: partnerName,
+            PartnerCategory: category,
+            PartnerCity: city,
+            PartnerWhatsApp: whatsApp));
+
     public void NotifyPlanPaid(
         string name,
         string email,

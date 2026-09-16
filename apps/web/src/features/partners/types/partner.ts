@@ -50,6 +50,13 @@ export interface PartnerInput {
   offers: PartnerOffer[];
 }
 
+export interface PartnerApplicationInput {
+  name: string;
+  category: PartnerCategory;
+  city: string;
+  whatsApp: string;
+}
+
 export const partnerCategoryLabel: Record<PartnerCategory, string> = {
   loja: 'Loja de pesca',
   guia: 'Leva para pescar',

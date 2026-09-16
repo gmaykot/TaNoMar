@@ -1,4 +1,4 @@
-import { ArrowRight, Compass, MapPinned, Sparkles } from 'lucide-react';
+import { ArrowRight, Compass, Handshake, MapPinned, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useOnlineStatus } from '@/app/hooks/useOnlineStatus';
@@ -17,7 +17,10 @@ import { ForecastRefreshNotice } from '@/features/forecast/components/ForecastRe
 import { ForecastPresentation } from '@/features/forecast/components/ForecastPresentation';
 import { OfflineSaveAction } from '@/features/forecast/components/OfflineSaveAction';
 import { useForecast } from '@/features/forecast/hooks/useForecast';
-import { readOfflineForecast, shouldUseOfflineForecast } from '@/features/forecast/utils/offlineForecast';
+import {
+  readOfflineForecast,
+  shouldUseOfflineForecast,
+} from '@/features/forecast/utils/offlineForecast';
 import type { FishingForecast } from '@/features/fishing/types/fishing';
 import { PartnerCard } from '@/features/partners/components/PartnerCard';
 import { usePartners } from '@/features/partners/hooks/usePartners';
@@ -191,6 +194,16 @@ export function HomePage() {
           onSaved={setOfflineForecast}
         />
       ) : null}
+      <Link className={styles.exploreCard} to={routes.partnerApplication}>
+        <span>
+          <Handshake size={22} aria-hidden="true" />
+        </span>
+        <div>
+          <strong>Seja um parceiro</strong>
+          <small>Apresente seu negócio e entraremos em contato</small>
+        </div>
+        <ArrowRight size={19} aria-hidden="true" />
+      </Link>
       <Link className={styles.exploreCard} to="/locais">
         <span>
           <MapPinned size={22} aria-hidden="true" />

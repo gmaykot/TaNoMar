@@ -132,6 +132,16 @@ describe('HomePage', () => {
     localStorage.removeItem('tanomar.offline-forecast.v1');
   });
 
+  it('mostra o acesso ao pré-cadastro de parceiro mesmo com a vitrine desligada', async () => {
+    authState.showPartners = false;
+    renderWithProviders(<HomePage />);
+
+    expect(await screen.findByRole('link', { name: /Seja um parceiro/ })).toHaveAttribute(
+      'href',
+      '/seja-um-parceiro',
+    );
+  });
+
   it('mostra o convite da assinatura somente para o plano Free', async () => {
     authState.planCode = 'free';
     renderWithProviders(<HomePage />);
@@ -169,7 +179,9 @@ describe('HomePage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Salvar offline' }));
 
     expect(localStorage.getItem('tanomar.offline-forecast.v1')).toContain('"forecast"');
-    expect(screen.getByRole('button', { name: /Previsão salva neste aparelho/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Previsão salva neste aparelho/ }),
+    ).toBeInTheDocument();
   });
 
   it('não oferece salvar a previsão offline para o plano Free', async () => {

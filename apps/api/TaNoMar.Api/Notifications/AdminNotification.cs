@@ -4,6 +4,7 @@ internal enum AdminNotificationKind
 {
     NewUserRegistered,
     PlanRequested,
+    PartnerRequested,
     PlanPaid,
     UserPlanChanged,
     RenewalCanceled
@@ -19,7 +20,12 @@ internal sealed record AdminNotification(
     string? RequestedPlan = null,
     string? Cycle = null,
     int? PriceCents = null,
-    DateTimeOffset? AccessUntil = null);
+    DateTimeOffset? AccessUntil = null,
+    string? PartnerName = null,
+    string? PartnerCategory = null,
+    string? PartnerCity = null,
+    string? PartnerWhatsApp = null);
+
 
 internal sealed record AdminNotificationContent(
     string EmailSubject,
@@ -49,6 +55,15 @@ internal interface IAdminNotificationService
         string requestedPlan,
         string cycle,
         int priceCents,
+        DateTimeOffset occurredAt);
+
+    void NotifyPartnerRequested(
+        string userName,
+        string userEmail,
+        string partnerName,
+        string category,
+        string city,
+        string whatsApp,
         DateTimeOffset occurredAt);
 
     void NotifyPlanPaid(

@@ -76,6 +76,26 @@ public sealed class AdminNotificationTests
     }
 
     [Fact]
+    public void Formatter_includes_partner_application_details()
+    {
+        var content = new AdminNotificationFormatter().Format(new AdminNotification(
+            AdminNotificationKind.PartnerRequested,
+            "Ana Souza",
+            "ana@example.com",
+            new DateTimeOffset(2026, 9, 16, 12, 0, 0, TimeSpan.Zero),
+            PartnerName: "Iscas da Ilha",
+            PartnerCategory: "loja",
+            PartnerCity: "Florianópolis",
+            PartnerWhatsApp: "5548999999999"));
+
+        Assert.Equal("Nova solicitação de parceria no TáNoMar", content.EmailSubject);
+        Assert.Contains("Iscas da Ilha", content.WhatsAppText);
+        Assert.Contains("Florianópolis", content.WhatsAppText);
+        Assert.Contains("5548999999999", content.WhatsAppText);
+        Assert.Contains("ana@example.com", content.WhatsAppText);
+    }
+
+    [Fact]
     public async Task Dispatcher_attempts_next_channel_when_first_one_fails()
     {
         var failing = new RecordingChannel("Email", shouldFail: true);
