@@ -24,6 +24,7 @@ import { DiaryPage } from '@/pages/diary/DiaryPage';
 import { HomePage } from '@/pages/home/HomePage';
 import { EditLocationPage } from '@/pages/location-edit/EditLocationPage';
 import { LocationDetailsPage } from '@/pages/location-details/LocationDetailsPage';
+import { LocationHeadingPage } from '@/pages/location-heading/LocationHeadingPage';
 import { NewLocationPage } from '@/pages/location-new/NewLocationPage';
 import { LocationsPage } from '@/pages/locations/LocationsPage';
 import { LoginPage } from '@/pages/login/LoginPage';
@@ -49,6 +50,7 @@ export function SessionRouter() {
               <Route path={routes.locations} element={<LocationsPage />} />
               <Route path={routes.locationNew} element={<NewLocationPage />} />
               <Route path="/locais/:locationId/editar" element={<EditLocationPage />} />
+              <Route path="/locais/:locationId/rumo" element={<LocationHeadingPage />} />
               <Route path="/locais/:locationId" element={<LocationDetailsPage />} />
               <Route path={routes.account} element={<AccountPage />} />
               <Route path={routes.accountPreferences} element={<AccountPreferencesPage />} />

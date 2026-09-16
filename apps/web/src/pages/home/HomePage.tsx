@@ -16,7 +16,9 @@ import { DayCarousel } from '@/features/forecast/components/DayCarousel';
 import { ForecastRefreshNotice } from '@/features/forecast/components/ForecastRefreshNotice';
 import { ForecastPresentation } from '@/features/forecast/components/ForecastPresentation';
 import { OfflineSaveAction } from '@/features/forecast/components/OfflineSaveAction';
+import { pathWithForecastDate, resolveForecastDate } from '@/features/forecast/forecastDate';
 import { useForecast } from '@/features/forecast/hooks/useForecast';
+import { useForecastDateParam } from '@/features/forecast/hooks/useForecastDateParam';
 import {
   readOfflineForecast,
   shouldUseOfflineForecast,
@@ -36,7 +38,7 @@ export function HomePage() {
   const forecast = useForecast();
   const partners = usePartners(partnersEnabled);
   const featured = (partners.data ?? []).filter((item) => item.isFeatured);
-  const [selectedDate, setSelectedDate] = useState('');
+  const { requestedDate, setForecastDate } = useForecastDateParam();
   const [offlineForecast, setOfflineForecast] = useState<FishingForecast | null>(() =>
     readOfflineForecast(),
   );
@@ -83,7 +85,10 @@ export function HomePage() {
     );
 
   const days = data?.days ?? [];
-  const activeDate = selectedDate || days[0]?.date || '';
+  const activeDate = resolveForecastDate(
+    requestedDate,
+    days.map((day) => day.date),
+  );
   const activeDay = days.find((day) => day.date === activeDate);
   const home = homeCopy(presentation.focus, activeDay?.label);
   if (!days.some((day) => day.ranking[0]))
@@ -126,7 +131,7 @@ export function HomePage() {
           <ArrowRight size={19} aria-hidden="true" />
         </Link>
       ) : null}
-      <DayCarousel days={days} selectedDate={activeDate} onSelect={setSelectedDate}>
+      <DayCarousel days={days} selectedDate={activeDate} onSelect={setForecastDate}>
         {(day) =>
           day.ranking[0] ? (
             <>
@@ -145,7 +150,7 @@ export function HomePage() {
                     <span>Outras boas escolhas</span>
                     <h2 id={`ranking-${day.date}`}>Ranking do dia</h2>
                   </div>
-                  <Link to="/ranking">
+                  <Link to={pathWithForecastDate(routes.ranking, activeDate)}>
                     Ver todos <ArrowRight size={17} aria-hidden="true" />
                   </Link>
                 </div>

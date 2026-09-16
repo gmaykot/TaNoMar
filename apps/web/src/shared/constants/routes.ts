@@ -10,6 +10,7 @@ export const routes = {
   locationsEnabled: '/locais?filtro=previsoes',
   locationNew: '/locais/novo',
   locationDetails: (locationId: string) => `/locais/${locationId}`,
+  locationHeading: (locationId: string) => `/locais/${locationId}/rumo`,
   locationEdit: (locationId: string) => `/locais/${locationId}/editar`,
   account: '/conta',
   accountPreferences: '/conta/preferencias',

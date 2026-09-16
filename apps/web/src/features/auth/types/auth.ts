@@ -36,7 +36,7 @@ export interface AuthUser {
   billing?: BillingSubscription;
 }
 
-export type AuthStatus = 'booting' | 'anonymous' | 'authenticated';
+export type AuthStatus = 'booting' | 'locked' | 'anonymous' | 'authenticated';
 
 export type PlanModule =
   | 'marine'

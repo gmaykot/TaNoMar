@@ -113,6 +113,7 @@ describe('AccountPage', () => {
       '/diario',
     );
     expect(screen.queryByRole('link', { name: /Novo local/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Neste aparelho' })).not.toBeInTheDocument();
     expect(screen.queryByText(/pescadores relatam como está o mar/)).not.toBeInTheDocument();
     expect(screen.getByText('Plano')).toBeInTheDocument();
     expect(screen.getByText('Mestre')).toBeInTheDocument();

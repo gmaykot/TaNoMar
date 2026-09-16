@@ -35,3 +35,11 @@ O prompt só aparece em contexto seguro: `https://localhost` ou outro HTTPS. `ht
 O `npm run dev -- --host` serve o app em HTTP na porta 5173 e o PWA em HTTPS na 5174. No celular abra `http://<ip-lan>.nip.io:5173/` para navegar. Para instalar, use `https://<ip-lan>.nip.io:5174/` (o terminal imprime essa URL como `PWA (nip.io)`) e aceite o aviso do certificado de desenvolvimento. Cadastre as duas origens no Google Cloud (Origens JavaScript autorizadas), senão o login falha.
 
 iOS nunca usa `beforeinstallprompt`; a instalação é Compartilhar → Adicionar à Tela de Início.
+
+## Biometria ao entrar
+
+No celular, o TáNoMar pode pedir Face ID, Touch ID ou a impressão digital **neste aparelho** antes de restaurar a sessão. A opção aparece em Conta → Neste aparelho, só quando o contexto é seguro (HTTPS), o aparelho é móvel e o navegador expõe um autenticador de plataforma (`PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable`). Depois do login Google, o app também oferece a ativação uma vez, só no celular.
+
+A biometria não substitui o Google e não muda o cookie `tanomar_refresh`. O WebAuthn fica só no aparelho: a API não guarda credencial nem altera JWT. Sem a opção ligada, ou no desktop, a sessão segue o refresh automático. Logout desativa o pedido até o próximo login Google na mesma conta neste aparelho; desligar em Conta apaga a credencial local.
+
+Funciona no Chrome/Android e no Safari/iOS 16+ (navegador ou PWA na Tela de Início). Em HTTP (`http://<ip>.nip.io:5173`) o prompt não aparece.

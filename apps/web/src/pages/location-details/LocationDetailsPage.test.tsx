@@ -539,6 +539,9 @@ describe('LocationDetailsPage', () => {
       expect(document.querySelector('[data-location-stamp="favorite"]')).toHaveTextContent(
         'Favorito',
       );
+      const favoriteAction = screen.getByRole('button', { name: 'Favorito' });
+      expect(favoriteAction).toHaveAttribute('data-favorite', 'on');
+      expect(favoriteAction).toHaveAttribute('aria-pressed', 'true');
       expect(screen.queryByText('Compartilhado')).not.toBeInTheDocument();
     } finally {
       location.isOwner = false;
@@ -566,6 +569,19 @@ describe('LocationDetailsPage', () => {
     renderLocation();
     const enabled = await screen.findByRole('button', { name: 'Nas previsões' });
     expect(enabled).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('oferece como chegar quando o local tem coordenadas', async () => {
+    const user = userEvent.setup();
+    renderLocation();
+
+    await user.click(await screen.findByRole('button', { name: 'Como chegar' }));
+    expect(screen.getByRole('dialog', { name: 'Pântano do Sul' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /De carro/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /De barco/ })).toHaveAttribute(
+      'href',
+      '/locais/pantano_do_sul/rumo',
+    );
   });
 
   it('posiciona a câmera antes das ações e o vento ideal junto dos relatos', async () => {
@@ -631,7 +647,13 @@ describe('LocationDetailsPage', () => {
       .getAllByRole('button')
       .map((item) => item.textContent?.replace(/\s+/g, ' ').trim());
 
-    expect(actions).toEqual(['Criar alerta', 'Nas previsões', 'Planejar saída', 'Favoritar']);
+    expect(actions).toEqual([
+      'Como chegar',
+      'Criar alerta',
+      'Nas previsões',
+      'Planejar saída',
+      'Favoritar',
+    ]);
   });
 
   it('permite trocar o dia arrastando o carrossel nos detalhes', async () => {

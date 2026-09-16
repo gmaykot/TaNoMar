@@ -6,6 +6,7 @@ export interface AuthSessionValue {
   user: AuthUser | null;
   userLoading: boolean;
   loginWithGoogle: (credential: string) => Promise<void>;
+  unlockWithBiometrics: () => Promise<void>;
   logout: () => Promise<void>;
 }
 

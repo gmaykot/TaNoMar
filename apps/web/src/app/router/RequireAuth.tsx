@@ -20,7 +20,7 @@ export function RequireAuth() {
     );
   }
 
-  if (auth.status === 'anonymous') {
+  if (auth.status === 'anonymous' || auth.status === 'locked') {
     return <Navigate to={routes.login} replace state={{ from: location }} />;
   }
 

@@ -26,6 +26,7 @@ import { SubscriptionBillingCard } from '@/features/billing/components/Subscript
 import { useLocations } from '@/features/locations/hooks/useLocations';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { routes } from '@/shared/constants/routes';
+import { BiometricUnlockPreference } from './BiometricUnlockPreference';
 import accountStyles from './account.module.css';
 import styles from '@/pages/shared/pages.module.css';
 
@@ -187,6 +188,8 @@ export function AccountPage() {
           />
         </div>
       </section>
+
+      <BiometricUnlockPreference />
 
       <section className={accountStyles.accountSection} aria-labelledby="account-app">
         <h2 id="account-app">Aplicativo</h2>

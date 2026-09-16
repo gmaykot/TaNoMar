@@ -26,9 +26,11 @@ import { ForecastRefreshNotice } from '@/features/forecast/components/ForecastRe
 import { ForecastPresentation } from '@/features/forecast/components/ForecastPresentation';
 import { useLocationForecast } from '@/features/forecast/hooks/useForecast';
 import { LocationStampFor } from '@/features/locations/components/LocationStamp';
+import { hasSpotCoordinates } from '@/features/locations/arrival/geoMath';
+import { IdealWindPreference } from '@/features/locations/components/IdealWindPreference';
+import { NavigateToLocationAction } from '@/features/locations/components/NavigateToLocationAction';
 import { regionLabel } from '@/features/locations/regions';
 import { spotTypeLabel } from '@/features/locations/spotCatalog';
-import { IdealWindPreference } from '@/features/locations/components/IdealWindPreference';
 import { useLocationMutations } from '@/features/locations/hooks/useLocationMutations';
 import { routes } from '@/shared/constants/routes';
 import styles from '@/pages/shared/pages.module.css';
@@ -108,7 +110,25 @@ export function LocationDetailsPage() {
 
   const favoriteLocked = !canFavorite && !location.isFavorite;
   const alertLocked = (auth.user?.entitlements.maxAlerts ?? 0) <= 0;
+  const canArrive = hasSpotCoordinates(location);
   const toolbarActions: { key: string; locked: boolean; node: ReactNode }[] = [
+    ...(canArrive
+      ? [
+          {
+            key: 'arrive',
+            locked: false,
+            node: (
+              <NavigateToLocationAction
+                locationId={location.id}
+                name={location.name}
+                latitude={location.latitude}
+                longitude={location.longitude}
+                accessType={location.accessType}
+              />
+            ),
+          },
+        ]
+      : []),
     {
       key: 'alert',
       locked: alertLocked,
@@ -149,6 +169,7 @@ export function LocationDetailsPage() {
         <Button
           type="button"
           variant="secondary"
+          data-kind="stamp"
           aria-pressed={location.isEnabled}
           onClick={() => {
             mutations.enabled.mutate({
@@ -174,6 +195,9 @@ export function LocationDetailsPage() {
           type="button"
           variant="secondary"
           locked={favoriteLocked}
+          data-kind="stamp"
+          data-favorite={location.isFavorite ? 'on' : undefined}
+          aria-pressed={favoriteLocked ? undefined : location.isFavorite}
           aria-label={favoriteLocked ? 'Favoritar. Disponível na assinatura.' : undefined}
           onClick={() => {
             if (favoriteLocked) {

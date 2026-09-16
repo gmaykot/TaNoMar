@@ -106,6 +106,28 @@ describe('AppShell', () => {
     expect(screen.getByRole('main')).toHaveTextContent('Ranking');
   });
 
+  it('leva o dia da previsão do início para o ranking', () => {
+    renderShell(['/app?data=2026-09-06']);
+
+    expect(within(footerNav()).getByRole('link', { name: 'Ranking' })).toHaveAttribute(
+      'href',
+      '/ranking?data=2026-09-06',
+    );
+    expect(screen.getByRole('link', { name: 'Ir para o início' })).toHaveAttribute(
+      'href',
+      '/app?data=2026-09-06',
+    );
+  });
+
+  it('traz o dia da previsão do ranking de volta ao início', () => {
+    renderShell(['/ranking?data=2026-09-06&enfase=vento']);
+
+    expect(within(footerNav()).getByRole('link', { name: 'Início' })).toHaveAttribute(
+      'href',
+      '/app?data=2026-09-06',
+    );
+  });
+
   it('volta ao topo ao tocar de novo o item ativo do menu inferior', async () => {
     const user = userEvent.setup();
     renderShell(['/ranking']);

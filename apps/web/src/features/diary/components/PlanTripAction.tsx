@@ -51,6 +51,7 @@ export function PlanTripAction({ spotId, spotName, date, time }: PlanTripActionP
           type="button"
           variant="secondary"
           locked={!canDiary}
+          data-kind="stamp"
           aria-label={!canDiary ? 'Planejar saída. Disponível na assinatura.' : undefined}
           onClick={() => {
             if (!canDiary) {
