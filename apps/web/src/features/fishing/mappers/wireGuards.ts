@@ -380,6 +380,8 @@ export function parseMarineDetails(value: unknown): WireMarineDetails {
       parseMarineSeriesValue,
       'atmosphericPressure',
     ),
+    wind: parseMetric(value.wind, parseMarineSeriesValue, 'wind'),
+    rain: parseMetric(value.rain, parseMarineSeriesValue, 'rain'),
     tide: parseOptionalMetric(value.tide, parseTideValue, 'tide'),
   };
 }

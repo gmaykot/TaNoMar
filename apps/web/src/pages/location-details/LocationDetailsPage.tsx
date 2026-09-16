@@ -1,4 +1,14 @@
-import { ArrowLeft, Eye, EyeOff, Heart, Lock, MapPin, Navigation, Pencil } from 'lucide-react';
+import {
+  ArrowLeft,
+  Bell,
+  Eye,
+  EyeOff,
+  Heart,
+  Lock,
+  MapPin,
+  Navigation,
+  Pencil,
+} from 'lucide-react';
 import { Fragment, useState, type ReactNode } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/design-system/components/Button';
@@ -10,6 +20,7 @@ import { hasLiveWebcams, hasPlanModule, showsAppFocus } from '@/features/auth/ty
 import { CommunityReports } from '@/features/community/components/CommunityReports';
 import { PlanTripAction } from '@/features/diary/components/PlanTripAction';
 import { SubscriptionGateDrawer } from '@/features/subscription/components/SubscriptionGateDrawer';
+import { ForecastAlerts } from '@/features/notifications/components/ForecastAlerts';
 import { DayCarousel } from '@/features/forecast/components/DayCarousel';
 import { ForecastRefreshNotice } from '@/features/forecast/components/ForecastRefreshNotice';
 import { ForecastPresentation } from '@/features/forecast/components/ForecastPresentation';
@@ -40,6 +51,8 @@ export function LocationDetailsPage() {
   const visibleMetricKeys = presentation.visibleMetricKeys;
   const [selectedDate, setSelectedDate] = useState(() => searchParams.get('data') ?? '');
   const [favoriteGateOpen, setFavoriteGateOpen] = useState(false);
+  const [alertGateOpen, setAlertGateOpen] = useState(false);
+  const [alertCreatorOpen, setAlertCreatorOpen] = useState(false);
 
   if (locationForecast.isPending)
     return (
@@ -94,7 +107,29 @@ export function LocationDetailsPage() {
     );
 
   const favoriteLocked = !canFavorite && !location.isFavorite;
+  const alertLocked = (auth.user?.entitlements.maxAlerts ?? 0) <= 0;
   const toolbarActions: { key: string; locked: boolean; node: ReactNode }[] = [
+    {
+      key: 'alert',
+      locked: alertLocked,
+      node: (
+        <Button
+          type="button"
+          variant="secondary"
+          locked={alertLocked}
+          onClick={() =>
+            alertLocked ? setAlertGateOpen(true) : setAlertCreatorOpen((open) => !open)
+          }
+        >
+          {alertLocked ? (
+            <Lock size={16} aria-hidden="true" />
+          ) : (
+            <Bell size={16} aria-hidden="true" />
+          )}
+          Criar alerta
+        </Button>
+      ),
+    },
     {
       key: 'plan',
       locked: !canDiary,
@@ -176,9 +211,12 @@ export function LocationDetailsPage() {
       ),
     });
   }
+  const visibleToolbarActions = presentation.showForecastAlerts
+    ? toolbarActions
+    : toolbarActions.filter((item) => item.key !== 'alert');
   const orderedToolbar = [
-    ...toolbarActions.filter((item) => !item.locked),
-    ...toolbarActions.filter((item) => item.locked),
+    ...visibleToolbarActions.filter((item) => !item.locked),
+    ...visibleToolbarActions.filter((item) => item.locked),
   ];
 
   return (
@@ -228,8 +266,14 @@ export function LocationDetailsPage() {
           <Fragment key={item.key}>{item.node}</Fragment>
         ))}
       </div>
+      {alertCreatorOpen ? (
+        <ForecastAlerts fixedSpot={{ id: location.id, name: location.name }} />
+      ) : null}
       {favoriteGateOpen ? (
         <SubscriptionGateDrawer action="Favoritar" onCancel={() => setFavoriteGateOpen(false)} />
+      ) : null}
+      {alertGateOpen ? (
+        <SubscriptionGateDrawer action="Criar alerta" onCancel={() => setAlertGateOpen(false)} />
       ) : null}
       {mutations.favoriteError ? <p>{mutations.favoriteError}</p> : null}
       {mutations.enabledError ? <p>{mutations.enabledError}</p> : null}

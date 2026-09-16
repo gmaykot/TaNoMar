@@ -39,6 +39,8 @@ describe('ForecastPresentation summary', () => {
 
   it('preserva a data no link para a previsão completa', () => {
     renderSummary();
+    const heading = screen.getByRole('heading', { name: 'Pântano do Sul' });
+    expect(heading.closest('a')).toHaveAttribute('href', '/locais/pantano_do_sul?data=2026-09-05');
     expect(screen.getByRole('link', { name: /Ver previsão completa/ })).toHaveAttribute(
       'href',
       '/locais/pantano_do_sul?data=2026-09-05',

@@ -10,6 +10,7 @@ export function createForecastAlert(input: {
   spotId: string;
   minimumScore: number;
   leadHours: number;
+  targetHour: number;
 }) {
   return apiRequest('/me/alerts', { method: 'POST', body: JSON.stringify(input) }).then(
     parseForecastAlert,
@@ -23,6 +24,7 @@ export function updateForecastAlert(alert: ForecastAlert) {
       spotId: alert.spotId,
       minimumScore: alert.minimumScore,
       leadHours: alert.leadHours,
+      targetHour: alert.targetHour,
       isActive: alert.isActive,
     }),
   }).then(parseForecastAlert);

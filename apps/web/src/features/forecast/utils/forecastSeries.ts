@@ -1,8 +1,10 @@
 import type {
   FishingMetric,
   FishingMetricKey,
+  ForecastHourWindow,
   ForecastRankingItem,
   MarineDetails,
+  MarinePoint,
 } from '@/features/fishing/types/fishing';
 import { formatWindMetric } from './formatWindMetric';
 
@@ -31,66 +33,84 @@ export function forecastSeriesOptions(
   const options: ForecastSeriesOption[] = [];
 
   if (visible('wind')) {
-    const points = metricPoints(forecast, 'wind', (metric) =>
-      parseFirstNumber(formatWindMetric(metric, windUnit)),
-    );
+    const hourly = hourlyPoints(marine, 'wind');
+    const points = hourly
+      ? convertWindPoints(hourly, windUnit)
+      : metricPoints(forecast, 'wind', (metric) =>
+          parseFirstNumber(formatWindMetric(metric, windUnit)),
+        );
     if (points.length >= 2)
       options.push({
         key: 'wind',
         label: 'Vento',
         unit: windUnit === 'kt' ? 'nós' : 'km/h',
         points,
-        source: 'hour-windows',
+        source: hourly ? 'hourly' : 'hour-windows',
       });
   }
 
   if (visible('waves')) {
-    const hourly = marine?.series.find(
-      (item) => item.key === 'waves' && !item.locked && !item.unavailable,
-    );
-    const points = hourly?.points.length
-      ? hourly.points
-      : metricPoints(forecast, 'waves', (metric) => parseFirstNumber(metric.value));
+    const hourly = hourlyPoints(marine, 'waves');
+    const points =
+      hourly ?? metricPoints(forecast, 'waves', (metric) => parseFirstNumber(metric.value));
     if (points.length >= 2)
       options.push({
         key: 'waves',
         label: 'Ondas',
         unit: 'm',
         points,
-        source: hourly?.points.length ? 'hourly' : 'hour-windows',
+        source: hourly ? 'hourly' : 'hour-windows',
       });
   }
 
   if (visible('rain')) {
-    const points = metricPoints(forecast, 'rain', (metric) => parseRainChance(metric.value));
+    const hourly = hourlyPoints(marine, 'rain');
+    const points =
+      hourly ?? metricPoints(forecast, 'rain', (metric) => parseRainChance(metric.value));
     if (points.length >= 2)
       options.push({
         key: 'rain',
         label: 'Chuva',
         unit: '%',
         points,
-        source: 'hour-windows',
+        source: hourly ? 'hourly' : 'hour-windows',
       });
   }
 
   if (visible('water-temperature') || visible('air-temperature')) {
-    const water = marine?.series.find(
-      (item) => item.key === 'water-temperature' && !item.locked && !item.unavailable,
-    );
-    const points = water?.points.length
-      ? water.points
+    const water = hourlyPoints(marine, 'water-temperature');
+    const points = water
+      ? water
       : metricPoints(forecast, 'air-temperature', (metric) => parseFirstNumber(metric.value));
     if (points.length >= 2)
       options.push({
         key: 'temperature',
-        label: water?.points.length ? 'Temperatura da água' : 'Temperatura do ar',
+        label: water ? 'Temperatura da água' : 'Temperatura do ar',
         unit: '°C',
         points,
-        source: water?.points.length ? 'hourly' : 'hour-windows',
+        source: water ? 'hourly' : 'hour-windows',
       });
   }
 
   return options;
+}
+
+function hourlyPoints(
+  marine: MarineDetails | undefined,
+  key: MarineDetails['series'][number]['key'],
+) {
+  const series = marine?.series.find(
+    (item) => item.key === key && !item.locked && !item.unavailable && item.points.length >= 2,
+  );
+  return series?.points ?? null;
+}
+
+function convertWindPoints(points: MarinePoint[], windUnit?: string): ForecastChartPoint[] {
+  if (windUnit !== 'kt') return points;
+  return points.map((point) => ({
+    time: point.time,
+    value: Math.round((point.value / 1.852) * 10) / 10,
+  }));
 }
 
 function metricPoints(
@@ -98,12 +118,19 @@ function metricPoints(
   key: FishingMetricKey,
   read: (metric: FishingMetric) => number | null,
 ) {
-  return forecast.hourWindows.flatMap((window) => {
+  const windows = dayWindows(forecast);
+  return windows.flatMap((window) => {
     const metric = window.metrics?.find((item) => item.key === key);
     if (!metric || metric.locked) return [];
     const value = read(metric);
     return value === null ? [] : [{ time: window.time, value }];
   });
+}
+
+function dayWindows(forecast: ForecastRankingItem): ForecastHourWindow[] {
+  const selectable = forecast.selectableHourWindows ?? [];
+  if (selectable.length >= 2) return selectable;
+  return forecast.hourWindows;
 }
 
 export function parseFirstNumber(value: string) {

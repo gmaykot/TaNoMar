@@ -52,32 +52,37 @@ function ForecastSummary({
   const displayForecast = forecastAtHour(forecast, forecast.metricsHour);
   const referenceHour = displayForecast.metricsHour;
 
+  const detailsTo = `/locais/${forecast.locationId}?data=${encodeURIComponent(date)}`;
+
   return (
     <article className={styles.hero}>
-      <div className={styles.heroDecor} aria-hidden="true">
-        <div className={styles.heroGlow} />
-      </div>
-      <ForecastRecommendation
-        forecast={forecast}
-        variant="summary"
-        dayLabel={formatReferenceDate(date, dayLabel)}
-        showFishingScore={showFishingScore}
-      />
-      {referenceHour ? (
-        <p className={styles.metricCaption}>Condições às {formatHourLabel(referenceHour)}</p>
-      ) : null}
-      <MetricGrid
-        metrics={displayForecast.metrics}
-        keys={metricKeys(visibleMetricKeys, ['wind', 'waves', 'rain'])}
-        windUnit={windUnit}
-        compact
-        hideLocked={false}
-      />
       <Link
-        className={styles.heroLink}
-        to={`/locais/${forecast.locationId}?data=${encodeURIComponent(date)}`}
+        className={styles.heroHit}
+        to={detailsTo}
+        aria-label={`Ver previsão completa de ${forecast.locationName}`}
       >
-        Ver previsão completa <ArrowRight size={18} aria-hidden="true" />
+        <div className={styles.heroDecor} aria-hidden="true">
+          <div className={styles.heroGlow} />
+        </div>
+        <ForecastRecommendation
+          forecast={forecast}
+          variant="summary"
+          dayLabel={formatReferenceDate(date, dayLabel)}
+          showFishingScore={showFishingScore}
+        />
+        {referenceHour ? (
+          <p className={styles.metricCaption}>Condições às {formatHourLabel(referenceHour)}</p>
+        ) : null}
+        <MetricGrid
+          metrics={displayForecast.metrics}
+          keys={metricKeys(visibleMetricKeys, ['wind', 'waves', 'rain'])}
+          windUnit={windUnit}
+          compact
+          hideLocked={false}
+        />
+        <span className={styles.heroLink}>
+          Ver previsão completa <ArrowRight size={18} aria-hidden="true" />
+        </span>
       </Link>
     </article>
   );

@@ -1042,8 +1042,8 @@ api.MapPost("/me/alerts", async (ForecastAlertRequest request, ClaimsPrincipal p
     if (user is null) return Results.Unauthorized();
     var plan = await db.Plans.AsNoTracking().SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
     if (plan.MaxAlerts <= 0) return Results.BadRequest(new { code = "plan_required", detail = "Alertas de previsão exigem uma assinatura.", requiredPlan = PlanRules.RequiredPlanLabel });
-    if (request.MinimumScore is < 0 or > 10 || request.LeadHours is < 1 or > 168)
-        return Results.BadRequest(new { code = "invalid_alert", detail = "Informe uma nota entre 0 e 10 e antecedência entre 1 e 168 horas." });
+    if (request.MinimumScore is < 0 or > 10 || request.LeadHours is < 1 or > 168 || request.TargetHour is < 0 or > 23)
+        return Results.BadRequest(new { code = "invalid_alert", detail = "Informe uma nota entre 0 e 10, horário entre 0 e 23 e antecedência entre 1 e 168 horas." });
     var spot = await db.FishingSpots.SingleOrDefaultAsync(item => item.Slug == request.SpotId, cancellationToken);
     var preferredRegions = await PreferredRegionsAsync(db, user.Id, cancellationToken);
     if (spot is null || (!SpotRules.Owns(spot, user) && (!SpotRules.CanSee(spot, user) || !SpotRules.IsInPreferredRegion(spot.Region, preferredRegions)))) return Results.NotFound();
@@ -1051,7 +1051,7 @@ api.MapPost("/me/alerts", async (ForecastAlertRequest request, ClaimsPrincipal p
     if (activeCount >= plan.MaxAlerts) return Results.Conflict(new { code = "plan_limit", detail = "Seu plano não permite mais alertas." });
     if (await db.ForecastAlerts.AnyAsync(item => item.UserId == user.Id && item.FishingSpotId == spot.Id, cancellationToken))
         return Results.Conflict(new { code = "alert_exists", detail = "Você já acompanha este local." });
-    var alert = new ForecastAlert { UserId = user.Id, FishingSpotId = spot.Id, MinimumScore = request.MinimumScore, LeadHours = request.LeadHours };
+    var alert = new ForecastAlert { UserId = user.Id, FishingSpotId = spot.Id, MinimumScore = request.MinimumScore, LeadHours = request.LeadHours, TargetHour = request.TargetHour };
     db.ForecastAlerts.Add(alert);
     await db.SaveChangesAsync(cancellationToken);
     return Results.Created($"/api/v1/me/alerts/{alert.Id}", ForecastAlertDto(alert, spot));
@@ -1061,12 +1061,13 @@ api.MapPut("/me/alerts/{id:guid}", async (Guid id, ForecastAlertRequest request,
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
-    if (request.MinimumScore is < 0 or > 10 || request.LeadHours is < 1 or > 168)
-        return Results.BadRequest(new { code = "invalid_alert", detail = "Informe uma nota entre 0 e 10 e antecedência entre 1 e 168 horas." });
+    if (request.MinimumScore is < 0 or > 10 || request.LeadHours is < 1 or > 168 || request.TargetHour is < 0 or > 23)
+        return Results.BadRequest(new { code = "invalid_alert", detail = "Informe uma nota entre 0 e 10, horário entre 0 e 23 e antecedência entre 1 e 168 horas." });
     var alert = await db.ForecastAlerts.SingleOrDefaultAsync(item => item.Id == id && item.UserId == user.Id, cancellationToken);
     if (alert is null) return Results.NotFound();
     alert.MinimumScore = request.MinimumScore;
     alert.LeadHours = request.LeadHours;
+    alert.TargetHour = request.TargetHour;
     alert.IsActive = request.IsActive;
     alert.UpdatedAt = DateTimeOffset.UtcNow;
     await db.SaveChangesAsync(cancellationToken);
@@ -1861,6 +1862,7 @@ static object ForecastAlertDto(ForecastAlert alert, FishingSpot spot) => new
     spotName = spot.Name,
     minimumScore = alert.MinimumScore,
     leadHours = alert.LeadHours,
+    targetHour = alert.TargetHour,
     isActive = alert.IsActive,
     lastNotifiedDate = alert.LastNotifiedDate,
     createdAt = alert.CreatedAt,
@@ -2006,7 +2008,7 @@ static object ForecastRefreshDto(IEnumerable<FishingForecast> forecasts, Forecas
 static object MarineLockedDto(string spotId, DateOnly date)
 {
     object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = PlanRules.RequiredPlanLabel };
-    return new { spotId, date, waves = Locked(), wavePeriod = Locked(), swell = Locked(), waterTemperature = Locked(), atmosphericPressure = Locked(), tide = Locked() };
+    return new { spotId, date, waves = Locked(), wavePeriod = Locked(), swell = Locked(), waterTemperature = Locked(), atmosphericPressure = Locked(), wind = Locked(), rain = Locked(), tide = Locked() };
 }
 static object MarineDto(string spotId, DateOnly date, FishingLocationForecast forecast, object tide)
 {
@@ -2021,6 +2023,8 @@ static object MarineDto(string spotId, DateOnly date, FishingLocationForecast fo
         swell = MarineSeries(hours, reference, hour => hour.SwellMeters, "m", 2, hour => hour.SwellDirection, hour => $"{FormatPt(hour.SwellPeriodSeconds, "0.#")} s"),
         waterTemperature = MarineSeries(hours, reference, hour => hour.WaterTemperatureC, "°C", 1),
         atmosphericPressure = MarineSeries(hours, reference, hour => hour.PressureHpa, "hPa", 0, detail: _ => PressureTrend(hours, reference)),
+        wind = MarineSeries(hours, reference, hour => hour.WindSpeedKmh, "km/h", 1, hour => hour.WindDirection),
+        rain = MarineSeries(hours, reference, hour => hour.RainProbability, "%", 0),
         tide
     };
 }
@@ -2301,7 +2305,7 @@ static void ReplacePartnerOffers(TaNoMarDbContext db, Guid partnerId, PartnerOff
 record BillingCheckoutRequest(string? PlanCode, string? Cycle);
 record GoogleLoginRequest(string Credential);
 record PreferencesRequest(string? Region, string? WindUnit, bool? ForecastNotifications, string? Focus, string[]? VisibleMetrics);
-record ForecastAlertRequest(string SpotId, double MinimumScore, int LeadHours, bool IsActive = true);
+record ForecastAlertRequest(string SpotId, double MinimumScore, int LeadHours, int? TargetHour = null, bool IsActive = true);
 record FavoriteRequest(string SpotId, bool IsFavorite);
 record EnabledSpotRequest(string SpotId, bool IsEnabled);
 record IdealWindRequest(string SpotId, int? IdealWindDirectionDegrees);

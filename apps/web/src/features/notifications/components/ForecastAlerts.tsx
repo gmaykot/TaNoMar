@@ -17,21 +17,22 @@ import type { ForecastAlert } from '../types/forecastAlert';
 
 const queryKey = ['forecast-alerts'] as const;
 
-export function ForecastAlerts() {
+export function ForecastAlerts({ fixedSpot }: { fixedSpot?: { id: string; name: string } }) {
   const auth = useAuth();
   const locations = useLocations();
   const queryClient = useQueryClient();
   const canNotify = (auth.user?.entitlements.maxAlerts ?? 0) > 0;
   const available = locations.data?.filter((item) => item.isEnabled) ?? [];
-  const [spotId, setSpotId] = useState('');
+  const [spotId, setSpotId] = useState(fixedSpot?.id ?? '');
   const [minimumScore, setMinimumScore] = useState(8);
+  const [targetHour, setTargetHour] = useState(6);
   const [leadHours, setLeadHours] = useState(24);
   const [error, setError] = useState<string | null>(null);
   const alerts = useQuery({ queryKey, queryFn: getForecastAlerts, enabled: canNotify });
   const create = useMutation({
     mutationFn: createForecastAlert,
     onSuccess: async () => {
-      setSpotId('');
+      if (!fixedSpot) setSpotId('');
       setError(null);
       await queryClient.invalidateQueries({ queryKey });
     },
@@ -63,7 +64,7 @@ export function ForecastAlerts() {
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!spotId) return;
-    create.mutate({ spotId, minimumScore, leadHours });
+    create.mutate({ spotId, minimumScore, targetHour, leadHours });
   }
 
   return (
@@ -73,22 +74,29 @@ export function ForecastAlerts() {
           <Bell size={17} aria-hidden="true" /> Alertas de oportunidade
         </h2>
         <p>
-          Receba um aviso quando a previsão atingir sua nota mínima. Você pode criar até{' '}
-          {auth.user?.entitlements.maxAlerts ?? 0} alertas.
+          Receba um aviso quando a previsão atingir sua nota mínima no horário escolhido. Você pode
+          criar até {auth.user?.entitlements.maxAlerts ?? 0} alertas.
         </p>
       </div>
       <form className={formStyles.form} onSubmit={submit}>
-        <label className={formStyles.field}>
-          <span>Local</span>
-          <select value={spotId} onChange={(event) => setSpotId(event.target.value)} required>
-            <option value="">Escolha um local</option>
-            {available.map((location) => (
-              <option key={location.id} value={location.id}>
-                {location.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {fixedSpot ? (
+          <label className={formStyles.field}>
+            <span>Local</span>
+            <input value={fixedSpot.name} disabled />
+          </label>
+        ) : (
+          <label className={formStyles.field}>
+            <span>Local</span>
+            <select value={spotId} onChange={(event) => setSpotId(event.target.value)} required>
+              <option value="">Escolha um local</option>
+              {available.map((location) => (
+                <option key={location.id} value={location.id}>
+                  {location.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className={formStyles.field}>
           <span>Nota mínima</span>
           <select
@@ -98,6 +106,19 @@ export function ForecastAlerts() {
             {[7, 8, 8.5, 9].map((score) => (
               <option key={score} value={score}>
                 {score.toLocaleString('pt-BR')}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={formStyles.field}>
+          <span>Horário</span>
+          <select
+            value={targetHour}
+            onChange={(event) => setTargetHour(Number(event.target.value))}
+          >
+            {Array.from({ length: 16 }, (_, index) => index + 5).map((hour) => (
+              <option key={hour} value={hour}>
+                {String(hour).padStart(2, '0')}:00
               </option>
             ))}
           </select>
@@ -115,7 +136,7 @@ export function ForecastAlerts() {
           Criar alerta
         </Button>
       </form>
-      {alerts.data?.length ? (
+      {!fixedSpot && alerts.data?.length ? (
         <div className={accountStyles.metricChoices}>
           {alerts.data.map((alert) => (
             <AlertRow
@@ -151,7 +172,11 @@ function AlertRow({
       <span>
         <strong>{alert.spotName}</strong>
         <small>
-          Nota {alert.minimumScore.toLocaleString('pt-BR')} · {alert.leadHours}h antes
+          Nota {alert.minimumScore.toLocaleString('pt-BR')} ·{' '}
+          {alert.targetHour === null
+            ? 'melhor horário'
+            : `${String(alert.targetHour).padStart(2, '0')}:00`}{' '}
+          · {alert.leadHours}h antes
         </small>
       </span>
       <button type="button" aria-label={`Apagar alerta de ${alert.spotName}`} onClick={onDelete}>

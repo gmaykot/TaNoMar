@@ -67,10 +67,18 @@ internal sealed class ForecastAlertWorker(
                     idealWindSettings.TryGetValue((alert.UserId, alert.FishingSpotId), out var idealWindDirection);
                     forecast = FishingWindPreference.Apply(forecast, idealWindDirection, spot.SeaOrientationDegrees, spot.Profile);
                 }
-                if (forecast is null || forecast.Score < alert.MinimumScore) continue;
+                var targetForecast = alert.TargetHour is null
+                    ? null
+                    : forecast?.Hours.FirstOrDefault(hour =>
+                        hour.Time.StartsWith($"{alert.TargetHour:00}:", StringComparison.Ordinal));
+                if (alert.TargetHour is not null && targetForecast is null) continue;
+                var evaluatedScore = targetForecast?.Score ?? forecast?.Score;
+                if (forecast is null || evaluatedScore is null || evaluatedScore < alert.MinimumScore) continue;
 
                 var title = $"Boa janela em {spot.Name}";
-                var body = $"Nota {forecast.Score:0.0} para {date:dd/MM}. Melhor horário: {forecast.BestHour?.Time ?? "consulte a previsão"}.";
+                var body = alert.TargetHour is not null
+                    ? $"Nota {evaluatedScore:0.0} para {date:dd/MM} às {alert.TargetHour:00}h."
+                    : $"Nota {evaluatedScore:0.0} para {date:dd/MM}. Melhor horário: {forecast.BestHour?.Time ?? "consulte a previsão"}.";
                 db.Notifications.Add(new Notification { UserId = alert.UserId, Title = title, Body = body, Region = spot.Region });
                 alert.LastNotifiedDate = date;
                 alert.UpdatedAt = DateTimeOffset.UtcNow;

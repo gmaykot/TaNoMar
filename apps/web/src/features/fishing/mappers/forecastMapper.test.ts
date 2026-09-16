@@ -301,6 +301,23 @@ describe('forecastMapper', () => {
             { time: '06:00', value: 1018 },
           ],
         }),
+        wind: available({
+          current: '8 km/h',
+          range: '6–12 km/h',
+          direction: 'Leste',
+          points: [
+            { time: '05:00', value: 6 },
+            { time: '06:00', value: 8 },
+          ],
+        }),
+        rain: available({
+          current: '10 %',
+          range: '8–20 %',
+          points: [
+            { time: '05:00', value: 8 },
+            { time: '06:00', value: 10 },
+          ],
+        }),
         tide: { state: 'unavailable' },
       }),
     );
@@ -315,6 +332,8 @@ describe('forecastMapper', () => {
       current: '1018 hPa',
       detail: 'estável',
     });
+    expect(marine.series[5]).toMatchObject({ label: 'Vento', current: '8 km/h' });
+    expect(marine.series[6]).toMatchObject({ label: 'Chuva', current: '10 %' });
     expect(marine.tide.unavailable).toBe(true);
   });
 
@@ -328,6 +347,8 @@ describe('forecastMapper', () => {
         swell: locked(),
         waterTemperature: locked(),
         atmosphericPressure: locked(),
+        wind: locked(),
+        rain: locked(),
         tide: available({
           current: '0.64 m',
           phase: 'Enchente',

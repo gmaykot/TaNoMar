@@ -127,7 +127,14 @@ export interface MarinePoint {
 }
 
 export interface MarineSeries {
-  key: 'waves' | 'wave-period' | 'swell' | 'water-temperature' | 'atmospheric-pressure';
+  key:
+    | 'waves'
+    | 'wave-period'
+    | 'swell'
+    | 'water-temperature'
+    | 'atmospheric-pressure'
+    | 'wind'
+    | 'rain';
   label: string;
   current: string;
   range: string;

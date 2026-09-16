@@ -1,5 +1,5 @@
 import { ChevronDown, ListFilter } from 'lucide-react';
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useEffectEvent, useRef, useState, type CSSProperties } from 'react';
 import { Button } from '@/design-system/components/Button';
 import { IconButton } from '@/design-system/components/IconButton';
 import { SearchField } from '@/design-system/components/SearchField';
@@ -39,20 +39,15 @@ export function RankingFilters({
   const [open, setOpen] = useState(false);
   const [descriptionDraft, setDescriptionDraft] = useState(filters.description);
   const rootRef = useRef<HTMLDivElement>(null);
-  const filtersRef = useRef(filters);
-  const onFiltersChangeRef = useRef(onFiltersChange);
   const count = rankingSpotFilterCount({ ...filters, description: descriptionDraft });
-  filtersRef.current = filters;
-  onFiltersChangeRef.current = onFiltersChange;
-
-  useEffect(() => {
-    setDescriptionDraft(filters.description);
-  }, [filters.description]);
+  const commitDescription = useEffectEvent((description: string) => {
+    onFiltersChange({ ...filters, description });
+  });
 
   useEffect(() => {
     if (descriptionDraft === filters.description) return;
     const timer = window.setTimeout(() => {
-      onFiltersChangeRef.current({ ...filtersRef.current, description: descriptionDraft });
+      commitDescription(descriptionDraft);
     }, descriptionDebounceMs);
     return () => window.clearTimeout(timer);
   }, [descriptionDraft, filters.description]);

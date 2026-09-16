@@ -4,6 +4,7 @@ export interface ForecastAlert {
   spotName: string;
   minimumScore: number;
   leadHours: number;
+  targetHour: number | null;
   isActive: boolean;
   lastNotifiedDate: string | null;
   createdAt: string;

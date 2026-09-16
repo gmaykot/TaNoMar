@@ -52,6 +52,45 @@ vi.mock('@/features/forecast/services/forecastService', () => ({
           { time: '12:00', value: 1018 },
         ],
       },
+      {
+        key: 'water-temperature',
+        label: 'Água',
+        current: authState.lockMarine ? 'Assinatura' : '20 °C',
+        range: '19–21 °C',
+        locked: authState.lockMarine,
+        points: [
+          { time: '05:00', value: 19 },
+          { time: '07:00', value: 20 },
+          { time: '12:00', value: 21 },
+          { time: '17:00', value: 20 },
+        ],
+      },
+      {
+        key: 'wind',
+        label: 'Vento',
+        current: authState.lockMarine ? 'Assinatura' : '9 km/h',
+        range: '4–16 km/h',
+        locked: authState.lockMarine,
+        points: [
+          { time: '05:00', value: 4 },
+          { time: '07:00', value: 9 },
+          { time: '12:00', value: 13 },
+          { time: '17:00', value: 16 },
+        ],
+      },
+      {
+        key: 'rain',
+        label: 'Chuva',
+        current: authState.lockMarine ? 'Assinatura' : '12 %',
+        range: '5–28 %',
+        locked: authState.lockMarine,
+        points: [
+          { time: '05:00', value: 5 },
+          { time: '07:00', value: 12 },
+          { time: '12:00', value: 22 },
+          { time: '17:00', value: 28 },
+        ],
+      },
     ],
     tide: {
       current: authState.lockMarine ? 'Assinatura' : '0.85 m',
@@ -326,6 +365,7 @@ describe('LocationDetailsPage', () => {
     expect(await slide.findByText('8%')).toBeInTheDocument();
     expect(slide.getByText('1018 hPa')).toBeInTheDocument();
     expect(slide.getByLabelText('Nota 9,1 de 10, Excelente')).toBeInTheDocument();
+    expect(slide.getByText('Mín. 4 km/h · Máx. 16 km/h')).toBeInTheDocument();
 
     await user.click(slide.getByRole('button', { name: 'Ver condições das 07h' }));
 
@@ -343,6 +383,10 @@ describe('LocationDetailsPage', () => {
     expect(slide.getByText('Às 07h')).toBeInTheDocument();
     expect(slide.getByText(/Preamar · 14h20/)).toBeInTheDocument();
     expect(slide.getAllByText('seleção').length).toBeGreaterThan(0);
+    expect(slide.getByText('Mín. 4 km/h · Máx. 16 km/h')).toBeInTheDocument();
+    await user.click(slide.getByRole('tab', { name: 'Chuva' }));
+    expect(slide.getByRole('img', { name: 'Chuva ao longo do dia' })).toBeInTheDocument();
+    expect(slide.getByText('Mín. 5 % · Máx. 28 %')).toBeInTheDocument();
   });
 
   it('no foco surfista mostra condições do mar e esconde a nota de pesca', async () => {
@@ -587,7 +631,7 @@ describe('LocationDetailsPage', () => {
       .getAllByRole('button')
       .map((item) => item.textContent?.replace(/\s+/g, ' ').trim());
 
-    expect(actions).toEqual(['Nas previsões', 'Planejar saída', 'Favoritar']);
+    expect(actions).toEqual(['Criar alerta', 'Nas previsões', 'Planejar saída', 'Favoritar']);
   });
 
   it('permite trocar o dia arrastando o carrossel nos detalhes', async () => {

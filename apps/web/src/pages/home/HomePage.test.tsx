@@ -243,7 +243,8 @@ describe('HomePage', () => {
   it('aponta a previsão completa para o local e dia exibidos', async () => {
     renderWithProviders(<HomePage />);
 
-    await screen.findByRole('heading', { name: 'Pântano do Sul' });
+    const heading = await screen.findByRole('heading', { name: 'Pântano do Sul' });
+    expect(heading.closest('a')).toHaveAttribute('href', '/locais/pantano_do_sul?data=2026-09-05');
     expect(screen.getByRole('link', { name: /Ver previsão completa/ })).toHaveAttribute(
       'href',
       '/locais/pantano_do_sul?data=2026-09-05',

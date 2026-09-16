@@ -216,6 +216,32 @@
   );
 }
 
+.hero:has(.heroHit) {
+  cursor: pointer;
+}
+
+.heroHit {
+  display: grid;
+  border-radius: inherit;
+  color: inherit;
+}
+
+.heroHit::after {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  content: '';
+}
+
+.hero:has(.heroHit:focus-visible) {
+  outline: 3px solid var(--color-coral-500);
+  outline-offset: 3px;
+}
+
+.heroHit:focus-visible {
+  outline: none;
+}
+
 .heroTopline,
 .heroLabel,
 .heroLink {
@@ -285,8 +311,6 @@
 }
 
 .heroLink {
-  position: relative;
-  z-index: 2;
   width: fit-content;
   min-height: 2.75rem;
   justify-content: center;
@@ -297,9 +321,10 @@
   font-weight: 750;
 }
 
-.heroLink:focus-visible {
-  outline: 3px solid var(--color-coral-500);
-  outline-offset: 3px;
+@media (hover: hover) {
+  .heroHit:hover .heroLink {
+    color: white;
+  }
 }
 
 @media (min-width: 48rem) {

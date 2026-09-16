@@ -6,7 +6,7 @@ import { formatBrlFromCents, planFeatureList, type PlanCatalog } from '../subscr
 import { PlanIcon } from './PlanIcon';
 import styles from './planOffer.module.css';
 
-export function planAnnualCaption(monthlyPriceCents: number) {
+function planAnnualCaption(monthlyPriceCents: number) {
   return `No anual, ${formatBrlFromCents(annualCents(monthlyPriceCents))} com ${ANNUAL_DISCOUNT_PERCENT}% de desconto`;
 }
 

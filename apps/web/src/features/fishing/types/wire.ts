@@ -54,6 +54,8 @@ export interface WireMarineDetails {
   swell: WireMetric<WireMarineSeries>;
   waterTemperature: WireMetric<WireMarineSeries>;
   atmosphericPressure: WireMetric<WireMarineSeries>;
+  wind: WireMetric<WireMarineSeries>;
+  rain: WireMetric<WireMarineSeries>;
   tide: WireOptionalMetric<WireTideValue>;
 }
 

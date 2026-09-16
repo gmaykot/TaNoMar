@@ -413,6 +413,7 @@ public sealed class ForecastAlert
     public Guid FishingSpotId { get; set; }
     public double MinimumScore { get; set; } = 8;
     public int LeadHours { get; set; } = 24;
+    public int? TargetHour { get; set; }
     public bool IsActive { get; set; } = true;
     public DateOnly? LastNotifiedDate { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;

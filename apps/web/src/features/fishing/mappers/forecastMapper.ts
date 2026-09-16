@@ -350,6 +350,8 @@ export function mapMarineDetails(wire: WireMarineDetails): MarineDetails {
       mapMarineSeries('swell', 'Swell', wire.swell),
       mapMarineSeries('water-temperature', 'Água', wire.waterTemperature),
       mapMarineSeries('atmospheric-pressure', 'Pressão', wire.atmosphericPressure),
+      mapMarineSeries('wind', 'Vento', wire.wind),
+      mapMarineSeries('rain', 'Chuva', wire.rain),
     ],
     tide: mapTide(wire.tide),
   };

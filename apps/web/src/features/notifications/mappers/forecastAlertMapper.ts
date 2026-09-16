@@ -13,6 +13,7 @@ function parseAlert(value: unknown): ForecastAlert {
   const spotName = item.spotName;
   const minimumScore = item.minimumScore;
   const leadHours = item.leadHours;
+  const targetHour = item.targetHour;
   const isActive = item.isActive;
   if (
     typeof id !== 'string' ||
@@ -20,6 +21,10 @@ function parseAlert(value: unknown): ForecastAlert {
     typeof spotName !== 'string' ||
     typeof minimumScore !== 'number' ||
     typeof leadHours !== 'number' ||
+    !(
+      targetHour === null ||
+      (typeof targetHour === 'number' && targetHour >= 0 && targetHour <= 23)
+    ) ||
     typeof isActive !== 'boolean'
   )
     throw new ContractError('Alerta incompleto.');
@@ -29,6 +34,7 @@ function parseAlert(value: unknown): ForecastAlert {
     spotName,
     minimumScore,
     leadHours,
+    targetHour,
     isActive,
     lastNotifiedDate: typeof item.lastNotifiedDate === 'string' ? item.lastNotifiedDate : null,
     createdAt: typeof item.createdAt === 'string' ? item.createdAt : '',
