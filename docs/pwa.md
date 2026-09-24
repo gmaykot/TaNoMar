@@ -2,7 +2,7 @@
 
 ## Manifest
 
-O manifest define nome TáNoMar, idioma pt-BR, modo `standalone`, orientação `any` (para a câmera expandida preencher a tela em paisagem), cores da marca e ícones `any`/`maskable` (192, 512 e 1024). Os PNGs vêm do kit em `docs/brand/pwa` e são servidos em `apps/web/public/brand/pwa`.
+O manifest define nome TáNoMar, idioma pt-BR, modo `standalone`, orientação `any` (para a câmera expandida preencher a tela em paisagem), cores da marca e ícones `any`/`maskable` (192, 512 e 1024). Os PNGs vêm do kit em `docs/brand/pwa` e são servidos em `apps/web/public/brand/pwa`. O `src` no manifesto leva `?v=2` para o celular buscar a arte nova: o Chrome guarda o ícone de instalação pelo endereço, e o mesmo caminho continuaria mostrando o desenho anterior.
 
 O splash nativo do Android usa o ícone do manifesto sobre `background_color` (`#FAF7EF`). No iOS, `index.html` declara `apple-touch-startup-image` por tamanho de tela; sem isso o sistema amplia o `apple-touch-icon` de 180px e a marca fica pixelada. As imagens em `apps/web/public/splash` são geradas a partir do ícone PWA (`py -3 apps/web/scripts/generate-splash.py`) e não entram no precache do service worker.
 
