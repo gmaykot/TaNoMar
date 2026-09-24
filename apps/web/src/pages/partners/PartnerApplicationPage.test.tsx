@@ -23,12 +23,15 @@ describe('PartnerApplicationPage', () => {
     await user.type(screen.getByRole('textbox', { name: 'WhatsApp com DDD' }), '(48) 99999-9999');
     await user.click(screen.getByRole('button', { name: 'Enviar solicitação' }));
 
-    expect(createPartnerApplication.mock.calls[0]?.[0]).toEqual({
-      name: 'Iscas da Ilha',
-      category: 'guia',
-      city: 'Florianópolis',
-      whatsApp: '(48) 99999-9999',
-    });
+    expect(createPartnerApplication).toHaveBeenCalledWith(
+      {
+        name: 'Iscas da Ilha',
+        category: 'guia',
+        city: 'Florianópolis',
+        whatsApp: '(48) 99999-9999',
+      },
+      expect.anything(),
+    );
     expect(await screen.findByRole('heading', { name: 'Solicitação enviada' })).toBeInTheDocument();
     expect(screen.getByText(/aguardando análise/i)).toBeInTheDocument();
   });
