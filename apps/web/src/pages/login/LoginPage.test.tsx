@@ -33,6 +33,14 @@ describe('login e guard', () => {
     expect(
       screen.queryByRole('status') ?? screen.getByRole('group', { name: 'Entrar com Google' }),
     ).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Privacidade' })).toHaveAttribute(
+      'href',
+      '/privacidade',
+    );
+    expect(screen.getByRole('link', { name: 'Excluir conta' })).toHaveAttribute(
+      'href',
+      '/excluir-conta',
+    );
   });
 
   it('redireciona rotas protegidas para o login', async () => {

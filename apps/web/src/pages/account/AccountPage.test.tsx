@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ApiError } from '@/shared/api/errors';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { AccountPage } from './AccountPage';
 
-const { logout, cancelSubscription, authState } = vi.hoisted(() => ({
+const { logout, cancelSubscription, deleteCurrentUser, authState } = vi.hoisted(() => ({
   logout: vi.fn(),
   cancelSubscription: vi.fn(),
+  deleteCurrentUser: vi.fn(),
   authState: {
     maxPersonalSpots: 10,
     maxFavorites: 20,
@@ -29,6 +31,10 @@ const { logout, cancelSubscription, authState } = vi.hoisted(() => ({
         }
       | undefined,
   },
+}));
+
+vi.mock('@/features/auth/services/authService', () => ({
+  deleteCurrentUser: (...args: unknown[]) => deleteCurrentUser(...args),
 }));
 
 vi.mock('@/features/billing/services/billingService', () => ({
@@ -85,6 +91,8 @@ describe('AccountPage', () => {
     authState.billing = undefined;
     logout.mockClear();
     cancelSubscription.mockReset();
+    deleteCurrentUser.mockReset();
+    deleteCurrentUser.mockResolvedValue(undefined);
   });
 
   it('funciona como central da conta e chama logout', async () => {
@@ -108,6 +116,10 @@ describe('AccountPage', () => {
       '/locais?filtro=favoritos',
     );
     expect(screen.getByRole('link', { name: /Sobre o TáNoMar/ })).toHaveAttribute('href', '/sobre');
+    expect(screen.getByRole('link', { name: /Privacidade/ })).toHaveAttribute(
+      'href',
+      '/privacidade',
+    );
     expect(screen.getByRole('link', { name: /Diário de pesca/ })).toHaveAttribute(
       'href',
       '/diario',
@@ -129,6 +141,41 @@ describe('AccountPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Sair' }));
     expect(logout).toHaveBeenCalledTimes(1);
+  });
+
+  it('pede confirmação e exclui a conta', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AccountPage />);
+
+    await user.click(screen.getByRole('button', { name: 'Excluir conta' }));
+    const dialog = screen.getByRole('dialog', { name: 'Excluir conta?' });
+    expect(
+      within(dialog).getByText(/período já pago acaba com a conta, sem estorno/),
+    ).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Excluir conta' }));
+    expect(deleteCurrentUser).toHaveBeenCalledTimes(1);
+    expect(logout).toHaveBeenCalledTimes(1);
+  });
+
+  it('mantém a sessão quando a exclusão é recusada pela API', async () => {
+    deleteCurrentUser.mockRejectedValue(
+      new ApiError(
+        409,
+        'A conta inicial do bootstrap não pode ser excluída.',
+        'bootstrap_locked',
+        'A conta inicial do bootstrap não pode ser excluída.',
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<AccountPage />);
+
+    await user.click(screen.getByRole('button', { name: 'Excluir conta' }));
+    const dialog = screen.getByRole('dialog', { name: 'Excluir conta?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Excluir conta' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'A conta inicial do bootstrap não pode ser excluída.',
+    );
+    expect(logout).not.toHaveBeenCalled();
   });
 
   it('separa os acessos de parceiros e administração quando disponíveis', () => {

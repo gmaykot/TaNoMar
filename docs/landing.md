@@ -5,6 +5,8 @@ A apresentação pública do TáNoMar vive no mesmo React/PWA do produto.
 ## Rotas
 
 - `/`: landing pública.
+- `/privacidade`: política de privacidade, sem login.
+- `/excluir-conta`: passo a passo para apagar a conta, sem login. A exclusão em si acontece em Conta, depois do Google.
 - `/entrar`: login Google existente.
 - `/app`: home autenticada que antes ocupava `/`.
 - Demais rotas internas permanecem iguais e continuam protegidas pelos mesmos guards.

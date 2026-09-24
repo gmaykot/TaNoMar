@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   consumeTripPlan,
+  clearDiaryStorage,
   findTripPlan,
   readTripPlan,
   readTripPlans,
@@ -89,12 +90,10 @@ describe('diaryStorage', () => {
     });
 
     expect(findTripPlan('pantano_do_sul', '2026-09-06')?.id).toBe(first.id);
-    expect(consumeTripPlan({ id: first.id, spotId: 'pantano_do_sul', date: '2026-09-06' })).toEqual([
-      expect.objectContaining({ spotId: 'acores' }),
-    ]);
-    expect(
-      consumeTripPlan({ spotId: 'acores', date: '2026-09-07' }),
-    ).toEqual([]);
+    expect(consumeTripPlan({ id: first.id, spotId: 'pantano_do_sul', date: '2026-09-06' })).toEqual(
+      [expect.objectContaining({ spotId: 'acores' })],
+    );
+    expect(consumeTripPlan({ spotId: 'acores', date: '2026-09-07' })).toEqual([]);
   });
 
   it('lê o planejamento antigo salvo como objeto único', () => {
@@ -114,5 +113,21 @@ describe('diaryStorage', () => {
       time: '',
       notes: '',
     });
+  });
+
+  it('apaga o diário e as saídas planejadas neste aparelho', () => {
+    saveTripPlan({
+      spotId: 'pantano_do_sul',
+      spotName: 'Pântano do Sul',
+      date: '2026-09-06',
+      time: '16:30–19:00',
+      notes: '',
+    });
+    localStorage.setItem('tanomar.diary.v1', JSON.stringify([{ id: '1' }]));
+
+    clearDiaryStorage();
+
+    expect(localStorage.getItem('tanomar.diary.v1')).toBeNull();
+    expect(localStorage.getItem('tanomar.trip-plan.v1')).toBeNull();
   });
 });

@@ -336,6 +336,8 @@ export function LandingFooter() {
           <a href="#instalar">Instalar</a>
           <a href="#duvidas">Dúvidas</a>
           <Link to={routes.login}>Acessar o aplicativo</Link>
+          <Link to={routes.privacy}>Privacidade</Link>
+          <Link to={routes.deleteAccount}>Excluir conta</Link>
         </nav>
       </div>
       <div className={styles.footerBottom}>

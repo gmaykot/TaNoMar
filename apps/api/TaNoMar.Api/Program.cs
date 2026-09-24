@@ -324,6 +324,20 @@ api.MapGet("/me", async (ClaimsPrincipal principal, TaNoMarDbContext db, Billing
     return Results.Ok(await UserDtoAsync(user, db, billing, cancellationToken));
 }).RequireAuthorization();
 
+api.MapDelete("/me", async (ClaimsPrincipal principal, TaNoMarDbContext db, BillingService billing, FishingForecastCache cache, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, HttpContext context, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    if (MatchesBootstrapAdmin(user.Email, user.GoogleSubject, options.Value))
+        return Results.Conflict(new { code = "bootstrap_locked", detail = "A conta inicial do bootstrap não pode ser excluída." });
+    if (SpotRules.IsAdmin(user) && await db.Users.CountAsync(item => item.Role == "Admin" && item.Id != user.Id, cancellationToken) == 0)
+        return Results.Conflict(new { code = "last_admin", detail = "Mantenha pelo menos um admin ativo." });
+    await billing.StopRecurringForDeletedUserAsync(user.Id, cancellationToken);
+    await RemoveUserAccountAsync(db, cache, user, cancellationToken);
+    context.Response.Cookies.Delete(TaNoMarOptions.RefreshCookieName, new CookieOptions { HttpOnly = true, Secure = !app.Environment.IsDevelopment(), SameSite = SameSiteMode.Lax, Path = "/api/v1/auth" });
+    return Results.NoContent();
+}).RequireAuthorization();
+
 api.MapGet("/plans", async (bool? includeFree, TaNoMarDbContext db, CancellationToken cancellationToken) =>
 {
     var plans = await db.Plans.AsNoTracking()

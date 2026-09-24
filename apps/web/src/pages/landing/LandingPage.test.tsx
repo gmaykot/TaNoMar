@@ -122,6 +122,18 @@ describe('LandingPage', () => {
     screen.getAllByRole('link', { name: 'Começar grátis' }).forEach((link) => {
       expect(link).toHaveAttribute('href', '/entrar');
     });
+    expect(screen.getByRole('link', { name: 'Acessar o aplicativo' })).toHaveAttribute(
+      'href',
+      '/entrar',
+    );
+    expect(screen.getByRole('link', { name: 'Privacidade' })).toHaveAttribute(
+      'href',
+      '/privacidade',
+    );
+    expect(screen.getByRole('link', { name: 'Excluir conta' })).toHaveAttribute(
+      'href',
+      '/excluir-conta',
+    );
     expect(screen.queryByRole('button', { name: 'Instalar agora' })).not.toBeInTheDocument();
   });
 

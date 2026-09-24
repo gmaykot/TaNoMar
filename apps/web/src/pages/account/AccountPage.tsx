@@ -27,6 +27,7 @@ import { useLocations } from '@/features/locations/hooks/useLocations';
 import { PageHeader } from '@/pages/shared/PageHeader';
 import { routes } from '@/shared/constants/routes';
 import { BiometricUnlockPreference } from './BiometricUnlockPreference';
+import { DeleteAccountAction } from './DeleteAccountAction';
 import accountStyles from './account.module.css';
 import styles from '@/pages/shared/pages.module.css';
 
@@ -209,6 +210,12 @@ export function AccountPage() {
             description="Entenda a previsão, a nota e as fontes utilizadas."
           />
           <AccountShortcut
+            to={routes.privacy}
+            icon={Shield}
+            title="Privacidade"
+            description="Como tratamos os dados da conta e como apagá-los."
+          />
+          <AccountShortcut
             to={routes.diary}
             icon={BookOpen}
             title="Diário de pesca"
@@ -232,9 +239,12 @@ export function AccountPage() {
         </section>
       ) : null}
 
-      <Button variant="secondary" onClick={() => void auth.logout()}>
-        Sair
-      </Button>
+      <div className={accountStyles.sessionActions}>
+        <Button variant="secondary" onClick={() => void auth.logout()}>
+          Sair
+        </Button>
+        <DeleteAccountAction onDeleted={() => auth.logout()} />
+      </div>
     </div>
   );
 }

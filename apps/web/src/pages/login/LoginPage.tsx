@@ -1,6 +1,6 @@
 import { Compass } from 'lucide-react';
 import { useState } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { TaNoMarLogo } from '@/design-system/brand/TaNoMarLogo';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { GoogleSignInButton } from '@/features/auth/components/GoogleSignInButton';
@@ -73,9 +73,13 @@ export function LoginPage() {
         }}
       />
       <small>
-        © 2026 TáNoMar. Todos os direitos reservados.
+        © {new Date().getFullYear()} TáNoMar. Todos os direitos reservados.
         <Compass size={14} aria-hidden="true" />
       </small>
+      <nav className={styles.legal} aria-label="Documentos da conta">
+        <Link to={routes.privacy}>Privacidade</Link>
+        <Link to={routes.deleteAccount}>Excluir conta</Link>
+      </nav>
     </main>
   );
 }

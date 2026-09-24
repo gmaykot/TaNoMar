@@ -1,12 +1,11 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type { PartnerApplicationInput } from '@/features/partners/types/partner';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { PartnerApplicationPage } from './PartnerApplicationPage';
 
 const { createPartnerApplication } = vi.hoisted(() => ({
-  createPartnerApplication: vi.fn((_input: PartnerApplicationInput) => Promise.resolve()),
+  createPartnerApplication: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('@/features/partners/services/partnersService', () => ({

@@ -119,3 +119,8 @@ export function removeTripPlan(id: string) {
   localStorage.setItem(tripPlanKey, JSON.stringify(next));
   return next;
 }
+
+export function clearDiaryStorage() {
+  localStorage.removeItem(entriesKey);
+  localStorage.removeItem(tripPlanKey);
+}

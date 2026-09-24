@@ -151,6 +151,15 @@
   font-weight: 700;
 }
 
+.sessionActions {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.sessionActions button {
+  width: 100%;
+}
+
 .preferenceGroup {
   display: grid;
   gap: var(--space-4);

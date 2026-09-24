@@ -24,6 +24,16 @@ describe('AboutPage', () => {
     expect(attribution).toHaveAttribute('href', 'https://open-meteo.com/');
     expect(attribution).toHaveAttribute('target', '_blank');
 
+    expect(screen.getByRole('heading', { name: /Privacidade/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Política de privacidade' })).toHaveAttribute(
+      'href',
+      '/privacidade',
+    );
+    expect(screen.getByRole('link', { name: 'Excluir conta' })).toHaveAttribute(
+      'href',
+      '/excluir-conta',
+    );
+
     expect(screen.getByText(/não substitui o que você vê no local/)).toBeInTheDocument();
     expect(screen.getByText(/não substitui carta náutica nem GPS marítimo/)).toBeInTheDocument();
   });

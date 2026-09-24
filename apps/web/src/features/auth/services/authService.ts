@@ -188,3 +188,7 @@ export async function logoutSession() {
 export async function getCurrentUser() {
   return parseAuthUser(await apiRequest('/me'));
 }
+
+export async function deleteCurrentUser() {
+  await apiRequest('/me', { method: 'DELETE' });
+}

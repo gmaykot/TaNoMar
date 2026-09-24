@@ -329,6 +329,7 @@ Vocabulário: na interface, **Arrais**, **Mestre** e **Capitão**. “Assinatura
 - Número do cartão não transita no container nem no service worker.
 - Endpoints autenticados de billing não entram no cache PWA.
 - CPF é dado de pagamento: mínimo necessário, sem logar no `audit.jsonl`.
+- `DELETE /me` e a exclusão pelo admin encerram a recorrência no Asaas e apagam o CPF local; o processador pode conservar o pagamento pelo prazo fiscal. Sem estorno.
 - Sandbox primeiro. Produção só com conta Asaas aprovada para cartão.
 - Sem fila extra: persistir evento e aplicar o plano no request do webhook.
 

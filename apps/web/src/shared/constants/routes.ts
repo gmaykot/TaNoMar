@@ -18,6 +18,8 @@ export const routes = {
   premium: '/premium',
   diary: '/diario',
   about: '/sobre',
+  privacy: '/privacidade',
+  deleteAccount: '/excluir-conta',
   partners: '/parceiros',
   partnerApplication: '/seja-um-parceiro',
   partnerDetails: (slug: string) => `/parceiros/${slug}`,

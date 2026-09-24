@@ -1,6 +1,8 @@
-import { AlertTriangle, CloudSun, Fish, MapPinned, Users } from 'lucide-react';
+import { AlertTriangle, CloudSun, Fish, MapPinned, Shield, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Card } from '@/design-system/components/Card';
 import { PageHeader } from '@/pages/shared/PageHeader';
+import { routes } from '@/shared/constants/routes';
 import aboutStyles from './about.module.css';
 import styles from '@/pages/shared/pages.module.css';
 
@@ -92,6 +94,25 @@ export function AboutPage() {
           que viu. O envio e a exclusão pedem confirmação. Cada pessoa só envia o mesmo relato uma
           vez por dia no mesmo local. Confirmar ou contestar exige assinatura. Os relatos ativos
           aparecem no sino com quem relatou e quando. O autor pode apagar o próprio relato.
+        </p>
+      </Card>
+      <Card as="section" className={aboutStyles.source}>
+        <h2>
+          <Shield size={18} aria-hidden="true" /> Privacidade
+        </h2>
+        <p>
+          A política descreve a conta Google, o que fica no aparelho e como apagar a conta. Leia em
+          Privacidade ou comece a exclusão em Excluir conta.
+        </p>
+        <p>
+          <Link className={aboutStyles.attribution} to={routes.privacy}>
+            Política de privacidade
+          </Link>
+        </p>
+        <p>
+          <Link className={aboutStyles.attribution} to={routes.deleteAccount}>
+            Excluir conta
+          </Link>
         </p>
       </Card>
       <Card as="section" className={aboutStyles.notice}>
