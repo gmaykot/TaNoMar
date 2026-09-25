@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.AspNetCore.Mvc;
 using Google.Apis.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -231,7 +232,22 @@ app.Use(async (context, next) =>
     await next();
 });
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        var path = context.Context.Request.Path.Value ?? string.Empty;
+        if (path.Equals("/index.html", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith("/sw.js", StringComparison.OrdinalIgnoreCase)
+            || path.Contains("manifest.webmanifest", StringComparison.OrdinalIgnoreCase)
+            || path.Contains("registerSW.js", StringComparison.OrdinalIgnoreCase))
+        {
+            context.Context.Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+            context.Context.Response.Headers.Pragma = "no-cache";
+            context.Context.Response.Headers.Expires = "0";
+        }
+    }
+});
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

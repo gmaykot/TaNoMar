@@ -122,9 +122,11 @@ export function UserMenu() {
               close();
               setCheckingUpdate(true);
               void pwa.checkForUpdate().then((result) => {
-                if (result !== 'updated') {
-                  showSaveConfirmation(updateCheckMessage[result]);
+                if (result === 'updated') {
+                  showSaveConfirmation('Nova versão encontrada. Recarregando o aplicativo…');
+                  return;
                 }
+                showSaveConfirmation(updateCheckMessage[result]);
               }).finally(() => setCheckingUpdate(false));
             }}
           >

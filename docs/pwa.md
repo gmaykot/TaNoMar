@@ -30,6 +30,12 @@ O shell captura `beforeinstallprompt` e mostra Instalar somente quando o navegad
 
 O Vite registra o service worker também em `npm run dev` (`devOptions.enabled`), para o Chrome poder disparar o prompt de instalação. Esse SW de desenvolvimento não é o Workbox de produção: cache, precache e fallback ainda devem ser validados com build/preview ou o container.
 
+O menu **Verificar atualização** chama `registration.update()` e aguarda o novo service worker ficar em `waiting` antes de aplicar (`skipWaiting` + recarregar). Se aparecer “já está na versão mais recente” logo após um deploy, o download do `sw.js` pode ainda estar em andamento — espere alguns segundos e tente de novo, ou use o banner “Uma nova versão está pronta” quando ele surgir.
+
+Em produção, `index.html`, `sw.js` e o manifesto saem com `Cache-Control: no-store` na API estática; os chunks com hash no nome podem ficar em cache longo. Proxy/CDN na frente do app não deve cachear `/sw.js` nem `/index.html`.
+
+Se o ícone instalado não mudou, confira `?v=` nos ícones do manifesto. Para forçar no aparelho: feche todas as abas do site, abra de novo, verifique a atualização ou desinstale o atalho e instale outra vez (comum no iOS).
+
 O prompt só aparece em contexto seguro: `https://localhost` ou outro HTTPS. `http://192.168.x.x` e `http://<ip>.nip.io` no celular não registram o service worker nem disparam instalação.
 
 O `npm run dev -- --host` serve o app em HTTP na porta 5173 e o PWA em HTTPS na 5174. No celular abra `http://<ip-lan>.nip.io:5173/` para navegar. Para instalar, use `https://<ip-lan>.nip.io:5174/` (o terminal imprime essa URL como `PWA (nip.io)`) e aceite o aviso do certificado de desenvolvimento. Cadastre as duas origens no Google Cloud (Origens JavaScript autorizadas), senão o login falha.
