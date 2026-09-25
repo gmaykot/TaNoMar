@@ -26,10 +26,11 @@ function tripWhen(date: string, time: string) {
 
 export function PlanTripAction({ spotId, spotName, date, time }: PlanTripActionProps) {
   const auth = useAuth();
+  const canPlanTrip = hasPlanModule(auth.user, 'spotTripPlan');
   const canDiary = hasPlanModule(auth.user, 'diary');
   const [confirming, setConfirming] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const planned = canDiary ? findTripPlan(spotId, date) : null;
+  const planned = canPlanTrip ? findTripPlan(spotId, date) : null;
   const when = tripWhen(date, planned?.time || time);
 
   function confirmPlan() {
@@ -50,18 +51,18 @@ export function PlanTripAction({ spotId, spotName, date, time }: PlanTripActionP
         <Button
           type="button"
           variant="secondary"
-          locked={!canDiary}
+          locked={!canPlanTrip}
           data-kind="stamp"
-          aria-label={!canDiary ? 'Planejar saída. Disponível na assinatura.' : undefined}
+          aria-label={!canPlanTrip ? 'Planejar saída. Disponível na assinatura.' : undefined}
           onClick={() => {
-            if (!canDiary) {
+            if (!canPlanTrip) {
               setUpgradeOpen(true);
               return;
             }
             setConfirming(true);
           }}
         >
-          {!canDiary ? (
+          {!canPlanTrip ? (
             <Lock size={16} aria-hidden="true" />
           ) : (
             <CalendarPlus size={16} aria-hidden="true" />
@@ -73,9 +74,11 @@ export function PlanTripAction({ spotId, spotName, date, time }: PlanTripActionP
             <span role="status" className={styles.status}>
               Saída em {when}. Guardada neste aparelho.
             </span>
-            <Link className={styles.diaryLink} to={routes.diary}>
-              Ver no diário
-            </Link>
+            {canDiary ? (
+              <Link className={styles.diaryLink} to={routes.diary}>
+                Ver no diário
+              </Link>
+            ) : null}
           </>
         ) : null}
       </div>

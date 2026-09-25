@@ -211,6 +211,7 @@ const authState = vi.hoisted(() => ({
   includeForecastPressure: true,
   lockMarine: false,
   canDiary: true,
+  canSpotTripPlan: true,
   canCustomWind: true,
   role: 'User' as 'User' | 'Admin',
   liveWebcams: false,
@@ -250,6 +251,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
         forecastAlerts: true,
         spotForecastToggle: true,
         favorites: true,
+        spotTripPlan: authState.canSpotTripPlan,
       },
       features: { showPartners: false, showAppFocus: authState.showAppFocus },
       preferences: {
@@ -313,6 +315,7 @@ describe('LocationDetailsPage', () => {
     authState.includeForecastPressure = true;
     authState.lockMarine = false;
     authState.canDiary = true;
+    authState.canSpotTripPlan = true;
     authState.canCustomWind = true;
     authState.role = 'User';
     authState.liveWebcams = false;
@@ -647,7 +650,7 @@ describe('LocationDetailsPage', () => {
 
   it('mostra as ações livres antes das travadas', async () => {
     authState.maxFavorites = 0;
-    authState.canDiary = false;
+    authState.canSpotTripPlan = false;
     renderLocation();
 
     const toolbar = await screen.findByRole('toolbar', { name: 'Ações do local' });
@@ -753,9 +756,9 @@ describe('LocationDetailsPage', () => {
     );
   });
 
-  it('abre o drawer de planos ao planejar saída sem o módulo de diário', async () => {
+  it('abre o drawer de planos ao planejar saída sem o módulo', async () => {
     const user = userEvent.setup();
-    authState.canDiary = false;
+    authState.canSpotTripPlan = false;
     saveTripPlan({
       spotId: 'pantano_do_sul',
       spotName: 'Pântano do Sul',

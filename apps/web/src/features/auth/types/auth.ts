@@ -51,7 +51,8 @@ export type PlanModule =
   | 'spotArrival'
   | 'forecastAlerts'
   | 'spotForecastToggle'
-  | 'favorites';
+  | 'favorites'
+  | 'spotTripPlan';
 
 export interface PlanModules {
   marine: boolean;
@@ -66,6 +67,7 @@ export interface PlanModules {
   forecastAlerts?: boolean;
   spotForecastToggle?: boolean;
   favorites?: boolean;
+  spotTripPlan?: boolean;
 }
 
 export const SUBSCRIPTION_LOCK_LABEL = 'Assinatura';
@@ -85,7 +87,8 @@ export function hasPlanModule(
     module === 'liveWebcams' ||
     module === 'customWind' ||
     module === 'forecastAlerts' ||
-    module === 'favorites'
+    module === 'favorites' ||
+    module === 'spotTripPlan'
   ) {
     return false;
   }

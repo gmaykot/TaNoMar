@@ -45,7 +45,7 @@ export function LocationDetailsPage() {
   const mutations = useLocationMutations();
   const canFavoriteQuota = (auth.user?.entitlements.maxFavorites ?? 0) > 0;
   const canFavoriteModule = hasPlanModule(auth.user, 'favorites');
-  const canDiary = hasPlanModule(auth.user, 'diary');
+  const canSpotTripPlan = hasPlanModule(auth.user, 'spotTripPlan');
   const canSpotArrival = hasPlanModule(auth.user, 'spotArrival');
   const canForecastAlertsModule = hasPlanModule(auth.user, 'forecastAlerts');
   const canSpotForecastToggle = hasPlanModule(auth.user, 'spotForecastToggle');
@@ -178,7 +178,7 @@ export function LocationDetailsPage() {
     },
     {
       key: 'plan',
-      locked: !canDiary,
+      locked: !canSpotTripPlan,
       node: (
         <PlanTripAction
           spotId={location.id}

@@ -30,6 +30,7 @@ export interface AdminPlanUpdate {
   canForecastAlerts: boolean;
   canSpotForecastToggle: boolean;
   canFavorites: boolean;
+  canSpotTripPlan: boolean;
 }
 
 export interface AdminPlanInput {
@@ -57,6 +58,7 @@ export interface AdminPlanInput {
   canForecastAlerts: boolean;
   canSpotForecastToggle: boolean;
   canFavorites: boolean;
+  canSpotTripPlan: boolean;
 }
 
 export const planModuleFields = [
@@ -68,7 +70,7 @@ export const planModuleFields = [
   {
     key: 'canDiary',
     label: 'Diário de pesca',
-    hint: 'Planejamento e registro das saídas neste aparelho.',
+    hint: 'Página do diário e histórico das saídas neste aparelho.',
   },
   {
     key: 'canOffline',
@@ -104,6 +106,11 @@ export const planModuleFields = [
     key: 'canSpotArrival',
     label: 'Como chegar',
     hint: 'Abrir rumo ou navegação até o local no detalhe.',
+  },
+  {
+    key: 'canSpotTripPlan',
+    label: 'Planejar saída',
+    hint: 'Planejar a saída a partir do detalhe do local (guardado neste aparelho).',
   },
   {
     key: 'canForecastAlerts',
@@ -150,6 +157,7 @@ export function planRevision(plan: PlanCatalog) {
     plan.modules.forecastAlerts ?? false,
     plan.modules.spotForecastToggle ?? true,
     plan.modules.favorites ?? false,
+    plan.modules.spotTripPlan ?? false,
   ].join('|');
 }
 
@@ -179,6 +187,7 @@ export function planToInput(plan: PlanCatalog): AdminPlanInput {
     canForecastAlerts: plan.modules.forecastAlerts ?? false,
     canSpotForecastToggle: plan.modules.spotForecastToggle ?? true,
     canFavorites: plan.modules.favorites ?? false,
+    canSpotTripPlan: plan.modules.spotTripPlan ?? false,
   };
 }
 
@@ -210,5 +219,6 @@ export function inputToUpdate(input: AdminPlanInput): AdminPlanUpdate | null {
     canForecastAlerts: input.canForecastAlerts,
     canSpotForecastToggle: input.canSpotForecastToggle,
     canFavorites: input.canFavorites,
+    canSpotTripPlan: input.canSpotTripPlan,
   };
 }

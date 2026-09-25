@@ -814,7 +814,8 @@ api.MapPut("/admin/plans/{code}", async (string code, AdminPlanConfigRequest req
         request.CanSpotArrival,
         request.CanForecastAlerts,
         request.CanSpotForecastToggle,
-        request.CanFavorites);
+        request.CanFavorites,
+        request.CanSpotTripPlan);
     if (plan.Featured)
     {
         var others = await db.Plans.Where(item => item.Id != plan.Id && item.Featured).ToListAsync(cancellationToken);
@@ -2418,7 +2419,8 @@ record AdminPlanConfigRequest(
     bool CanSpotArrival,
     bool CanForecastAlerts,
     bool CanSpotForecastToggle,
-    bool CanFavorites);
+    bool CanFavorites,
+    bool CanSpotTripPlan);
 record AdminActiveRequest(bool IsActive);
 record AdminRoleRequest(string Role);
 record AdminWorkerRequest(bool IsEnabled, string? CronExpression);

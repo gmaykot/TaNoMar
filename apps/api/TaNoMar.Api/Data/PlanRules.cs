@@ -57,7 +57,8 @@ internal static class PlanRules
         spotArrival = plan.CanSpotArrival,
         forecastAlerts = plan.CanForecastAlerts,
         spotForecastToggle = plan.CanSpotForecastToggle,
-        favorites = plan.CanFavorites
+        favorites = plan.CanFavorites,
+        spotTripPlan = plan.CanSpotTripPlan
     };
 
     public static string? ValidateUpdate(string name, string tagline, int monthlyPriceCents, int sortOrder, int maxForecastDays, string bestHoursMode, int maxFavorites, int maxPersonalSpots, int maxAlerts, int maxRankingSpots)
@@ -110,7 +111,8 @@ internal static class PlanRules
         bool canSpotArrival,
         bool canForecastAlerts,
         bool canSpotForecastToggle,
-        bool canFavorites)
+        bool canFavorites,
+        bool canSpotTripPlan)
     {
         plan.Name = name.Trim();
         plan.Tagline = tagline.Trim();
@@ -136,6 +138,7 @@ internal static class PlanRules
         plan.CanForecastAlerts = canForecastAlerts;
         plan.CanSpotForecastToggle = canSpotForecastToggle;
         plan.CanFavorites = canFavorites;
+        plan.CanSpotTripPlan = canSpotTripPlan;
     }
 
     public static int? BestHourCount(string? mode) => mode?.Trim().ToLowerInvariant() switch

@@ -80,7 +80,8 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 MaxRankingSpots = 0,
                 CanSpotArrival = true,
                 CanSpotForecastToggle = true,
-                CanLiveWebcams = false
+                CanLiveWebcams = false,
+                CanSpotTripPlan = false
             },
             new Plan
             {
@@ -109,6 +110,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 CanSpotForecastToggle = true,
                 CanForecastAlerts = true,
                 CanFavorites = true,
+                CanSpotTripPlan = true,
                 CanLiveWebcams = false
             },
             new Plan
@@ -138,6 +140,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 CanSpotForecastToggle = true,
                 CanForecastAlerts = true,
                 CanFavorites = true,
+                CanSpotTripPlan = true,
                 CanLiveWebcams = false
             },
             new Plan
@@ -167,6 +170,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 CanSpotForecastToggle = true,
                 CanForecastAlerts = true,
                 CanFavorites = true,
+                CanSpotTripPlan = true,
                 CanLiveWebcams = true
             });
         modelBuilder.Entity<PlatformSettings>().HasData(
@@ -269,6 +273,7 @@ public sealed class Plan
     public bool CanForecastAlerts { get; set; }
     public bool CanSpotForecastToggle { get; set; }
     public bool CanFavorites { get; set; }
+    public bool CanSpotTripPlan { get; set; }
 }
 
 /// <summary>

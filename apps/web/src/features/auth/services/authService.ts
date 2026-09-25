@@ -142,6 +142,7 @@ function parsePlanModules(value: unknown): AuthUser['modules'] {
   const forecastAlerts = readBoolean(value.forecastAlerts);
   const spotForecastToggle = readBoolean(value.spotForecastToggle);
   const favorites = readBoolean(value.favorites);
+  const spotTripPlan = readBoolean(value.spotTripPlan);
   if (
     marine === null ||
     diary === null ||
@@ -165,6 +166,7 @@ function parsePlanModules(value: unknown): AuthUser['modules'] {
     forecastAlerts: forecastAlerts ?? false,
     spotForecastToggle: spotForecastToggle ?? true,
     favorites: favorites ?? false,
+    spotTripPlan: spotTripPlan ?? false,
   };
 }
 
