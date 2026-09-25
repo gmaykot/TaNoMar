@@ -22,6 +22,7 @@ vi.mock('@/app/hooks/usePwaLifecycle', () => ({
     needRefresh: false,
     dismissRefresh: vi.fn(),
     update: vi.fn(),
+    checkForUpdate: vi.fn(),
   }),
 }));
 

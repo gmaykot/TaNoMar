@@ -51,6 +51,9 @@ export function HomePage() {
     canCustomizeMetrics,
     showsAppFocus(auth.user),
   );
+  const maxRankingSpots = auth.user?.entitlements.maxRankingSpots ?? 0;
+  const secondaryRankingLimit =
+    maxRankingSpots > 0 ? Math.min(3, Math.max(0, maxRankingSpots - 1)) : 3;
   const visibleMetricKeys = presentation.visibleMetricKeys;
   const useOffline = shouldUseOfflineForecast({
     hasOfflineModule: canSaveOffline,
@@ -150,25 +153,28 @@ export function HomePage() {
                 windUnit={auth.user?.preferences.windUnit}
                 showFishingScore={presentation.showFishingScore}
               />
-              <section className={styles.section} aria-labelledby={`ranking-${day.date}`}>
-                <div className={styles.sectionHeader}>
-                  <div>
-                    <span>Outras boas escolhas</span>
-                    <h2 id={`ranking-${day.date}`}>Ranking do dia</h2>
+              {secondaryRankingLimit > 0 && day.ranking.length > 1 ? (
+                <section className={styles.section} aria-labelledby={`ranking-${day.date}`}>
+                  <div className={styles.sectionHeader}>
+                    <div>
+                      <span>Outras boas escolhas</span>
+                      <h2 id={`ranking-${day.date}`}>Ranking do dia</h2>
+                    </div>
+                    <Link to={pathWithForecastDate(routes.ranking, activeDate)}>
+                      Ver todos <ArrowRight size={17} aria-hidden="true" />
+                    </Link>
                   </div>
-                  <Link to={pathWithForecastDate(routes.ranking, activeDate)}>
-                    Ver todos <ArrowRight size={17} aria-hidden="true" />
-                  </Link>
-                </div>
-                <RankingList
-                  items={day.ranking.slice(1)}
-                  limit={3}
-                  startAt={2}
-                  visibleMetricKeys={visibleMetricKeys}
-                  windUnit={auth.user?.preferences.windUnit}
-                  showFishingScore={presentation.showFishingScore}
-                />
-              </section>
+                  <RankingList
+                    items={day.ranking.slice(1)}
+                    limit={secondaryRankingLimit}
+                    maxItems={maxRankingSpots > 0 ? maxRankingSpots - 1 : 0}
+                    startAt={2}
+                    visibleMetricKeys={visibleMetricKeys}
+                    windUnit={auth.user?.preferences.windUnit}
+                    showFishingScore={presentation.showFishingScore}
+                  />
+                </section>
+              ) : null}
             </>
           ) : (
             <FeedbackState

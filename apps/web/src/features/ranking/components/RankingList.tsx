@@ -1,4 +1,4 @@
-import { ChevronDown, Clock3, CloudRain, MapPin, Waves, Wind } from 'lucide-react';
+import { ChevronDown, Clock3, CloudRain, Lock, MapPin, Waves, Wind } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/design-system/components/Badge';
@@ -172,8 +172,10 @@ function RankingListView({
             variant="secondary"
             locked={planLimitReached}
             disabled={planLimitReached}
+            aria-label={planLimitReached ? 'Mostrar mais. Disponível na assinatura.' : undefined}
             onClick={() => setVisibleCount((count) => count + nextCount)}
           >
+            {planLimitReached ? <Lock size={16} aria-hidden="true" /> : null}
             Mostrar mais
           </Button>
         </div>

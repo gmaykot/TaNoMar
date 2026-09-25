@@ -274,7 +274,9 @@ describe('RankingPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
     expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(2);
-    expect(screen.getByRole('button', { name: 'Mostrar mais' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Mostrar mais. Disponível na assinatura.' }),
+    ).toBeDisabled();
     expect(screen.queryByRole('heading', { name: 'Joaquina' })).not.toBeInTheDocument();
   });
 

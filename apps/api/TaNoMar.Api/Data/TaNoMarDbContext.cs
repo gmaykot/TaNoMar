@@ -243,6 +243,10 @@ public sealed class Plan
     public bool CanCommunityVote { get; set; }
     public bool CanRankingEmphasis { get; set; }
     public bool CanLiveWebcams { get; set; }
+    public bool CanSpotArrival { get; set; }
+    public bool CanForecastAlerts { get; set; }
+    public bool CanSpotForecastToggle { get; set; }
+    public bool CanFavorites { get; set; }
 }
 
 /// <summary>

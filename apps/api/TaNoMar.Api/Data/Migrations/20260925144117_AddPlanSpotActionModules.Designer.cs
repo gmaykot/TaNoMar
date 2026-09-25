@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TaNoMar.Api.Data;
@@ -11,9 +12,11 @@ using TaNoMar.Api.Data;
 namespace TaNoMar.Api.Data.Migrations
 {
     [DbContext(typeof(TaNoMarDbContext))]
-    partial class TaNoMarDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260925144117_AddPlanSpotActionModules")]
+    partial class AddPlanSpotActionModules
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -759,8 +762,8 @@ namespace TaNoMar.Api.Data.Migrations
                             CanMarine = false,
                             CanOffline = false,
                             CanRankingEmphasis = false,
-                            CanSpotArrival = true,
-                            CanSpotForecastToggle = true,
+                            CanSpotArrival = false,
+                            CanSpotForecastToggle = false,
                             Code = "free",
                             Featured = false,
                             IsEnabled = true,
@@ -782,14 +785,14 @@ namespace TaNoMar.Api.Data.Migrations
                             CanCustomMetrics = true,
                             CanCustomWind = true,
                             CanDiary = true,
-                            CanFavorites = true,
-                            CanForecastAlerts = true,
+                            CanFavorites = false,
+                            CanForecastAlerts = false,
                             CanLiveWebcams = false,
                             CanMarine = true,
                             CanOffline = true,
                             CanRankingEmphasis = true,
-                            CanSpotArrival = true,
-                            CanSpotForecastToggle = true,
+                            CanSpotArrival = false,
+                            CanSpotForecastToggle = false,
                             Code = "arrais",
                             Featured = false,
                             IsEnabled = true,
@@ -811,14 +814,14 @@ namespace TaNoMar.Api.Data.Migrations
                             CanCustomMetrics = true,
                             CanCustomWind = true,
                             CanDiary = true,
-                            CanFavorites = true,
-                            CanForecastAlerts = true,
+                            CanFavorites = false,
+                            CanForecastAlerts = false,
                             CanLiveWebcams = false,
                             CanMarine = true,
                             CanOffline = true,
                             CanRankingEmphasis = true,
-                            CanSpotArrival = true,
-                            CanSpotForecastToggle = true,
+                            CanSpotArrival = false,
+                            CanSpotForecastToggle = false,
                             Code = "premium",
                             Featured = true,
                             IsEnabled = true,
@@ -840,14 +843,14 @@ namespace TaNoMar.Api.Data.Migrations
                             CanCustomMetrics = true,
                             CanCustomWind = true,
                             CanDiary = true,
-                            CanFavorites = true,
-                            CanForecastAlerts = true,
+                            CanFavorites = false,
+                            CanForecastAlerts = false,
                             CanLiveWebcams = true,
                             CanMarine = true,
                             CanOffline = true,
                             CanRankingEmphasis = true,
-                            CanSpotArrival = true,
-                            CanSpotForecastToggle = true,
+                            CanSpotArrival = false,
+                            CanSpotForecastToggle = false,
                             Code = "capitao",
                             Featured = false,
                             IsEnabled = true,

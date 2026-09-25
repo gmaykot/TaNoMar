@@ -810,7 +810,11 @@ api.MapPut("/admin/plans/{code}", async (string code, AdminPlanConfigRequest req
         request.CanCustomWind ?? plan.CanCustomWind,
         request.CanCommunityVote,
         request.CanRankingEmphasis,
-        request.CanLiveWebcams);
+        request.CanLiveWebcams,
+        request.CanSpotArrival,
+        request.CanForecastAlerts,
+        request.CanSpotForecastToggle,
+        request.CanFavorites);
     if (plan.Featured)
     {
         var others = await db.Plans.Where(item => item.Id != plan.Id && item.Featured).ToListAsync(cancellationToken);
@@ -1105,7 +1109,7 @@ api.MapPost("/me/alerts", async (ForecastAlertRequest request, ClaimsPrincipal p
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
     var plan = await db.Plans.AsNoTracking().SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
-    if (plan.MaxAlerts <= 0) return Results.BadRequest(new { code = "plan_required", detail = "Alertas de previsão exigem uma assinatura.", requiredPlan = PlanRules.RequiredPlanLabel });
+    if (!plan.CanForecastAlerts || plan.MaxAlerts <= 0) return Results.BadRequest(new { code = "plan_required", detail = "Alertas de previsão exigem uma assinatura.", requiredPlan = PlanRules.RequiredPlanLabel });
     if (request.MinimumScore is < 0 or > 10 || request.LeadHours is < 1 or > 168 || request.TargetHour is < 0 or > 23)
         return Results.BadRequest(new { code = "invalid_alert", detail = "Informe uma nota entre 0 e 10, horário entre 0 e 23 e antecedência entre 1 e 168 horas." });
     var spot = await db.FishingSpots.SingleOrDefaultAsync(item => item.Slug == request.SpotId, cancellationToken);
@@ -1160,6 +1164,7 @@ api.MapPut("/me/favorites", async (FavoriteRequest request, ClaimsPrincipal prin
     if (!SpotRules.CanSee(spot, user) || !SpotRules.IsInPreferredRegion(spot, preferredRegions) || (spot.Visibility == "shared" && !spot.IsApproved && !SpotRules.Owns(spot, user))) return Results.Forbid();
     var plan = await db.Plans.SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
     var favorite = await db.FavoriteSpots.SingleOrDefaultAsync(item => item.UserId == user.Id && item.FishingSpotId == spot.Id, cancellationToken);
+    if (request.IsFavorite && favorite is null && !plan.CanFavorites) return Results.BadRequest(new { code = "plan_required", detail = "Favoritos exigem uma assinatura.", requiredPlan = PlanRules.RequiredPlanLabel });
     if (request.IsFavorite && favorite is null && await db.FavoriteSpots.CountAsync(item => item.UserId == user.Id, cancellationToken) >= plan.MaxFavorites) return Results.Conflict(new { code = "plan_limit", detail = "Seu plano não permite mais favoritos." });
     if (request.IsFavorite && favorite is null) { favorite = new FavoriteSpot { UserId = user.Id, FishingSpotId = spot.Id }; db.FavoriteSpots.Add(favorite); }
     if (!request.IsFavorite && favorite is not null) db.FavoriteSpots.Remove(favorite);
@@ -1175,6 +1180,8 @@ api.MapPut("/me/enabled-spots", async (EnabledSpotRequest request, ClaimsPrincip
     if (spot is null) return Results.NotFound();
     var preferredRegions = await PreferredRegionsAsync(db, user.Id, cancellationToken);
     if (!SpotRules.CanSee(spot, user) || !SpotRules.IsInPreferredRegion(spot, preferredRegions) || (spot.Visibility == "shared" && !spot.IsApproved && !SpotRules.Owns(spot, user))) return Results.Forbid();
+    var plan = await db.Plans.AsNoTracking().SingleAsync(item => item.Code == user.PlanCode, cancellationToken);
+    if (!plan.CanSpotForecastToggle) return Results.BadRequest(new { code = "plan_required", detail = "Incluir locais nas previsões exige uma assinatura.", requiredPlan = PlanRules.RequiredPlanLabel });
     var setting = await db.EnabledSpots.SingleOrDefaultAsync(item => item.UserId == user.Id && item.FishingSpotId == spot.Id, cancellationToken);
     if (setting is null)
     {
@@ -2407,7 +2414,11 @@ record AdminPlanConfigRequest(
     bool? CanCustomWind,
     bool CanCommunityVote,
     bool CanRankingEmphasis,
-    bool CanLiveWebcams);
+    bool CanLiveWebcams,
+    bool CanSpotArrival,
+    bool CanForecastAlerts,
+    bool CanSpotForecastToggle,
+    bool CanFavorites);
 record AdminActiveRequest(bool IsActive);
 record AdminRoleRequest(string Role);
 record AdminWorkerRequest(bool IsEnabled, string? CronExpression);

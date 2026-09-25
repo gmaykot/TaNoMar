@@ -26,6 +26,10 @@ export interface AdminPlanUpdate {
   canCommunityVote: boolean;
   canRankingEmphasis: boolean;
   canLiveWebcams: boolean;
+  canSpotArrival: boolean;
+  canForecastAlerts: boolean;
+  canSpotForecastToggle: boolean;
+  canFavorites: boolean;
 }
 
 export interface AdminPlanInput {
@@ -49,6 +53,10 @@ export interface AdminPlanInput {
   canCommunityVote: boolean;
   canRankingEmphasis: boolean;
   canLiveWebcams: boolean;
+  canSpotArrival: boolean;
+  canForecastAlerts: boolean;
+  canSpotForecastToggle: boolean;
+  canFavorites: boolean;
 }
 
 export const planModuleFields = [
@@ -92,6 +100,26 @@ export const planModuleFields = [
     label: 'Câmeras ao vivo',
     hint: 'Ver e vincular transmissões próximas aos locais.',
   },
+  {
+    key: 'canSpotArrival',
+    label: 'Como chegar',
+    hint: 'Abrir rumo ou navegação até o local no detalhe.',
+  },
+  {
+    key: 'canForecastAlerts',
+    label: 'Alertas no local',
+    hint: 'Criar alerta de previsão a partir do detalhe (cota de alertas separada).',
+  },
+  {
+    key: 'canSpotForecastToggle',
+    label: 'Nas previsões',
+    hint: 'Incluir ou tirar o local das previsões e do ranking pessoal.',
+  },
+  {
+    key: 'canFavorites',
+    label: 'Favoritar local',
+    hint: 'Marcar favorito no detalhe (cota de favoritos separada).',
+  },
 ] as const;
 
 export function planRevision(plan: PlanCatalog) {
@@ -118,6 +146,10 @@ export function planRevision(plan: PlanCatalog) {
     plan.modules.communityVote,
     plan.modules.rankingEmphasis,
     plan.modules.liveWebcams,
+    plan.modules.spotArrival ?? true,
+    plan.modules.forecastAlerts ?? false,
+    plan.modules.spotForecastToggle ?? true,
+    plan.modules.favorites ?? false,
   ].join('|');
 }
 
@@ -143,6 +175,10 @@ export function planToInput(plan: PlanCatalog): AdminPlanInput {
     canCommunityVote: plan.modules.communityVote,
     canRankingEmphasis: plan.modules.rankingEmphasis,
     canLiveWebcams: plan.modules.liveWebcams,
+    canSpotArrival: plan.modules.spotArrival ?? true,
+    canForecastAlerts: plan.modules.forecastAlerts ?? false,
+    canSpotForecastToggle: plan.modules.spotForecastToggle ?? true,
+    canFavorites: plan.modules.favorites ?? false,
   };
 }
 
@@ -170,5 +206,9 @@ export function inputToUpdate(input: AdminPlanInput): AdminPlanUpdate | null {
     canCommunityVote: input.canCommunityVote,
     canRankingEmphasis: input.canRankingEmphasis,
     canLiveWebcams: input.canLiveWebcams,
+    canSpotArrival: input.canSpotArrival,
+    canForecastAlerts: input.canForecastAlerts,
+    canSpotForecastToggle: input.canSpotForecastToggle,
+    canFavorites: input.canFavorites,
   };
 }

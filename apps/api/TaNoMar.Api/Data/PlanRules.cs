@@ -53,7 +53,11 @@ internal static class PlanRules
         customWind = plan.CanCustomWind,
         communityVote = plan.CanCommunityVote,
         rankingEmphasis = plan.CanRankingEmphasis,
-        liveWebcams = plan.CanLiveWebcams
+        liveWebcams = plan.CanLiveWebcams,
+        spotArrival = plan.CanSpotArrival,
+        forecastAlerts = plan.CanForecastAlerts,
+        spotForecastToggle = plan.CanSpotForecastToggle,
+        favorites = plan.CanFavorites
     };
 
     public static string? ValidateUpdate(string name, string tagline, int monthlyPriceCents, int sortOrder, int maxForecastDays, string bestHoursMode, int maxFavorites, int maxPersonalSpots, int maxAlerts, int maxRankingSpots)
@@ -102,7 +106,11 @@ internal static class PlanRules
         bool canCustomWind,
         bool canCommunityVote,
         bool canRankingEmphasis,
-        bool canLiveWebcams)
+        bool canLiveWebcams,
+        bool canSpotArrival,
+        bool canForecastAlerts,
+        bool canSpotForecastToggle,
+        bool canFavorites)
     {
         plan.Name = name.Trim();
         plan.Tagline = tagline.Trim();
@@ -124,6 +132,10 @@ internal static class PlanRules
         plan.CanCommunityVote = canCommunityVote;
         plan.CanRankingEmphasis = canRankingEmphasis;
         plan.CanLiveWebcams = canLiveWebcams;
+        plan.CanSpotArrival = canSpotArrival;
+        plan.CanForecastAlerts = canForecastAlerts;
+        plan.CanSpotForecastToggle = canSpotForecastToggle;
+        plan.CanFavorites = canFavorites;
     }
 
     public static int? BestHourCount(string? mode) => mode?.Trim().ToLowerInvariant() switch

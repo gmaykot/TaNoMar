@@ -1,12 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { showSaveConfirmation } from '@/app/layout/saveConfirmationEvents';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { UserMenu } from './UserMenu';
 
-const { logout, authState } = vi.hoisted(() => ({
+const { logout, checkForUpdate, authState } = vi.hoisted(() => ({
   logout: vi.fn(),
+  checkForUpdate: vi.fn(async () => 'current' as const),
   authState: { role: 'User', planCode: 'premium' as 'free' | 'premium', planName: 'Mestre' },
+}));
+
+vi.mock('@/app/hooks/usePwaLifecycle', () => ({
+  usePwaLifecycle: () => ({
+    checkForUpdate,
+  }),
+}));
+
+vi.mock('@/app/layout/saveConfirmationEvents', () => ({
+  showSaveConfirmation: vi.fn(),
 }));
 
 vi.mock('../hooks/useAuth', () => ({
@@ -39,6 +51,8 @@ describe('UserMenu', () => {
     authState.planCode = 'premium';
     authState.planName = 'Mestre';
     logout.mockClear();
+    checkForUpdate.mockClear();
+    vi.mocked(showSaveConfirmation).mockClear();
   });
 
   it('destaca a conta e oferece a assinatura', async () => {
@@ -77,6 +91,17 @@ describe('UserMenu', () => {
       'href',
       '/premium',
     );
+  });
+
+  it('verifica atualização do aplicativo pelo menu', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<UserMenu />);
+
+    await user.click(screen.getByRole('button', { name: 'Abrir menu da conta de Ana' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Verificar atualização' }));
+
+    expect(checkForUpdate).toHaveBeenCalledTimes(1);
+    expect(showSaveConfirmation).toHaveBeenCalledWith('Você já está na versão mais recente.');
   });
 
   it('mantém o acesso administrativo para administradores', async () => {

@@ -1,14 +1,25 @@
-import { BookOpen, LogOut, Settings, Shield, Sparkles } from 'lucide-react';
+import { BookOpen, LogOut, RefreshCw, Settings, Shield, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { showSaveConfirmation } from '@/app/layout/saveConfirmationEvents';
+import { usePwaLifecycle } from '@/app/hooks/usePwaLifecycle';
 import { useAuth } from '../hooks/useAuth';
 import { isAdmin, isPaidPlan } from '../types/auth';
 import { routes } from '@/shared/constants/routes';
 import styles from './userMenu.module.css';
 
+const updateCheckMessage = {
+  current: 'Você já está na versão mais recente.',
+  unavailable: 'Atualização automática indisponível neste navegador.',
+  offline: 'Conecte-se à internet para verificar atualizações.',
+  error: 'Não foi possível verificar agora. Tente de novo em instantes.',
+} as const;
+
 export function UserMenu() {
   const auth = useAuth();
+  const pwa = usePwaLifecycle();
   const [open, setOpen] = useState(false);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const user = auth.user;
   const initials = user?.name.trim().charAt(0).toUpperCase() || 'T';
@@ -102,6 +113,24 @@ export function UserMenu() {
               Administração
             </NavLink>
           ) : null}
+          <button
+            type="button"
+            role="menuitem"
+            className={styles.item}
+            disabled={checkingUpdate}
+            onClick={() => {
+              close();
+              setCheckingUpdate(true);
+              void pwa.checkForUpdate().then((result) => {
+                if (result !== 'updated') {
+                  showSaveConfirmation(updateCheckMessage[result]);
+                }
+              }).finally(() => setCheckingUpdate(false));
+            }}
+          >
+            <RefreshCw size={17} aria-hidden="true" />
+            Verificar atualização
+          </button>
           <button
             type="button"
             role="menuitem"

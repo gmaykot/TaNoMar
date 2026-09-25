@@ -43,8 +43,12 @@ export function LocationDetailsPage() {
   const auth = useAuth();
   const locationForecast = useLocationForecast(locationId);
   const mutations = useLocationMutations();
-  const canFavorite = (auth.user?.entitlements.maxFavorites ?? 0) > 0;
+  const canFavoriteQuota = (auth.user?.entitlements.maxFavorites ?? 0) > 0;
+  const canFavoriteModule = hasPlanModule(auth.user, 'favorites');
   const canDiary = hasPlanModule(auth.user, 'diary');
+  const canSpotArrival = hasPlanModule(auth.user, 'spotArrival');
+  const canForecastAlertsModule = hasPlanModule(auth.user, 'forecastAlerts');
+  const canSpotForecastToggle = hasPlanModule(auth.user, 'spotForecastToggle');
   const canConfigureWind = hasPlanModule(auth.user, 'customWind');
   const canWatchWebcams = hasLiveWebcams(auth.user);
   const presentation = forecastPresentation(
@@ -56,6 +60,8 @@ export function LocationDetailsPage() {
   const [selectedDate, setSelectedDate] = useState(() => searchParams.get('data') ?? '');
   const [favoriteGateOpen, setFavoriteGateOpen] = useState(false);
   const [alertGateOpen, setAlertGateOpen] = useState(false);
+  const [arrivalGateOpen, setArrivalGateOpen] = useState(false);
+  const [enabledGateOpen, setEnabledGateOpen] = useState(false);
   const [alertCreatorOpen, setAlertCreatorOpen] = useState(false);
   const forecastDays = locationForecast.data?.days;
   const activeDate =
@@ -114,16 +120,30 @@ export function LocationDetailsPage() {
       </div>
     );
 
-  const favoriteLocked = !canFavorite && !location.isFavorite;
-  const alertLocked = (auth.user?.entitlements.maxAlerts ?? 0) <= 0;
+  const favoriteLocked = !canFavoriteModule || (!canFavoriteQuota && !location.isFavorite);
+  const alertLocked =
+    !canForecastAlertsModule || (auth.user?.entitlements.maxAlerts ?? 0) <= 0;
   const canArrive = hasSpotCoordinates(location);
+  const arrivalLocked = !canSpotArrival;
+  const enabledLocked = !canSpotForecastToggle;
   const toolbarActions: { key: string; locked: boolean; node: ReactNode }[] = [
     ...(canArrive
       ? [
           {
             key: 'arrive',
-            locked: false,
-            node: (
+            locked: arrivalLocked,
+            node: arrivalLocked ? (
+              <Button
+                type="button"
+                variant="primary"
+                data-kind="arrive"
+                locked
+                aria-label="Como chegar. Disponível na assinatura."
+                onClick={() => setArrivalGateOpen(true)}
+              >
+                <Lock size={20} aria-hidden="true" /> Como chegar
+              </Button>
+            ) : (
               <NavigateToLocationAction
                 locationId={location.id}
                 name={location.name}
@@ -170,21 +190,29 @@ export function LocationDetailsPage() {
     },
     {
       key: 'enabled',
-      locked: false,
+      locked: enabledLocked,
       node: (
         <Button
           type="button"
           variant="secondary"
           data-kind="stamp"
-          aria-pressed={location.isEnabled}
+          locked={enabledLocked}
+          aria-pressed={enabledLocked ? undefined : location.isEnabled}
+          aria-label={enabledLocked ? 'Nas previsões. Disponível na assinatura.' : undefined}
           onClick={() => {
+            if (enabledLocked) {
+              setEnabledGateOpen(true);
+              return;
+            }
             mutations.enabled.mutate({
               spotId: location.id,
               isEnabled: !location.isEnabled,
             });
           }}
         >
-          {location.isEnabled ? (
+          {enabledLocked ? (
+            <Lock size={16} aria-hidden="true" />
+          ) : location.isEnabled ? (
             <Eye size={16} aria-hidden="true" />
           ) : (
             <EyeOff size={16} aria-hidden="true" />
@@ -314,6 +342,15 @@ export function LocationDetailsPage() {
       ) : null}
       {alertGateOpen ? (
         <SubscriptionGateDrawer action="Criar alerta" onCancel={() => setAlertGateOpen(false)} />
+      ) : null}
+      {arrivalGateOpen ? (
+        <SubscriptionGateDrawer action="Como chegar" onCancel={() => setArrivalGateOpen(false)} />
+      ) : null}
+      {enabledGateOpen ? (
+        <SubscriptionGateDrawer
+          action="Nas previsões"
+          onCancel={() => setEnabledGateOpen(false)}
+        />
       ) : null}
       {mutations.favoriteError ? <p>{mutations.favoriteError}</p> : null}
       {mutations.enabledError ? <p>{mutations.enabledError}</p> : null}

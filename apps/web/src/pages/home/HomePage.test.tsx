@@ -12,6 +12,7 @@ const { authState, forecastState } = vi.hoisted(() => ({
     visibleMetrics: undefined as string[] | undefined,
     focus: null as string | null,
     showAppFocus: false,
+    maxRankingSpots: 0,
   },
   forecastState: { error: false, pending: false, lockMarine: false },
 }));
@@ -64,6 +65,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
         maxFavorites: 20,
         maxPersonalSpots: 10,
         maxAlerts: 10,
+        maxRankingSpots: authState.maxRankingSpots,
       },
       features: { showPartners: authState.showPartners, showAppFocus: authState.showAppFocus },
       preferences: {
@@ -130,6 +132,7 @@ describe('HomePage', () => {
     authState.visibleMetrics = undefined;
     authState.focus = null;
     authState.showAppFocus = false;
+    authState.maxRankingSpots = 0;
     forecastState.error = false;
     forecastState.pending = false;
     forecastState.lockMarine = false;
@@ -371,6 +374,15 @@ describe('HomePage', () => {
     expect(
       ranking.compareDocumentPosition(partners) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it('respeita a cota de locais no ranking do dia', async () => {
+    authState.maxRankingSpots = 2;
+    renderWithProviders(<HomePage />);
+
+    expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Molhe da Barra' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Ribeirão da Ilha' })).not.toBeInTheDocument();
   });
 
   it('marca o local pessoal com o selo Meu local no ranking do dia', async () => {

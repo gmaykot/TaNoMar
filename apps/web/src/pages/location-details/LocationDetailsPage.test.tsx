@@ -246,6 +246,10 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
         communityVote: true,
         rankingEmphasis: true,
         liveWebcams: authState.liveWebcams,
+        spotArrival: true,
+        forecastAlerts: true,
+        spotForecastToggle: true,
+        favorites: true,
       },
       features: { showPartners: false, showAppFocus: authState.showAppFocus },
       preferences: {

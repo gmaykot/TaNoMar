@@ -60,6 +60,10 @@ function parseModules(value: unknown): PlanModules {
   const communityVote = readBoolean(value.communityVote);
   const rankingEmphasis = readBoolean(value.rankingEmphasis);
   const liveWebcams = readBoolean(value.liveWebcams);
+  const spotArrival = readBoolean(value.spotArrival);
+  const forecastAlerts = readBoolean(value.forecastAlerts);
+  const spotForecastToggle = readBoolean(value.spotForecastToggle);
+  const favorites = readBoolean(value.favorites);
   if (
     marine === null ||
     diary === null ||
@@ -79,6 +83,10 @@ function parseModules(value: unknown): PlanModules {
     communityVote,
     rankingEmphasis,
     liveWebcams: liveWebcams ?? false,
+    spotArrival: spotArrival ?? true,
+    forecastAlerts: forecastAlerts ?? false,
+    spotForecastToggle: spotForecastToggle ?? true,
+    favorites: favorites ?? false,
   };
 }
 

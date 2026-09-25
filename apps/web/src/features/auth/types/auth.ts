@@ -47,7 +47,11 @@ export type PlanModule =
   | 'customWind'
   | 'communityVote'
   | 'rankingEmphasis'
-  | 'liveWebcams';
+  | 'liveWebcams'
+  | 'spotArrival'
+  | 'forecastAlerts'
+  | 'spotForecastToggle'
+  | 'favorites';
 
 export interface PlanModules {
   marine: boolean;
@@ -58,6 +62,10 @@ export interface PlanModules {
   communityVote: boolean;
   rankingEmphasis: boolean;
   liveWebcams: boolean;
+  spotArrival?: boolean;
+  forecastAlerts?: boolean;
+  spotForecastToggle?: boolean;
+  favorites?: boolean;
 }
 
 export const SUBSCRIPTION_LOCK_LABEL = 'Assinatura';
@@ -72,7 +80,15 @@ export function hasPlanModule(
 ) {
   const value = user?.modules?.[module];
   if (typeof value === 'boolean') return value;
-  if (module === 'liveWebcams' || module === 'customWind') return false;
+  if (module === 'spotArrival' || module === 'spotForecastToggle') return true;
+  if (
+    module === 'liveWebcams' ||
+    module === 'customWind' ||
+    module === 'forecastAlerts' ||
+    module === 'favorites'
+  ) {
+    return false;
+  }
   return isPaidPlan(user);
 }
 
