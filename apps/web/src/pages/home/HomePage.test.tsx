@@ -16,6 +16,10 @@ const { authState, forecastState } = vi.hoisted(() => ({
   forecastState: { error: false, pending: false, lockMarine: false },
 }));
 
+vi.mock('@/pages/home/recordHomeAccess', () => ({
+  recordHomeAccess: () => Promise.resolve(),
+}));
+
 vi.mock('@/features/forecast/services/forecastService', () => ({
   getForecast: () => {
     if (forecastState.pending) return new Promise(() => undefined);

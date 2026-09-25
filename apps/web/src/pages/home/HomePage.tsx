@@ -1,5 +1,5 @@
 import { ArrowRight, Compass, Handshake, MapPinned, Sparkles } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useOnlineStatus } from '@/app/hooks/useOnlineStatus';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
@@ -28,6 +28,7 @@ import { PartnerCard } from '@/features/partners/components/PartnerCard';
 import { usePartners } from '@/features/partners/hooks/usePartners';
 import { RankingList } from '@/features/ranking/components/RankingList';
 import { PageHeader } from '@/pages/shared/PageHeader';
+import { recordHomeAccess } from '@/pages/home/recordHomeAccess';
 import { routes } from '@/shared/constants/routes';
 import styles from '@/pages/shared/pages.module.css';
 
@@ -61,6 +62,11 @@ export function HomePage() {
     isOnline: online,
   });
   const data = forecast.data ?? (useOffline ? offlineForecast : undefined) ?? undefined;
+
+  useEffect(() => {
+    if (!online || auth.status !== 'authenticated') return;
+    void recordHomeAccess();
+  }, [online, auth.status]);
 
   if (forecast.isPending && !data)
     return (
