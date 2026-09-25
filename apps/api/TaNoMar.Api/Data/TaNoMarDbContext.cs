@@ -73,9 +73,13 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 Featured = false,
                 IsEnabled = true,
                 MaxForecastDays = 3,
+                BestHoursMode = PlanRules.DefaultBestHoursMode,
                 MaxFavorites = 0,
                 MaxPersonalSpots = 0,
                 MaxAlerts = 0,
+                MaxRankingSpots = 0,
+                CanSpotArrival = true,
+                CanSpotForecastToggle = true,
                 CanLiveWebcams = false
             },
             new Plan
@@ -89,9 +93,11 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 Featured = false,
                 IsEnabled = true,
                 MaxForecastDays = 5,
+                BestHoursMode = PlanRules.DefaultBestHoursMode,
                 MaxFavorites = 10,
                 MaxPersonalSpots = 5,
                 MaxAlerts = 5,
+                MaxRankingSpots = 0,
                 CanMarine = true,
                 CanDiary = true,
                 CanOffline = true,
@@ -99,6 +105,10 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 CanCustomWind = true,
                 CanCommunityVote = true,
                 CanRankingEmphasis = true,
+                CanSpotArrival = true,
+                CanSpotForecastToggle = true,
+                CanForecastAlerts = true,
+                CanFavorites = true,
                 CanLiveWebcams = false
             },
             new Plan
@@ -112,9 +122,11 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 Featured = true,
                 IsEnabled = true,
                 MaxForecastDays = 8,
+                BestHoursMode = PlanRules.DefaultBestHoursMode,
                 MaxFavorites = 20,
                 MaxPersonalSpots = 10,
                 MaxAlerts = 10,
+                MaxRankingSpots = 0,
                 CanMarine = true,
                 CanDiary = true,
                 CanOffline = true,
@@ -122,6 +134,10 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 CanCustomWind = true,
                 CanCommunityVote = true,
                 CanRankingEmphasis = true,
+                CanSpotArrival = true,
+                CanSpotForecastToggle = true,
+                CanForecastAlerts = true,
+                CanFavorites = true,
                 CanLiveWebcams = false
             },
             new Plan
@@ -135,9 +151,11 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 Featured = false,
                 IsEnabled = true,
                 MaxForecastDays = 8,
+                BestHoursMode = PlanRules.DefaultBestHoursMode,
                 MaxFavorites = 40,
                 MaxPersonalSpots = 20,
                 MaxAlerts = 20,
+                MaxRankingSpots = 0,
                 CanMarine = true,
                 CanDiary = true,
                 CanOffline = true,
@@ -145,6 +163,10 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
                 CanCustomWind = true,
                 CanCommunityVote = true,
                 CanRankingEmphasis = true,
+                CanSpotArrival = true,
+                CanSpotForecastToggle = true,
+                CanForecastAlerts = true,
+                CanFavorites = true,
                 CanLiveWebcams = true
             });
         modelBuilder.Entity<PlatformSettings>().HasData(
