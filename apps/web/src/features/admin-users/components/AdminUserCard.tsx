@@ -9,6 +9,32 @@ import type { AdminPlanCode, AdminUser } from '../types/adminUser';
 import { AdminUserActionsSheet } from './AdminUserActionsSheet';
 import styles from './adminUsers.module.css';
 
+const timeZone = 'America/Sao_Paulo';
+
+function formatSignup(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
+}
+
+function formatLogin(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
 const protectionLabel = {
   self: 'Você não pode bloquear nem excluir a própria conta.',
   bootstrap: 'A conta inicial do bootstrap não pode ser bloqueada nem excluída.',
@@ -87,6 +113,20 @@ export function AdminUserCard({
                 </Stamp>
               ) : null}
             </div>
+            <dl className={styles.activity}>
+              <div>
+                <dt>Cadastro</dt>
+                <dd>{formatSignup(user.createdAt)}</dd>
+              </div>
+              <div>
+                <dt>Acessos</dt>
+                <dd>{user.accessCount}</dd>
+              </div>
+              <div>
+                <dt>Último acesso</dt>
+                <dd>{user.lastAccessAt ? formatLogin(user.lastAccessAt) : 'Ainda não acessou'}</dd>
+              </div>
+            </dl>
           </div>
         </div>
         <div className={styles.menu}>

@@ -13,6 +13,8 @@ export interface AdminUser {
     name: string;
   };
   createdAt: string;
+  accessCount: number;
+  lastAccessAt: string | null;
   isSelf: boolean;
   protection: AdminProtection | null;
   canChangePlan: boolean;

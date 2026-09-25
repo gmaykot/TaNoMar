@@ -11,6 +11,8 @@ const sample = {
   isActive: true,
   plan: { code: 'free', name: 'Free' },
   createdAt: '2026-09-05T12:00:00+00:00',
+  accessCount: 3,
+  lastAccessAt: '2026-09-24T23:10:00+00:00',
   isSelf: false,
   protection: null,
   canChangePlan: true,
@@ -25,6 +27,8 @@ describe('parseAdminUser', () => {
       id: sample.id,
       email: 'ana@example.com',
       plan: { code: 'free', name: 'Free' },
+      accessCount: 3,
+      lastAccessAt: '2026-09-24T23:10:00+00:00',
       canChangePlan: true,
     });
   });

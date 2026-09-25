@@ -315,6 +315,19 @@ api.MapPost("/auth/logout", async (TaNoMarDbContext db, AuthTokenService tokens,
     return Results.NoContent();
 });
 
+api.MapPost("/me/access", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    if (!user.IsActive) return Results.Forbid();
+    var now = DateTimeOffset.UtcNow;
+    if (user.LastAccessAt is null || !IsSameSaoPauloDay(user.LastAccessAt.Value, now))
+        user.AccessCount += 1;
+    user.LastAccessAt = now;
+    await db.SaveChangesAsync(cancellationToken);
+    return Results.NoContent();
+}).RequireAuthorization();
+
 api.MapGet("/me", async (ClaimsPrincipal principal, TaNoMarDbContext db, BillingService billing, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
@@ -1578,6 +1591,8 @@ static object AdminUserDto(User item, Plan plan, User actor, TaNoMarOptions opti
         isActive = item.IsActive,
         plan = new { code = plan.Code, name = plan.Name },
         createdAt = item.CreatedAt,
+        accessCount = item.AccessCount,
+        lastAccessAt = item.LastAccessAt,
         isSelf = item.Id == actor.Id,
         protection,
         canChangePlan = true,
@@ -1621,6 +1636,13 @@ static bool MatchesBootstrapAdmin(string? email, string? googleSubject, TaNoMarO
     || (!string.IsNullOrWhiteSpace(options.BootstrapAdminEmail) && string.Equals(email, options.BootstrapAdminEmail, StringComparison.OrdinalIgnoreCase));
 static void SetRefreshCookie(HttpContext context, string value, bool development) => context.Response.Cookies.Append(TaNoMarOptions.RefreshCookieName, value, new CookieOptions { HttpOnly = true, Secure = !development, SameSite = SameSiteMode.Lax, MaxAge = TimeSpan.FromDays(30), Path = "/api/v1/auth" });
 static async Task<User?> CurrentUserAsync(ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) { var id = principal.FindFirstValue(ClaimTypes.NameIdentifier); return Guid.TryParse(id, out var userId) ? await db.Users.SingleOrDefaultAsync(user => user.Id == userId, cancellationToken) : null; }
+static bool IsSameSaoPauloDay(DateTimeOffset left, DateTimeOffset right)
+{
+    var zone = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+    var leftDay = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(left, zone).DateTime);
+    var rightDay = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(right, zone).DateTime);
+    return leftDay == rightDay;
+}
 static async Task<bool> ShowLiveWebcamsEnabledAsync(TaNoMarDbContext db, CancellationToken cancellationToken)
 {
     var settings = await db.PlatformSettings.AsNoTracking().SingleOrDefaultAsync(cancellationToken);

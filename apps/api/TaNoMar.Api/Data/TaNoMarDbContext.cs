@@ -178,6 +178,8 @@ public sealed class User
     public bool IsActive { get; set; } = true;
     public string PlanCode { get; set; } = "free";
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public int AccessCount { get; set; }
+    public DateTimeOffset? LastAccessAt { get; set; }
 }
 
 public sealed class RefreshToken
