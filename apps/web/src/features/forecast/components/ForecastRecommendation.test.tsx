@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { forecastFixture } from '@/features/forecast/fixtures/forecast';
 import { ForecastRecommendation } from './ForecastRecommendation';
@@ -93,5 +94,32 @@ describe('ForecastRecommendation', () => {
     expect(selector).toHaveTextContent('13h');
     fireEvent.change(selector, { target: { value: '13:00' } });
     expect(onHourSelect).toHaveBeenCalledWith('13:00');
+  });
+
+  it('detalha os indicadores ao abrir Entenda a nota', async () => {
+    const forecast = forecastFixture.days[0]?.ranking[0];
+    if (!forecast) throw new Error('fixture de ranking ausente');
+    const user = userEvent.setup();
+    render(
+      <ForecastRecommendation
+        forecast={forecast}
+        variant="detail"
+        dayLabel="Hoje · 05/09"
+        showFishingScore
+        selectedHour="05:30"
+        onHourSelect={() => undefined}
+      />,
+    );
+
+    const explanation = screen.getByText('Entenda a nota').closest('details');
+    expect(explanation).toBeTruthy();
+    if (!explanation) return;
+
+    await user.click(screen.getByText('Entenda a nota'));
+    const panel = within(explanation);
+    expect(panel.getByText(/condições previstas no horário/)).toBeInTheDocument();
+    expect(panel.getByText('Vento')).toBeInTheDocument();
+    expect(panel.queryByText(/25%/)).not.toBeInTheDocument();
+    expect(panel.getByText(/não entram na nota/)).toBeInTheDocument();
   });
 });

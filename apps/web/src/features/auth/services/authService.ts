@@ -67,6 +67,7 @@ export function parseAuthUser(payload: unknown): AuthUser {
   const maxFavorites = entitlements ? readNumber(entitlements.maxFavorites) : null;
   const maxPersonalSpots = entitlements ? readNumber(entitlements.maxPersonalSpots) : null;
   const maxAlerts = entitlements ? readNumber(entitlements.maxAlerts) : null;
+  const maxRankingSpots = entitlements ? (readNumber(entitlements.maxRankingSpots ?? 0) ?? 0) : 0;
   const preferencesRecord = isRecord(payload.preferences) ? payload.preferences : null;
   const region = preferencesRecord ? readString(preferencesRecord.region) : 'Florianópolis';
   const windUnit = preferencesRecord ? readString(preferencesRecord.windUnit) : 'kmh';
@@ -106,7 +107,14 @@ export function parseAuthUser(payload: unknown): AuthUser {
     pictureUrl: readString(payload.pictureUrl),
     role,
     plan: { code: planCode, name: planName },
-    entitlements: { maxForecastDays, bestHoursMode, maxFavorites, maxPersonalSpots, maxAlerts },
+    entitlements: {
+      maxForecastDays,
+      bestHoursMode,
+      maxFavorites,
+      maxPersonalSpots,
+      maxAlerts,
+      maxRankingSpots,
+    },
     modules: parsePlanModules(payload.modules),
     features: { showPartners, showAppFocus, showLiveWebcams },
     preferences: { region, windUnit, forecastNotifications, focus, visibleMetrics },

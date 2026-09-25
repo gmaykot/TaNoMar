@@ -143,7 +143,7 @@ export function CommunityReports({ spotId, canReport, canVote = false }: Communi
         <h2 id="community-reports">Relatos no local</h2>
       </div>
       {canReport ? (
-        <Card className={styles.item}>
+        <Card className={`${styles.item} ${styles.composer}`}>
           <div>
             <span className={styles.meta}>Atalhos</span>
             <p className={styles.hint}>
@@ -221,19 +221,21 @@ export function CommunityReports({ spotId, canReport, canVote = false }: Communi
             </p>
           ) : null}
           {customUsed ? <p>Você já enviou este relato hoje neste local.</p> : null}
-          <Button
-            type="button"
-            onClick={() =>
-              requestCreate({
-                reportType: type,
-                reportComment: comment.trim() || undefined,
-                label: comment.trim() || typeLabel[type],
-              })
-            }
-            disabled={create.isPending || customUsed}
-          >
-            Enviar relato
-          </Button>
+          <div className={styles.actions}>
+            <Button
+              type="button"
+              onClick={() =>
+                requestCreate({
+                  reportType: type,
+                  reportComment: comment.trim() || undefined,
+                  label: comment.trim() || typeLabel[type],
+                })
+              }
+              disabled={create.isPending || customUsed}
+            >
+              Enviar relato
+            </Button>
+          </div>
         </Card>
       ) : (
         <p>Relatos ficam nos locais públicos da comunidade.</p>

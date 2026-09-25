@@ -17,6 +17,7 @@ export interface AdminPlanUpdate {
   maxFavorites: number;
   maxPersonalSpots: number;
   maxAlerts: number;
+  maxRankingSpots: number;
   canMarine: boolean;
   canDiary: boolean;
   canOffline: boolean;
@@ -39,6 +40,7 @@ export interface AdminPlanInput {
   maxFavorites: number;
   maxPersonalSpots: number;
   maxAlerts: number;
+  maxRankingSpots: number;
   canMarine: boolean;
   canDiary: boolean;
   canOffline: boolean;
@@ -107,6 +109,7 @@ export function planRevision(plan: PlanCatalog) {
     plan.entitlements.maxFavorites,
     plan.entitlements.maxPersonalSpots,
     plan.entitlements.maxAlerts,
+    plan.entitlements.maxRankingSpots ?? 0,
     plan.modules.marine,
     plan.modules.diary,
     plan.modules.offline,
@@ -131,6 +134,7 @@ export function planToInput(plan: PlanCatalog): AdminPlanInput {
     maxFavorites: plan.entitlements.maxFavorites,
     maxPersonalSpots: plan.entitlements.maxPersonalSpots,
     maxAlerts: plan.entitlements.maxAlerts,
+    maxRankingSpots: plan.entitlements.maxRankingSpots ?? 0,
     canMarine: plan.modules.marine,
     canDiary: plan.modules.diary,
     canOffline: plan.modules.offline,
@@ -157,6 +161,7 @@ export function inputToUpdate(input: AdminPlanInput): AdminPlanUpdate | null {
     maxFavorites: input.maxFavorites,
     maxPersonalSpots: input.maxPersonalSpots,
     maxAlerts: input.maxAlerts,
+    maxRankingSpots: input.maxRankingSpots,
     canMarine: input.canMarine,
     canDiary: input.canDiary,
     canOffline: input.canOffline,

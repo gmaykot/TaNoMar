@@ -783,7 +783,8 @@ api.MapPut("/admin/plans/{code}", async (string code, AdminPlanConfigRequest req
         bestHoursMode,
         request.MaxFavorites,
         request.MaxPersonalSpots,
-        request.MaxAlerts);
+        request.MaxAlerts,
+        request.MaxRankingSpots);
     if (error is not null) return Results.BadRequest(new { code = "invalid_plan", detail = error });
     var activeUserCount = await db.Users.CountAsync(item => item.IsActive && item.PlanCode == plan.Code, cancellationToken);
     var availabilityError = PlanRules.ValidateAvailability(plan.Code, request.Enabled, activeUserCount);
@@ -801,6 +802,7 @@ api.MapPut("/admin/plans/{code}", async (string code, AdminPlanConfigRequest req
         request.MaxFavorites,
         request.MaxPersonalSpots,
         request.MaxAlerts,
+        request.MaxRankingSpots,
         request.CanMarine,
         request.CanDiary,
         request.CanOffline,
@@ -1682,7 +1684,7 @@ static async Task<object> UserDtoAsync(User user, TaNoMarDbContext db, BillingSe
         pictureUrl = user.PictureUrl,
         role = user.Role,
         plan = new { code = plan.Code, name = plan.Name },
-        entitlements = new { maxForecastDays = plan.MaxForecastDays, bestHoursMode = plan.BestHoursMode, maxFavorites = plan.MaxFavorites, maxPersonalSpots = plan.MaxPersonalSpots, maxAlerts = plan.MaxAlerts },
+        entitlements = new { maxForecastDays = plan.MaxForecastDays, bestHoursMode = plan.BestHoursMode, maxFavorites = plan.MaxFavorites, maxPersonalSpots = plan.MaxPersonalSpots, maxAlerts = plan.MaxAlerts, maxRankingSpots = plan.MaxRankingSpots },
         modules = PlanRules.ModulesDto(plan),
         features = new
         {
@@ -2397,6 +2399,7 @@ record AdminPlanConfigRequest(
     int MaxFavorites,
     int MaxPersonalSpots,
     int MaxAlerts,
+    int MaxRankingSpots,
     bool CanMarine,
     bool CanDiary,
     bool CanOffline,

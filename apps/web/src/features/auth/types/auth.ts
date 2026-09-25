@@ -19,6 +19,7 @@ export interface AuthUser {
     maxFavorites: number;
     maxPersonalSpots: number;
     maxAlerts: number;
+    maxRankingSpots?: number;
   };
   modules?: PlanModules;
   features: {

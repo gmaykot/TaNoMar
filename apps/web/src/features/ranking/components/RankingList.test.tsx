@@ -66,4 +66,23 @@ describe('RankingList', () => {
     expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(3);
     expect(screen.queryByRole('button', { name: 'Mostrar mais' })).not.toBeInTheDocument();
   });
+
+  it('limita os locais conforme a cota e bloqueia o restante', () => {
+    const base = forecastFixture.days[0]?.ranking[0];
+    if (!base) throw new Error('fixture de ranking ausente');
+    const items = Array.from({ length: 8 }, (_, index) => ({
+      ...base,
+      locationId: `local-${index}`,
+      locationName: `Local ${index + 1}`,
+    }));
+
+    render(
+      <MemoryRouter>
+        <RankingList items={items} pageSize={rankingPageSize} maxItems={5} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(5);
+    expect(screen.getByRole('button', { name: 'Mostrar mais' })).toBeDisabled();
+  });
 });

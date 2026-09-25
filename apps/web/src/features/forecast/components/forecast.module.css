@@ -429,12 +429,45 @@
   display: none;
 }
 
-.scoreExplanation p {
+.scoreExplanationBody {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 28rem;
+  margin-top: var(--space-2);
+}
+
+.scoreExplanation p,
+.scoreExplanationFoot {
   max-width: 28rem;
   margin: 0;
   color: rgb(255 255 255 / 68%);
   font-size: var(--font-size-xs);
   line-height: 1.45;
+}
+
+.scoreExplanationLead {
+  margin: 0;
+  color: rgb(255 255 255 / 78%);
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.scoreExplanation ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: rgb(255 255 255 / 68%);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
+
+.scoreExplanation li + li {
+  margin-top: 0.2rem;
+}
+
+.scoreExplanation strong {
+  color: rgb(255 255 255 / 86%);
+  font-weight: 750;
 }
 
 .hourSelector {
@@ -506,7 +539,8 @@
 .scoreExplanation summary:focus-visible,
 .chartTabs button:focus-visible,
 .technicalDetails summary:focus-visible,
-.secondaryDetails summary:focus-visible {
+.secondaryDetails summary:focus-visible,
+.dataSourcesNote > summary:focus-visible {
   outline: 3px solid var(--color-coral-500);
   outline-offset: 2px;
 }
@@ -534,6 +568,10 @@
 
 .forecastSection .metricGrid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.forecastSection.pressureSection .metricGrid {
+  grid-template-columns: minmax(0, 18rem);
 }
 
 .tideStatus {
@@ -676,10 +714,55 @@
 
 .chartRange,
 .sectionCaption,
-.tideSource,
-.unavailableCopy,
-.sources p {
+.unavailableCopy {
   margin: var(--space-2) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
+
+.dataSourcesFoot {
+  margin-top: var(--space-2);
+}
+
+.dataSourcesNote {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.dataSourcesNote[open] {
+  padding-bottom: var(--space-3);
+}
+
+.dataSourcesNote > summary {
+  display: flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--color-ocean-700);
+  font-size: var(--font-size-sm);
+  font-weight: 750;
+  cursor: pointer;
+  list-style: none;
+}
+
+.dataSourcesNote > summary::-webkit-details-marker {
+  display: none;
+}
+
+.dataSourcesNote[open] > summary svg {
+  transform: rotate(180deg);
+}
+
+.dataSourcesNoteBody {
+  display: grid;
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+}
+
+.dataSourcesNoteBody p {
+  margin: 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
   line-height: 1.45;

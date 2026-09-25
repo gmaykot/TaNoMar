@@ -22,6 +22,7 @@ export const rankingPageSize = 10;
 interface RankingListProps {
   items: ForecastRankingItem[];
   limit?: number;
+  maxItems?: number;
   pageSize?: number;
   startAt?: number;
   emphasisKey?: FishingMetricKey;
@@ -37,13 +38,16 @@ const emphasisIcons: Partial<Record<FishingMetricKey, typeof Wind>> = {
 };
 
 export function RankingList(props: RankingListProps) {
-  const listKey = `${props.items.map((item) => item.locationId).join('|')}:${props.pageSize ?? 'all'}`;
+  const listKey = `${props.items.map((item) => item.locationId).join('|')}:${props.pageSize ?? 'all'}:${
+    props.maxItems ?? 0
+  }`;
   return <RankingListView key={listKey} {...props} />;
 }
 
 function RankingListView({
   items,
   limit,
+  maxItems = 0,
   pageSize,
   startAt = 1,
   emphasisKey,
@@ -52,10 +56,15 @@ function RankingListView({
   showFishingScore = true,
 }: RankingListProps) {
   const [visibleCount, setVisibleCount] = useState(pageSize ?? items.length);
-  const cap = pageSize ? Math.min(visibleCount, items.length) : (limit ?? items.length);
+  const planCap = maxItems > 0 ? Math.min(maxItems, items.length) : items.length;
+  const cap = pageSize
+    ? Math.min(visibleCount, planCap)
+    : Math.min(limit ?? items.length, planCap);
   const visibleItems = items.slice(0, cap);
-  const remaining = pageSize ? Math.max(0, items.length - visibleItems.length) : 0;
+  const remaining = pageSize ? Math.max(0, planCap - visibleItems.length) : 0;
   const nextCount = pageSize ? Math.min(pageSize, remaining) : 0;
+  const planLimitReached =
+    maxItems > 0 && items.length > maxItems && visibleItems.length >= planCap;
   const orderedMetricKeys = rankingMetricKeys(emphasisKey);
   const metricKeys = visibleMetricKeys
     ? (orderedMetricKeys ?? visibleMetricKeys).filter((key) => visibleMetricKeys.includes(key))
@@ -156,11 +165,13 @@ function RankingListView({
           );
         })}
       </div>
-      {nextCount > 0 ? (
+      {pageSize && (nextCount > 0 || planLimitReached) ? (
         <div className={styles.more}>
           <Button
             type="button"
             variant="secondary"
+            locked={planLimitReached}
+            disabled={planLimitReached}
             onClick={() => setVisibleCount((count) => count + nextCount)}
           >
             Mostrar mais

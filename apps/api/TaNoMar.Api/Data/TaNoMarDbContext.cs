@@ -234,6 +234,7 @@ public sealed class Plan
     public int MaxFavorites { get; set; }
     public int MaxPersonalSpots { get; set; }
     public int MaxAlerts { get; set; }
+    public int MaxRankingSpots { get; set; }
     public bool CanMarine { get; set; }
     public bool CanDiary { get; set; }
     public bool CanOffline { get; set; }

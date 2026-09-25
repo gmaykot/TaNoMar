@@ -199,6 +199,17 @@ export function AdminPlanCard({ plan, pending = false, error, onSave }: AdminPla
             />
           </label>
         </div>
+        <label className={formStyles.field}>
+          <span>Locais no ranking</span>
+          <input
+            type="number"
+            min={0}
+            max={1000}
+            value={form.maxRankingSpots}
+            onChange={(event) => patch('maxRankingSpots', Number(event.target.value))}
+          />
+          <small>Use 0 para não limitar.</small>
+        </label>
         <fieldset className={styles.modules}>
           <legend>Módulos do plano</legend>
           {planModuleFields.map((module) => (

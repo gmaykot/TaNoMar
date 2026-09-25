@@ -14,6 +14,7 @@ const { getForecast, getLocations, authState } = vi.hoisted(() => ({
     focus: null as string | null,
     showAppFocus: false,
     visibleMetrics: undefined as string[] | undefined,
+    maxRankingSpots: 0,
   },
 }));
 
@@ -44,6 +45,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
         maxFavorites: 20,
         maxPersonalSpots: 10,
         maxAlerts: 10,
+        maxRankingSpots: authState.maxRankingSpots,
       },
       features: { showPartners: false, showAppFocus: authState.showAppFocus },
       preferences: {
@@ -65,6 +67,7 @@ describe('RankingPage', () => {
     authState.focus = null;
     authState.showAppFocus = false;
     authState.visibleMetrics = undefined;
+    authState.maxRankingSpots = 0;
     getForecast.mockClear();
     getForecast.mockResolvedValue(forecastFixture);
     getLocations.mockReset();
@@ -263,6 +266,16 @@ describe('RankingPage', () => {
     expect(screen.getByRole('button', { name: 'Chuva, disponível na assinatura' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Ondas, disponível na assinatura' })).toBeDisabled();
     expect(getForecast).toHaveBeenCalledWith(undefined);
+  });
+
+  it('bloqueia Mostrar mais quando o plano acaba', async () => {
+    authState.maxRankingSpots = 2;
+    renderWithProviders(<RankingPage />, ['/ranking']);
+
+    expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(2);
+    expect(screen.getByRole('button', { name: 'Mostrar mais' })).toBeDisabled();
+    expect(screen.queryByRole('heading', { name: 'Joaquina' })).not.toBeInTheDocument();
   });
 
   it('esconde a ênfase de ondas quando o indicador não está visível', async () => {

@@ -9,7 +9,7 @@ import {
   Navigation,
   Pencil,
 } from 'lucide-react';
-import { Fragment, useState, type ReactNode } from 'react';
+import { Fragment, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/design-system/components/Button';
 import { FeedbackState } from '@/design-system/components/FeedbackState';
@@ -23,8 +23,10 @@ import { SubscriptionGateDrawer } from '@/features/subscription/components/Subsc
 import { ForecastAlerts } from '@/features/notifications/components/ForecastAlerts';
 import { DayCarousel } from '@/features/forecast/components/DayCarousel';
 import { ForecastRefreshNotice } from '@/features/forecast/components/ForecastRefreshNotice';
+import { ForecastDataSourcesNote } from '@/features/forecast/components/ForecastDataSourcesNote';
 import { ForecastPresentation } from '@/features/forecast/components/ForecastPresentation';
 import { useLocationForecast } from '@/features/forecast/hooks/useForecast';
+import { useMarineDetails } from '@/features/forecast/hooks/useMarineDetails';
 import { LocationStampFor } from '@/features/locations/components/LocationStamp';
 import { hasSpotCoordinates } from '@/features/locations/arrival/geoMath';
 import { IdealWindPreference } from '@/features/locations/components/IdealWindPreference';
@@ -55,6 +57,13 @@ export function LocationDetailsPage() {
   const [favoriteGateOpen, setFavoriteGateOpen] = useState(false);
   const [alertGateOpen, setAlertGateOpen] = useState(false);
   const [alertCreatorOpen, setAlertCreatorOpen] = useState(false);
+  const forecastDays = locationForecast.data?.days;
+  const activeDate =
+    forecastDays?.some((day) => day.date === selectedDate)
+      ? selectedDate
+      : forecastDays?.[0]?.date ?? '';
+  const hasForecastDay = Boolean(forecastDays?.some((day) => day.date === activeDate));
+  const marineDetails = useMarineDetails(locationId, activeDate, hasForecastDay);
 
   if (locationForecast.isPending)
     return (
@@ -85,9 +94,6 @@ export function LocationDetailsPage() {
     );
 
   const { location, days } = locationForecast.data;
-  const activeDate = days.some((day) => day.date === selectedDate)
-    ? selectedDate
-    : days[0]?.date || '';
   const activeDay = days.find((day) => day.date === activeDate);
   if (!activeDay)
     return (
@@ -242,6 +248,8 @@ export function LocationDetailsPage() {
     ...visibleToolbarActions.filter((item) => !item.locked),
     ...visibleToolbarActions.filter((item) => item.locked),
   ];
+  const tide = marineDetails.data?.tide;
+  const showTideReferenceNote = Boolean(tide && !tide.locked && !tide.unavailable);
 
   return (
     <div className={styles.page}>
@@ -283,6 +291,14 @@ export function LocationDetailsPage() {
       ) : null}
       <div
         className={`${styles.toolbar} ${styles.locationToolbar}`}
+        style={
+          {
+            '--location-toolbar-columns': Math.max(
+              1,
+              orderedToolbar.filter((item) => item.key !== 'edit').length,
+            ),
+          } as CSSProperties
+        }
         role="toolbar"
         aria-label="Ações do local"
       >
@@ -336,6 +352,10 @@ export function LocationDetailsPage() {
           canVote={hasPlanModule(auth.user, 'communityVote')}
         />
       ) : null}
+      <ForecastDataSourcesNote
+        tideAttribution={tide?.attribution}
+        showTideReferenceNote={showTideReferenceNote}
+      />
     </div>
   );
 }

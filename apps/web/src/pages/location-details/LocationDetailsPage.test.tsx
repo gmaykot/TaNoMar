@@ -347,14 +347,18 @@ describe('LocationDetailsPage', () => {
     expect(within(conditions).getByText('Chuva')).toBeInTheDocument();
     expect(slide.getAllByText('Ondas')).toHaveLength(2);
     expect(slide.getAllByText('Temperatura')).toHaveLength(2);
-    expect(slide.getByText('Pressão')).toBeInTheDocument();
-    expect(slide.getByText('Atualização: não informada pela fonte.')).toBeInTheDocument();
+    expect(slide.queryByText('Atualização: não informada pela fonte.')).not.toBeInTheDocument();
+    const sources = screen.getByText('Fontes da previsão').closest('details');
+    expect(sources).toBeTruthy();
+    if (!sources) return;
+    expect(within(sources).getByText('Atualização: não informada pela fonte.')).toBeInTheDocument();
     expect(slide.queryByText('Swell')).not.toBeInTheDocument();
     expect(slide.getByRole('heading', { name: 'Maré' })).toBeInTheDocument();
     expect(await slide.findByText('Enchente')).toBeInTheDocument();
     expect(slide.getByRole('img', { name: 'Altura da maré ao longo do dia' })).toBeInTheDocument();
     expect(slide.getByRole('heading', { name: 'Evolução das condições' })).toBeInTheDocument();
-    expect(slide.getByText('Detalhes da previsão')).toBeInTheDocument();
+    expect(slide.getByRole('heading', { name: 'Pressão' })).toBeInTheDocument();
+    expect(slide.queryByText('Detalhes da previsão')).not.toBeInTheDocument();
   });
 
   it('atualiza métricas, maré e gráficos ao selecionar outra hora', async () => {

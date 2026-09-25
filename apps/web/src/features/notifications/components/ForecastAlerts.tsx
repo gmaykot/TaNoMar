@@ -162,25 +162,32 @@ function AlertRow({
   onDelete: () => void;
 }) {
   return (
-    <div className={formStyles.choice}>
-      <input
-        type="checkbox"
-        checked={alert.isActive}
-        onChange={onToggle}
-        aria-label={`Ativar alerta de ${alert.spotName}`}
-      />
-      <span>
-        <strong>{alert.spotName}</strong>
-        <small>
-          Nota {alert.minimumScore.toLocaleString('pt-BR')} ·{' '}
-          {alert.targetHour === null
-            ? 'melhor horário'
-            : `${String(alert.targetHour).padStart(2, '0')}:00`}{' '}
-          · {alert.leadHours}h antes
-        </small>
-      </span>
-      <button type="button" aria-label={`Apagar alerta de ${alert.spotName}`} onClick={onDelete}>
-        <Trash2 size={16} aria-hidden="true" />
+    <div className={accountStyles.alertRow}>
+      <div className={accountStyles.alertRowMain}>
+        <input
+          type="checkbox"
+          checked={alert.isActive}
+          onChange={onToggle}
+          aria-label={`Ativar alerta de ${alert.spotName}`}
+        />
+        <span>
+          <strong>{alert.spotName}</strong>
+          <small>
+            Nota {alert.minimumScore.toLocaleString('pt-BR')} ·{' '}
+            {alert.targetHour === null
+              ? 'melhor horário'
+              : `${String(alert.targetHour).padStart(2, '0')}:00`}{' '}
+            · {alert.leadHours}h antes
+          </small>
+        </span>
+      </div>
+      <button
+        type="button"
+        className={accountStyles.alertRowAction}
+        aria-label={`Apagar alerta de ${alert.spotName}`}
+        onClick={onDelete}
+      >
+        <Trash2 size={18} aria-hidden="true" />
       </button>
     </div>
   );

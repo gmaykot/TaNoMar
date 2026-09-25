@@ -45,6 +45,7 @@ export function RankingPage() {
   const canCustomizeMetrics = hasPlanModule(auth.user, 'customMetrics');
   const canEmphasis = hasPlanModule(auth.user, 'rankingEmphasis');
   const canSaveOffline = hasPlanModule(auth.user, 'offline');
+  const maxRankingSpots = auth.user?.entitlements.maxRankingSpots ?? 0;
   const presentation = forecastPresentation(
     auth.user?.preferences,
     canCustomizeMetrics,
@@ -154,6 +155,7 @@ export function RankingPage() {
             return (
               <RankingList
                 items={items}
+                maxItems={maxRankingSpots}
                 pageSize={rankingPageSize}
                 emphasisKey={rankingEmphasisMetricKey(emphasis)}
                 visibleMetricKeys={visibleMetricKeys}

@@ -3,7 +3,10 @@ import { Badge } from '@/design-system/components/Badge';
 import { ScoreIndicator } from '@/design-system/components/ScoreIndicator';
 import type { ForecastRankingItem } from '@/features/fishing/types/fishing';
 import { formatHourLabel } from '@/features/fishing/utils/hours';
-import { forecastScoreNote } from '@/features/fishing/utils/scoreBreakdown';
+import {
+  fishingScoreIndicators,
+  forecastScoreNote,
+} from '@/features/fishing/utils/scoreBreakdown';
 import { LocationStampFor } from '@/features/locations/components/LocationStamp';
 import styles from './forecast.module.css';
 
@@ -141,7 +144,21 @@ export function ForecastRecommendation({
           <summary>
             <Info size={16} aria-hidden="true" /> Entenda a nota
           </summary>
-          <p>Nota das condições previstas neste horário. {forecastScoreNote()}</p>
+          <div className={styles.scoreExplanationBody}>
+            <p>
+              A nota vai de 0 a 10 e resume as condições previstas no horário escolhido.{' '}
+              {forecastScoreNote()}
+            </p>
+            <p className={styles.scoreExplanationLead}>Indicadores considerados:</p>
+            <ul>
+              {fishingScoreIndicators.map((indicator) => (
+                <li key={indicator}>{indicator}</li>
+              ))}
+            </ul>
+            <p className={styles.scoreExplanationFoot}>
+              Maré, swell, pressão e temperatura da água aparecem no detalhe e não entram na nota.
+            </p>
+          </div>
         </details>
       ) : null}
     </section>

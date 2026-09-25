@@ -1,4 +1,4 @@
-import { Anchor, ChevronDown, Database } from 'lucide-react';
+import { Anchor, ChevronDown } from 'lucide-react';
 import type {
   FishingMetric,
   ForecastRankingItem,
@@ -142,10 +142,6 @@ export function TideSection({ tide, selectedHour, pending, error }: TideSectionP
               </ul>
             </details>
           ) : null}
-          <p className={styles.tideSource}>
-            {tide.attribution ? `${tide.attribution} ` : ''}Referência da estação; não é medição
-            exata no local. Não usar para navegação.
-          </p>
         </>
       )}
     </section>
@@ -169,29 +165,14 @@ export function ForecastTechnicalDetails({
     selectedForecast.pressure ?? pressureMetric(marinePressure, selectedHour, forecast.metricsHour);
 
   return (
-    <details className={`${styles.forecastSection} ${styles.technicalDetails}`}>
-      <summary>
-        <span>
-          <Database size={18} aria-hidden="true" /> Detalhes da previsão
-        </span>
-        <ChevronDown size={18} aria-hidden="true" />
-      </summary>
-      <div className={styles.technicalContent}>
-        <div>
-          {pressure ? (
-            <MetricGrid metrics={[pressure]} compact tone="light" hideLocked={false} />
-          ) : (
-            <p className={styles.unavailableCopy}>Sem pressão para o horário selecionado.</p>
-          )}
-        </div>
-        <div className={styles.sources}>
-          <h3>Fontes</h3>
-          <p>Atualização: não informada pela fonte.</p>
-          <p>Tempo e condições do mar: Open-Meteo.</p>
-          {marine?.tide.attribution ? <p>Maré: {marine.tide.attribution}</p> : null}
-        </div>
-      </div>
-    </details>
+    <section className={`${styles.forecastSection} ${styles.pressureSection}`} aria-labelledby="pressure-heading">
+      <SectionHeading eyebrow="Horário selecionado" title="Pressão" id="pressure-heading" />
+      {pressure ? (
+        <MetricGrid metrics={[pressure]} compact tone="light" hideLocked={false} />
+      ) : (
+        <p className={styles.unavailableCopy}>Sem pressão para o horário selecionado.</p>
+      )}
+    </section>
   );
 }
 

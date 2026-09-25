@@ -16,6 +16,15 @@ export function forecastScoreNote() {
   return 'A nota descreve as condições previstas, não a chance de captura.';
 }
 
+export const fishingScoreIndicators = [
+  'Vento',
+  'Direção do vento',
+  'Altura da onda',
+  'Período da onda',
+  'Chance de chuva',
+  'Horário',
+] as const;
+
 export function rankingLeadReason(windowCount: number) {
   const criterion =
     windowCount <= 1

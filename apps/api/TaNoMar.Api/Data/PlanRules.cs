@@ -38,7 +38,8 @@ internal static class PlanRules
             bestHoursMode = plan.BestHoursMode,
             maxFavorites = plan.MaxFavorites,
             maxPersonalSpots = plan.MaxPersonalSpots,
-            maxAlerts = plan.MaxAlerts
+            maxAlerts = plan.MaxAlerts,
+            maxRankingSpots = plan.MaxRankingSpots
         },
         modules = ModulesDto(plan)
     };
@@ -55,7 +56,7 @@ internal static class PlanRules
         liveWebcams = plan.CanLiveWebcams
     };
 
-    public static string? ValidateUpdate(string name, string tagline, int monthlyPriceCents, int sortOrder, int maxForecastDays, string bestHoursMode, int maxFavorites, int maxPersonalSpots, int maxAlerts)
+    public static string? ValidateUpdate(string name, string tagline, int monthlyPriceCents, int sortOrder, int maxForecastDays, string bestHoursMode, int maxFavorites, int maxPersonalSpots, int maxAlerts, int maxRankingSpots)
     {
         if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 40) return "Informe um nome com até 40 caracteres.";
         if (tagline.Length > 160) return "O texto de apoio deve ter até 160 caracteres.";
@@ -66,6 +67,7 @@ internal static class PlanRules
         if (maxFavorites is < 0 or > 200) return "Os favoritos devem ficar entre 0 e 200.";
         if (maxPersonalSpots is < 0 or > 100) return "Os locais pessoais devem ficar entre 0 e 100.";
         if (maxAlerts is < 0 or > 100) return "Os alertas devem ficar entre 0 e 100.";
+        if (maxRankingSpots is < 0 or > 1000) return "Os locais no ranking devem ficar entre 0 e 1.000.";
         return null;
     }
 
@@ -92,6 +94,7 @@ internal static class PlanRules
         int maxFavorites,
         int maxPersonalSpots,
         int maxAlerts,
+        int maxRankingSpots,
         bool canMarine,
         bool canDiary,
         bool canOffline,
@@ -112,6 +115,7 @@ internal static class PlanRules
         plan.MaxFavorites = maxFavorites;
         plan.MaxPersonalSpots = maxPersonalSpots;
         plan.MaxAlerts = maxAlerts;
+        plan.MaxRankingSpots = maxRankingSpots;
         plan.CanMarine = canMarine;
         plan.CanDiary = canDiary;
         plan.CanOffline = canOffline;

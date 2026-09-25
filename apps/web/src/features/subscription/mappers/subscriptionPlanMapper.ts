@@ -29,16 +29,25 @@ function parseEntitlements(value: unknown): PlanEntitlements {
   const maxFavorites = readInteger(value.maxFavorites);
   const maxPersonalSpots = readInteger(value.maxPersonalSpots);
   const maxAlerts = readInteger(value.maxAlerts);
+  const maxRankingSpots = readInteger(value.maxRankingSpots ?? 0);
   if (
     maxForecastDays === null ||
     bestHoursMode === null ||
     maxFavorites === null ||
     maxPersonalSpots === null ||
-    maxAlerts === null
+    maxAlerts === null ||
+    maxRankingSpots === null
   ) {
     throw new ContractError('Cotas do plano incompletas.');
   }
-  return { maxForecastDays, bestHoursMode, maxFavorites, maxPersonalSpots, maxAlerts };
+  return {
+    maxForecastDays,
+    bestHoursMode,
+    maxFavorites,
+    maxPersonalSpots,
+    maxAlerts,
+    maxRankingSpots,
+  };
 }
 
 function parseModules(value: unknown): PlanModules {

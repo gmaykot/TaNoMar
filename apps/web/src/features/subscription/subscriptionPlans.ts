@@ -8,6 +8,7 @@ export interface PlanEntitlements {
   maxFavorites: number;
   maxPersonalSpots: number;
   maxAlerts: number;
+  maxRankingSpots?: number;
 }
 
 export interface PlanCatalog {
@@ -71,5 +72,7 @@ export function planFeatureList(plan: PlanCatalog) {
   if (plan.modules.rankingEmphasis)
     items.push('Ordene o ranking por vento, chuva ou ondas sem mudar a nota');
   if (plan.modules.liveWebcams) items.push('Câmeras ao vivo nos locais com transmissão');
+  if ((plan.entitlements.maxRankingSpots ?? 0) > 0)
+    items.push(`Mostre até ${plan.entitlements.maxRankingSpots} locais no ranking`);
   return items;
 }

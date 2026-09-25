@@ -74,6 +74,11 @@
   resize: vertical;
 }
 
+.form {
+  display: grid;
+  gap: var(--space-4);
+}
+
 .row {
   display: grid;
   gap: var(--space-3);
