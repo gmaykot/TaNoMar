@@ -12,7 +12,7 @@ import {
 describe('offlineSession', () => {
   afterEach(() => {
     clearOfflineUser();
-    localStorage.removeItem('tanomar.offline-forecast.v2');
+    localStorage.removeItem('tanomar.offline-forecast.v3');
   });
 
   it('grava e lê o snapshot do usuário', () => {

@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { forecastFixture } from '@/features/forecast/fixtures/forecast';
+import { forecastFixture, forecastQualityFixture } from '@/features/forecast/fixtures/forecast';
 import {
   clearOfflineForecast,
+  offlineForecastStorageKey,
   readOfflineForecast,
   saveOfflineForecast,
   shouldUseOfflineForecast,
@@ -11,10 +12,12 @@ describe('offlineForecast', () => {
   afterEach(() => {
     clearOfflineForecast();
     localStorage.removeItem('tanomar.offline-forecast.v1');
+    localStorage.removeItem('tanomar.offline-forecast.v2');
   });
 
-  it('grava e lê a previsão salva', () => {
+  it('grava e lê a previsão v3', () => {
     expect(saveOfflineForecast(forecastFixture)).toBe(true);
+    expect(localStorage.getItem(offlineForecastStorageKey)).toContain('"forecast"');
     expect(readOfflineForecast()).toEqual(forecastFixture);
   });
 
@@ -57,13 +60,110 @@ describe('offlineForecast', () => {
   it('ignora a cópia legada v1 e não a migra', () => {
     localStorage.setItem('tanomar.offline-forecast.v1', JSON.stringify({ forecast: forecastFixture }));
     expect(readOfflineForecast()).toBeNull();
+    expect(localStorage.getItem(offlineForecastStorageKey)).toBeNull();
+    expect(localStorage.getItem('tanomar.offline-forecast.v1')).toBeNull();
+  });
+
+  it('ignora a cópia v2 e não a migra', () => {
+    localStorage.setItem('tanomar.offline-forecast.v2', JSON.stringify({ forecast: forecastFixture }));
+    expect(readOfflineForecast()).toBeNull();
+    expect(localStorage.getItem(offlineForecastStorageKey)).toBeNull();
     expect(localStorage.getItem('tanomar.offline-forecast.v2')).toBeNull();
   });
 
-  it('descarta JSON v2 inválido ou corrompido', () => {
-    localStorage.setItem('tanomar.offline-forecast.v2', '{corrompido');
+  it('descarta JSON v3 inválido ou corrompido', () => {
+    localStorage.setItem(offlineForecastStorageKey, '{corrompido');
     expect(readOfflineForecast()).toBeNull();
-    localStorage.setItem('tanomar.offline-forecast.v2', JSON.stringify({ forecast: { days: [] } }));
+    localStorage.setItem(offlineForecastStorageKey, JSON.stringify({ forecast: { days: [] } }));
+    expect(readOfflineForecast()).toBeNull();
+  });
+
+  it('rejeita v3 sem quality em item disponível', () => {
+    const withoutQuality = {
+      ...forecastFixture,
+      days: forecastFixture.days.map((day) => ({
+        ...day,
+        ranking: day.ranking.map((item) => ({ ...item, quality: undefined })),
+      })),
+    };
+    localStorage.setItem(
+      offlineForecastStorageKey,
+      JSON.stringify({ savedAt: '2026-09-07T08:00:00Z', forecast: withoutQuality }),
+    );
+    expect(readOfflineForecast()).toBeNull();
+  });
+
+  it('rejeita v3 com quality inválida', () => {
+    const invalid = {
+      ...forecastFixture,
+      days: forecastFixture.days.map((day) => ({
+        ...day,
+        ranking: day.ranking.map((item) => ({
+          ...item,
+          quality: { ...forecastQualityFixture, confidence: { level: 'alta', reasons: [] } },
+        })),
+      })),
+    };
+    localStorage.setItem(
+      offlineForecastStorageKey,
+      JSON.stringify({ savedAt: '2026-09-07T08:00:00Z', forecast: invalid }),
+    );
+    expect(readOfflineForecast()).toBeNull();
+  });
+
+  it('preserva score real zero e confiança High na v3', () => {
+    const withZero = {
+      ...forecastFixture,
+      days: [
+        {
+          ...forecastFixture.days[0]!,
+          ranking: [
+            {
+              ...forecastFixture.days[0]!.ranking[0]!,
+              score: 0,
+              classification: 'difficult' as const,
+              quality: forecastQualityFixture,
+            },
+          ],
+        },
+      ],
+    };
+    expect(saveOfflineForecast(withZero)).toBe(true);
+    expect(readOfflineForecast()?.days[0]?.ranking[0]).toMatchObject({
+      score: 0,
+      quality: { confidence: { level: 'high' } },
+    });
+  });
+
+  it('não usa savedAt como idade meteorológica', () => {
+    localStorage.setItem(
+      offlineForecastStorageKey,
+      JSON.stringify({
+        savedAt: '2026-09-10T08:00:00-03:00',
+        forecast: forecastFixture,
+      }),
+    );
+    const loaded = readOfflineForecast();
+    expect(loaded?.days[0]?.ranking[0]?.quality?.dataUpdatedAt).toBe(
+      forecastQualityFixture.dataUpdatedAt,
+    );
+    expect(JSON.parse(localStorage.getItem(offlineForecastStorageKey)!).savedAt).toBe(
+      '2026-09-10T08:00:00-03:00',
+    );
+  });
+
+  it('rejeita v3 com JSON quality nula em item disponível', () => {
+    const withNullQuality = {
+      ...forecastFixture,
+      days: forecastFixture.days.map((day) => ({
+        ...day,
+        ranking: day.ranking.map((item) => ({ ...item, quality: null })),
+      })),
+    };
+    localStorage.setItem(
+      offlineForecastStorageKey,
+      JSON.stringify({ savedAt: '2026-09-07T08:00:00Z', forecast: withNullQuality }),
+    );
     expect(readOfflineForecast()).toBeNull();
   });
 });

@@ -17,6 +17,7 @@ interface CommonForecastPresentationProps {
   visibleMetricKeys?: FishingMetricKey[];
   windUnit?: string;
   showFishingScore?: boolean;
+  qualitySource?: 'live' | 'offline';
 }
 
 interface SummaryForecastPresentationProps extends CommonForecastPresentationProps {
@@ -48,6 +49,7 @@ function ForecastSummary({
   visibleMetricKeys,
   windUnit,
   showFishingScore = true,
+  qualitySource = 'live',
 }: SummaryForecastPresentationProps) {
   const displayForecast = forecastAtHour(forecast, forecast.metricsHour);
   const referenceHour = displayForecast.metricsHour;
@@ -69,6 +71,7 @@ function ForecastSummary({
           variant="summary"
           dayLabel={formatReferenceDate(date, dayLabel)}
           showFishingScore={showFishingScore}
+          qualitySource={qualitySource}
         />
         {referenceHour ? (
           <p className={styles.metricCaption}>Condições às {formatHourLabel(referenceHour)}</p>
@@ -97,6 +100,7 @@ function ForecastDetail({
   visibleMetricKeys,
   windUnit,
   showFishingScore = true,
+  qualitySource = 'live',
 }: DetailForecastPresentationProps) {
   const initialHour =
     forecast.metricsHour ?? forecast.hourWindows[0]?.time ?? forecast.bestHours[0] ?? null;
@@ -113,6 +117,7 @@ function ForecastDetail({
         showFishingScore={showFishingScore}
         selectedHour={selectedHour}
         onHourSelect={setSelectedHour}
+        qualitySource={qualitySource}
       />
       <section
         className={styles.forecastSection}

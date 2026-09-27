@@ -417,7 +417,7 @@ Detalhes:
 | `IMemoryCache` | `CachedForecast` | `"{locationId}_{yyyy-MM-dd}"` | Até a disponibilidade máxima |
 | PostgreSQL | `FishingForecastSnapshot` com `PayloadJson` | índice único `(LocationId, Date)` | Até poda |
 | React Query | Respostas mapeadas | `['forecast']`, `['forecast', emphasis]`, `['location-forecast', id]`, `['marine-details', id, date]` | `staleTime` de 5 minutos |
-| PWA/localStorage | Uma previsão salva manualmente | `tanomar.offline-forecast.v1` | Sem TTL automático; próxima gravação substitui |
+| PWA/localStorage | Uma previsão salva manualmente | `tanomar.offline-forecast.v3` | Sem TTL automático; próxima gravação substitui. `v1`/`v2` são ignoradas, sem migração. |
 
 Configuração ativa de `apps/api/TaNoMar.Api/appsettings.json`:
 

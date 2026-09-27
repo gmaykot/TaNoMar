@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -106,6 +107,78 @@ public sealed class FishingForecastWarmupQueueTests
             (await harness.Cache.TryGetAvailableAsync("campeche", harness.Fishing.Today(), CancellationToken.None))
                 ?.Forecast.DataQualityVersion);
         Assert.Equal("campeche", Assert.Single(result.Ranking).Id);
+    }
+
+    [Fact]
+    public async Task Get_forecast_transports_snapshot_metadata_without_persisting_quality()
+    {
+        using var harness = new WarmupHarness();
+        await harness.AddOfficialAsync("campeche");
+        await harness.SeedTodayAsync("campeche", createdHoursAgo: 1);
+        var snapshot = await harness.Db.FishingForecastSnapshots
+            .AsNoTracking()
+            .SingleAsync(item => item.LocationId == "campeche");
+
+        var result = await harness.Fishing.GetAsync(0, CancellationToken.None);
+
+        var context = Assert.IsType<ForecastQualityContext>(result.QualityContext);
+        var metadata = Assert.Single(context.Snapshots).Value;
+        Assert.Equal(snapshot.CreatedAt, metadata.CreatedAt);
+        Assert.Equal(snapshot.ExpiresAt, metadata.ExpiresAt);
+        Assert.Equal(harness.Cache.RefreshAfter, context.RefreshAfter);
+        Assert.Equal(harness.Cache.MaxStale, context.MaxStale);
+        var payload = JsonSerializer.Deserialize<JsonElement>(snapshot.PayloadJson);
+        Assert.False(payload.TryGetProperty("quality", out _));
+        Assert.False(payload.TryGetProperty("dataCompleteness", out _));
+    }
+
+    [Fact]
+    public async Task Get_forecast_projects_runtime_quality_from_snapshot_metadata()
+    {
+        using var harness = new WarmupHarness();
+        await harness.AddOfficialAsync("campeche");
+        await harness.SeedTodayAsync("campeche", createdHoursAgo: 1);
+        var result = await harness.Fishing.GetAsync(0, CancellationToken.None);
+        var createdAt = Assert.IsType<ForecastQualityContext>(result.QualityContext).Snapshots["campeche"].CreatedAt;
+
+        var json = JsonSerializer.SerializeToElement(
+            FishingForecastPublicDto.Day(result, createdAt.AddHours(1), false, PlanRules.DefaultBestHoursMode),
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var quality = json.GetProperty("ranking")[0].GetProperty("quality");
+
+        Assert.Equal("low", quality.GetProperty("confidence").GetProperty("level").GetString());
+        Assert.Equal(3, quality.GetProperty("dataCompleteness").GetProperty("validHours").GetInt32());
+        Assert.Equal(16, quality.GetProperty("dataCompleteness").GetProperty("expectedHours").GetInt32());
+        Assert.Equal(0.1875, quality.GetProperty("dataCompleteness").GetProperty("ratio").GetDouble());
+        Assert.Equal(
+            [ForecastConfidenceReasonCodes.SparseHourCoverage],
+            quality.GetProperty("confidence").GetProperty("reasons").EnumerateArray().Select(value => value.GetString()));
+        Assert.Equal(createdAt, quality.GetProperty("dataUpdatedAt").GetDateTimeOffset());
+    }
+
+    [Fact]
+    public async Task Location_day_used_by_marine_does_not_embed_quality()
+    {
+        using var harness = new WarmupHarness();
+        await harness.AddOfficialAsync("campeche");
+        await harness.SeedTodayAsync("campeche", createdHoursAgo: 1);
+        var location = new FishingLocation
+        {
+            Id = "campeche",
+            Name = "campeche",
+            Latitude = -27.6,
+            Longitude = -48.4,
+            SeaOrientationDegrees = 90,
+            Profile = "praia_aberta"
+        };
+
+        var forecast = await harness.Fishing.GetLocationDayAsync(location, harness.Fishing.Today(), CancellationToken.None);
+        var json = JsonSerializer.SerializeToElement(forecast, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        Assert.NotNull(forecast);
+        Assert.False(json.TryGetProperty("quality", out _));
+        Assert.False(json.TryGetProperty("confidence", out _));
+        Assert.False(json.TryGetProperty("dataCompleteness", out _));
     }
 
     [Fact]
@@ -260,8 +333,14 @@ public sealed class FishingForecastWarmupQueueTests
             null,
             1013,
             "mar");
+        var hours = new[]
+        {
+            hour,
+            hour with { Time = "07:00" },
+            hour with { Time = "08:00" }
+        };
         return new FishingLocationForecast(
-            id, id, date, 8.1, [hour], hour, [hour],
+            id, id, date, 8.1, hours, hour, hours,
             DataQualityVersion: FishingForecastDataQuality.CurrentVersion);
     }
 

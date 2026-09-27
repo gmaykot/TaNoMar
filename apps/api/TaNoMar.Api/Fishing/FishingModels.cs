@@ -39,7 +39,17 @@ public sealed record FishingForecast(
     IReadOnlyList<FishingLocationForecast> Ranking,
     IReadOnlyList<FishingForecastError> Errors,
     DateTimeOffset? DataUpdatedAt = null,
-    bool HasStaleData = false);
+    bool HasStaleData = false,
+    ForecastQualityContext? QualityContext = null);
+
+public sealed record ForecastQualityContext(
+    IReadOnlyDictionary<string, ForecastSnapshotMetadata> Snapshots,
+    TimeSpan RefreshAfter,
+    TimeSpan MaxStale);
+
+public sealed record ForecastSnapshotMetadata(
+    DateTimeOffset CreatedAt,
+    DateTimeOffset ExpiresAt);
 
 public sealed record FishingLocationForecast(
     string Id,
@@ -53,6 +63,33 @@ public sealed record FishingLocationForecast(
     IReadOnlyList<FishingTideExtreme>? TideExtremes = null,
     string? TideAttribution = null,
     int? DataQualityVersion = null);
+
+public sealed record ScoringDataCompleteness(int ValidHours)
+{
+    public const int ExpectedHourCount = 16;
+
+    public int ExpectedHours => ExpectedHourCount;
+
+    public double Ratio => (double)ValidHours / ExpectedHours;
+
+    public static ScoringDataCompleteness FromForecast(FishingLocationForecast forecast)
+    {
+        var validSlots = forecast.Hours
+            .Where(hour => IsExpectedSlot(hour.Time)
+                && hour.ScoreAvailability == FishingScoreAvailability.Available
+                && hour.Score is not null)
+            .Select(hour => hour.Time)
+            .ToHashSet(StringComparer.Ordinal);
+
+        return new ScoringDataCompleteness(validSlots.Count);
+    }
+
+    private static bool IsExpectedSlot(string time)
+        => time is "05:00" or "06:00" or "07:00" or "08:00"
+            or "09:00" or "10:00" or "11:00" or "12:00"
+            or "13:00" or "14:00" or "15:00" or "16:00"
+            or "17:00" or "18:00" or "19:00" or "20:00";
+}
 
 public static class FishingForecastDataQuality
 {

@@ -4,6 +4,28 @@ import userEvent from '@testing-library/user-event';
 import { forecastFixture } from '@/features/forecast/fixtures/forecast';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { HomePage } from './HomePage';
+import type { FishingForecast } from '@/features/fishing/types/fishing';
+
+function forecastWithDataUpdatedAt(dataUpdatedAt: string): FishingForecast {
+  return {
+    ...forecastFixture,
+    days: forecastFixture.days.map((day) => ({
+      ...day,
+      ranking: day.ranking.map((item) =>
+        item.quality
+          ? {
+              ...item,
+              quality: {
+                ...item.quality,
+                dataUpdatedAt,
+                evaluatedAt: '2026-09-04T08:00:00-03:00',
+              },
+            }
+          : item,
+      ),
+    })),
+  };
+}
 
 const { authState, forecastState } = vi.hoisted(() => ({
   authState: {
@@ -136,7 +158,7 @@ describe('HomePage', () => {
     forecastState.error = false;
     forecastState.pending = false;
     forecastState.lockMarine = false;
-    localStorage.removeItem('tanomar.offline-forecast.v2');
+    localStorage.removeItem('tanomar.offline-forecast.v3');
   });
 
   it('mostra o acesso ao pré-cadastro de parceiro mesmo com a vitrine desligada', async () => {
@@ -182,10 +204,11 @@ describe('HomePage', () => {
     await user.click(screen.getByRole('button', { name: /Salvar para usar offline/ }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Salvar para usar offline?' });
-    expect(localStorage.getItem('tanomar.offline-forecast.v2')).toBeNull();
+    expect(localStorage.getItem('tanomar.offline-forecast.v3')).toBeNull();
     await user.click(within(dialog).getByRole('button', { name: 'Salvar offline' }));
 
-    expect(localStorage.getItem('tanomar.offline-forecast.v2')).toContain('"forecast"');
+    expect(localStorage.getItem('tanomar.offline-forecast.v3')).toContain('"forecast"');
+    expect(localStorage.getItem('tanomar.offline-forecast.v3')).toContain('"dataCompleteness"');
     expect(
       screen.getByRole('button', { name: /Previsão salva neste aparelho/ }),
     ).toBeInTheDocument();
@@ -201,22 +224,47 @@ describe('HomePage', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('mostra a idade da cópia offline pela dataUpdatedAt, não pelo savedAt', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-07T12:00:00-03:00'));
+    forecastState.error = true;
+    localStorage.setItem(
+      'tanomar.offline-forecast.v3',
+      JSON.stringify({
+        savedAt: '2026-09-01T12:00:00-03:00',
+        forecast: forecastWithDataUpdatedAt('2026-09-07T10:00:00-03:00'),
+      }),
+    );
+
+    try {
+      renderWithProviders(<HomePage />);
+
+      expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
+      expect(screen.getAllByText('Confiança na última atualização: Alta').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Dados atualizados há 2 horas').length).toBeGreaterThan(0);
+      expect(screen.queryByText('Dados atualizados há 6 dias')).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('usa a previsão salva offline para o Premium quando a API falha', async () => {
     forecastState.error = true;
     localStorage.setItem(
-      'tanomar.offline-forecast.v2',
+      'tanomar.offline-forecast.v3',
       JSON.stringify({ forecast: forecastFixture }),
     );
     renderWithProviders(<HomePage />);
 
     expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
     expect(screen.getByText(/Exibindo a última previsão salva neste aparelho/)).toBeInTheDocument();
+    expect(screen.getAllByText('Confiança na última atualização: Alta').length).toBeGreaterThan(0);
   });
 
   it('usa a previsão salva offline para o Premium enquanto a API ainda não responde', async () => {
     forecastState.pending = true;
     localStorage.setItem(
-      'tanomar.offline-forecast.v2',
+      'tanomar.offline-forecast.v3',
       JSON.stringify({ forecast: forecastFixture }),
     );
     renderWithProviders(<HomePage />);
@@ -229,7 +277,7 @@ describe('HomePage', () => {
     authState.planCode = 'free';
     forecastState.error = true;
     localStorage.setItem(
-      'tanomar.offline-forecast.v2',
+      'tanomar.offline-forecast.v3',
       JSON.stringify({ forecast: forecastFixture }),
     );
     renderWithProviders(<HomePage />);
@@ -276,6 +324,20 @@ describe('HomePage', () => {
       'href',
       '/ranking?data=2026-09-05',
     );
+  });
+
+  it('mostra confiança sem substituir a nota da melhor escolha', async () => {
+    renderWithProviders(<HomePage />);
+
+    const heading = await screen.findByRole('heading', { name: 'Pântano do Sul' });
+    const card = heading.closest('article');
+    expect(card).toBeTruthy();
+    if (!card) return;
+    expect(within(card).getByLabelText('Nota 9,1 de 10, Excelente')).toBeInTheDocument();
+    expect(within(card).getByText('Melhor escolha')).toBeInTheDocument();
+    expect(within(card).getByText('Confiança alta')).toBeInTheDocument();
+    expect(within(card).queryByText(/Confiança na última atualização/)).not.toBeInTheDocument();
+    expect(within(card).queryByText(/Dados atualizados há/)).not.toBeInTheDocument();
   });
 
   it('mostra somente os indicadores escolhidos pelo usuário Premium', async () => {

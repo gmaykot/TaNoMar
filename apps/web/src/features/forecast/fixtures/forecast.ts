@@ -3,6 +3,7 @@ import type {
   FishingForecast,
   FishingMetric,
   ForecastHourWindow,
+  ForecastQuality,
   ForecastRankingItem,
 } from '@/features/fishing/types/fishing';
 import { locationsFixture } from '@/features/locations/fixtures/locations';
@@ -17,6 +18,13 @@ interface ForecastSeed {
   wave: string;
   rain: string;
 }
+
+export const forecastQualityFixture: ForecastQuality = {
+  dataCompleteness: { validHours: 16, expectedHours: 16, ratio: 1 },
+  confidence: { level: 'high', reasons: [] },
+  dataUpdatedAt: '2026-09-05T08:00:00-03:00',
+  evaluatedAt: '2026-09-05T08:00:00-03:00',
+};
 
 function metrics(seed: ForecastSeed, index: number): FishingMetric[] {
   return [
@@ -72,6 +80,7 @@ function ranking(seeds: ForecastSeed[]): ForecastRankingItem[] {
       windOrigin: index % 2 ? 'mar' : 'terra',
       highlights: index === 0 ? ['Vento leve', 'Pouca chance de chuva'] : ['Vento leve'],
       metrics: metrics(seed, index),
+      quality: forecastQualityFixture,
     };
   });
 }

@@ -161,6 +161,7 @@ export function RankingPage() {
                 visibleMetricKeys={visibleMetricKeys}
                 windUnit={auth.user?.preferences.windUnit}
                 showFishingScore={presentation.showFishingScore}
+                qualitySource={useOffline ? 'offline' : 'live'}
               />
             );
           }

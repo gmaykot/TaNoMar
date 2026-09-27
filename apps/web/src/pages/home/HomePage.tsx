@@ -156,6 +156,7 @@ export function HomePage() {
                 visibleMetricKeys={visibleMetricKeys}
                 windUnit={auth.user?.preferences.windUnit}
                 showFishingScore={presentation.showFishingScore}
+                qualitySource={useOffline ? 'offline' : 'live'}
               />
               {secondaryRankingLimit > 0 && day.ranking.length > 1 ? (
                 <section className={styles.section} aria-labelledby={`ranking-${day.date}`}>
@@ -176,6 +177,7 @@ export function HomePage() {
                     visibleMetricKeys={visibleMetricKeys}
                     windUnit={auth.user?.preferences.windUnit}
                     showFishingScore={presentation.showFishingScore}
+                    qualitySource={useOffline ? 'offline' : 'live'}
                   />
                 </section>
               ) : null}

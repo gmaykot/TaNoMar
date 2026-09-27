@@ -122,4 +122,99 @@ describe('ForecastRecommendation', () => {
     expect(panel.queryByText(/25%/)).not.toBeInTheDocument();
     expect(panel.getByText(/não entram na nota/)).toBeInTheDocument();
   });
+
+  it('mantém a classificação da nota independente da confiança baixa', () => {
+    const forecast = forecastFixture.days[0]?.ranking[0];
+    if (!forecast) throw new Error('fixture de ranking ausente');
+    render(
+      <ForecastRecommendation
+        forecast={{
+          ...forecast,
+          score: 9.2,
+          classification: 'excellent',
+          quality: {
+            ...forecast.quality!,
+            dataCompleteness: { validHours: 4, expectedHours: 16, ratio: 0.25 },
+            confidence: { level: 'low', reasons: ['sparse_hour_coverage'] },
+          },
+        }}
+        variant="detail"
+        dayLabel="Hoje · 05/09"
+        showFishingScore
+        selectedHour="05:30"
+        onHourSelect={() => undefined}
+      />,
+    );
+
+    expect(screen.getByText('Excelente')).toBeInTheDocument();
+    expect(screen.getByLabelText('Nota 9,2 de 10, Excelente')).toBeInTheDocument();
+    expect(screen.getByText('Confiança baixa')).toBeInTheDocument();
+    expect(screen.getByText('4 de 16 horários com dados completos')).toBeInTheDocument();
+  });
+
+  it('mostra confiança alta com nota baixa sem reclassificar', () => {
+    const forecast = forecastFixture.days[0]?.ranking[0];
+    if (!forecast) throw new Error('fixture de ranking ausente');
+    render(
+      <ForecastRecommendation
+        forecast={{
+          ...forecast,
+          score: 3.1,
+          classification: 'difficult',
+          quality: forecast.quality,
+        }}
+        variant="detail"
+        dayLabel="Hoje · 05/09"
+        showFishingScore
+        selectedHour="05:30"
+        onHourSelect={() => undefined}
+      />,
+    );
+
+    expect(screen.getByText('Difícil')).toBeInTheDocument();
+    expect(screen.getByLabelText('Nota 3,1 de 10, Difícil')).toBeInTheDocument();
+    expect(screen.getByText('Confiança alta')).toBeInTheDocument();
+  });
+
+  it('preserva score real zero com confiança alta', () => {
+    const forecast = forecastFixture.days[0]?.ranking[0];
+    if (!forecast) throw new Error('fixture de ranking ausente');
+    render(
+      <ForecastRecommendation
+        forecast={{ ...forecast, score: 0, classification: 'difficult', quality: forecast.quality }}
+        variant="detail"
+        dayLabel="Hoje · 05/09"
+        showFishingScore
+        selectedHour="05:30"
+        onHourSelect={() => undefined}
+      />,
+    );
+
+    expect(screen.getByLabelText('Nota 0,0 de 10, Difícil')).toBeInTheDocument();
+    expect(screen.getByText('Confiança alta')).toBeInTheDocument();
+  });
+
+  it('não inventa confiança para previsão indisponível', () => {
+    const forecast = forecastFixture.days[0]?.ranking[0];
+    if (!forecast) throw new Error('fixture de ranking ausente');
+    render(
+      <ForecastRecommendation
+        forecast={{
+          ...forecast,
+          score: null,
+          classification: undefined,
+          availability: 'unavailable',
+          quality: undefined,
+          bestHours: [],
+          hourWindows: [],
+        }}
+        variant="detail"
+        dayLabel="Hoje · 05/09"
+        showFishingScore
+      />,
+    );
+
+    expect(screen.getAllByText('Previsão indisponível').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Confiança/)).not.toBeInTheDocument();
+  });
 });

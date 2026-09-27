@@ -108,6 +108,28 @@ export interface WireBestHourWindow {
   pressure?: WireMetric<string>;
 }
 
+export type WireForecastConfidenceLevel = 'high' | 'medium' | 'low';
+
+export type WireForecastConfidenceReason =
+  | 'limited_hour_coverage'
+  | 'sparse_hour_coverage'
+  | 'snapshot_refresh_due'
+  | 'stale_snapshot';
+
+export interface WireForecastQuality {
+  dataCompleteness: {
+    validHours: number;
+    expectedHours: number;
+    ratio: number;
+  };
+  confidence: {
+    level: WireForecastConfidenceLevel;
+    reasons: WireForecastConfidenceReason[];
+  };
+  dataUpdatedAt: string;
+  evaluatedAt: string;
+}
+
 export interface WireForecastItem {
   spotId: string;
   spotName: string;
@@ -131,6 +153,8 @@ export interface WireForecastItem {
   airTemperature: WireMetric<string>;
   waterTemperature: WireMetric<string>;
   pressure?: WireMetric<string>;
+  /** Item disponível exige quality válida; o guard rejeita null/inválido sem default. */
+  quality: WireForecastQuality;
 }
 
 export interface WireForecastDay {

@@ -12,6 +12,13 @@ function locked() {
   return { state: 'locked' as const, reason: 'plan_required', requiredPlan: 'Assinatura' };
 }
 
+const quality = {
+  dataCompleteness: { validHours: 16, expectedHours: 16, ratio: 1 },
+  confidence: { level: 'high' as const, reasons: [] as string[] },
+  dataUpdatedAt: '2026-09-05T11:00:00Z',
+  evaluatedAt: '2026-09-05T12:00:00Z',
+};
+
 const rankingWire = {
   generatedAt: '2026-09-05T11:00:00Z',
   availableFrom: '2026-09-05',
@@ -43,6 +50,7 @@ const rankingWire = {
           rain: available('0.0 mm (10%)'),
           airTemperature: available('22.0 °C'),
           waterTemperature: locked(),
+          quality,
         },
       ],
     },
@@ -64,6 +72,7 @@ const rankingWire = {
           rain: available('0.2 mm (20%)'),
           airTemperature: available('21.0 °C'),
           waterTemperature: available('20.0 °C'),
+          quality,
         },
       ],
     },
@@ -85,6 +94,7 @@ const rankingWire = {
           rain: available('1.0 mm (40%)'),
           airTemperature: available('20.0 °C'),
           waterTemperature: available('19.0 °C'),
+          quality,
         },
       ],
     },
@@ -109,6 +119,12 @@ describe('forecastMapper', () => {
       metricsHour: '05:00',
       windOrigin: 'terra',
       scoreBreakdown: 'Nota pela média das 3 melhores horas.',
+      quality: {
+        dataCompleteness: { validHours: 16, expectedHours: 16, ratio: 1 },
+        confidence: { level: 'high', reasons: [] },
+        dataUpdatedAt: '2026-09-05T11:00:00Z',
+        evaluatedAt: '2026-09-05T12:00:00Z',
+      },
     });
     expect(forecast.days[1]?.ranking[0]).toMatchObject({ isOwner: false, visibility: 'official' });
     expect(forecast.days[1]?.ranking[0]?.scoreBreakdown).toBe('');
@@ -371,5 +387,72 @@ describe('forecastMapper', () => {
       attribution: 'Tábua de Florianópolis. Fonte: Marinha (Tábua de Maré API).',
     });
     expect(marine.tide.extremes).toHaveLength(2);
+  });
+
+  it('preserva completeness 3/16 sem recalcular confiança', () => {
+    const item = mapForecastItem(
+      parseRankingForecast({
+        ...rankingWire,
+        days: [
+          {
+            date: '2026-09-05',
+            unavailableSpotIds: [],
+            ranking: [
+              {
+                ...rankingWire.days[0]!.ranking[0],
+                score: available(0),
+                classification: available('Difícil'),
+                quality: {
+                  dataCompleteness: { validHours: 3, expectedHours: 16, ratio: 0.1875 },
+                  confidence: {
+                    level: 'low',
+                    reasons: ['sparse_hour_coverage', 'stale_snapshot'],
+                  },
+                  dataUpdatedAt: '2026-09-27T12:00:00+00:00',
+                  evaluatedAt: '2026-09-27T13:00:00+00:00',
+                },
+              },
+            ],
+          },
+        ],
+      }).days[0]!.ranking[0]!,
+    );
+
+    expect(item.score).toBe(0);
+    expect(item.classification).toBe('difficult');
+    expect(item.quality).toEqual({
+      dataCompleteness: { validHours: 3, expectedHours: 16, ratio: 0.1875 },
+      confidence: { level: 'low', reasons: ['sparse_hour_coverage', 'stale_snapshot'] },
+      dataUpdatedAt: '2026-09-27T12:00:00+00:00',
+      evaluatedAt: '2026-09-27T13:00:00+00:00',
+    });
+  });
+
+  it('preserva score real zero com quality High', () => {
+    const item = mapForecastItem(
+      parseRankingForecast({
+        ...rankingWire,
+        days: [
+          {
+            date: '2026-09-05',
+            unavailableSpotIds: [],
+            ranking: [
+              {
+                ...rankingWire.days[0]!.ranking[0],
+                score: available(0),
+                classification: available('Difícil'),
+                quality: {
+                  ...quality,
+                  confidence: { level: 'high', reasons: [] },
+                },
+              },
+            ],
+          },
+        ],
+      }).days[0]!.ranking[0]!,
+    );
+
+    expect(item.score).toBe(0);
+    expect(item.quality?.confidence.level).toBe('high');
   });
 });

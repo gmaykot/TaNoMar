@@ -36,6 +36,32 @@ export type ForecastRankingEmphasis =
 
 export type WindOrigin = 'terra' | 'mar' | 'cruzado';
 
+export type ForecastConfidenceLevel = 'high' | 'medium' | 'low';
+
+export type ForecastConfidenceReason =
+  | 'limited_hour_coverage'
+  | 'sparse_hour_coverage'
+  | 'snapshot_refresh_due'
+  | 'stale_snapshot';
+
+export interface ForecastDataCompleteness {
+  validHours: number;
+  expectedHours: number;
+  ratio: number;
+}
+
+export interface ForecastConfidence {
+  level: ForecastConfidenceLevel;
+  reasons: ForecastConfidenceReason[];
+}
+
+export interface ForecastQuality {
+  dataCompleteness: ForecastDataCompleteness;
+  confidence: ForecastConfidence;
+  dataUpdatedAt: string;
+  evaluatedAt: string;
+}
+
 export interface ForecastHourWindow {
   time: string;
   score: number;
@@ -65,6 +91,7 @@ export interface ForecastRankingItem {
   isOwner: boolean;
   isFavorite: boolean;
   visibility: 'official' | 'shared' | 'private';
+  quality?: ForecastQuality;
 }
 
 export interface ForecastDay {

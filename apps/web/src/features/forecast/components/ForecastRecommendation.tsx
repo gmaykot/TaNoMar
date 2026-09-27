@@ -8,6 +8,7 @@ import {
   forecastScoreNote,
 } from '@/features/fishing/utils/scoreBreakdown';
 import { LocationStampFor } from '@/features/locations/components/LocationStamp';
+import { ForecastConfidenceIndicator } from './ForecastConfidenceIndicator';
 import styles from './forecast.module.css';
 
 interface ForecastRecommendationProps {
@@ -17,6 +18,7 @@ interface ForecastRecommendationProps {
   showFishingScore: boolean;
   selectedHour?: string | null;
   onHourSelect?: (hour: string) => void;
+  qualitySource?: 'live' | 'offline';
 }
 
 export function ForecastRecommendation({
@@ -26,6 +28,7 @@ export function ForecastRecommendation({
   showFishingScore,
   selectedHour,
   onHourSelect,
+  qualitySource = 'live',
 }: ForecastRecommendationProps) {
   const hours = (
     forecast.hourWindows.length > 0
@@ -73,6 +76,14 @@ export function ForecastRecommendation({
             />
           ) : null}
         </div>
+        {forecast.quality ? (
+          <ForecastConfidenceIndicator
+            quality={forecast.quality}
+            variant="compact"
+            source={qualitySource}
+            surface="hero"
+          />
+        ) : null}
       </>
     );
 
@@ -100,6 +111,13 @@ export function ForecastRecommendation({
           />
         ) : null}
       </div>
+      {forecast.quality ? (
+        <ForecastConfidenceIndicator
+          quality={forecast.quality}
+          variant="detail"
+          source={qualitySource}
+        />
+      ) : null}
       {hours.length > 0 ? (
         <div className={styles.hourSelector} role="group" aria-label="Horários recomendados">
           {hours.map((hour) => {

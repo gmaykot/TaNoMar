@@ -555,6 +555,7 @@ api.MapGet("/admin/fishing-audit", async (
     ClaimsPrincipal principal,
     TaNoMarDbContext db,
     FishingForecastService fishing,
+    FishingForecastCache forecastCache,
     CancellationToken cancellationToken) =>
 {
     var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
@@ -594,6 +595,16 @@ api.MapGet("/admin/fishing-audit", async (
         return Results.BadRequest(new { detail = "A data deve estar entre hoje e os próximos 7 dias ou o snapshot está inválido." });
 
     var report = sourceReport ?? FishingForecastAudit.Run(location, forecast ?? snapshotForecast!);
+    var auditEvaluatedAt = DateTimeOffset.UtcNow;
+    var snapshotQuality = snapshot is not null && snapshotForecast is not null
+        ? FishingForecastAudit.SnapshotQuality(
+            snapshotForecast,
+            snapshot.CreatedAt,
+            snapshot.ExpiresAt,
+            forecastCache.RefreshAfter,
+            forecastCache.MaxStale,
+            auditEvaluatedAt)
+        : null;
     return Results.Ok(new
     {
         audit = report,
@@ -606,7 +617,8 @@ api.MapGet("/admin/fishing-audit", async (
                 snapshot.ExpiresAt,
                 PayloadSize = snapshot.PayloadJson.Length,
                 DataQualityVersion = snapshotForecast?.DataQualityVersion,
-                QualityState = FishingForecastDataQuality.State(snapshotForecast?.DataQualityVersion).ToString()
+                QualityState = FishingForecastDataQuality.State(snapshotForecast?.DataQualityVersion).ToString(),
+                Quality = snapshotQuality
             }
     });
 }).RequireAuthorization();
@@ -1290,14 +1302,15 @@ api.MapGet("/forecasts/ranking", async (string? emphasis, ClaimsPrincipal princi
     var visibilities = SpotVisibilities(visibleSpots);
     var days = new List<object>();
     var forecasts = new List<FishingForecast>();
+    var qualityEvaluatedAt = DateTimeOffset.UtcNow;
     for (var day = 0; day < plan.MaxForecastDays; day++)
     {
         var forecast = ApplyIdealWindSettings(await fishing.GetAsync(day, cancellationToken, user.Id, enabledSlugs), visibleSpots, idealWindSettings);
         forecasts.Add(forecast);
         var ordered = forecast with { Ranking = FishingRankingEmphasis.Order(forecast.Ranking, parsedEmphasis) };
-        days.Add(ForecastDayDto(ordered, plan.CanMarine, plan.BestHoursMode, ownerSlugs, visibilities));
+        days.Add(FishingForecastPublicDto.Day(ordered, qualityEvaluatedAt, plan.CanMarine, plan.BestHoursMode, ownerSlugs, visibilities));
     }
-    return Results.Ok(new { generatedAt = DateTimeOffset.UtcNow, availableFrom = DateOnly.FromDateTime(DateTime.UtcNow), availableTo = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(plan.MaxForecastDays - 1)), refresh = ForecastRefreshDto(forecasts, forecastQueue.Snapshot(enabledSlugs)), days });
+    return Results.Ok(new { generatedAt = qualityEvaluatedAt, availableFrom = DateOnly.FromDateTime(DateTime.UtcNow), availableTo = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(plan.MaxForecastDays - 1)), refresh = ForecastRefreshDto(forecasts, forecastQueue.Snapshot(enabledSlugs)), days });
 }).RequireAuthorization();
 
 api.MapGet("/admin/workers", async (ClaimsPrincipal principal, TaNoMarDbContext db, WorkerSettingsService workerSettings, CancellationToken cancellationToken) =>
@@ -1362,12 +1375,13 @@ api.MapGet("/fishing-spots/{id}/forecast", async (string id, ClaimsPrincipal pri
     var result = new List<object>();
     var forecasts = new List<FishingForecast>();
     var onlySpot = new HashSet<string>(StringComparer.Ordinal) { spot.Slug };
+    var qualityEvaluatedAt = DateTimeOffset.UtcNow;
     for (var day = 0; day < plan.MaxForecastDays; day++)
     {
         var forecast = await fishing.GetAsync(day, cancellationToken, user.Id, onlySpot);
         forecasts.Add(forecast);
         var filtered = FishingForecastAvailability.FilterRanking(forecast with { Ranking = forecast.Ranking.Where(item => item.Id == spot.Slug).Select(item => FishingWindPreference.Apply(item, idealWindDirection, spot.SeaOrientationDegrees, spot.Profile)).ToList() });
-        result.Add(ForecastDayDto(filtered, plan.CanMarine, plan.BestHoursMode, OwnerSpotIds([spot], user), SpotVisibilities([spot]), includeSelectableHours: true));
+        result.Add(FishingForecastPublicDto.Day(filtered, qualityEvaluatedAt, plan.CanMarine, plan.BestHoursMode, OwnerSpotIds([spot], user), SpotVisibilities([spot]), includeSelectableHours: true));
     }
     return Results.Ok(new { spotId = spot.Slug, refresh = ForecastRefreshDto(forecasts, forecastQueue.Snapshot(onlySpot)), days = result });
 }).RequireAuthorization();
@@ -1603,7 +1617,8 @@ api.MapDelete("/notifications/{id:guid}", async (Guid id, ClaimsPrincipal princi
 api.MapGet("/public/offline-forecast", async (FishingForecastService fishing, HttpContext context, CancellationToken cancellationToken) =>
 {
     context.Response.Headers.CacheControl = "public, max-age=3600";
-    return Results.Ok(ForecastDayDto(await fishing.GetAsync(0, cancellationToken), false, PlanRules.DefaultBestHoursMode));
+    var qualityEvaluatedAt = DateTimeOffset.UtcNow;
+    return Results.Ok(FishingForecastPublicDto.Day(await fishing.GetAsync(0, cancellationToken), qualityEvaluatedAt, false, PlanRules.DefaultBestHoursMode));
 });
 
 app.MapFallbackToFile("index.html");
@@ -2100,7 +2115,6 @@ static Dictionary<string, string> SpotVisibilities(IEnumerable<FishingSpot> spot
     spots.ToDictionary(spot => spot.Slug, spot => spot.Visibility, StringComparer.Ordinal);
 static Task<HashSet<string>> OwnerSpotSlugsAsync(TaNoMarDbContext db, Guid userId, CancellationToken cancellationToken) =>
     db.FishingSpots.AsNoTracking().Where(spot => spot.OwnerUserId == userId).Select(spot => spot.Slug).ToHashSetAsync(StringComparer.Ordinal, cancellationToken);
-static object ForecastDayDto(FishingForecast forecast, bool paid, string bestHoursMode, HashSet<string>? ownerSpotIds = null, IReadOnlyDictionary<string, string>? visibilities = null, bool includeSelectableHours = false) => new { date = forecast.Date, ranking = forecast.Ranking.Select(item => ForecastItemDto(item, paid, bestHoursMode, ownerSpotIds, visibilities, includeSelectableHours)).ToList(), unavailableSpotIds = forecast.Errors.Select(error => error.Location).Distinct(StringComparer.Ordinal).ToList() };
 static object ForecastRefreshDto(IEnumerable<FishingForecast> forecasts, ForecastRefreshSnapshot snapshot)
 {
     var items = forecasts.ToList();
@@ -2250,47 +2264,6 @@ static object TideTable(
         }
     };
 }
-static object ForecastItemDto(FishingLocationForecast item, bool paid, string bestHoursMode, HashSet<string>? ownerSpotIds = null, IReadOnlyDictionary<string, string>? visibilities = null, bool includeSelectableHours = false)
-{
-    if (!FishingForecastAvailability.IsDailyScoreAvailable(item))
-        throw new InvalidOperationException("An unavailable daily score cannot be mapped to the public DTO.");
-    var hour = item.BestHour;
-    var bestHours = item.BestHours.Take(PlanRules.BestHourCount(bestHoursMode) ?? 3).ToArray();
-    object Available(object value) => new { state = "available", value };
-    object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = PlanRules.RequiredPlanLabel };
-    var score = item.Score!.Value;
-    var classification = ForecastHourWindowDto.Classification(score);
-    var highlights = ForecastHourWindowDto.Highlights(hour);
-    var windOrigin = string.IsNullOrEmpty(hour?.WindOrigin) ? null : hour.WindOrigin;
-    return new
-    {
-        spotId = item.Id,
-        spotName = item.Location,
-        isOwner = ownerSpotIds is not null && ownerSpotIds.Contains(item.Id),
-        visibility = visibilities is not null && visibilities.TryGetValue(item.Id, out var visibilityValue) ? visibilityValue : "official",
-        score = Available(score),
-        classification = Available(classification),
-        bestHours = Available(bestHours.Select(best => best.Time).ToArray()),
-        bestHourWindows = Available(bestHours.Select(best => ForecastHourWindowDto.Create(best, paid)).ToArray()),
-        selectableHourWindows = includeSelectableHours && PlanRules.CanSelectAnyHour(bestHoursMode)
-            ? Available(item.Hours.Where(candidate => candidate.Score is not null).Select(candidate => ForecastHourWindowDto.Create(candidate, paid)).ToArray())
-            : null,
-        metricsHour = hour?.Time,
-        windOrigin,
-        highlights,
-        wind = Available(hour?.WindSpeedKmh is not double windSpeed ? "n/d" : $"{FormatPt(windSpeed, "0.#")} km/h {hour.WindDirection}"),
-        gusts = Available(hour?.WindGustKmh is not double windGust ? "n/d" : FormatMeasure(windGust, "0.#", "km/h")),
-        waves = paid ? Available(hour?.WaveMeters is not double waveMeters ? "n/d" : FormatMeasure(waveMeters, "0.00", "m")) : Locked(),
-        waveDirection = string.IsNullOrEmpty(hour?.WaveDirection) ? null : hour.WaveDirection,
-        wavePeriod = paid ? Available(hour?.WavePeriodSeconds is not double wavePeriod ? "n/d" : FormatMeasure(wavePeriod, "0.#", "s")) : Locked(),
-        swell = paid ? Available(hour is null ? "n/d" : FormatMeasure(hour.SwellMeters, "0.00", "m")) : Locked(),
-        rain = Available(hour?.RainMm is not double rainMm || hour.RainProbability is not int rainProbability ? "n/d" : $"{FormatPt(rainMm, "0.#")} mm ({rainProbability}%)"),
-        airTemperature = Available(hour is null ? "n/d" : FormatMeasure(hour.AirTemperatureC, "0.#", "°C")),
-        waterTemperature = paid ? Available(hour is null ? "n/d" : FormatMeasure(hour.WaterTemperatureC, "0.#", "°C")) : Locked(),
-        pressure = paid ? Available(hour is null ? "n/d" : FormatMeasure(hour.PressureHpa, "0", "hPa")) : Locked()
-    };
-}
-
 static string FormatPt(double value, string format) => ForecastHourWindowDto.FormatPt(value, format);
 static string FormatMeasure(double value, string format, string unit) => ForecastHourWindowDto.FormatMeasure(value, format, unit);
 

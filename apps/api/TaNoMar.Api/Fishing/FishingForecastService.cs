@@ -52,6 +52,7 @@ internal sealed class FishingForecastService
         var targetDate = DateOnly.FromDateTime(now.DateTime).AddDays(day);
         var results = new List<FishingLocationForecast>();
         var errors = new List<FishingForecastError>();
+        var snapshotMetadata = new Dictionary<string, ForecastSnapshotMetadata>(StringComparer.Ordinal);
 
         if (onlySlugs is { Count: 0 })
             return new FishingForecast(now, targetDate, results, errors);
@@ -84,6 +85,7 @@ internal sealed class FishingForecastService
             cancellationToken);
         var dataUpdatedAt = new List<DateTimeOffset>();
         var hasStaleData = false;
+        var nowUtc = DateTimeOffset.UtcNow;
         foreach (var location in locations)
         {
             if (!cachedByLocation.TryGetValue(location.Id, out var cached))
@@ -93,7 +95,6 @@ internal sealed class FishingForecastService
                 continue;
             }
 
-            var nowUtc = DateTimeOffset.UtcNow;
             var stale = !cached.IsUsable(nowUtc) || cached.IsStale(_cache.RefreshAfter, nowUtc);
             if (stale)
                 _refreshQueue.Enqueue(location);
@@ -102,6 +103,7 @@ internal sealed class FishingForecastService
             hasStaleData |= stale;
             dataUpdatedAt.Add(cached.CreatedAt);
             results.Add(cached.Forecast);
+            snapshotMetadata[location.Id] = new ForecastSnapshotMetadata(cached.CreatedAt, cached.ExpiresAt);
         }
 
         return FishingForecastAvailability.FilterRanking(new FishingForecast(
@@ -110,7 +112,8 @@ internal sealed class FishingForecastService
             results.OrderByDescending(result => result.Score).ToList(),
             errors,
             dataUpdatedAt.Count > 0 ? dataUpdatedAt.Min() : null,
-            hasStaleData));
+            hasStaleData,
+            new ForecastQualityContext(snapshotMetadata, _cache.RefreshAfter, _cache.MaxStale)));
     }
 
     public DateOnly Today()

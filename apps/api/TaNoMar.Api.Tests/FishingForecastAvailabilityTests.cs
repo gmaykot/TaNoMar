@@ -94,6 +94,27 @@ public sealed class FishingForecastAvailabilityTests
         Assert.Equal(["available"], result.Select(item => item.Id));
     }
 
+    [Fact]
+    public void FilterRanking_preserves_runtime_quality_context()
+    {
+        var context = new ForecastQualityContext(
+            new Dictionary<string, ForecastSnapshotMetadata>(StringComparer.Ordinal)
+            {
+                ["first"] = new(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddHours(6))
+            },
+            TimeSpan.FromHours(3),
+            TimeSpan.FromHours(12));
+        var forecast = Forecast(Location("unavailable", null), Location("first", 8.4)) with
+        {
+            QualityContext = context
+        };
+
+        var result = FishingForecastAvailability.FilterRanking(forecast);
+
+        Assert.Same(context, result.QualityContext);
+        Assert.Equal(["first"], result.Ranking.Select(item => item.Id));
+    }
+
     private static FishingForecast Forecast(params FishingLocationForecast[] ranking)
         => new(DateTimeOffset.UtcNow, new DateOnly(2026, 9, 27), ranking, []);
 

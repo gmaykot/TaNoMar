@@ -2,6 +2,7 @@ import type {
   FishingClassification,
   FishingMetric,
   ForecastDay,
+  ForecastQuality,
   ForecastRankingItem,
 } from '@/features/fishing/types/fishing';
 
@@ -64,6 +65,13 @@ const spots: PreviewSpot[] = [
   },
 ];
 
+const landingPreviewQuality: ForecastQuality = {
+  dataCompleteness: { validHours: 16, expectedHours: 16, ratio: 1 },
+  confidence: { level: 'high', reasons: [] },
+  dataUpdatedAt: '2026-09-10T08:00:00-03:00',
+  evaluatedAt: '2026-09-10T08:00:00-03:00',
+};
+
 function metrics(spot: PreviewSpot, index: number): FishingMetric[] {
   return [
     { key: 'wind', label: 'Vento', value: spot.wind, detail: spot.windDetail },
@@ -96,6 +104,7 @@ function rankingItem(spot: PreviewSpot, index: number): ForecastRankingItem {
     isOwner: false,
     isFavorite: false,
     visibility: 'official',
+    quality: landingPreviewQuality,
   };
 }
 

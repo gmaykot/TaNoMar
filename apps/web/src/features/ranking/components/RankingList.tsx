@@ -6,6 +6,7 @@ import { Button } from '@/design-system/components/Button';
 import { Card } from '@/design-system/components/Card';
 import { ScoreIndicator } from '@/design-system/components/ScoreIndicator';
 import type { FishingMetricKey, ForecastRankingItem } from '@/features/fishing/types/fishing';
+import { ForecastConfidenceIndicator } from '@/features/forecast/components/ForecastConfidenceIndicator';
 import { MetricGrid } from '@/features/forecast/components/MetricGrid';
 import { formatWindMetric } from '@/features/forecast/utils/formatWindMetric';
 import {
@@ -29,6 +30,7 @@ interface RankingListProps {
   visibleMetricKeys?: FishingMetricKey[];
   windUnit?: string;
   showFishingScore?: boolean;
+  qualitySource?: 'live' | 'offline';
 }
 
 const emphasisIcons: Partial<Record<FishingMetricKey, typeof Wind>> = {
@@ -54,6 +56,7 @@ function RankingListView({
   visibleMetricKeys,
   windUnit,
   showFishingScore = true,
+  qualitySource = 'live',
 }: RankingListProps) {
   const [visibleCount, setVisibleCount] = useState(pageSize ?? items.length);
   const planCap = maxItems > 0 ? Math.min(maxItems, items.length) : items.length;
@@ -104,6 +107,14 @@ function RankingListView({
                       {formatHourLabel(best)}
                       {alternatives.length > 0 ? ` · ${formatHourList(alternatives)}` : ''}
                     </p>
+                  ) : null}
+                  {item.quality ? (
+                    <ForecastConfidenceIndicator
+                      quality={item.quality}
+                      variant="compact"
+                      source={qualitySource}
+                      surface="card"
+                    />
                   ) : null}
                   {showFishingScore ? (
                     <p className={styles.conditionSummary}>

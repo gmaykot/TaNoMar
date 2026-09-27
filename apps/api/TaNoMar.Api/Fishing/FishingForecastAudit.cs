@@ -4,6 +4,37 @@ namespace TaNoMar.Api.Fishing;
 
 internal static class FishingForecastAudit
 {
+    public static FishingForecastSnapshotQualityAudit SnapshotQuality(
+        FishingLocationForecast forecast,
+        DateTimeOffset createdAt,
+        DateTimeOffset expiresAt,
+        TimeSpan refreshAfter,
+        TimeSpan maxStale,
+        DateTimeOffset now)
+    {
+        var completeness = ScoringDataCompleteness.FromForecast(forecast);
+        var confidence = ForecastConfidence.Evaluate(
+            forecast,
+            createdAt,
+            expiresAt,
+            refreshAfter,
+            maxStale,
+            now);
+
+        return new FishingForecastSnapshotQualityAudit(
+            forecast.DataQualityVersion,
+            FishingForecastDataQuality.State(forecast.DataQualityVersion).ToString(),
+            createdAt,
+            expiresAt,
+            now - createdAt,
+            confidence?.FreshnessLevel.ToString(),
+            completeness.ValidHours,
+            completeness.ExpectedHours,
+            completeness.Ratio,
+            confidence?.Level.ToString(),
+            confidence?.Reasons ?? []);
+    }
+
     public static FishingForecastAuditReport Run(
         FishingLocation location,
         FishingLocationForecast forecast,
@@ -555,3 +586,16 @@ internal sealed record FishingForecastAuditFinding(
     string Severity,
     string Path,
     string Message);
+
+internal sealed record FishingForecastSnapshotQualityAudit(
+    int? DataQualityVersion,
+    string QualityState,
+    DateTimeOffset SnapshotCreatedAt,
+    DateTimeOffset SnapshotExpiresAt,
+    TimeSpan SnapshotAge,
+    string? FreshnessLevel,
+    int ValidHours,
+    int ExpectedHours,
+    double DataCompletenessRatio,
+    string? Confidence,
+    IReadOnlyList<string> ConfidenceReasons);

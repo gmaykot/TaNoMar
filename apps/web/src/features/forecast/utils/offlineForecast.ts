@@ -1,7 +1,8 @@
-import type { FishingForecast, ForecastRefresh } from '@/features/fishing/types/fishing';
+import { parseForecastQuality } from '@/features/fishing/mappers/wireGuards';
+import type { FishingForecast, ForecastRankingItem, ForecastRefresh } from '@/features/fishing/types/fishing';
 
-const legacyStorageKey = 'tanomar.offline-forecast.v1';
-const storageKey = 'tanomar.offline-forecast.v2';
+const legacyStorageKeys = ['tanomar.offline-forecast.v1', 'tanomar.offline-forecast.v2'] as const;
+export const offlineForecastStorageKey = 'tanomar.offline-forecast.v3';
 
 const freshRefresh = (): ForecastRefresh => ({
   state: 'fresh',
@@ -13,7 +14,7 @@ const freshRefresh = (): ForecastRefresh => ({
 export function saveOfflineForecast(forecast: FishingForecast) {
   try {
     localStorage.setItem(
-      storageKey,
+      offlineForecastStorageKey,
       JSON.stringify({ savedAt: new Date().toISOString(), forecast }),
     );
     return true;
@@ -24,12 +25,12 @@ export function saveOfflineForecast(forecast: FishingForecast) {
 
 export function readOfflineForecast(): FishingForecast | null {
   try {
-    localStorage.removeItem(legacyStorageKey);
-    const raw = localStorage.getItem(storageKey);
+    for (const key of legacyStorageKeys) localStorage.removeItem(key);
+    const raw = localStorage.getItem(offlineForecastStorageKey);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== 'object' || parsed === null || !('forecast' in parsed)) return null;
-    const forecast = parseOfflineForecast(parsed.forecast);
+    const forecast = parseOfflineForecast((parsed as { forecast: unknown }).forecast);
     if (!forecast) return null;
     return {
       ...forecast,
@@ -42,11 +43,6 @@ export function readOfflineForecast(): FishingForecast | null {
 
 function parseOfflineForecast(value: unknown): FishingForecast | null {
   if (!isOfflineForecast(value)) return null;
-  if (value.days.some((day) => {
-    if (typeof day !== 'object' || day === null) return true;
-    const item = day as { date?: unknown; ranking?: unknown; unavailableSpotIds?: unknown };
-    return typeof item.date !== 'string' || !Array.isArray(item.ranking);
-  })) return null;
   return value;
 }
 
@@ -58,29 +54,42 @@ function isOfflineForecast(value: unknown): value is FishingForecast {
     if (typeof day !== 'object' || day === null) return false;
     const item = day as { date?: unknown; ranking?: unknown };
     if (typeof item.date !== 'string' || !Array.isArray(item.ranking)) return false;
-    return item.ranking.every((rankingItem) => {
-      if (typeof rankingItem !== 'object' || rankingItem === null) return false;
-      const ranking = rankingItem as {
-        locationId?: unknown;
-        locationName?: unknown;
-        score?: unknown;
-        bestHours?: unknown;
-        metrics?: unknown;
-      };
-      return (
-        typeof ranking.locationId === 'string' &&
-        typeof ranking.locationName === 'string' &&
-        (typeof ranking.score === 'number' || ranking.score === null) &&
-        Array.isArray(ranking.bestHours) &&
-        Array.isArray(ranking.metrics)
-      );
-    });
+    return item.ranking.every((rankingItem) => isOfflineRankingItem(rankingItem));
   });
+}
+
+function isOfflineRankingItem(value: unknown): value is ForecastRankingItem {
+  if (typeof value !== 'object' || value === null) return false;
+  const ranking = value as {
+    locationId?: unknown;
+    locationName?: unknown;
+    score?: unknown;
+    bestHours?: unknown;
+    metrics?: unknown;
+    quality?: unknown;
+  };
+  if (
+    typeof ranking.locationId !== 'string' ||
+    typeof ranking.locationName !== 'string' ||
+    !Array.isArray(ranking.bestHours) ||
+    !Array.isArray(ranking.metrics)
+  ) {
+    return false;
+  }
+  if (ranking.score === null) return ranking.quality === undefined;
+  if (typeof ranking.score !== 'number' || !Number.isFinite(ranking.score)) return false;
+  try {
+    parseForecastQuality(ranking.quality);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function clearOfflineForecast() {
   try {
-    localStorage.removeItem(storageKey);
+    localStorage.removeItem(offlineForecastStorageKey);
+    for (const key of legacyStorageKeys) localStorage.removeItem(key);
   } catch {
     /* armazenamento indisponível */
   }

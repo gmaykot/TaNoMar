@@ -5,6 +5,8 @@ namespace TaNoMar.Api.Tests;
 
 public sealed class FishingForecastAuditTests
 {
+    private static readonly DateTimeOffset SnapshotCreatedAt = new(2026, 9, 27, 12, 0, 0, TimeSpan.Zero);
+
     [Fact]
     public void Passes_a_consistent_normalized_forecast_and_marks_raw_source_as_unavailable()
     {
@@ -152,6 +154,74 @@ public sealed class FishingForecastAuditTests
         Assert.Equal(0.8, source.Marine.WaveMeters);
     }
 
+    [Theory]
+    [InlineData(16, 1, "High", "High", 1.0)]
+    [InlineData(16, 4, "Medium", "Medium", 1.0)]
+    [InlineData(16, 8, "Low", "Low", 1.0)]
+    [InlineData(10, 1, "High", "Medium", 0.625)]
+    [InlineData(4, 8, "Low", "Low", 0.25)]
+    public void Snapshot_quality_audit_uses_real_metadata_and_completeness(
+        int validHours,
+        int ageHours,
+        string expectedFreshness,
+        string expectedConfidence,
+        double expectedRatio)
+    {
+        var forecast = ForecastWithHours(validHours);
+        var now = SnapshotCreatedAt.AddHours(ageHours);
+
+        var quality = FishingForecastAudit.SnapshotQuality(
+            forecast,
+            SnapshotCreatedAt,
+            SnapshotCreatedAt.AddHours(6),
+            TimeSpan.FromHours(3),
+            TimeSpan.FromHours(12),
+            now);
+
+        Assert.Equal(FishingForecastDataQuality.CurrentVersion, quality.DataQualityVersion);
+        Assert.Equal("Current", quality.QualityState);
+        Assert.Equal(SnapshotCreatedAt, quality.SnapshotCreatedAt);
+        Assert.Equal(SnapshotCreatedAt.AddHours(6), quality.SnapshotExpiresAt);
+        Assert.Equal(TimeSpan.FromHours(ageHours), quality.SnapshotAge);
+        Assert.Equal(expectedFreshness, quality.FreshnessLevel);
+        Assert.Equal(validHours, quality.ValidHours);
+        Assert.Equal(16, quality.ExpectedHours);
+        Assert.Equal(expectedRatio, quality.DataCompletenessRatio);
+        Assert.Equal(expectedConfidence, quality.Confidence);
+        if (validHours is >= 8 and <= 11)
+            Assert.Contains(ForecastConfidenceReasonCodes.LimitedHourCoverage, quality.ConfidenceReasons);
+        if (validHours is >= 3 and <= 7)
+            Assert.Contains(ForecastConfidenceReasonCodes.SparseHourCoverage, quality.ConfidenceReasons);
+        if (ageHours is >= 3 and < 6)
+            Assert.Contains(ForecastConfidenceReasonCodes.SnapshotRefreshDue, quality.ConfidenceReasons);
+        if (ageHours >= 6)
+            Assert.Contains(ForecastConfidenceReasonCodes.StaleSnapshot, quality.ConfidenceReasons);
+    }
+
+    [Theory]
+    [InlineData(null, "Legacy")]
+    [InlineData(999, "Incompatible")]
+    public void Snapshot_quality_audit_does_not_assign_confidence_to_non_current_data(
+        int? version,
+        string expectedState)
+    {
+        var forecast = ForecastWithHours(16) with { DataQualityVersion = version };
+
+        var quality = FishingForecastAudit.SnapshotQuality(
+            forecast,
+            SnapshotCreatedAt,
+            SnapshotCreatedAt.AddHours(6),
+            TimeSpan.FromHours(3),
+            TimeSpan.FromHours(12),
+            SnapshotCreatedAt.AddHours(1));
+
+        Assert.Equal(expectedState, quality.QualityState);
+        Assert.Null(quality.FreshnessLevel);
+        Assert.Null(quality.Confidence);
+        Assert.Empty(quality.ConfidenceReasons);
+        Assert.Equal(16, quality.ValidHours);
+    }
+
     private static FishingLocation Location() => new()
     {
         Id = "praia-teste",
@@ -161,6 +231,23 @@ public sealed class FishingForecastAuditTests
         SeaOrientationDegrees = 90,
         Profile = "praia_aberta"
     };
+
+    private static FishingLocationForecast ForecastWithHours(int validHours)
+    {
+        var hours = Enumerable.Range(0, validHours)
+            .Select(index => Hour($"{index + 5:00}:00", 8))
+            .ToArray();
+        var bestHours = hours.Take(3).ToArray();
+        return new FishingLocationForecast(
+            "audit-quality",
+            "Audit quality",
+            new DateOnly(2026, 9, 27),
+            validHours >= 3 ? 8 : null,
+            validHours >= 3 ? bestHours : [],
+            validHours >= 3 ? bestHours.FirstOrDefault() : null,
+            hours,
+            DataQualityVersion: FishingForecastDataQuality.CurrentVersion);
+    }
 
     private static FishingHourForecast Hour(string time, double score) => new(
         time,

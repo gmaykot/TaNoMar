@@ -24,6 +24,12 @@ const rankingWire = {
           rain: { state: 'available', value: '0.0 mm (10%)' },
           airTemperature: { state: 'available', value: '22.0 °C' },
           waterTemperature: { state: 'locked', reason: 'plan_required', requiredPlan: 'Premium' },
+          quality: {
+            dataCompleteness: { validHours: 16, expectedHours: 16, ratio: 1 },
+            confidence: { level: 'high', reasons: [] },
+            dataUpdatedAt: '2026-09-05T11:00:00Z',
+            evaluatedAt: '2026-09-05T12:00:00Z',
+          },
         },
       ],
     },

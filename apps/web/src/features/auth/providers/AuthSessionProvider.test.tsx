@@ -138,7 +138,7 @@ describe('AuthSessionProvider offline', () => {
 
     expect(await screen.findByText('Tela de login')).toBeInTheDocument();
     expect(localStorage.getItem('tanomar.offline-session.v1')).toBeNull();
-    expect(localStorage.getItem('tanomar.offline-forecast.v2')).toBeNull();
+    expect(localStorage.getItem('tanomar.offline-forecast.v3')).toBeNull();
   });
 
   it('encerra a sessão local mesmo quando a desinscrição de push não conclui', async () => {
@@ -165,7 +165,7 @@ describe('AuthSessionProvider offline', () => {
 
     expect(await screen.findByText('Tela de login')).toBeInTheDocument();
     expect(localStorage.getItem('tanomar.offline-session.v1')).toBeNull();
-    expect(localStorage.getItem('tanomar.offline-forecast.v2')).toBeNull();
+    expect(localStorage.getItem('tanomar.offline-forecast.v3')).toBeNull();
   });
 
   it('segura a sessão no celular até a biometria confirmar', async () => {

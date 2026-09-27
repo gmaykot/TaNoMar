@@ -5,6 +5,28 @@ import { forecastFixture } from '@/features/forecast/fixtures/forecast';
 import { locationsFixture } from '@/features/locations/fixtures/locations';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { RankingPage } from './RankingPage';
+import type { FishingForecast } from '@/features/fishing/types/fishing';
+
+function forecastWithDataUpdatedAt(dataUpdatedAt: string): FishingForecast {
+  return {
+    ...forecastFixture,
+    days: forecastFixture.days.map((day) => ({
+      ...day,
+      ranking: day.ranking.map((item) =>
+        item.quality
+          ? {
+              ...item,
+              quality: {
+                ...item.quality,
+                dataUpdatedAt,
+                evaluatedAt: '2026-09-04T08:00:00-03:00',
+              },
+            }
+          : item,
+      ),
+    })),
+  };
+}
 
 const { getForecast, getLocations, authState } = vi.hoisted(() => ({
   getForecast: vi.fn(() => Promise.resolve(forecastFixture)),
@@ -72,7 +94,7 @@ describe('RankingPage', () => {
     getForecast.mockResolvedValue(forecastFixture);
     getLocations.mockReset();
     getLocations.mockResolvedValue(locationsFixture);
-    localStorage.removeItem('tanomar.offline-forecast.v2');
+    localStorage.removeItem('tanomar.offline-forecast.v3');
   });
 
   it('reordena o ranking quando a ênfase muda', async () => {
@@ -82,6 +104,9 @@ describe('RankingPage', () => {
     expect(
       await screen.findByRole('heading', { name: 'Os melhores locais, em ordem.' }),
     ).toBeInTheDocument();
+    expect(screen.getAllByText('Confiança alta').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Confiança na última atualização/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Dados atualizados há/)).not.toBeInTheDocument();
     expect(
       screen.getByRole('group', { name: 'Ênfase do ranking' }).closest('[data-snap-key]'),
     ).toBeNull();
@@ -371,22 +396,47 @@ describe('RankingPage', () => {
     expect(screen.queryByRole('button', { name: 'Mostrar mais' })).not.toBeInTheDocument();
   });
 
+  it('mostra a idade da cópia offline pela dataUpdatedAt, não pelo savedAt', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-07T12:00:00-03:00'));
+    getForecast.mockRejectedValue(new Error('offline'));
+    localStorage.setItem(
+      'tanomar.offline-forecast.v3',
+      JSON.stringify({
+        savedAt: '2026-09-01T12:00:00-03:00',
+        forecast: forecastWithDataUpdatedAt('2026-09-07T10:00:00-03:00'),
+      }),
+    );
+
+    try {
+      renderWithProviders(<RankingPage />, ['/ranking']);
+
+      expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
+      expect(screen.getAllByText('Confiança na última atualização: Alta').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Dados atualizados há 2 horas').length).toBeGreaterThan(0);
+      expect(screen.queryByText('Dados atualizados há 6 dias')).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('usa a previsão salva offline quando a API falha', async () => {
     getForecast.mockRejectedValue(new Error('offline'));
     localStorage.setItem(
-      'tanomar.offline-forecast.v2',
+      'tanomar.offline-forecast.v3',
       JSON.stringify({ forecast: forecastFixture }),
     );
     renderWithProviders(<RankingPage />, ['/ranking']);
 
     expect(await screen.findByRole('heading', { name: 'Pântano do Sul' })).toBeInTheDocument();
     expect(screen.getByText(/Exibindo a última previsão salva neste aparelho/)).toBeInTheDocument();
+    expect(screen.getAllByText('Confiança na última atualização: Alta').length).toBeGreaterThan(0);
   });
 
   it('usa a previsão salva offline enquanto a API ainda não responde', async () => {
     getForecast.mockImplementation(() => new Promise(() => undefined));
     localStorage.setItem(
-      'tanomar.offline-forecast.v2',
+      'tanomar.offline-forecast.v3',
       JSON.stringify({ forecast: forecastFixture }),
     );
     renderWithProviders(<RankingPage />, ['/ranking']);
@@ -399,7 +449,7 @@ describe('RankingPage', () => {
     authState.planCode = 'free';
     getForecast.mockRejectedValue(new Error('offline'));
     localStorage.setItem(
-      'tanomar.offline-forecast.v2',
+      'tanomar.offline-forecast.v3',
       JSON.stringify({ forecast: forecastFixture }),
     );
     renderWithProviders(<RankingPage />, ['/ranking']);

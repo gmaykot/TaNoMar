@@ -34,6 +34,7 @@ describe('ForecastPresentation summary', () => {
     expect(within(card).getByText('Ondas')).toBeInTheDocument();
     expect(within(card).getByText('Chuva')).toBeInTheDocument();
     expect(within(card).queryByText('Pressão')).not.toBeInTheDocument();
+    expect(within(card).getByText('Confiança alta')).toBeInTheDocument();
     expect(within(card).queryByRole('img', { name: /ao longo do dia/ })).not.toBeInTheDocument();
   });
 

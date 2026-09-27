@@ -19,7 +19,9 @@ Prefira props explícitas, arquivos pequenos e HTML semântico. Não crie `Helpe
 
 ## Dados
 
-- Não calcule score/classificação no frontend.
+- Não calcule score/classificação/confiança no frontend.
+- `quality` (cobertura, confiança e timestamps) é apresentada como veio da API; não invente High/Medium/Low, ratio ou datas. Item disponível sem `quality` válida é rejeitado.
+- Cache offline usa `tanomar.offline-forecast.v3`. Cópias `v1` e `v2` são descartadas, sem migração.
 - Não importe fixtures em páginas ou componentes.
 - Novos DTOs HTTP devem ficar separados dos modelos consumidos pela UI e passar por mapper explícito.
 - Valide o contrato da API nos mappers antes de expor dados à UI.

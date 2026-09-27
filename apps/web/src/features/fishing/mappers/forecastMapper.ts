@@ -4,6 +4,7 @@ import type {
   FishingLocation,
   AdminOfficialLocation,
   FishingMetric,
+  ForecastQuality,
   ForecastRefresh,
   ForecastDay,
   ForecastHourWindow,
@@ -190,6 +191,22 @@ function requireAvailable<T>(metric: WireMetric<T>, label: string) {
   return metric.value;
 }
 
+function mapForecastQuality(quality: WireForecastItem['quality']): ForecastQuality {
+  return {
+    dataCompleteness: {
+      validHours: quality.dataCompleteness.validHours,
+      expectedHours: quality.dataCompleteness.expectedHours,
+      ratio: quality.dataCompleteness.ratio,
+    },
+    confidence: {
+      level: quality.confidence.level,
+      reasons: [...quality.confidence.reasons],
+    },
+    dataUpdatedAt: quality.dataUpdatedAt,
+    evaluatedAt: quality.evaluatedAt,
+  };
+}
+
 export function mapForecastItem(item: WireForecastItem): ForecastRankingItem {
   const hours = requireAvailable(item.bestHours, 'Horários');
   const hourWindows = mapHourWindows(item);
@@ -224,6 +241,7 @@ export function mapForecastItem(item: WireForecastItem): ForecastRankingItem {
       mapMetric('air-temperature', 'Temperatura', item.airTemperature, 'Ar'),
       mapMetric('water-temperature', 'Água', item.waterTemperature),
     ],
+    quality: mapForecastQuality(item.quality),
   };
 }
 

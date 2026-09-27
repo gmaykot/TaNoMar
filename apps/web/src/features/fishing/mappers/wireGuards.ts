@@ -3,6 +3,7 @@ import type {
   WireBestHourWindow,
   WireForecastDay,
   WireForecastItem,
+  WireForecastQuality,
   WireForecastRefresh,
   WireLocationForecast,
   WireMarineDetails,
@@ -21,6 +22,15 @@ const forecastRefreshStates = new Set([
   'degraded',
   'unavailable',
   'stale',
+]);
+
+const forecastConfidenceLevels = new Set(['high', 'medium', 'low']);
+
+const forecastConfidenceReasons = new Set([
+  'limited_hour_coverage',
+  'sparse_hour_coverage',
+  'snapshot_refresh_due',
+  'stale_snapshot',
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -116,6 +126,66 @@ function parseWindOrigin(value: unknown) {
   return value === 'terra' || value === 'mar' || value === 'cruzado' ? value : null;
 }
 
+function parseInteger(value: unknown) {
+  return typeof value === 'number' && Number.isInteger(value) ? value : null;
+}
+
+function parseIsoDateTime(value: unknown) {
+  if (typeof value !== 'string' || value.trim() === '') return null;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : value;
+}
+
+export function parseForecastQuality(value: unknown): WireForecastQuality {
+  if (!isRecord(value)) throw new ContractError('Qualidade da previsão inválida.');
+  if (!isRecord(value.dataCompleteness)) {
+    throw new ContractError('Cobertura da previsão inválida.');
+  }
+  if (!isRecord(value.confidence)) {
+    throw new ContractError('Confiança da previsão inválida.');
+  }
+  const validHours = parseInteger(value.dataCompleteness.validHours);
+  const expectedHours = parseInteger(value.dataCompleteness.expectedHours);
+  const ratio = readNumber(value.dataCompleteness.ratio);
+  if (validHours === null || validHours < 0) {
+    throw new ContractError('Cobertura da previsão inválida.');
+  }
+  if (expectedHours === null || expectedHours <= 0 || validHours > expectedHours) {
+    throw new ContractError('Cobertura da previsão inválida.');
+  }
+  if (ratio === null || ratio < 0 || ratio > 1) {
+    throw new ContractError('Cobertura da previsão inválida.');
+  }
+  const level = readString(value.confidence.level);
+  if (!level || !forecastConfidenceLevels.has(level)) {
+    throw new ContractError('Nível de confiança inválido.');
+  }
+  if (!Array.isArray(value.confidence.reasons)) {
+    throw new ContractError('Motivos de confiança inválidos.');
+  }
+  const reasons = value.confidence.reasons.map((reason) => {
+    const parsed = readString(reason);
+    if (!parsed || !forecastConfidenceReasons.has(parsed)) {
+      throw new ContractError('Motivo de confiança desconhecido.');
+    }
+    return parsed as WireForecastQuality['confidence']['reasons'][number];
+  });
+  const dataUpdatedAt = parseIsoDateTime(value.dataUpdatedAt);
+  const evaluatedAt = parseIsoDateTime(value.evaluatedAt);
+  if (!dataUpdatedAt || !evaluatedAt) {
+    throw new ContractError('Instante da qualidade inválido.');
+  }
+  return {
+    dataCompleteness: { validHours, expectedHours, ratio },
+    confidence: {
+      level: level as WireForecastQuality['confidence']['level'],
+      reasons,
+    },
+    dataUpdatedAt,
+    evaluatedAt,
+  };
+}
+
 function parseForecastItem(value: unknown): WireForecastItem {
   if (!isRecord(value)) throw new ContractError('Item de ranking inválido.');
   const spotId = readString(value.spotId);
@@ -155,6 +225,7 @@ function parseForecastItem(value: unknown): WireForecastItem {
       value.pressure === undefined
         ? undefined
         : parseMetric(value.pressure, readString, 'pressure'),
+    quality: parseForecastQuality(value.quality),
   };
 }
 

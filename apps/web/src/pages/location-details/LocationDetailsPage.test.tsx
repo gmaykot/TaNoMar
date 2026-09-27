@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Route, Routes } from 'react-router-dom';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { saveTripPlan } from '@/features/diary/diaryStorage';
+import type { ForecastQuality } from '@/features/fishing/types/fishing';
 import { forecastFixture } from '@/features/forecast/fixtures/forecast';
 import { locationsFixture } from '@/features/locations/fixtures/locations';
-import { saveTripPlan } from '@/features/diary/diaryStorage';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { LocationDetailsPage } from './LocationDetailsPage';
 
@@ -128,7 +129,9 @@ vi.mock('@/features/forecast/services/forecastService', () => ({
           forecast: {
             ...forecast,
             metrics,
-            hourWindows: forecast.hourWindows.map((window, hourIndex) => {
+            hourWindows: locationForecastOverrides.unavailable
+              ? []
+              : forecast.hourWindows.map((window, hourIndex) => {
               const pressure = authState.includeForecastPressure
                 ? {
                     key: 'pressure' as const,
@@ -171,8 +174,17 @@ vi.mock('@/features/forecast/services/forecastService', () => ({
                   return metric;
                 }),
               };
-            }),
-            ...(authState.includeForecastPressure
+            }).map((window) =>
+              locationForecastOverrides.score === undefined
+                ? window
+                : {
+                    ...window,
+                    score: locationForecastOverrides.score,
+                    classification:
+                      locationForecastOverrides.classification ?? window.classification,
+                  },
+            ),
+            ...(authState.includeForecastPressure && !locationForecastOverrides.unavailable
               ? {
                   pressure: {
                     key: 'pressure' as const,
@@ -182,6 +194,25 @@ vi.mock('@/features/forecast/services/forecastService', () => ({
                   },
                 }
               : {}),
+            ...(locationForecastOverrides.unavailable
+              ? {
+                  score: null,
+                  classification: undefined,
+                  availability: 'unavailable' as const,
+                  quality: undefined,
+                  bestHours: [],
+                }
+              : {
+                  ...(locationForecastOverrides.score !== undefined
+                    ? { score: locationForecastOverrides.score }
+                    : {}),
+                  ...(locationForecastOverrides.classification
+                    ? { classification: locationForecastOverrides.classification }
+                    : {}),
+                  ...(locationForecastOverrides.quality
+                    ? { quality: locationForecastOverrides.quality }
+                    : {}),
+                }),
           },
         },
       ];
@@ -201,6 +232,13 @@ vi.mock('@/features/community/services/communityService', () => ({
 const { showSaveConfirmation, setIdealWind } = vi.hoisted(() => ({
   showSaveConfirmation: vi.fn(),
   setIdealWind: vi.fn(() => Promise.resolve()),
+}));
+
+const locationForecastOverrides = vi.hoisted(() => ({
+  unavailable: false,
+  score: undefined as number | null | undefined,
+  classification: undefined as 'excellent' | 'very-good' | 'regular' | 'difficult' | undefined,
+  quality: undefined as ForecastQuality | undefined,
 }));
 
 const authState = vi.hoisted(() => ({
@@ -322,6 +360,10 @@ describe('LocationDetailsPage', () => {
     localStorage.clear();
     showSaveConfirmation.mockClear();
     setIdealWind.mockClear();
+    locationForecastOverrides.unavailable = false;
+    locationForecastOverrides.score = undefined;
+    locationForecastOverrides.classification = undefined;
+    locationForecastOverrides.quality = undefined;
   });
 
   it('mostra estado amigável para local inexistente', async () => {
@@ -340,6 +382,8 @@ describe('LocationDetailsPage', () => {
     if (!card) return;
     expect(within(card).getByText('Hoje · 05/09')).toBeInTheDocument();
     expect(within(card).getByText('Excelente')).toBeInTheDocument();
+    expect(within(card).getByText('Confiança alta')).toBeInTheDocument();
+    expect(within(card).getByText('16 de 16 horários com dados completos')).toBeInTheDocument();
     expect(slide.getByRole('group', { name: 'Horários recomendados' })).toBeInTheDocument();
     expect(slide.getByText('Entenda a nota')).toBeInTheDocument();
     expect(slide.queryByText(/^Selecionado$/)).not.toBeInTheDocument();
@@ -444,8 +488,64 @@ describe('LocationDetailsPage', () => {
     expect(await screen.findByLabelText('Previsão por dia')).toBeInTheDocument();
     const slide = within(visibleDaySlide());
     expect(await slide.findByLabelText('Ondas bloqueado no plano atual')).toBeInTheDocument();
-
     expect(await slide.findByLabelText('Maré bloqueada no plano atual')).toBeInTheDocument();
+    expect(slide.getByText('Confiança alta')).toBeInTheDocument();
+  });
+
+  it('mostra confiança média com cobertura limitada', async () => {
+    locationForecastOverrides.quality = {
+      dataCompleteness: { validHours: 10, expectedHours: 16, ratio: 0.625 },
+      confidence: { level: 'medium', reasons: ['limited_hour_coverage'] },
+      dataUpdatedAt: '2026-09-05T08:00:00-03:00',
+      evaluatedAt: '2026-09-05T08:00:00-03:00',
+    };
+    renderLocation();
+
+    expect((await screen.findAllByText('Confiança média')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('10 de 16 horários com dados completos').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Parte dos horários está sem dados completos.').length).toBeGreaterThan(0);
+    expect(screen.getAllByLabelText('Nota 9,1 de 10, Excelente').length).toBeGreaterThan(0);
+  });
+
+  it('mostra confiança baixa, cobertura 3/16 e reasons combinadas', async () => {
+    locationForecastOverrides.quality = {
+      dataCompleteness: { validHours: 3, expectedHours: 16, ratio: 0.1875 },
+      confidence: {
+        level: 'low',
+        reasons: ['sparse_hour_coverage', 'stale_snapshot'],
+      },
+      dataUpdatedAt: '2026-09-05T08:00:00-03:00',
+      evaluatedAt: '2026-09-05T08:00:00-03:00',
+    };
+    renderLocation();
+
+    expect((await screen.findAllByText('Confiança baixa')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('3 de 16 horários com dados completos').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Poucos horários possuem dados completos.').length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText('A previsão está usando dados mais antigos que o normal.').length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText('sparse_hour_coverage')).not.toBeInTheDocument();
+    expect(screen.getAllByLabelText('Nota 9,1 de 10, Excelente').length).toBeGreaterThan(0);
+  });
+
+  it('preserva score real zero com confiança alta', async () => {
+    locationForecastOverrides.score = 0;
+    locationForecastOverrides.classification = 'difficult';
+    renderLocation();
+
+    expect((await screen.findAllByLabelText('Nota 0,0 de 10, Difícil')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Confiança alta').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('16 de 16 horários com dados completos').length).toBeGreaterThan(0);
+  });
+
+  it('não inventa confiança quando a previsão está indisponível', async () => {
+    locationForecastOverrides.unavailable = true;
+    renderLocation();
+
+    expect(await screen.findAllByText('Previsão indisponível')).not.toHaveLength(0);
+    expect(screen.queryByText(/Confiança/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Nota /)).not.toBeInTheDocument();
   });
 
   it('abre o drawer de planos ao favoritar sem cota', async () => {

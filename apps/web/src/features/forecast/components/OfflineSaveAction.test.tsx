@@ -12,7 +12,7 @@ vi.mock('@/app/layout/saveConfirmationEvents', () => ({ showSaveConfirmation }))
 
 describe('OfflineSaveAction', () => {
   beforeEach(() => {
-    localStorage.removeItem('tanomar.offline-forecast.v2');
+    localStorage.removeItem('tanomar.offline-forecast.v3');
     showSaveConfirmation.mockClear();
   });
 
@@ -27,13 +27,13 @@ describe('OfflineSaveAction', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'Salvar para usar offline?' });
     expect(dialog).toHaveTextContent('A previsão atual fica disponível sem internet neste aparelho');
-    expect(localStorage.getItem('tanomar.offline-forecast.v2')).toBeNull();
+    expect(localStorage.getItem('tanomar.offline-forecast.v3')).toBeNull();
 
     await user.click(within(dialog).getByRole('button', { name: 'Salvar offline' }));
 
     expect(onSaved).toHaveBeenCalledWith(forecastFixture);
     expect(showSaveConfirmation).toHaveBeenCalledWith('Previsão salva neste aparelho.');
-    expect(localStorage.getItem('tanomar.offline-forecast.v2')).toContain('"forecast"');
+    expect(localStorage.getItem('tanomar.offline-forecast.v3')).toContain('"forecast"');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
@@ -48,7 +48,7 @@ describe('OfflineSaveAction', () => {
     await user.click(screen.getByRole('button', { name: 'Cancelar' }));
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(localStorage.getItem('tanomar.offline-forecast.v2')).toBeNull();
+    expect(localStorage.getItem('tanomar.offline-forecast.v3')).toBeNull();
     expect(onSaved).not.toHaveBeenCalled();
     expect(showSaveConfirmation).not.toHaveBeenCalled();
   });
