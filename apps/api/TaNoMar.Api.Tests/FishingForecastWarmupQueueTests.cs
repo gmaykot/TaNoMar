@@ -71,6 +71,62 @@ public sealed class FishingForecastWarmupQueueTests
         Assert.Null(await TryReadTideAsync(harness.Tide));
     }
 
+    [Fact]
+    public async Task Legacy_snapshot_is_unavailable_for_ranking_and_requests_refresh()
+    {
+        using var harness = new WarmupHarness();
+        await harness.AddOfficialAsync("campeche");
+        await harness.SeedTodayAsync("campeche", createdHoursAgo: 1, dataQualityVersion: null);
+
+        var result = await harness.Fishing.GetAsync(0, CancellationToken.None);
+
+        Assert.Empty(result.Ranking);
+        Assert.Contains(result.Errors, error => error.Location == "campeche");
+        Assert.Equal(["campeche"], harness.Refresh.Snapshot(["campeche"]).PendingSpotIds);
+    }
+
+    [Fact]
+    public async Task Successful_refresh_replaces_legacy_snapshot_with_current_version()
+    {
+        using var harness = new WarmupHarness();
+        await harness.AddOfficialAsync("campeche");
+        await harness.SeedTodayAsync("campeche", createdHoursAgo: 1, dataQualityVersion: null);
+        harness.Http.UseSuccessfulForecast(harness.Fishing.Today());
+        var location = new FishingLocation
+        {
+            Id = "campeche", Name = "campeche", Latitude = -27.6, Longitude = -48.4,
+            SeaOrientationDegrees = 90, Profile = "praia_aberta"
+        };
+
+        var succeeded = await harness.Fishing.RefreshBatchAsync([location], CancellationToken.None);
+        var result = await harness.Fishing.GetAsync(0, CancellationToken.None);
+
+        Assert.Contains("campeche", succeeded);
+        Assert.Equal(FishingForecastDataQuality.CurrentVersion,
+            (await harness.Cache.TryGetAvailableAsync("campeche", harness.Fishing.Today(), CancellationToken.None))
+                ?.Forecast.DataQualityVersion);
+        Assert.Equal("campeche", Assert.Single(result.Ranking).Id);
+    }
+
+    [Fact]
+    public async Task Failed_refresh_does_not_reuse_legacy_score()
+    {
+        using var harness = new WarmupHarness();
+        await harness.AddOfficialAsync("campeche");
+        await harness.SeedTodayAsync("campeche", createdHoursAgo: 1, dataQualityVersion: null);
+        var location = new FishingLocation
+        {
+            Id = "campeche", Name = "campeche", Latitude = -27.6, Longitude = -48.4
+        };
+
+        await Assert.ThrowsAsync<HttpRequestException>(() =>
+            harness.Fishing.RefreshBatchAsync([location], CancellationToken.None));
+        var result = await harness.Fishing.GetAsync(0, CancellationToken.None);
+
+        Assert.Empty(result.Ranking);
+        Assert.Contains(result.Errors, error => error.Location == "campeche");
+    }
+
     private static async Task<FishingLocation?> TryReadTideAsync(FishingTideEnrichmentQueue queue)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
@@ -140,9 +196,16 @@ public sealed class FishingForecastWarmupQueueTests
             await db.SaveChangesAsync();
         }
 
-        public async Task SeedTodayAsync(string locationId, int createdHoursAgo, bool withTide = true)
+        public async Task SeedTodayAsync(
+            string locationId,
+            int createdHoursAgo,
+            bool withTide = true,
+            int? dataQualityVersion = FishingForecastDataQuality.CurrentVersion)
         {
-            var forecast = Forecast(locationId, Fishing.Today());
+            var forecast = Forecast(locationId, Fishing.Today()) with
+            {
+                DataQualityVersion = dataQualityVersion
+            };
             if (withTide)
             {
                 forecast = forecast with
@@ -197,17 +260,72 @@ public sealed class FishingForecastWarmupQueueTests
             null,
             1013,
             "mar");
-        return new FishingLocationForecast(id, id, date, 8.1, [hour], hour, [hour]);
+        return new FishingLocationForecast(
+            id, id, date, 8.1, [hour], hour, [hour],
+            DataQualityVersion: FishingForecastDataQuality.CurrentVersion);
     }
 
     private sealed class CountingHandler : HttpMessageHandler
     {
         public int Calls { get; private set; }
+        private DateOnly? _successfulDate;
+
+        public void UseSuccessfulForecast(DateOnly date) => _successfulDate = date;
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Calls++;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadGateway));
+            if (_successfulDate is not DateOnly date)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadGateway));
+
+            var times = Enumerable.Range(6, 3).Select(hour => $"{date:yyyy-MM-dd}T{hour:00}:00").ToArray();
+            Dictionary<string, object> hourly;
+            var uri = request.RequestUri?.AbsoluteUri ?? string.Empty;
+            if (uri.Contains("marine-api", StringComparison.Ordinal))
+            {
+                hourly = new Dictionary<string, object>
+                {
+                    ["time"] = times,
+                    ["wave_height"] = new[] { 0.8, 0.8, 0.8 },
+                    ["wave_direction"] = new[] { 90, 90, 90 },
+                    ["wave_period"] = new[] { 8, 8, 8 },
+                    ["swell_wave_height"] = new[] { 0.5, 0.5, 0.5 },
+                    ["swell_wave_direction"] = new[] { 90, 90, 90 },
+                    ["swell_wave_period"] = new[] { 7, 7, 7 },
+                    ["sea_surface_temperature"] = new[] { 18, 18, 18 },
+                    ["sea_level_height_msl"] = new[] { 0.1, 0.2, 0.3 }
+                };
+            }
+            else if (uri.Contains("/gfs", StringComparison.Ordinal))
+            {
+                hourly = new Dictionary<string, object>
+                {
+                    ["time"] = times,
+                    ["precipitation_probability"] = new[] { 0, 0, 0 },
+                    ["precipitation"] = new[] { 0, 0, 0 }
+                };
+            }
+            else
+            {
+                hourly = new Dictionary<string, object>
+                {
+                    ["time"] = times,
+                    ["wind_speed_10m"] = new[] { 8, 8, 8 },
+                    ["wind_direction_10m"] = new[] { 90, 90, 90 },
+                    ["wind_gusts_10m"] = new[] { 10, 10, 10 },
+                    ["precipitation"] = new[] { 0, 0, 0 },
+                    ["precipitation_probability"] = new[] { 0, 0, 0 },
+                    ["temperature_2m"] = new[] { 20, 20, 20 },
+                    ["pressure_msl"] = new[] { 1012, 1012, 1012 }
+                };
+            }
+
+            var payload = System.Text.Json.JsonSerializer.Serialize(new { hourly });
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(payload, System.Text.Encoding.UTF8, "application/json")
+            });
         }
     }
 }

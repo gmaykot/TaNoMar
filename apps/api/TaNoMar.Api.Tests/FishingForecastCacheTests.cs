@@ -139,6 +139,56 @@ public sealed class FishingForecastCacheTests
     }
 
     [Fact]
+    public async Task New_snapshot_persists_and_roundtrips_current_quality_version()
+    {
+        using var harness = new CacheHarness();
+        var date = new DateOnly(2026, 9, 9);
+
+        await harness.Cache.PutAsync("campeche", date, Forecast("campeche", date), CancellationToken.None);
+
+        var row = await harness.ReadSnapshotAsync("campeche", date);
+        Assert.NotNull(row);
+        Assert.Contains("\"dataQualityVersion\":1", row.PayloadJson, StringComparison.Ordinal);
+        var cached = await harness.Cache.TryGetAvailableAsync("campeche", date, CancellationToken.None);
+        Assert.Equal(FishingForecastDataQuality.CurrentVersion, cached?.Forecast.DataQualityVersion);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0)]
+    [InlineData(999)]
+    public async Task Non_current_snapshot_is_never_available_even_when_fresh_and_complete(int? version)
+    {
+        using var harness = new CacheHarness(cacheHours: 6, maxStaleHours: 12);
+        var date = new DateOnly(2026, 9, 9);
+        var forecast = Forecast("legacy", date, 9) with { DataQualityVersion = version };
+        await harness.SeedSnapshotAsync(
+            "legacy", date, forecast,
+            DateTimeOffset.UtcNow.AddMinutes(-1),
+            DateTimeOffset.UtcNow.AddHours(6));
+
+        Assert.Null(await harness.Cache.TryGetUsableAsync("legacy", date, CancellationToken.None));
+        Assert.Null(await harness.Cache.TryGetAvailableAsync("legacy", date, CancellationToken.None));
+        Assert.True(harness.Cache.NeedsExternalRefresh(new CachedForecast(
+            forecast,
+            DateTimeOffset.UtcNow.AddMinutes(-1),
+            DateTimeOffset.UtcNow.AddHours(6))));
+    }
+
+    [Fact]
+    public async Task Stale_fallback_never_returns_legacy_score()
+    {
+        using var harness = new CacheHarness(cacheHours: 6, maxStaleHours: 12);
+        var date = new DateOnly(2026, 9, 9);
+        await harness.SeedSnapshotAsync(
+            "legacy", date, Forecast("legacy", date, 9) with { DataQualityVersion = null },
+            DateTimeOffset.UtcNow.AddHours(-8),
+            DateTimeOffset.UtcNow.AddHours(-2));
+
+        Assert.Null(await harness.Cache.TryGetAvailableAsync("legacy", date, CancellationToken.None));
+    }
+
+    [Fact]
     public async Task Invalidate_removes_memory_and_snapshots_and_bumps_generation()
     {
         using var harness = new CacheHarness();
@@ -226,7 +276,9 @@ public sealed class FishingForecastCacheTests
             null,
             1013,
             "mar");
-        return new FishingLocationForecast(id, id, date, score, [hour], hour, [hour]);
+        return new FishingLocationForecast(
+            id, id, date, score, [hour], hour, [hour],
+            DataQualityVersion: FishingForecastDataQuality.CurrentVersion);
     }
 
     private sealed class CacheHarness : IDisposable

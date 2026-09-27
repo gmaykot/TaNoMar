@@ -5,7 +5,8 @@ internal static class FishingForecastAvailability
     private const string DailyScoreUnavailable = "Nota diária indisponível.";
 
     public static bool IsDailyScoreAvailable(FishingLocationForecast forecast)
-        => forecast.Score is not null
+        => FishingForecastDataQuality.IsCurrent(forecast)
+            && forecast.Score is not null
             && forecast.BestHours.Count == 3
             && forecast.BestHour is not null;
 

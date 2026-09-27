@@ -56,6 +56,24 @@ public sealed class FishingWindPreferenceTests
         Assert.Equal(2, result.Hours.Count);
     }
 
+    [Fact]
+    public void Apply_does_not_promote_a_legacy_forecast()
+    {
+        var legacy = Forecast(
+            Hour("06:00", "Leste"),
+            Hour("07:00", "Oeste"),
+            Hour("08:00", "Norte")) with
+        {
+            Score = 9,
+            DataQualityVersion = null
+        };
+
+        var result = FishingWindPreference.Apply(legacy, 90, 90, "praia_aberta");
+
+        Assert.Equal(legacy, result);
+        Assert.Null(result.DataQualityVersion);
+    }
+
     [Theory]
     [InlineData(null, true)]
     [InlineData(0, true)]
@@ -74,7 +92,8 @@ public sealed class FishingWindPreferenceTests
         0,
         hours,
         hours.FirstOrDefault(),
-        hours);
+        hours,
+        DataQualityVersion: FishingForecastDataQuality.CurrentVersion);
 
     private static FishingHourForecast Hour(string time, string direction) => new(
         Time: time,

@@ -20,6 +20,8 @@ public sealed class FishingForecastRefreshQueueTests
         queue.Complete([failed], null);
         Assert.Equal(["campeche"], queue.Snapshot(["campeche"]).FailedSpotIds);
 
+        Assert.False(queue.Enqueue(location));
+        queue.Complete([location], new HashSet<string>(StringComparer.Ordinal) { "campeche" });
         Assert.True(queue.Enqueue(location));
         var succeeded = await queue.ReadAsync(CancellationToken.None);
         queue.Complete([succeeded], new HashSet<string>(StringComparer.Ordinal) { "campeche" });

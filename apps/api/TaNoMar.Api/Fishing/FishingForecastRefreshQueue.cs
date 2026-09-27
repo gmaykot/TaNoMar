@@ -27,7 +27,18 @@ internal sealed class FishingForecastRefreshQueue
 
     public bool Enqueue(FishingLocation location)
     {
-        if (string.IsNullOrWhiteSpace(location.Id) || !_pending.TryAdd(location.Id, 0))
+        if (string.IsNullOrWhiteSpace(location.Id))
+            return false;
+
+        var now = DateTimeOffset.UtcNow;
+        if (_failures.TryGetValue(location.Id, out var failedAt))
+        {
+            if (now - failedAt <= FailureRetention)
+                return false;
+            _failures.TryRemove(location.Id, out _);
+        }
+
+        if (!_pending.TryAdd(location.Id, 0))
             return false;
 
         if (_channel.Writer.TryWrite(location))

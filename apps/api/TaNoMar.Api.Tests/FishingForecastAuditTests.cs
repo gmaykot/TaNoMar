@@ -23,7 +23,8 @@ public sealed class FishingForecastAuditTests
             8.0,
             [hours[2], hours[1], hours[3]],
             hours[2],
-            hours);
+            hours,
+            DataQualityVersion: FishingForecastDataQuality.CurrentVersion);
 
         var report = FishingForecastAudit.Run(location, forecast);
 
@@ -34,6 +35,27 @@ public sealed class FishingForecastAuditTests
         Assert.Equal(3, report.BestHourCount);
         Assert.Equal(4, report.Hours.Count);
         Assert.True(report.Hours.Single(item => item.Time == "06:00").IsBestHour);
+        Assert.Equal(FishingForecastDataQuality.CurrentVersion, report.DataQualityVersion);
+        Assert.Equal("Current", report.QualityState);
+    }
+
+    [Theory]
+    [InlineData(null, "Legacy")]
+    [InlineData(0, "Legacy")]
+    [InlineData(999, "Incompatible")]
+    public void Reports_snapshot_data_quality_state(int? version, string expectedState)
+    {
+        var location = Location();
+        var forecast = new FishingLocationForecast(
+            location.Id, location.Name, new DateOnly(2026, 9, 8), null, [], null, [],
+            DataQualityVersion: version);
+
+        var report = FishingForecastAudit.Run(location, forecast);
+
+        Assert.Equal(version, report.DataQualityVersion);
+        Assert.Equal(expectedState, report.QualityState);
+        Assert.False(report.Passed);
+        Assert.Contains(report.Findings, finding => finding.Path == "dataQualityVersion");
     }
 
     [Fact]
@@ -52,7 +74,8 @@ public sealed class FishingForecastAuditTests
             8.0,
             [hours[1]],
             hours[1],
-            hours);
+            hours,
+            DataQualityVersion: FishingForecastDataQuality.CurrentVersion);
 
         var report = FishingForecastAudit.Run(location, forecast);
 
@@ -75,7 +98,8 @@ public sealed class FishingForecastAuditTests
             7.8,
             hours,
             hours[0],
-            hours);
+            hours,
+            DataQualityVersion: FishingForecastDataQuality.CurrentVersion);
         var weather = new OpenMeteoResponse
         {
             Hourly = new OpenMeteoHourly

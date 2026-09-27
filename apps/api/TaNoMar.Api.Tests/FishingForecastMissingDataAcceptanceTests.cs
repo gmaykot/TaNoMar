@@ -6,6 +6,19 @@ namespace TaNoMar.Api.Tests;
 public sealed class FishingForecastMissingDataAcceptanceTests
 {
     [Fact]
+    public void New_forecast_uses_current_data_quality_version()
+    {
+        string[] times = ["2026-09-27T06:00", "2026-09-27T07:00", "2026-09-27T08:00"];
+
+        var forecast = FishingForecastService.BuildForecast(
+            Location(), Date(), Weather(times), Gfs(times), Marine(times));
+
+        Assert.Equal(FishingForecastDataQuality.CurrentVersion, forecast.DataQualityVersion);
+        Assert.NotNull(forecast.Score);
+        Assert.Equal(3, forecast.BestHours.Count);
+    }
+
+    [Fact]
     public void Missing_wind_speed_makes_score_unavailable()
         => AssertUnavailable(Build((weather, _, _) => weather.Hourly.WindSpeed.Clear()), "wind_speed_missing");
 

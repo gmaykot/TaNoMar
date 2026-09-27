@@ -51,7 +51,30 @@ public sealed record FishingLocationForecast(
     IReadOnlyList<FishingHourForecast> Hours,
     IReadOnlyList<FishingTidePoint>? TidePoints = null,
     IReadOnlyList<FishingTideExtreme>? TideExtremes = null,
-    string? TideAttribution = null);
+    string? TideAttribution = null,
+    int? DataQualityVersion = null);
+
+public static class FishingForecastDataQuality
+{
+    public const int CurrentVersion = 1;
+
+    public static FishingForecastDataQualityState State(int? version) => version switch
+    {
+        CurrentVersion => FishingForecastDataQualityState.Current,
+        null or < CurrentVersion => FishingForecastDataQualityState.Legacy,
+        _ => FishingForecastDataQualityState.Incompatible
+    };
+
+    public static bool IsCurrent(FishingLocationForecast forecast)
+        => State(forecast.DataQualityVersion) == FishingForecastDataQualityState.Current;
+}
+
+public enum FishingForecastDataQualityState
+{
+    Current,
+    Legacy,
+    Incompatible
+}
 
 public sealed record FishingTidePoint(string Time, double Height);
 

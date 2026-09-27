@@ -573,20 +573,41 @@ api.MapGet("/admin/fishing-audit", async (
     var forecast = sourceReport is null
         ? await fishing.GetLocationDayAsync(location, targetDate, cancellationToken)
         : null;
-    if (sourceReport is null && forecast is null)
-        return Results.BadRequest(new { detail = "A data deve estar entre hoje e os próximos 7 dias." });
-
     var snapshot = await db.FishingForecastSnapshots
         .AsNoTracking()
         .SingleOrDefaultAsync(item => item.LocationId == spot.Slug && item.Date == targetDate, cancellationToken);
-    var report = sourceReport ?? FishingForecastAudit.Run(location, forecast!);
+    FishingLocationForecast? snapshotForecast = null;
+    if (snapshot is not null)
+    {
+        try
+        {
+            snapshotForecast = JsonSerializer.Deserialize<FishingLocationForecast>(
+                snapshot.PayloadJson,
+                new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        }
+        catch (JsonException)
+        {
+            // Os metadados brutos do snapshot ainda são úteis quando o payload está malformado.
+        }
+    }
+    if (sourceReport is null && forecast is null && snapshotForecast is null)
+        return Results.BadRequest(new { detail = "A data deve estar entre hoje e os próximos 7 dias ou o snapshot está inválido." });
+
+    var report = sourceReport ?? FishingForecastAudit.Run(location, forecast ?? snapshotForecast!);
     return Results.Ok(new
     {
         audit = report,
         sourceRefresh = refreshSources,
         snapshot = snapshot is null
             ? null
-            : new { snapshot.CreatedAt, snapshot.ExpiresAt, PayloadSize = snapshot.PayloadJson.Length }
+            : new
+            {
+                snapshot.CreatedAt,
+                snapshot.ExpiresAt,
+                PayloadSize = snapshot.PayloadJson.Length,
+                DataQualityVersion = snapshotForecast?.DataQualityVersion,
+                QualityState = FishingForecastDataQuality.State(snapshotForecast?.DataQualityVersion).ToString()
+            }
     });
 }).RequireAuthorization();
 

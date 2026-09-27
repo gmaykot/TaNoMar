@@ -11,6 +11,12 @@ internal static class FishingForecastAudit
     {
         var findings = new List<FishingForecastAuditFinding>();
         var hours = forecast.Hours ?? [];
+        var qualityState = FishingForecastDataQuality.State(forecast.DataQualityVersion);
+
+        if (qualityState == FishingForecastDataQualityState.Legacy)
+            Add(findings, "error", "dataQualityVersion", "Snapshot legado: a semântica de qualidade dos dados não é confiável.");
+        else if (qualityState == FishingForecastDataQualityState.Incompatible)
+            Add(findings, "error", "dataQualityVersion", "Versão de qualidade do snapshot desconhecida ou incompatível.");
 
         if (!string.Equals(location.Id, forecast.Id, StringComparison.Ordinal))
             Add(findings, "error", "identity.locationId", "O local do snapshot não corresponde ao local auditado.");
@@ -83,6 +89,8 @@ internal static class FishingForecastAudit
         => new(
             location.Id,
             forecast.Date,
+            forecast.DataQualityVersion,
+            FishingForecastDataQuality.State(forecast.DataQualityVersion).ToString(),
             forecast.Hours?.Count ?? 0,
             forecast.BestHours?.Count ?? 0,
             findings.All(item => item.Severity != "error"),
@@ -469,6 +477,8 @@ internal static class FishingForecastAudit
 internal sealed record FishingForecastAuditReport(
     string SpotId,
     DateOnly Date,
+    int? DataQualityVersion,
+    string QualityState,
     int HourCount,
     int BestHourCount,
     bool Passed,

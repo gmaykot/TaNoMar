@@ -14,10 +14,11 @@ internal sealed record CachedForecast(
 {
     public bool HasHours => Forecast.Hours is { Count: > 0 };
 
-    public bool IsUsable(DateTimeOffset now) => HasHours && ExpiresAt > now;
+    public bool IsUsable(DateTimeOffset now)
+        => FishingForecastDataQuality.IsCurrent(Forecast) && HasHours && ExpiresAt > now;
 
     public bool IsAvailable(TimeSpan maxStale, DateTimeOffset now)
-        => HasHours && CreatedAt + maxStale > now;
+        => FishingForecastDataQuality.IsCurrent(Forecast) && HasHours && CreatedAt + maxStale > now;
 
     public bool IsStale(TimeSpan refreshAfter, DateTimeOffset now)
         => now - CreatedAt >= refreshAfter;

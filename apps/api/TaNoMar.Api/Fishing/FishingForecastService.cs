@@ -449,7 +449,8 @@ internal sealed class FishingForecastService
             locationScore,
             bestHours,
             bestHours.FirstOrDefault(),
-            rows);
+            rows,
+            DataQualityVersion: FishingForecastDataQuality.CurrentVersion);
     }
 
     private static Dictionary<string, int> IndexTimes(IReadOnlyList<string> times)

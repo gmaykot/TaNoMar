@@ -8,6 +8,7 @@ internal static class FishingWindPreference
         double? seaOrientationDegrees,
         string profile)
     {
+        if (!FishingForecastDataQuality.IsCurrent(forecast)) return forecast;
         if (idealWindDirectionDegrees is null) return forecast;
 
         var scoreOrientation = (idealWindDirectionDegrees.Value + 180) % 360;

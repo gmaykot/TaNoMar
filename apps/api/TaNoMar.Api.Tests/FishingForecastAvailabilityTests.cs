@@ -64,6 +64,27 @@ public sealed class FishingForecastAvailabilityTests
     }
 
     [Fact]
+    public void Legacy_complete_score_is_not_ranked_and_is_reported_unavailable()
+    {
+        var legacy = Location("legacy", 9.0) with { DataQualityVersion = null };
+
+        var result = FishingForecastAvailability.FilterRanking(Forecast(legacy));
+
+        Assert.Empty(result.Ranking);
+        Assert.Equal(["legacy"], result.Errors.Select(error => error.Location));
+    }
+
+    [Fact]
+    public void Real_zero_score_remains_available_when_quality_version_is_current()
+    {
+        var result = FishingForecastAvailability.FilterRanking(Forecast(Location("zero", 0)));
+
+        var item = Assert.Single(result.Ranking);
+        Assert.Equal(0, item.Score);
+        Assert.Empty(result.Errors);
+    }
+
+    [Fact]
     public void Ranking_emphasis_never_returns_an_unavailable_daily_score()
     {
         var ranking = new[] { Location("unavailable", null), Location("available", 7.5) };
@@ -84,6 +105,8 @@ public sealed class FishingForecastAvailabilityTests
         IReadOnlyList<FishingHourForecast> bestHours = score is null
             ? []
             : [hour, hour with { Time = "07:00" }, hour with { Time = "08:00" }];
-        return new FishingLocationForecast(id, id, new DateOnly(2026, 9, 27), score, bestHours, score is null ? null : hour, bestHours);
+        return new FishingLocationForecast(
+            id, id, new DateOnly(2026, 9, 27), score, bestHours, score is null ? null : hour, bestHours,
+            DataQualityVersion: FishingForecastDataQuality.CurrentVersion);
     }
 }

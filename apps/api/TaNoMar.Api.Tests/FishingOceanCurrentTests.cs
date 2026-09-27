@@ -81,7 +81,9 @@ public sealed class FishingOceanCurrentTests
             "05:00", 7.8, 8, 12, "Leste", 0, 20, 18, 10, 10, 8,
             0.8, 8, 0.5, 7, "Leste", "Leste", 0.2, 1012, "terra",
             90, 1.25, 225);
-        var forecast = new FishingLocationForecast("spot", "Spot", new DateOnly(2026, 9, 8), 7.8, [hour], hour, [hour]);
+        var forecast = new FishingLocationForecast(
+            "spot", "Spot", new DateOnly(2026, 9, 8), 7.8, [hour], hour, [hour],
+            DataQualityVersion: FishingForecastDataQuality.CurrentVersion);
         var report = FishingForecastAudit.Run(location, forecast);
 
         var normalized = Assert.Single(report.Hours).Normalized;
