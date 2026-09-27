@@ -72,7 +72,7 @@ function accountChangeCopy(change: PendingAccountChange) {
   if (change.kind === 'delete') {
     return {
       title: 'Excluir conta',
-      description: `Excluir a conta de ${change.name}? Locais pessoais, sessões e dados da conta somem. A cobrança recorrente, se existir, é encerrada. Esta ação não tem volta.`,
+      description: `Excluir a conta de ${change.name}? Locais pessoais, sessões e dados da conta somem. O encerramento da cobrança recorrente será solicitado ao Asaas e pode ficar pendente. Esta ação não tem volta.`,
       confirmLabel: 'Confirmar exclusão',
     };
   }
@@ -195,9 +195,15 @@ export function AdminUsersPage() {
       setPendingId(id);
       setErrorById((current) => ({ ...current, [id]: '' }));
     },
-    onSuccess: async (_, { id }) => {
+    onSuccess: async (result, { id }) => {
       await refresh(id);
-      showSaveConfirmation('Conta excluída.');
+      showSaveConfirmation(
+        result.status === 'completed'
+          ? 'Conta excluída e recorrência encerrada.'
+          : result.status === 'cancellation_pending'
+            ? 'Conta excluída; cancelamento da recorrência ainda pendente.'
+            : 'Conta excluída; cancelamento da recorrência exige ação do suporte.',
+      );
       setPendingChange(null);
     },
     onError: (error, { id }) => {

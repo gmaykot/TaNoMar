@@ -4,69 +4,73 @@ import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { AdminUsersPage } from './AdminUsersPage';
 
-const { setAdminUserPlan, setAdminUserActive, setAdminUserRole, deleteAdminUser } = vi.hoisted(() => ({
-  setAdminUserPlan: vi.fn(() =>
-    Promise.resolve({
-      id: 'user-2',
-      name: 'Beto',
-      email: 'beto@example.com',
-      pictureUrl: null,
-      role: 'User',
-      isActive: true,
-      plan: { code: 'premium', name: 'Mestre' },
-      createdAt: '2026-09-05T12:00:00+00:00',
-      accessCount: 2,
-      lastAccessAt: '2026-09-24T15:00:00+00:00',
-      isSelf: false,
-      protection: null,
-      canChangePlan: true,
-      canDeactivate: true,
-      canDelete: true,
-      canChangeRole: true,
-    }),
-  ),
-  setAdminUserActive: vi.fn(() =>
-    Promise.resolve({
-      id: 'user-2',
-      name: 'Beto',
-      email: 'beto@example.com',
-      pictureUrl: null,
-      role: 'User',
-      isActive: false,
-      plan: { code: 'free', name: 'Free' },
-      createdAt: '2026-09-04T12:00:00+00:00',
-      accessCount: 5,
-      lastAccessAt: '2026-09-20T18:30:00+00:00',
-      isSelf: false,
-      protection: null,
-      canChangePlan: true,
-      canDeactivate: true,
-      canDelete: true,
-      canChangeRole: true,
-    }),
-  ),
-  setAdminUserRole: vi.fn(() =>
-    Promise.resolve({
-      id: 'user-3',
-      name: 'Cida Souza',
-      email: 'cida@example.com',
-      pictureUrl: null,
-      role: 'User',
-      isActive: true,
-      plan: { code: 'premium', name: 'Mestre' },
-      createdAt: '2026-09-03T12:00:00+00:00',
-      accessCount: 1,
-      lastAccessAt: '2026-09-03T12:00:00+00:00',
-      isSelf: false,
-      protection: null,
-      canChangePlan: true,
-      canDeactivate: true,
-      canDelete: true,
-      canChangeRole: true,
-    }),
-  ),
-  deleteAdminUser: vi.fn(() => Promise.resolve()),
-}));
+const { setAdminUserPlan, setAdminUserActive, setAdminUserRole, deleteAdminUser } = vi.hoisted(
+  () => ({
+    setAdminUserPlan: vi.fn(() =>
+      Promise.resolve({
+        id: 'user-2',
+        name: 'Beto',
+        email: 'beto@example.com',
+        pictureUrl: null,
+        role: 'User',
+        isActive: true,
+        plan: { code: 'premium', name: 'Mestre' },
+        createdAt: '2026-09-05T12:00:00+00:00',
+        accessCount: 2,
+        lastAccessAt: '2026-09-24T15:00:00+00:00',
+        isSelf: false,
+        protection: null,
+        canChangePlan: true,
+        canDeactivate: true,
+        canDelete: true,
+        canChangeRole: true,
+      }),
+    ),
+    setAdminUserActive: vi.fn(() =>
+      Promise.resolve({
+        id: 'user-2',
+        name: 'Beto',
+        email: 'beto@example.com',
+        pictureUrl: null,
+        role: 'User',
+        isActive: false,
+        plan: { code: 'free', name: 'Free' },
+        createdAt: '2026-09-04T12:00:00+00:00',
+        accessCount: 5,
+        lastAccessAt: '2026-09-20T18:30:00+00:00',
+        isSelf: false,
+        protection: null,
+        canChangePlan: true,
+        canDeactivate: true,
+        canDelete: true,
+        canChangeRole: true,
+      }),
+    ),
+    setAdminUserRole: vi.fn(() =>
+      Promise.resolve({
+        id: 'user-3',
+        name: 'Cida Souza',
+        email: 'cida@example.com',
+        pictureUrl: null,
+        role: 'User',
+        isActive: true,
+        plan: { code: 'premium', name: 'Mestre' },
+        createdAt: '2026-09-03T12:00:00+00:00',
+        accessCount: 1,
+        lastAccessAt: '2026-09-03T12:00:00+00:00',
+        isSelf: false,
+        protection: null,
+        canChangePlan: true,
+        canDeactivate: true,
+        canDelete: true,
+        canChangeRole: true,
+      }),
+    ),
+    deleteAdminUser: vi.fn(() =>
+      Promise.resolve({ status: 'completed', remoteSubscriptionCount: 1 }),
+    ),
+  }),
+);
 
 vi.mock('@/features/admin-users/services/adminUsersService', () => ({
   getAdminUsers: () =>
@@ -98,8 +102,8 @@ vi.mock('@/features/admin-users/services/adminUsersService', () => ({
         isActive: true,
         plan: { code: 'free', name: 'Free' },
         createdAt: '2026-09-04T12:00:00+00:00',
-      accessCount: 5,
-      lastAccessAt: '2026-09-20T18:30:00+00:00',
+        accessCount: 5,
+        lastAccessAt: '2026-09-20T18:30:00+00:00',
         isSelf: false,
         protection: null,
         canChangePlan: true,
@@ -116,8 +120,8 @@ vi.mock('@/features/admin-users/services/adminUsersService', () => ({
         isActive: true,
         plan: { code: 'premium', name: 'Mestre' },
         createdAt: '2026-09-03T12:00:00+00:00',
-      accessCount: 1,
-      lastAccessAt: '2026-09-03T12:00:00+00:00',
+        accessCount: 1,
+        lastAccessAt: '2026-09-03T12:00:00+00:00',
         isSelf: false,
         protection: null,
         canChangePlan: true,
@@ -285,7 +289,7 @@ describe('AdminUsersPage', () => {
     expect(screen.getByRole('dialog', { name: 'Excluir conta' })).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Excluir a conta de Beto Lima? Locais pessoais, sessões e dados da conta somem. A cobrança recorrente, se existir, é encerrada. Esta ação não tem volta.',
+        'Excluir a conta de Beto Lima? Locais pessoais, sessões e dados da conta somem. O encerramento da cobrança recorrente será solicitado ao Asaas e pode ficar pendente. Esta ação não tem volta.',
       ),
     ).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Confirmar exclusão' }));

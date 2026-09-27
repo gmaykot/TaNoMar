@@ -6,6 +6,10 @@ public sealed class BillingOptions
     public const int AnnualDiscountPercent = 20;
     public const int CheckoutMinutesToExpire = 60;
     public const int PastDueGraceDays = 3;
+    public const int CancellationRetryMinutes = 5;
+    public const int CancellationMaxAutomaticAttempts = 5;
+    public const int CancellationActionRetryHours = 24;
+    public const int CancellationConfirmationRetentionDays = 180;
 
     public string AsaasApiKey { get; set; } = string.Empty;
     public string AsaasBaseUrl { get; set; } = "https://api.asaas.com/v3";

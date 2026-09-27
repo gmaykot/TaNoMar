@@ -91,7 +91,15 @@ export function parseBillingCatalog(value: unknown): BillingCatalog {
   };
 }
 
-const billingStatuses: BillingStatus[] = ['inactive', 'pending', 'active', 'past_due', 'canceled'];
+const billingStatuses: BillingStatus[] = [
+  'inactive',
+  'pending',
+  'active',
+  'past_due',
+  'canceled',
+  'cancel_pending',
+  'cancel_action_required',
+];
 
 export function parseBillingSubscription(value: unknown): BillingSubscription {
   if (!isRecord(value)) throw new ContractError('Assinatura inválida.');

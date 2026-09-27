@@ -2,7 +2,14 @@ import { formatBrlFromCents, type PlanCatalog } from '@/features/subscription/su
 import type { CheckoutIntent } from './checkoutIntent';
 
 export type BillingCycle = 'MONTHLY' | 'YEARLY';
-export type BillingStatus = 'inactive' | 'pending' | 'active' | 'past_due' | 'canceled';
+export type BillingStatus =
+  | 'inactive'
+  | 'pending'
+  | 'active'
+  | 'past_due'
+  | 'canceled'
+  | 'cancel_pending'
+  | 'cancel_action_required';
 
 export interface BillingQuote {
   kind: 'upgrade';

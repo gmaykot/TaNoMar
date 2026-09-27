@@ -33,6 +33,25 @@ export async function setAdminUserRole(id: string, role: 'Admin' | 'User'): Prom
   );
 }
 
-export async function deleteAdminUser(id: string): Promise<void> {
-  await apiRequest(`/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
+export type AdminUserDeletionStatus = 'completed' | 'cancellation_pending' | 'action_required';
+
+export interface AdminUserDeletionResult {
+  status: AdminUserDeletionStatus;
+  remoteSubscriptionCount: number;
+}
+
+export async function deleteAdminUser(id: string): Promise<AdminUserDeletionResult> {
+  const value = await apiRequest(`/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  if (typeof value !== 'object' || value === null)
+    throw new Error('Resposta de exclusão inválida.');
+  const record = value as Record<string, unknown>;
+  const status = record.status;
+  const count = record.remoteSubscriptionCount;
+  if (
+    (status !== 'completed' && status !== 'cancellation_pending' && status !== 'action_required') ||
+    typeof count !== 'number'
+  ) {
+    throw new Error('Resposta de exclusão incompleta.');
+  }
+  return { status, remoteSubscriptionCount: count };
 }

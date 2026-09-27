@@ -54,7 +54,11 @@ export function SubscriptionPlanCards({
 }) {
   const isPaid = isPaidPlan({ plan: { code: currentPlanCode } });
   const hasPaidPeriod =
-    currentStatus === 'active' || currentStatus === 'past_due' || currentStatus === 'canceled';
+    currentStatus === 'active' ||
+    currentStatus === 'past_due' ||
+    currentStatus === 'canceled' ||
+    currentStatus === 'cancel_pending' ||
+    currentStatus === 'cancel_action_required';
 
   return (
     <>

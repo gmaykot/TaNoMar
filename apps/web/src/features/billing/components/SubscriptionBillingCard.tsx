@@ -46,9 +46,19 @@ export function SubscriptionBillingCard({
   const canceled = billing?.cancelAtPeriodEnd === true && Boolean(accessUntil);
   const priceChanged = Boolean(contracted && renewal && contracted !== renewal);
   const pending = billing?.status === 'pending';
+  const cancellationPending = billing?.status === 'cancel_pending';
+  const cancellationActionRequired = billing?.status === 'cancel_action_required';
   const pastDue = billing?.status === 'past_due';
   const billingEnabled = billing?.enabled === true;
-  const showCard = isPaid || canCancel || canceled || pending || pastDue || priceChanged;
+  const showCard =
+    isPaid ||
+    canCancel ||
+    canceled ||
+    pending ||
+    cancellationPending ||
+    cancellationActionRequired ||
+    pastDue ||
+    priceChanged;
   if (!showCard) return null;
 
   const planLabel =
@@ -86,6 +96,18 @@ export function SubscriptionBillingCard({
         </p>
       ) : null}
       {pastDue ? <p>A renovação está atrasada. Atualize o pagamento para manter o plano.</p> : null}
+      {cancellationPending ? (
+        <p role="status">
+          Cancelamento solicitado. O Asaas ainda não confirmou o encerramento da recorrência. O
+          TáNoMar tentará novamente; isto ainda não é uma confirmação de cancelamento.
+        </p>
+      ) : null}
+      {cancellationActionRequired ? (
+        <p className={styles.error} role="alert">
+          O Asaas não confirmou o cancelamento após novas tentativas. Tente novamente; se persistir,
+          fale com o suporte. A renovação ainda não deve ser considerada encerrada.
+        </p>
+      ) : null}
       {canceled ? (
         <p>
           Renovação cancelada · {planLabel} até {accessUntil}. Depois disso, a conta volta para
@@ -120,6 +142,11 @@ export function SubscriptionBillingCard({
       {canResume ? (
         <Button onClick={handleResumeCheckout} disabled={checkout.isPending}>
           {checkout.isPending ? 'Abrindo o pagamento…' : 'Continuar pagamento'}
+        </Button>
+      ) : null}
+      {cancellationPending || cancellationActionRequired ? (
+        <Button variant="secondary" onClick={() => cancel.mutate()} disabled={cancel.isPending}>
+          {cancel.isPending ? 'Tentando novamente…' : 'Tentar cancelamento novamente'}
         </Button>
       ) : null}
       {canCancel ? (

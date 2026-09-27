@@ -12,7 +12,8 @@ namespace TaNoMar.Api.Billing;
 
 internal sealed class BillingService(
     TaNoMarDbContext db,
-    AsaasClient asaas,
+    IAsaasClient asaas,
+    BillingCancellationService cancellations,
     NotificationRealtimeHub hub,
     WebPushQueue push,
     IAdminNotificationService adminNotifications,
@@ -56,6 +57,10 @@ internal sealed class BillingService(
         if (plan is null || !plan.IsEnabled)
             return Results.Conflict(new { code = "plan_disabled", detail = "Este plano não está disponível." });
         await ApplyDueAccessAsync(user, cancellationToken);
+        if (await db.BillingCancellations.AnyAsync(
+                item => item.UserId == user.Id && item.Status != BillingCancellationStatus.Confirmed,
+                cancellationToken))
+            return Results.Conflict(new { code = "cancellation_in_progress", detail = "Conclua o cancelamento pendente antes de iniciar outro pagamento." });
         var currentPlanName = await db.Plans.AsNoTracking()
             .Where(item => item.Code == user.PlanCode)
             .Select(item => item.Name)
@@ -168,54 +173,82 @@ internal sealed class BillingService(
         return Results.Ok(new { checkoutId = created.Id, checkoutUrl = created.Link, expiresAt = pending.ExpiresAt });
     }
 
-    public async Task StopRecurringForDeletedUserAsync(Guid userId, CancellationToken cancellationToken)
+    public async Task<AccountDeletionBillingResult> StopRecurringForDeletedUserAsync(
+        Guid userId,
+        bool requestedByAdmin,
+        CancellationToken cancellationToken)
     {
         var subscriptions = await db.BillingSubscriptions
             .Where(item => item.UserId == userId)
             .ToListAsync(cancellationToken);
-        foreach (var item in subscriptions)
-        {
-            if (!string.IsNullOrWhiteSpace(item.AsaasSubscriptionId))
-                await asaas.DeleteSubscriptionAsync(item.AsaasSubscriptionId, cancellationToken);
-            if (!string.IsNullOrWhiteSpace(item.PreviousAsaasSubscriptionId)
-                && item.PreviousAsaasSubscriptionId != item.AsaasSubscriptionId)
-                await asaas.DeleteSubscriptionAsync(item.PreviousAsaasSubscriptionId, cancellationToken);
-        }
+        var requests = await cancellations.EnsureAccountDeletionRequestsAsync(
+            userId,
+            subscriptions,
+            requestedByAdmin ? BillingCancellationReason.AdminAccountDeletion : BillingCancellationReason.AccountDeletion,
+            cancellationToken);
+        foreach (var request in requests)
+            await cancellations.AttemptAsync(request.Id, manualRetry: true, cancellationToken);
+
+        var requestIds = requests.Select(request => request.Id).ToList();
+        var statuses = requests.Count == 0
+            ? []
+            : await db.BillingCancellations.AsNoTracking()
+                .Where(item => requestIds.Contains(item.Id))
+                .Select(item => item.Status)
+                .ToListAsync(cancellationToken);
+        if (statuses.Exists(status => status == BillingCancellationStatus.ActionRequired))
+            return new AccountDeletionBillingResult("action_required", requests.Count);
+        if (statuses.Exists(status => status != BillingCancellationStatus.Confirmed))
+            return new AccountDeletionBillingResult("cancellation_pending", requests.Count);
+        return new AccountDeletionBillingResult("completed", requests.Count);
     }
 
     public async Task<IResult> CancelAsync(User user, CancellationToken cancellationToken)
     {
         await ApplyDueAccessAsync(user, cancellationToken);
         var current = await db.BillingSubscriptions
-            .Where(item => item.UserId == user.Id && (item.Status == BillingPricing.Active || item.Status == BillingPricing.Canceled))
+            .Where(item => item.UserId == user.Id && (
+                item.Status == BillingPricing.Active
+                || item.Status == BillingPricing.PastDue
+                || item.Status == BillingPricing.Canceled))
             .OrderByDescending(item => item.UpdatedAt)
             .FirstOrDefaultAsync(cancellationToken);
-        if (current is null || current.Status == BillingPricing.Canceled || current.CancelAtPeriodEnd)
+        if (current is null)
+            return Results.Conflict(new { code = "no_subscription", detail = "Não há renovação para cancelar." });
+
+        var existingCancellation = await cancellations.FindAsync(current.AsaasSubscriptionId, cancellationToken);
+        if ((current.Status == BillingPricing.Canceled || current.CancelAtPeriodEnd)
+            && (string.IsNullOrWhiteSpace(current.AsaasSubscriptionId)
+                || existingCancellation?.Status == BillingCancellationStatus.Confirmed))
         {
-            if (current is null) return Results.Conflict(new { code = "no_subscription", detail = "Não há renovação para cancelar." });
             return Results.Ok(await DtoAsync(user, cancellationToken));
         }
-        if (!string.IsNullOrWhiteSpace(current.AsaasSubscriptionId))
-            await asaas.DeleteSubscriptionAsync(current.AsaasSubscriptionId, cancellationToken);
-        current.CancelAtPeriodEnd = true;
-        current.Status = BillingPricing.Canceled;
-        current.UpdatedAt = DateTimeOffset.UtcNow;
-        var until = current.CurrentPeriodEnd?.ToString("dd/MM", CultureInfo.GetCultureInfo("pt-BR")) ?? "o fim do período";
-        var plan = await db.Plans.AsNoTracking().SingleAsync(item => item.Code == current.PlanCode, cancellationToken);
-        const string title = "Renovação cancelada";
-        var body = $"A renovação do {plan.Name} foi cancelada. Você continua com o plano até {until}. Não há estorno.";
-        db.Notifications.Add(new Notification { UserId = user.Id, Title = title, Body = body });
-        await db.SaveChangesAsync(cancellationToken);
-        hub.Publish(user.Id, true);
-        push.Enqueue(user.Id, title, body);
-        adminNotifications.NotifyRenewalCanceled(
-            user.Name,
-            user.Email,
-            plan.Name,
-            current.Cycle,
-            current.CurrentPeriodEnd,
-            DateTimeOffset.UtcNow);
-        return Results.Ok(await DtoAsync(user, cancellationToken));
+        if (string.IsNullOrWhiteSpace(current.AsaasSubscriptionId))
+        {
+            current.CancelAtPeriodEnd = true;
+            current.Status = BillingPricing.Canceled;
+            current.UpdatedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(cancellationToken);
+            await NotifyCancellationConfirmedAsync(user, current, null, cancellationToken);
+            return Results.Ok(await DtoAsync(user, cancellationToken));
+        }
+
+        var request = existingCancellation ?? await cancellations.RequestAsync(
+            user.Id,
+            current,
+            current.AsaasSubscriptionId,
+            BillingCancellationReason.UserRequest,
+            manualRetry: true,
+            cancellationToken);
+        if (existingCancellation is not null)
+            request = await cancellations.AttemptAsync(existingCancellation.Id, manualRetry: true, cancellationToken);
+        if (request.Status == BillingCancellationStatus.Confirmed)
+            await NotifyCancellationConfirmedAsync(user, current, request, cancellationToken);
+
+        var dto = await DtoAsync(user, cancellationToken);
+        return request.Status == BillingCancellationStatus.Confirmed
+            ? Results.Ok(dto)
+            : Results.Json(dto, statusCode: 202);
     }
 
     public async Task<IResult> HandleWebhookAsync(string? token, JsonElement payload, CancellationToken cancellationToken)
@@ -353,9 +386,55 @@ internal sealed class BillingService(
         await db.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task ProcessPendingCancellationsAsync(CancellationToken cancellationToken)
+    {
+        await cancellations.ProcessDueAsync(cancellationToken);
+        var confirmed = await db.BillingCancellations
+            .Where(item => item.Status == BillingCancellationStatus.Confirmed
+                && item.Reason == BillingCancellationReason.UserRequest
+                && item.NotificationSentAt == null)
+            .ToListAsync(cancellationToken);
+        foreach (var request in confirmed)
+        {
+            var user = await db.Users.SingleOrDefaultAsync(item => item.Id == request.UserId, cancellationToken);
+            var subscription = await db.BillingSubscriptions
+                .SingleOrDefaultAsync(item => item.Id == request.BillingSubscriptionId, cancellationToken);
+            if (user is not null && subscription is not null)
+                await NotifyCancellationConfirmedAsync(user, subscription, request, cancellationToken);
+        }
+    }
+
+    private async Task NotifyCancellationConfirmedAsync(
+        User user,
+        BillingSubscription subscription,
+        BillingCancellation? cancellation,
+        CancellationToken cancellationToken)
+    {
+        if (cancellation?.NotificationSentAt is not null)
+            return;
+        var until = subscription.CurrentPeriodEnd?.ToString("dd/MM", CultureInfo.GetCultureInfo("pt-BR")) ?? "o fim do período";
+        var plan = await db.Plans.AsNoTracking().SingleAsync(item => item.Code == subscription.PlanCode, cancellationToken);
+        const string title = "Renovação cancelada";
+        var body = $"A renovação do {plan.Name} foi cancelada. Você continua com o plano até {until}. Não há estorno.";
+        db.Notifications.Add(new Notification { UserId = user.Id, Title = title, Body = body });
+        if (cancellation is not null)
+            cancellation.NotificationSentAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+        hub.Publish(user.Id, true);
+        push.Enqueue(user.Id, title, body);
+        adminNotifications.NotifyRenewalCanceled(
+            user.Name,
+            user.Email,
+            plan.Name,
+            subscription.Cycle,
+            subscription.CurrentPeriodEnd,
+            DateTimeOffset.UtcNow);
+    }
+
     public async Task<object> DtoAsync(User user, CancellationToken cancellationToken)
     {
         var current = await CurrentAccessAsync(user.Id, cancellationToken);
+        var cancellation = await cancellations.FindAsync(current?.AsaasSubscriptionId, cancellationToken);
         var plans = await db.Plans.AsNoTracking().ToDictionaryAsync(item => item.Code, cancellationToken);
         plans.TryGetValue(current?.PlanCode ?? user.PlanCode, out var plan);
         var catalogMonthly = plan?.MonthlyPriceCents ?? 0;
@@ -365,7 +444,7 @@ internal sealed class BillingService(
             : current.Cycle == BillingPricing.Monthly ? catalogMonthly : catalogAnnual;
         return new
         {
-            status = PublicStatus(current),
+            status = PublicStatus(current, cancellation),
             planCode = current?.PlanCode,
             cycle = current?.Cycle,
             catalogMonthlyPrice = BillingPricing.Reais(catalogMonthly),
@@ -439,6 +518,8 @@ internal sealed class BillingService(
         var externalReference = NestedString(payload, "checkout", "externalReference")
             ?? NestedString(payload, "payment", "externalReference")
             ?? ReadString(payload, "externalReference");
+        if (eventName == "SUBSCRIPTION_DELETED" && !string.IsNullOrWhiteSpace(subscriptionId))
+            await cancellations.ConfirmFromWebhookAsync(subscriptionId, cancellationToken);
         var item = await FindSubscriptionAsync(checkoutId, subscriptionId, externalReference, cancellationToken);
         if (item is null)
         {
@@ -453,6 +534,7 @@ internal sealed class BillingService(
         if (user is null) return;
         if (!string.IsNullOrWhiteSpace(customerId))
             await UpsertCustomerAsync(user.Id, customerId, cancellationToken);
+        var cancellationRequest = await cancellations.FindAsync(subscriptionId, cancellationToken);
 
         switch (eventName)
         {
@@ -471,7 +553,7 @@ internal sealed class BillingService(
                     await asaas.UpdateSubscriptionValueAsync(item.AsaasSubscriptionId, BillingPricing.Reais(item.RecurringPriceCents), false, cancellationToken);
                 if (!string.IsNullOrWhiteSpace(item.PreviousAsaasSubscriptionId)
                     && item.PreviousAsaasSubscriptionId != item.AsaasSubscriptionId)
-                    await asaas.DeleteSubscriptionAsync(item.PreviousAsaasSubscriptionId, cancellationToken);
+                    await asaas.CancelSubscriptionAsync(item.PreviousAsaasSubscriptionId, cancellationToken);
                 item.UpdatedAt = DateTimeOffset.UtcNow;
                 break;
             case "CHECKOUT_PAID":
@@ -504,6 +586,10 @@ internal sealed class BillingService(
                 break;
             case "SUBSCRIPTION_DELETED":
             case "SUBSCRIPTION_INACTIVATED":
+                if (eventName == "SUBSCRIPTION_INACTIVATED"
+                    && cancellationRequest is not null
+                    && cancellationRequest.Status != BillingCancellationStatus.Confirmed)
+                    break;
                 if (item.CancelAtPeriodEnd) break;
                 if (item.Status == BillingPricing.Active)
                 {
@@ -545,7 +631,7 @@ internal sealed class BillingService(
         foreach (var old in previous)
         {
             if (!string.IsNullOrWhiteSpace(old.AsaasSubscriptionId) && old.AsaasSubscriptionId != item.AsaasSubscriptionId)
-                await asaas.DeleteSubscriptionAsync(old.AsaasSubscriptionId, cancellationToken);
+                await asaas.CancelSubscriptionAsync(old.AsaasSubscriptionId, cancellationToken);
             old.Status = BillingPricing.Expired;
             old.UpdatedAt = now;
         }
@@ -631,9 +717,11 @@ internal sealed class BillingService(
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-    private static string PublicStatus(BillingSubscription? current)
+    private static string PublicStatus(BillingSubscription? current, BillingCancellation? cancellation)
     {
         if (current is null) return "inactive";
+        if (cancellation?.Status == BillingCancellationStatus.Pending) return "cancel_pending";
+        if (cancellation?.Status == BillingCancellationStatus.ActionRequired) return "cancel_action_required";
         return current.Status == BillingPricing.PendingCheckout ? "pending" : current.Status;
     }
 
@@ -680,3 +768,5 @@ internal sealed class BillingService(
         return ReadString(value, child);
     }
 }
+
+internal sealed record AccountDeletionBillingResult(string Status, int RemoteSubscriptionCount);

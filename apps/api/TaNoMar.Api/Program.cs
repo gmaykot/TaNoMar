@@ -119,6 +119,7 @@ builder.Services.AddHttpClient<AsaasClient>((provider, client) =>
     client.Timeout = TimeSpan.FromSeconds(20);
     client.DefaultRequestHeaders.UserAgent.ParseAdd("tanomar/2.0");
 });
+builder.Services.AddTransient<IAsaasClient>(provider => provider.GetRequiredService<AsaasClient>());
 builder.Services.AddHttpClient<ResendEmailNotifier>(client =>
 {
     client.BaseAddress = new Uri("https://api.resend.com/");
@@ -145,6 +146,8 @@ builder.Services.AddSingleton<AdminNotificationQueue>();
 builder.Services.AddSingleton<IAdminNotificationService>(provider => provider.GetRequiredService<AdminNotificationQueue>());
 builder.Services.AddHostedService<AdminNotificationWorker>();
 builder.Services.AddScoped<BillingService>();
+builder.Services.AddScoped<BillingCancellationService>();
+builder.Services.AddHostedService<BillingCancellationWorker>();
 builder.Services.AddHttpClient<WindyWebcamProvider>((provider, client) =>
 {
     var webcams = provider.GetRequiredService<IOptions<WebcamOptions>>().Value;
@@ -361,10 +364,18 @@ api.MapDelete("/me", async (ClaimsPrincipal principal, TaNoMarDbContext db, Bill
         return Results.Conflict(new { code = "bootstrap_locked", detail = "A conta inicial do bootstrap não pode ser excluída." });
     if (SpotRules.IsAdmin(user) && await db.Users.CountAsync(item => item.Role == "Admin" && item.Id != user.Id, cancellationToken) == 0)
         return Results.Conflict(new { code = "last_admin", detail = "Mantenha pelo menos um admin ativo." });
-    await billing.StopRecurringForDeletedUserAsync(user.Id, cancellationToken);
+    var billingResult = await billing.StopRecurringForDeletedUserAsync(user.Id, requestedByAdmin: false, cancellationToken);
     await RemoveUserAccountAsync(db, cache, user, cancellationToken);
     context.Response.Cookies.Delete(TaNoMarOptions.RefreshCookieName, new CookieOptions { HttpOnly = true, Secure = !app.Environment.IsDevelopment(), SameSite = SameSiteMode.Lax, Path = "/api/v1/auth" });
-    return Results.NoContent();
+    var detail = billingResult.Status switch
+    {
+        "completed" => "Conta excluída e recorrência encerrada no Asaas.",
+        "action_required" => "Os dados da conta foram excluídos, mas o encerramento da recorrência exige acompanhamento do suporte.",
+        _ => "Os dados da conta foram excluídos. O encerramento da recorrência está pendente e será tentado novamente automaticamente."
+    };
+    return Results.Json(
+        new { status = billingResult.Status, billingResult.RemoteSubscriptionCount, detail },
+        statusCode: billingResult.Status == "completed" ? 200 : 202);
 }).RequireAuthorization();
 
 api.MapGet("/plans", async (bool? includeFree, TaNoMarDbContext db, CancellationToken cancellationToken) =>
@@ -956,9 +967,11 @@ api.MapDelete("/admin/users/{id:guid}", async (Guid id, ClaimsPrincipal principa
         return Results.Conflict(new { code = "bootstrap_locked", detail = "A conta inicial do bootstrap não pode ser excluída." });
     if (SpotRules.IsAdmin(target) && await db.Users.CountAsync(item => item.Role == "Admin" && item.Id != target.Id, cancellationToken) == 0)
         return Results.Conflict(new { code = "last_admin", detail = "Mantenha pelo menos um admin ativo." });
-    await billing.StopRecurringForDeletedUserAsync(target.Id, cancellationToken);
+    var billingResult = await billing.StopRecurringForDeletedUserAsync(target.Id, requestedByAdmin: true, cancellationToken);
     await RemoveUserAccountAsync(db, cache, target, cancellationToken);
-    return Results.NoContent();
+    return Results.Json(
+        new { status = billingResult.Status, billingResult.RemoteSubscriptionCount },
+        statusCode: billingResult.Status == "completed" ? 200 : 202);
 }).RequireAuthorization();
 
 api.MapGet("/partners", async (ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) =>

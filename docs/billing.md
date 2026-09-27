@@ -123,7 +123,7 @@ apps/web                         /premium escolhe plano e ciclo (mês ou ano)
 apps/api                         cria checkout do plano, aplica PlanCode no webhook
                                  cancela recorrência sem refund
 Asaas                            tela de cartão, token, cobrança, webhooks
-PostgreSQL                       BillingCustomer, BillingSubscription, BillingWebhookEvent
+PostgreSQL                       BillingCustomer, BillingSubscription, BillingCancellation, BillingWebhookEvent
 ```
 
 Regras de pesca, fórmula e entitlements permanecem na API. O frontend não “libera plano” localmente.
@@ -215,22 +215,25 @@ Base `/api/v1`. Autenticados, exceto o webhook.
 | `active` | Pago; `cancelAtPeriodEnd: false` renova no aniversário |
 | `past_due` | Cobrança da renovação atrasada; aviso diário na carência de 3 dias |
 | `canceled` | Recorrência encerrada; `accessUntil` é o fim do período já pago |
+| `cancel_pending` | Pedido persistido, mas o Asaas ainda não confirmou o fim da recorrência |
+| `cancel_action_required` | Tentativas automáticas esgotadas ou rejeição definitiva; exige nova tentativa/suporte |
 
 Ausente ou `inactive` = comportamento atual da conta.
 
 ## Cancelamento da recorrência (sem estorno)
 
-Cancelar **para a renovação**. O valor do período já pago não volta. Não existe botão de reembolso. Excluir a conta em `DELETE /admin/users/{id}` também encerra a recorrência no Asaas, sem estorno, e apaga o registro local de cobrança.
+Cancelar **para a renovação**. O valor do período já pago não volta. Não existe botão de reembolso. Excluir uma conta também solicita o encerramento no Asaas, mas conserva o registro técnico mínimo do cancelamento até a confirmação remota.
 
 `POST /billing/subscription/cancel`:
 
 1. Exige assinatura `active` da própria conta (`cancelAtPeriodEnd` ainda `false`).
-2. Chama `DELETE /v3/subscriptions/{id}` no Asaas. Encerra a recorrência e apaga cobranças futuras/pendentes. Cobranças **já pagas permanecem**.
-3. **Não** chama `POST /v3/payments/{id}/refund`.
-4. Grava `CancelAtPeriodEnd = true`, `Status = canceled`, mantém `CurrentPeriodEnd` e o `PlanCode` comprado (`arrais`, `premium` ou `capitao`).
-5. Inbox: “A renovação do {nome do plano} foi cancelada. Você continua com o plano até {data}. Não há estorno.”
-6. Aviso administrativo “Renovação cancelada” pelos canais configurados, com plano, ciclo e acesso até o fim do período.
-7. Idempotente: segundo POST devolve o mesmo estado (`200`) e não reenvia o aviso.
+2. Antes da chamada remota, grava `BillingCancellation` com o ID `sub_…`, motivo e estado `pending`.
+3. Chama `DELETE /v3/subscriptions/{id}` no Asaas. Resposta `200` confirma o encerramento. Timeout, falha de rede, `5xx` ou resposta não conclusiva permanecem `cancel_pending`.
+4. Após resposta perdida, consulta `GET /v3/subscriptions?deletedOnly=true` e só confirma se encontrar o mesmo ID removido. Um `404` isolado não é tratado como sucesso.
+5. **Não** chama `POST /v3/payments/{id}/refund`.
+6. Só após confirmação grava `CancelAtPeriodEnd = true`, `Status = canceled`, mantém `CurrentPeriodEnd` e envia os avisos de cancelamento.
+7. `pending` é repetido em background a cada 5 minutos. Após 5 tentativas sem confirmação vira `action_required`, gera alerta no log e continua uma reconciliação diária; o usuário ainda pode tentar imediatamente com o mesmo endpoint.
+8. Idempotência: há um registro único por `AsaasSubscriptionId`, tentativas simultâneas são serializadas e o webhook `SUBSCRIPTION_DELETED` pode confirmar a solicitação sem duplicar o aviso.
 
 No vencimento, um worker rebaixa para `free` e notifica. `GET /me` também aplica o vencimento se o worker ainda não rodou.
 
@@ -240,7 +243,7 @@ Estorno ou chargeback **fora** do app (`PAYMENT_REFUNDED`, `PAYMENT_CHARGEBACK_R
 
 ## Modelo
 
-Três tabelas novas. `Users.PlanCode` não some: continua o que a previsão e os limites leem.
+Quatro tabelas de cobrança. `Users.PlanCode` não some: continua o que a previsão e os limites leem.
 
 **BillingCustomer** — um por usuário, quando o Asaas já tiver `cus_…`.
 
@@ -263,6 +266,15 @@ Três tabelas novas. `Users.PlanCode` não some: continua o que a previsão e os
 - `CancelAtPeriodEnd`
 - `ExternalReference` (`userId:planCode:cycle`)
 
+**BillingCancellation** — mínimo operacional que pode sobreviver à exclusão da conta.
+
+- `UserId` pseudônimo e `BillingSubscriptionId` apenas para correlação local
+- `AsaasSubscriptionId` único, motivo, estado e contador/timestamps das tentativas
+- código de falha categórico, sem corpo retornado pelo Asaas
+- confirmação, prazo de retenção e marca de aviso
+
+Registros pendentes ou que exigem ação ficam somente enquanto necessários para impedir nova cobrança. Após confirmação, `RetainUntil` é 180 dias; o worker os elimina ao vencer esse prazo. Nome, e-mail, CPF, checkout e valores não são copiados para esta tabela.
+
 **BillingWebhookEvent**
 
 - `AsaasEventId` único
@@ -284,7 +296,8 @@ Token próprio em `asaas-access-token`, **diferente** da API key. Sem token vál
 | `CHECKOUT_PAID` | Liga checkout à assinatura; se `PAYMENT_CONFIRMED` ainda não chegou, pode aplicar o `PlanCode` do item |
 | `CHECKOUT_CANCELED` / `CHECKOUT_EXPIRED` | Marca o checkout; o pescador gera outro |
 | `SUBSCRIPTION_CREATED` | Grava `sub_…`; no upgrade, `PUT` para `RecurringPrice` sem alterar a cobrança já paga; `DELETE` da assinatura antiga sem `/refund` |
-| `SUBSCRIPTION_INACTIVATED` / `SUBSCRIPTION_DELETED` | Se `CancelAtPeriodEnd`, só confirma o fim da recorrência. Senão, marca `canceled` até o fim do período e enfileira o aviso administrativo “Renovação cancelada”. |
+| `SUBSCRIPTION_DELETED` | Confirma um `BillingCancellation` pendente, mesmo que a conta e `BillingSubscription` já tenham sido eliminadas. |
+| `SUBSCRIPTION_INACTIVATED` | Reflete a interrupção recebida fora do fluxo; não substitui a confirmação de remoção definitiva solicitada pelo app. |
 | `PAYMENT_CONFIRMED` / `PAYMENT_RECEIVED` | `PlanCode` do item na **hora**; `PeriodStart = agora`; `CurrentPeriodEnd` = +1 mês ou +1 ano; inbox “Seu plano agora é {nome}.”; aviso administrativo “Pagamento de plano confirmado” pelos canais configurados |
 | `PAYMENT_OVERDUE` | `past_due`; inbox e push avisam no dia; carência de 3 dias antes de `free`. O worker (e o `GET /me`) repetem o aviso **uma vez por dia** (fuso de São Paulo) até o fim da carência, com os dias restantes. No vencimento, só o aviso de Free. |
 | `PAYMENT_REFUNDED` / `PAYMENT_CHARGEBACK_REQUESTED` | Rebaixa na hora |
@@ -318,7 +331,7 @@ O webhook no painel Asaas aponta para `https://<domínio>/api/v1/webhooks/asaas`
 
 - `/premium`: cada card oferece **mês** (tabela) e **ano** (−20%). Depois dos planos, a página explica cartão só no Asaas, cancelamento sem estorno, reajuste só na renovação e que as câmeras do Capitão são transmissões de terceiros, sem garantia de manutenção ou disponibilidade. No upgrade, o CTA usa `quotes[].firstChargeCents` e deixa claro que o plano novo começa na hora. Se a tabela mudar no meio do anual, a Conta mostra o valor deste período e o da renovação, sem cobrar a diferença agora. Sem chave, permanece “A cobrança ainda não começa por aqui.”
 - Retornos `?checkout=success|cancel|expired`: copy local. Em `success`, a página consulta `GET /me` (que também reconcilia o checkout no Asaas) até `billing.status === active` e o `PlanCode` bater; só então troca o aviso de “estamos confirmando” pelo comprovante. O comprovante usa `contractedPrice` (o que saiu agora) e `renewalPrice` (a próxima cobrança integral). Se os dois diferem, o texto deixa claro que o valor de hoje foi a diferença da troca e que a renovação não é parcial de novo. O frontend não promove o plano sozinho.
-- Conta e Assinatura (`/premium#assinatura`): a seção **Sua assinatura** aparece para qualquer conta paga. Checkout `pending` mostra “Continuar pagamento” e reabre o mesmo link do Asaas (`POST /billing/checkout` reutiliza o checkout vigente). Com recorrência Asaas, “Cancelar renovação” abre o drawer de confirmação: o plano permanece vigente até o fim do período já pago, depois volta para Free, sem estorno. Depois, “Renovação cancelada · {nome} até {data}”. Sem cobrança automática (plano só pelo admin), a seção explica que não há renovação para cancelar. Atalhos: menu da conta “Gerenciar assinatura” ou “Continuar pagamento”, Conta → Assinatura, e o link “Cancelar renovação” no hero de `/premium`.
+- Conta e Assinatura (`/premium#assinatura`): `cancel_pending` informa que ainda não há confirmação e oferece nova tentativa; `cancel_action_required` orienta nova tentativa/suporte. “Renovação cancelada” aparece somente em `canceled` confirmado.
 - Upgrade: CTA só nos cards de tabela maior. Downgrade: copy apontando para o cancelamento e a nova assinatura após o vencimento.
 - Components não falam com o Asaas. Page → hook → `billingService` → `/api/v1`.
 
@@ -329,7 +342,7 @@ Vocabulário: na interface, **Arrais**, **Mestre** e **Capitão**. “Assinatura
 - Número do cartão não transita no container nem no service worker.
 - Endpoints autenticados de billing não entram no cache PWA.
 - CPF é dado de pagamento: mínimo necessário, sem logar no `audit.jsonl`.
-- `DELETE /me` e a exclusão pelo admin encerram a recorrência no Asaas e apagam o CPF local; o processador pode conservar o pagamento pelo prazo fiscal. Sem estorno.
+- `DELETE /me` e a exclusão pelo admin apagam conta, CPF e demais dados locais elimináveis. O registro mínimo `BillingCancellation` não contém nome, e-mail nem CPF e sobrevive enquanto o encerramento remoto estiver pendente; confirmado, é eliminado após 180 dias. A resposta diferencia `completed`, `cancellation_pending` e `action_required`.
 - Sandbox primeiro. Produção só com conta Asaas aprovada para cartão.
 - Sem fila extra: persistir evento e aplicar o plano no request do webhook.
 

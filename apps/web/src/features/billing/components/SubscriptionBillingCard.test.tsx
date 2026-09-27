@@ -88,6 +88,36 @@ describe('SubscriptionBillingCard', () => {
     expect(screen.queryByRole('button', { name: 'Cancelar renovação' })).not.toBeInTheDocument();
   });
 
+  it('não apresenta resposta ambígua como cancelamento concluído e permite tentar novamente', async () => {
+    cancelSubscription.mockResolvedValue({ ...activeYearly, status: 'cancel_pending' });
+    const user = userEvent.setup();
+    renderWithProviders(
+      <SubscriptionBillingCard
+        planName="Mestre"
+        billing={{ ...activeYearly, status: 'cancel_pending' }}
+      />,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent(/ainda não é uma confirmação/);
+    expect(screen.queryByText(/Renovação cancelada/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Tentar cancelamento novamente' }));
+    expect(cancelSubscription).toHaveBeenCalledTimes(1);
+  });
+
+  it('distingue cancelamento que exige ação', () => {
+    renderWithProviders(
+      <SubscriptionBillingCard
+        planName="Mestre"
+        billing={{ ...activeYearly, status: 'cancel_action_required' }}
+      />,
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/não confirmou o cancelamento/);
+    expect(
+      screen.getByRole('button', { name: 'Tentar cancelamento novamente' }),
+    ).toBeInTheDocument();
+  });
+
   it('não renderiza quando a cobrança está desligada e a conta é Free', () => {
     renderWithProviders(<SubscriptionBillingCard billing={{ ...activeYearly, enabled: false }} />);
     expect(screen.queryByRole('heading', { name: 'Sua assinatura' })).not.toBeInTheDocument();

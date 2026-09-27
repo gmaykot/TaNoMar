@@ -16,7 +16,14 @@ const { logout, cancelSubscription, deleteCurrentUser, authState } = vi.hoisted(
     showPartners: false,
     billing: undefined as
       | {
-          status: 'active' | 'pending' | 'inactive' | 'past_due' | 'canceled';
+          status:
+            | 'active'
+            | 'pending'
+            | 'inactive'
+            | 'past_due'
+            | 'canceled'
+            | 'cancel_pending'
+            | 'cancel_action_required';
           planCode: string | null;
           cycle: 'MONTHLY' | 'YEARLY' | null;
           catalogMonthlyPrice: number | null;
@@ -92,7 +99,7 @@ describe('AccountPage', () => {
     logout.mockClear();
     cancelSubscription.mockReset();
     deleteCurrentUser.mockReset();
-    deleteCurrentUser.mockResolvedValue(undefined);
+    deleteCurrentUser.mockResolvedValue({ status: 'completed', detail: 'Conta excluída.' });
   });
 
   it('funciona como central da conta e chama logout', async () => {
@@ -149,12 +156,33 @@ describe('AccountPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Excluir conta' }));
     const dialog = screen.getByRole('dialog', { name: 'Excluir conta?' });
-    expect(
-      within(dialog).getByText(/período já pago acaba com a conta, sem estorno/),
-    ).toBeInTheDocument();
+    expect(within(dialog).getByText(/cancelamento ficará pendente/)).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: 'Excluir conta' }));
     expect(deleteCurrentUser).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole('status')).toHaveTextContent('Conta excluída.');
+    expect(logout).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Encerrar sessão' }));
     expect(logout).toHaveBeenCalledTimes(1);
+  });
+
+  it('não apresenta cancelamento pendente como concluído após excluir a conta', async () => {
+    deleteCurrentUser.mockResolvedValue({
+      status: 'cancellation_pending',
+      detail: 'Os dados da conta foram excluídos. O encerramento da recorrência está pendente.',
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<AccountPage />);
+
+    await user.click(screen.getByRole('button', { name: 'Excluir conta' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Excluir conta?' })).getByRole('button', {
+        name: 'Excluir conta',
+      }),
+    );
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/recorrência está pendente/);
+    expect(screen.getByRole('status')).toHaveTextContent(/ainda está em acompanhamento/);
+    expect(logout).not.toHaveBeenCalled();
   });
 
   it('mantém a sessão quando a exclusão é recusada pela API', async () => {

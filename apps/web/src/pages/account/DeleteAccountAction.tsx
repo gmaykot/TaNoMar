@@ -10,6 +10,7 @@ export function DeleteAccountAction({ onDeleted }: { onDeleted: () => Promise<vo
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [result, setResult] = useState<{ status: string; detail: string } | null>(null);
 
   return (
     <>
@@ -27,10 +28,19 @@ export function DeleteAccountAction({ onDeleted }: { onDeleted: () => Promise<vo
           {error}
         </p>
       ) : null}
+      {result ? (
+        <div className={accountStyles.note} role="status">
+          <p>{result.detail}</p>
+          {result.status !== 'completed' ? (
+            <p>Guarde esta informação: a recorrência ainda está em acompanhamento.</p>
+          ) : null}
+          <Button onClick={() => void onDeleted()}>Encerrar sessão</Button>
+        </div>
+      ) : null}
       {open ? (
         <ConfirmDrawer
           title="Excluir conta?"
-          description="A assinatura deixa de renovar agora e o período já pago acaba com a conta, sem estorno. Locais pessoais e compartilhados, preferências, sessões e o CPF guardado no TáNoMar somem. Locais oficiais permanecem. Esta ação não tem volta."
+          description="O TáNoMar solicitará ao Asaas o encerramento da recorrência. Se a confirmação não chegar, a exclusão continuará e o cancelamento ficará pendente, com novas tentativas automáticas. Locais pessoais e compartilhados, preferências, sessões e o CPF guardado no TáNoMar somem. Locais oficiais permanecem. Esta ação não tem volta."
           confirmLabel="Excluir conta"
           busy={busy}
           onCancel={() => {
@@ -41,9 +51,11 @@ export function DeleteAccountAction({ onDeleted }: { onDeleted: () => Promise<vo
               setBusy(true);
               setError('');
               try {
-                await deleteCurrentUser();
+                const deletion = await deleteCurrentUser();
                 clearDiaryStorage();
-                await onDeleted();
+                setBusy(false);
+                setOpen(false);
+                setResult(deletion);
               } catch (caught) {
                 setBusy(false);
                 setOpen(false);

@@ -208,5 +208,15 @@ export async function getCurrentUser() {
 }
 
 export async function deleteCurrentUser() {
-  await apiRequest('/me', { method: 'DELETE' });
+  const value = await apiRequest('/me', { method: 'DELETE' });
+  if (!isRecord(value)) throw new ContractError('Resposta de exclusão inválida.');
+  const status = readString(value.status);
+  const detail = readString(value.detail);
+  if (
+    (status !== 'completed' && status !== 'cancellation_pending' && status !== 'action_required') ||
+    !detail
+  ) {
+    throw new ContractError('Resposta de exclusão incompleta.');
+  }
+  return { status, detail };
 }

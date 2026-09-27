@@ -6,7 +6,15 @@ using Microsoft.Extensions.Options;
 
 namespace TaNoMar.Api.Billing;
 
-internal sealed class AsaasClient(HttpClient http, IOptions<BillingOptions> options, ILogger<AsaasClient> logger)
+internal interface IAsaasClient
+{
+    Task<AsaasCheckoutCreated> CreateCheckoutAsync(AsaasCheckoutRequest request, CancellationToken cancellationToken);
+    Task UpdateSubscriptionValueAsync(string subscriptionId, decimal value, bool updatePendingPayments, CancellationToken cancellationToken);
+    Task<AsaasCancellationOutcome> CancelSubscriptionAsync(string subscriptionId, CancellationToken cancellationToken);
+    Task<AsaasConfirmedCheckout?> FindConfirmedCheckoutAsync(string checkoutId, CancellationToken cancellationToken);
+}
+
+internal sealed class AsaasClient(HttpClient http, IOptions<BillingOptions> options, ILogger<AsaasClient> logger) : IAsaasClient
 {
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -52,15 +60,76 @@ internal sealed class AsaasClient(HttpClient http, IOptions<BillingOptions> opti
         }
     }
 
-    public async Task DeleteSubscriptionAsync(string subscriptionId, CancellationToken cancellationToken)
+    public async Task<AsaasCancellationOutcome> CancelSubscriptionAsync(string subscriptionId, CancellationToken cancellationToken)
     {
-        using var message = new HttpRequestMessage(HttpMethod.Delete, $"subscriptions/{Uri.EscapeDataString(subscriptionId)}");
-        ApplyAuth(message);
-        using var response = await http.SendAsync(message, cancellationToken);
-        if (!response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.NotFound)
+        try
         {
+            using var message = new HttpRequestMessage(HttpMethod.Delete, $"subscriptions/{Uri.EscapeDataString(subscriptionId)}");
+            ApplyAuth(message);
+            using var response = await http.SendAsync(message, cancellationToken);
+            if (response.IsSuccessStatusCode)
+                return AsaasCancellationOutcome.Confirmed;
+
+            logger.LogWarning("Asaas DELETE assinatura falhou ({Status}).", (int)response.StatusCode);
+            if (await IsDeletedAsync(subscriptionId, cancellationToken))
+                return AsaasCancellationOutcome.Confirmed;
+
+            return response.StatusCode is System.Net.HttpStatusCode.BadRequest
+                or System.Net.HttpStatusCode.Unauthorized
+                or System.Net.HttpStatusCode.Forbidden
+                or System.Net.HttpStatusCode.NotFound
+                ? AsaasCancellationOutcome.ActionRequired
+                : AsaasCancellationOutcome.Pending;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Timeout ao remover assinatura no Asaas; conciliando estado remoto.");
+            return await ReconcileAfterAmbiguousResponseAsync(subscriptionId, cancellationToken);
+        }
+        catch (HttpRequestException exception)
+        {
+            logger.LogWarning(exception, "Resposta ambígua ao remover assinatura no Asaas; conciliando estado remoto.");
+            return await ReconcileAfterAmbiguousResponseAsync(subscriptionId, cancellationToken);
+        }
+    }
+
+    private async Task<AsaasCancellationOutcome> ReconcileAfterAmbiguousResponseAsync(string subscriptionId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await IsDeletedAsync(subscriptionId, cancellationToken)
+                ? AsaasCancellationOutcome.Confirmed
+                : AsaasCancellationOutcome.Pending;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return AsaasCancellationOutcome.Pending;
+        }
+        catch (HttpRequestException)
+        {
+            return AsaasCancellationOutcome.Pending;
+        }
+    }
+
+    private async Task<bool> IsDeletedAsync(string subscriptionId, CancellationToken cancellationToken)
+    {
+        const int pageSize = 100;
+        var offset = 0;
+        while (true)
+        {
+            var path = $"subscriptions?deletedOnly=true&limit={pageSize}&offset={offset}";
+            using var message = new HttpRequestMessage(HttpMethod.Get, path);
+            ApplyAuth(message);
+            using var response = await http.SendAsync(message, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+                return false;
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
-            logger.LogWarning("Asaas DELETE assinatura falhou ({Status}): {Body}", (int)response.StatusCode, body);
+            var page = JsonSerializer.Deserialize<AsaasListResponse<AsaasListedSubscription>>(body, Json);
+            if (page?.Data.Exists(item => string.Equals(item.Id, subscriptionId, StringComparison.Ordinal)) == true)
+                return true;
+            if (page is null || !page.HasMore || page.Data.Count == 0)
+                return false;
+            offset += pageSize;
         }
     }
 
@@ -154,6 +223,12 @@ internal sealed class AsaasCheckoutCreated
 internal sealed class AsaasListResponse<T>
 {
     public List<T> Data { get; set; } = [];
+    public bool HasMore { get; set; }
+}
+
+internal sealed class AsaasListedSubscription
+{
+    public string Id { get; set; } = string.Empty;
 }
 
 internal sealed class AsaasListedPayment
@@ -165,3 +240,10 @@ internal sealed class AsaasListedPayment
 }
 
 internal sealed record AsaasConfirmedCheckout(string? SubscriptionId, string? CustomerId);
+
+internal enum AsaasCancellationOutcome
+{
+    Confirmed,
+    Pending,
+    ActionRequired
+}

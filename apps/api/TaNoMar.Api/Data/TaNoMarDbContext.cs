@@ -23,6 +23,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
     public DbSet<ForecastAlert> ForecastAlerts => Set<ForecastAlert>();
     public DbSet<BillingCustomer> BillingCustomers => Set<BillingCustomer>();
     public DbSet<BillingSubscription> BillingSubscriptions => Set<BillingSubscription>();
+    public DbSet<BillingCancellation> BillingCancellations => Set<BillingCancellation>();
     public DbSet<BillingWebhookEvent> BillingWebhookEvents => Set<BillingWebhookEvent>();
     public DbSet<FishingSpotWebcam> FishingSpotWebcams => Set<FishingSpotWebcam>();
     public DbSet<WorkerConfiguration> WorkerConfigurations => Set<WorkerConfiguration>();
@@ -51,6 +52,9 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
         modelBuilder.Entity<BillingSubscription>().HasIndex(item => item.UserId);
         modelBuilder.Entity<BillingSubscription>().HasIndex(item => item.AsaasCheckoutId);
         modelBuilder.Entity<BillingSubscription>().HasIndex(item => item.AsaasSubscriptionId);
+        modelBuilder.Entity<BillingCancellation>().HasIndex(item => item.AsaasSubscriptionId).IsUnique();
+        modelBuilder.Entity<BillingCancellation>().HasIndex(item => new { item.Status, item.NextAttemptAt });
+        modelBuilder.Entity<BillingCancellation>().Property(item => item.ConcurrencyToken).IsConcurrencyToken();
         modelBuilder.Entity<BillingWebhookEvent>().HasIndex(item => item.AsaasEventId).IsUnique();
         modelBuilder.Entity<FishingSpotWebcam>().HasIndex(item => item.FishingSpotId).IsUnique().HasFilter("\"IsActive\" = TRUE");
         modelBuilder.Entity<FishingSpotWebcam>().HasIndex(item => new { item.FishingSpotId, item.Provider, item.ExternalId }).IsUnique();
@@ -482,6 +486,27 @@ public sealed class BillingSubscription
     public DateTimeOffset? CurrentPeriodEnd { get; set; }
     public DateTimeOffset? PastDueSince { get; set; }
     public bool CancelAtPeriodEnd { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class BillingCancellation
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid UserId { get; set; }
+    public Guid? BillingSubscriptionId { get; set; }
+    public string AsaasSubscriptionId { get; set; } = string.Empty;
+    public string Reason { get; set; } = string.Empty;
+    public string Status { get; set; } = "pending";
+    public int AttemptCount { get; set; }
+    public string? LastFailureCode { get; set; }
+    public DateTimeOffset? LastAttemptAt { get; set; }
+    public DateTimeOffset? NextAttemptAt { get; set; }
+    public DateTimeOffset? ConfirmedAt { get; set; }
+    public DateTimeOffset? ActionRequiredAt { get; set; }
+    public DateTimeOffset? RetainUntil { get; set; }
+    public DateTimeOffset? NotificationSentAt { get; set; }
+    public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

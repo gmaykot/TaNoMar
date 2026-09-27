@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ContractError } from '@/shared/api/errors';
-import { parseBillingCatalog, parseBillingCheckout } from './billingMapper';
+import {
+  parseBillingCatalog,
+  parseBillingCheckout,
+  parseBillingSubscription,
+} from './billingMapper';
 
 const sample = {
   enabled: true,
@@ -77,4 +81,28 @@ describe('parseBillingCheckout', () => {
       expiresAt: '2026-09-08T12:00:00Z',
     });
   });
+});
+
+describe('parseBillingSubscription', () => {
+  it.each(['cancel_pending', 'cancel_action_required'] as const)(
+    'aceita o estado explícito %s',
+    (status) => {
+      expect(
+        parseBillingSubscription({
+          status,
+          planCode: 'premium',
+          cycle: 'MONTHLY',
+          catalogMonthlyPrice: 19.9,
+          catalogAnnualPrice: 191.04,
+          contractedPrice: 19.9,
+          renewalPrice: 19.9,
+          discountPercent: 20,
+          renewsAt: '2026-10-27T00:00:00Z',
+          accessUntil: '2026-10-27T00:00:00Z',
+          cancelAtPeriodEnd: false,
+          enabled: true,
+        }).status,
+      ).toBe(status);
+    },
+  );
 });
