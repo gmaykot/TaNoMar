@@ -43,12 +43,14 @@ internal sealed class FishingForecastService
         int day,
         CancellationToken cancellationToken,
         Guid? userId = null,
-        IReadOnlySet<string>? onlySlugs = null)
+        IReadOnlySet<string>? onlySlugs = null,
+        DateTimeOffset? evaluatedAt = null)
     {
         if (day is < 0 or > 7)
             throw new ArgumentOutOfRangeException(nameof(day), "Fishing day must be between 0 and 7.");
 
-        var now = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, _timeZone);
+        var nowUtc = evaluatedAt ?? DateTimeOffset.UtcNow;
+        var now = TimeZoneInfo.ConvertTime(nowUtc, _timeZone);
         var targetDate = DateOnly.FromDateTime(now.DateTime).AddDays(day);
         var results = new List<FishingLocationForecast>();
         var errors = new List<FishingForecastError>();
@@ -82,10 +84,10 @@ internal sealed class FishingForecastService
         var cachedByLocation = await _cache.GetAvailableAsync(
             locations.Select(location => location.Id).ToArray(),
             targetDate,
-            cancellationToken);
+            cancellationToken,
+            nowUtc);
         var dataUpdatedAt = new List<DateTimeOffset>();
         var hasStaleData = false;
-        var nowUtc = DateTimeOffset.UtcNow;
         foreach (var location in locations)
         {
             if (!cachedByLocation.TryGetValue(location.Id, out var cached))
@@ -113,7 +115,7 @@ internal sealed class FishingForecastService
             errors,
             dataUpdatedAt.Count > 0 ? dataUpdatedAt.Min() : null,
             hasStaleData,
-            new ForecastQualityContext(snapshotMetadata, _cache.RefreshAfter, _cache.MaxStale)));
+            new ForecastQualityContext(snapshotMetadata, _cache.RefreshAfter, _cache.MaxStale, nowUtc)));
     }
 
     public DateOnly Today()

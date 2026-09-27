@@ -136,6 +136,9 @@ function parseIsoDateTime(value: unknown) {
   return Number.isNaN(parsed) ? null : value;
 }
 
+// Folga apenas para o round-trip IEEE-754 do double serializado no JSON.
+const dataCompletenessRatioEpsilon = 1e-12;
+
 export function parseForecastQuality(value: unknown): WireForecastQuality {
   if (!isRecord(value)) throw new ContractError('Qualidade da previsão inválida.');
   if (!isRecord(value.dataCompleteness)) {
@@ -153,7 +156,12 @@ export function parseForecastQuality(value: unknown): WireForecastQuality {
   if (expectedHours === null || expectedHours <= 0 || validHours > expectedHours) {
     throw new ContractError('Cobertura da previsão inválida.');
   }
-  if (ratio === null || ratio < 0 || ratio > 1) {
+  if (
+    ratio === null ||
+    ratio < 0 ||
+    ratio > 1 ||
+    Math.abs(ratio - validHours / expectedHours) > dataCompletenessRatioEpsilon
+  ) {
     throw new ContractError('Cobertura da previsão inválida.');
   }
   const level = readString(value.confidence.level);

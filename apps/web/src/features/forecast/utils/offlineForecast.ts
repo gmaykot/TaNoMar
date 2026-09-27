@@ -28,14 +28,25 @@ export function readOfflineForecast(): FishingForecast | null {
     for (const key of legacyStorageKeys) localStorage.removeItem(key);
     const raw = localStorage.getItem(offlineForecastStorageKey);
     if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== 'object' || parsed === null || !('forecast' in parsed)) return null;
-    const forecast = parseOfflineForecast((parsed as { forecast: unknown }).forecast);
-    if (!forecast) return null;
-    return {
-      ...forecast,
-      refresh: forecast.refresh ?? freshRefresh(),
-    };
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (typeof parsed !== 'object' || parsed === null || !('forecast' in parsed)) {
+        localStorage.removeItem(offlineForecastStorageKey);
+        return null;
+      }
+      const forecast = parseOfflineForecast((parsed as { forecast: unknown }).forecast);
+      if (!forecast) {
+        localStorage.removeItem(offlineForecastStorageKey);
+        return null;
+      }
+      return {
+        ...forecast,
+        refresh: forecast.refresh ?? freshRefresh(),
+      };
+    } catch {
+      localStorage.removeItem(offlineForecastStorageKey);
+      return null;
+    }
   } catch {
     return null;
   }

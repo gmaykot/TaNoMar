@@ -74,8 +74,10 @@ describe('offlineForecast', () => {
   it('descarta JSON v3 inválido ou corrompido', () => {
     localStorage.setItem(offlineForecastStorageKey, '{corrompido');
     expect(readOfflineForecast()).toBeNull();
+    expect(localStorage.getItem(offlineForecastStorageKey)).toBeNull();
     localStorage.setItem(offlineForecastStorageKey, JSON.stringify({ forecast: { days: [] } }));
     expect(readOfflineForecast()).toBeNull();
+    expect(localStorage.getItem(offlineForecastStorageKey)).toBeNull();
   });
 
   it('rejeita v3 sem quality em item disponível', () => {
@@ -91,6 +93,7 @@ describe('offlineForecast', () => {
       JSON.stringify({ savedAt: '2026-09-07T08:00:00Z', forecast: withoutQuality }),
     );
     expect(readOfflineForecast()).toBeNull();
+    expect(localStorage.getItem(offlineForecastStorageKey)).toBeNull();
   });
 
   it('rejeita v3 com quality inválida', () => {
@@ -109,6 +112,7 @@ describe('offlineForecast', () => {
       JSON.stringify({ savedAt: '2026-09-07T08:00:00Z', forecast: invalid }),
     );
     expect(readOfflineForecast()).toBeNull();
+    expect(localStorage.getItem(offlineForecastStorageKey)).toBeNull();
   });
 
   it('preserva score real zero e confiança High na v3', () => {
@@ -133,6 +137,7 @@ describe('offlineForecast', () => {
       score: 0,
       quality: { confidence: { level: 'high' } },
     });
+    expect(localStorage.getItem(offlineForecastStorageKey)).not.toBeNull();
   });
 
   it('não usa savedAt como idade meteorológica', () => {
@@ -165,5 +170,22 @@ describe('offlineForecast', () => {
       JSON.stringify({ savedAt: '2026-09-07T08:00:00Z', forecast: withNullQuality }),
     );
     expect(readOfflineForecast()).toBeNull();
+    expect(localStorage.getItem(offlineForecastStorageKey)).toBeNull();
+  });
+
+  it('preserva a V3 válida durante falha de rede', () => {
+    expect(saveOfflineForecast(forecastFixture)).toBe(true);
+    const saved = readOfflineForecast();
+
+    expect(
+      shouldUseOfflineForecast({
+        hasOfflineModule: true,
+        saved,
+        liveData: undefined,
+        isError: true,
+        isPending: false,
+      }),
+    ).toBe(true);
+    expect(localStorage.getItem(offlineForecastStorageKey)).not.toBeNull();
   });
 });

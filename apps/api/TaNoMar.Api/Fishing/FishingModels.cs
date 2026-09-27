@@ -5,7 +5,7 @@ public sealed class FishingOptions
     public const string SectionName = "Fishing";
 
     public string TimeZone { get; set; } = "America/Sao_Paulo";
-    public int CacheHours { get; set; } = 24;
+    public int CacheHours { get; set; } = 6;
     public int MaxStaleHours { get; set; } = 12;
     public bool WarmupEnabled { get; set; } = true;
     public int WarmupIntervalHours { get; set; } = 3;
@@ -45,7 +45,8 @@ public sealed record FishingForecast(
 public sealed record ForecastQualityContext(
     IReadOnlyDictionary<string, ForecastSnapshotMetadata> Snapshots,
     TimeSpan RefreshAfter,
-    TimeSpan MaxStale);
+    TimeSpan MaxStale,
+    DateTimeOffset EvaluatedAt);
 
 public sealed record ForecastSnapshotMetadata(
     DateTimeOffset CreatedAt,

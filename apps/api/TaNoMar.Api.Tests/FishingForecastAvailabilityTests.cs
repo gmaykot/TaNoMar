@@ -103,7 +103,8 @@ public sealed class FishingForecastAvailabilityTests
                 ["first"] = new(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddHours(6))
             },
             TimeSpan.FromHours(3),
-            TimeSpan.FromHours(12));
+            TimeSpan.FromHours(12),
+            DateTimeOffset.UtcNow);
         var forecast = Forecast(Location("unavailable", null), Location("first", 8.4)) with
         {
             QualityContext = context

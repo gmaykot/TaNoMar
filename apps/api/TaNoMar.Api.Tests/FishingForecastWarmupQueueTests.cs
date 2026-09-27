@@ -138,11 +138,14 @@ public sealed class FishingForecastWarmupQueueTests
         using var harness = new WarmupHarness();
         await harness.AddOfficialAsync("campeche");
         await harness.SeedTodayAsync("campeche", createdHoursAgo: 1);
-        var result = await harness.Fishing.GetAsync(0, CancellationToken.None);
-        var createdAt = Assert.IsType<ForecastQualityContext>(result.QualityContext).Snapshots["campeche"].CreatedAt;
+        var createdAt = (await harness.Db.FishingForecastSnapshots
+            .AsNoTracking()
+            .SingleAsync(item => item.LocationId == "campeche")).CreatedAt;
+        var evaluatedAt = createdAt.AddHours(1);
+        var result = await harness.Fishing.GetAsync(0, CancellationToken.None, evaluatedAt: evaluatedAt);
 
         var json = JsonSerializer.SerializeToElement(
-            FishingForecastPublicDto.Day(result, createdAt.AddHours(1), false, PlanRules.DefaultBestHoursMode),
+            FishingForecastPublicDto.Day(result, false, PlanRules.DefaultBestHoursMode),
             new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var quality = json.GetProperty("ranking")[0].GetProperty("quality");
 
@@ -154,6 +157,50 @@ public sealed class FishingForecastWarmupQueueTests
             [ForecastConfidenceReasonCodes.SparseHourCoverage],
             quality.GetProperty("confidence").GetProperty("reasons").EnumerateArray().Select(value => value.GetString()));
         Assert.Equal(createdAt, quality.GetProperty("dataUpdatedAt").GetDateTimeOffset());
+        Assert.Equal(evaluatedAt, quality.GetProperty("evaluatedAt").GetDateTimeOffset());
+    }
+
+    [Theory]
+    [InlineData(3, -1, "high", false)]
+    [InlineData(3, 0, "medium", true)]
+    [InlineData(6, 0, "low", true)]
+    [InlineData(12, 0, null, true)]
+    public async Task Cache_and_quality_use_the_same_evaluation_instant(
+        int boundaryHours,
+        long tickOffset,
+        string? expectedConfidence,
+        bool expectsRefresh)
+    {
+        using var harness = new WarmupHarness();
+        var createdAt = new DateTimeOffset(2026, 9, 27, 12, 0, 0, TimeSpan.Zero);
+        var evaluatedAt = createdAt.AddHours(boundaryHours).AddTicks(tickOffset);
+        var targetDate = DateOnly.FromDateTime(
+            TimeZoneInfo.ConvertTimeBySystemTimeZoneId(evaluatedAt, "America/Sao_Paulo").DateTime);
+        await harness.AddOfficialAsync("campeche");
+        await harness.SeedTodayAsync(
+            "campeche",
+            createdHoursAgo: 0,
+            createdAt: createdAt,
+            expiresAt: createdAt.AddHours(6),
+            validHours: 16,
+            date: targetDate);
+
+        var result = await harness.Fishing.GetAsync(0, CancellationToken.None, evaluatedAt: evaluatedAt);
+
+        Assert.Equal(expectsRefresh, harness.Refresh.Snapshot(["campeche"]).PendingSpotIds.Count > 0);
+        if (expectedConfidence is null)
+        {
+            Assert.Empty(result.Ranking);
+            Assert.Contains(result.Errors, error => error.Location == "campeche");
+            return;
+        }
+
+        var json = JsonSerializer.SerializeToElement(
+            FishingForecastPublicDto.Day(result, false, PlanRules.DefaultBestHoursMode),
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var quality = json.GetProperty("ranking")[0].GetProperty("quality");
+        Assert.Equal(expectedConfidence, quality.GetProperty("confidence").GetProperty("level").GetString());
+        Assert.Equal(evaluatedAt, quality.GetProperty("evaluatedAt").GetDateTimeOffset());
     }
 
     [Fact]
@@ -229,8 +276,8 @@ public sealed class FishingForecastWarmupQueueTests
             var fishingOptions = Microsoft.Extensions.Options.Options.Create(new FishingOptions
             {
                 TimeZone = "America/Sao_Paulo",
-                CacheHours = 24,
-                MaxStaleHours = 24,
+                CacheHours = 6,
+                MaxStaleHours = 12,
                 WarmupIntervalHours = 3
             });
             Http = new CountingHandler();
@@ -273,9 +320,14 @@ public sealed class FishingForecastWarmupQueueTests
             string locationId,
             int createdHoursAgo,
             bool withTide = true,
-            int? dataQualityVersion = FishingForecastDataQuality.CurrentVersion)
+            int? dataQualityVersion = FishingForecastDataQuality.CurrentVersion,
+            DateTimeOffset? createdAt = null,
+            DateTimeOffset? expiresAt = null,
+            int validHours = 3,
+            DateOnly? date = null)
         {
-            var forecast = Forecast(locationId, Fishing.Today()) with
+            var forecastDate = date ?? Fishing.Today();
+            var forecast = Forecast(locationId, forecastDate, validHours) with
             {
                 DataQualityVersion = dataQualityVersion
             };
@@ -293,12 +345,12 @@ public sealed class FishingForecastWarmupQueueTests
             db.FishingForecastSnapshots.Add(new FishingForecastSnapshot
             {
                 LocationId = locationId,
-                Date = Fishing.Today(),
+                Date = forecastDate,
                 PayloadJson = System.Text.Json.JsonSerializer.Serialize(
                     forecast,
                     new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)),
-                CreatedAt = DateTimeOffset.UtcNow.AddHours(-createdHoursAgo),
-                ExpiresAt = DateTimeOffset.UtcNow.AddHours(20)
+                CreatedAt = createdAt ?? DateTimeOffset.UtcNow.AddHours(-createdHoursAgo),
+                ExpiresAt = expiresAt ?? DateTimeOffset.UtcNow.AddHours(20)
             });
             await db.SaveChangesAsync();
         }
@@ -310,7 +362,7 @@ public sealed class FishingForecastWarmupQueueTests
         }
     }
 
-    private static FishingLocationForecast Forecast(string id, DateOnly date)
+    private static FishingLocationForecast Forecast(string id, DateOnly date, int validHours = 3)
     {
         var hour = new FishingHourForecast(
             "06:00",
@@ -333,14 +385,12 @@ public sealed class FishingForecastWarmupQueueTests
             null,
             1013,
             "mar");
-        var hours = new[]
-        {
-            hour,
-            hour with { Time = "07:00" },
-            hour with { Time = "08:00" }
-        };
+        var hours = Enumerable.Range(0, validHours)
+            .Select(index => hour with { Time = $"{index + 5:00}:00" })
+            .ToArray();
+        var bestHours = hours.Take(3).ToArray();
         return new FishingLocationForecast(
-            id, id, date, 8.1, hours, hour, hours,
+            id, id, date, validHours >= 3 ? 8.1 : null, bestHours, bestHours.FirstOrDefault(), hours,
             DataQualityVersion: FishingForecastDataQuality.CurrentVersion);
     }
 

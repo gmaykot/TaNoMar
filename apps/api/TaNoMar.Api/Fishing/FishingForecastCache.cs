@@ -112,9 +112,10 @@ internal sealed class FishingForecastCache
     public async Task<IReadOnlyDictionary<string, CachedForecast>> GetAvailableAsync(
         IReadOnlyCollection<string> locationIds,
         DateOnly date,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        DateTimeOffset? evaluatedAt = null)
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = evaluatedAt ?? DateTimeOffset.UtcNow;
         var result = new Dictionary<string, CachedForecast>(StringComparer.Ordinal);
         var missing = new List<string>();
         foreach (var locationId in locationIds.Distinct(StringComparer.Ordinal))

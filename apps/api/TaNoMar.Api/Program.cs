@@ -1305,12 +1305,12 @@ api.MapGet("/forecasts/ranking", async (string? emphasis, ClaimsPrincipal princi
     var qualityEvaluatedAt = DateTimeOffset.UtcNow;
     for (var day = 0; day < plan.MaxForecastDays; day++)
     {
-        var forecast = ApplyIdealWindSettings(await fishing.GetAsync(day, cancellationToken, user.Id, enabledSlugs), visibleSpots, idealWindSettings);
+        var forecast = ApplyIdealWindSettings(await fishing.GetAsync(day, cancellationToken, user.Id, enabledSlugs, evaluatedAt: qualityEvaluatedAt), visibleSpots, idealWindSettings);
         forecasts.Add(forecast);
         var ordered = forecast with { Ranking = FishingRankingEmphasis.Order(forecast.Ranking, parsedEmphasis) };
-        days.Add(FishingForecastPublicDto.Day(ordered, qualityEvaluatedAt, plan.CanMarine, plan.BestHoursMode, ownerSlugs, visibilities));
+        days.Add(FishingForecastPublicDto.Day(ordered, plan.CanMarine, plan.BestHoursMode, ownerSlugs, visibilities));
     }
-    return Results.Ok(new { generatedAt = qualityEvaluatedAt, availableFrom = DateOnly.FromDateTime(DateTime.UtcNow), availableTo = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(plan.MaxForecastDays - 1)), refresh = ForecastRefreshDto(forecasts, forecastQueue.Snapshot(enabledSlugs)), days });
+    return Results.Ok(new { generatedAt = qualityEvaluatedAt, availableFrom = forecasts[0].Date, availableTo = forecasts[^1].Date, refresh = ForecastRefreshDto(forecasts, forecastQueue.Snapshot(enabledSlugs)), days });
 }).RequireAuthorization();
 
 api.MapGet("/admin/workers", async (ClaimsPrincipal principal, TaNoMarDbContext db, WorkerSettingsService workerSettings, CancellationToken cancellationToken) =>
@@ -1378,10 +1378,10 @@ api.MapGet("/fishing-spots/{id}/forecast", async (string id, ClaimsPrincipal pri
     var qualityEvaluatedAt = DateTimeOffset.UtcNow;
     for (var day = 0; day < plan.MaxForecastDays; day++)
     {
-        var forecast = await fishing.GetAsync(day, cancellationToken, user.Id, onlySpot);
+        var forecast = await fishing.GetAsync(day, cancellationToken, user.Id, onlySpot, evaluatedAt: qualityEvaluatedAt);
         forecasts.Add(forecast);
         var filtered = FishingForecastAvailability.FilterRanking(forecast with { Ranking = forecast.Ranking.Where(item => item.Id == spot.Slug).Select(item => FishingWindPreference.Apply(item, idealWindDirection, spot.SeaOrientationDegrees, spot.Profile)).ToList() });
-        result.Add(FishingForecastPublicDto.Day(filtered, qualityEvaluatedAt, plan.CanMarine, plan.BestHoursMode, OwnerSpotIds([spot], user), SpotVisibilities([spot]), includeSelectableHours: true));
+        result.Add(FishingForecastPublicDto.Day(filtered, plan.CanMarine, plan.BestHoursMode, OwnerSpotIds([spot], user), SpotVisibilities([spot]), includeSelectableHours: true));
     }
     return Results.Ok(new { spotId = spot.Slug, refresh = ForecastRefreshDto(forecasts, forecastQueue.Snapshot(onlySpot)), days = result });
 }).RequireAuthorization();
@@ -1618,7 +1618,10 @@ api.MapGet("/public/offline-forecast", async (FishingForecastService fishing, Ht
 {
     context.Response.Headers.CacheControl = "public, max-age=3600";
     var qualityEvaluatedAt = DateTimeOffset.UtcNow;
-    return Results.Ok(FishingForecastPublicDto.Day(await fishing.GetAsync(0, cancellationToken), qualityEvaluatedAt, false, PlanRules.DefaultBestHoursMode));
+    return Results.Ok(FishingForecastPublicDto.Day(
+        await fishing.GetAsync(0, cancellationToken, evaluatedAt: qualityEvaluatedAt),
+        false,
+        PlanRules.DefaultBestHoursMode));
 });
 
 app.MapFallbackToFile("index.html");

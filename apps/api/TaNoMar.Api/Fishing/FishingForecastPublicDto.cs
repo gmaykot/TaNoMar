@@ -6,7 +6,6 @@ internal static class FishingForecastPublicDto
 {
     public static object Day(
         FishingForecast forecast,
-        DateTimeOffset evaluatedAt,
         bool paid,
         string bestHoursMode,
         HashSet<string>? ownerSpotIds = null,
@@ -18,7 +17,7 @@ internal static class FishingForecastPublicDto
             ranking = forecast.Ranking
                 .Select(item => Item(
                     item,
-                    Quality(item, forecast.QualityContext, evaluatedAt),
+                    Quality(item, forecast.QualityContext),
                     paid,
                     bestHoursMode,
                     ownerSpotIds,
@@ -33,8 +32,7 @@ internal static class FishingForecastPublicDto
 
     private static FishingForecastQualityDto? Quality(
         FishingLocationForecast forecast,
-        ForecastQualityContext? context,
-        DateTimeOffset evaluatedAt)
+        ForecastQualityContext? context)
     {
         if (context is null || !context.Snapshots.TryGetValue(forecast.Id, out var snapshot))
             return null;
@@ -44,7 +42,7 @@ internal static class FishingForecastPublicDto
             snapshot,
             context.RefreshAfter,
             context.MaxStale,
-            evaluatedAt);
+            context.EvaluatedAt);
     }
 
     private static object Item(

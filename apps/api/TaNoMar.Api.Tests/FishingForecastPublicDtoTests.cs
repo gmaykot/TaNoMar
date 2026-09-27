@@ -155,10 +155,13 @@ public sealed class FishingForecastPublicDtoTests
     public void Location_detail_day_contract_contains_quality()
     {
         var forecast = Envelope([Forecast("detail", 16)]);
+        forecast = forecast with
+        {
+            QualityContext = forecast.QualityContext! with { EvaluatedAt = CreatedAt.AddHours(1) }
+        };
         var json = JsonSerializer.SerializeToElement(
             FishingForecastPublicDto.Day(
                 forecast,
-                CreatedAt.AddHours(1),
                 paid: true,
                 bestHoursMode: PlanRules.DefaultBestHoursMode,
                 includeSelectableHours: true),
@@ -261,9 +264,17 @@ public sealed class FishingForecastPublicDtoTests
         FishingForecast forecast,
         DateTimeOffset evaluatedAt,
         bool paid = true)
-        => JsonSerializer.SerializeToElement(
-            FishingForecastPublicDto.Day(forecast, evaluatedAt, paid, PlanRules.DefaultBestHoursMode),
+    {
+        var evaluatedForecast = forecast with
+        {
+            QualityContext = forecast.QualityContext is null
+                ? null
+                : forecast.QualityContext with { EvaluatedAt = evaluatedAt }
+        };
+        return JsonSerializer.SerializeToElement(
+            FishingForecastPublicDto.Day(evaluatedForecast, paid, PlanRules.DefaultBestHoursMode),
             JsonOptions);
+    }
 
     private static FishingForecast Envelope(
         IReadOnlyList<FishingLocationForecast> ranking,
@@ -282,7 +293,7 @@ public sealed class FishingForecastPublicDtoTests
     }
 
     private static ForecastQualityContext Context(IReadOnlyDictionary<string, ForecastSnapshotMetadata> snapshots)
-        => new(snapshots, RefreshAfter, MaxStale);
+        => new(snapshots, RefreshAfter, MaxStale, CreatedAt.AddHours(1));
 
     private static FishingLocationForecast WithWind(FishingLocationForecast forecast, double windSpeedKmh)
     {

@@ -122,6 +122,44 @@ describe('parseForecastQuality', () => {
     });
   });
 
+  it.each([
+    [16, 16, 1],
+    [12, 16, 0.75],
+    [8, 16, 0.5],
+    [3, 16, 0.1875],
+    [0, 16, 0],
+  ])('aceita ratio consistente %i/%i = %f', (validHours, expectedHours, ratio) => {
+    expect(
+      parseForecastQuality({
+        ...validQuality,
+        dataCompleteness: { validHours, expectedHours, ratio },
+      }).dataCompleteness.ratio,
+    ).toBe(ratio);
+  });
+
+  it.each([
+    [8, 16, 0.9],
+    [3, 16, 0.2],
+    [16, 16, 0.999],
+  ])('rejeita ratio inconsistente %i/%i != %f', (validHours, expectedHours, ratio) => {
+    expect(() =>
+      parseForecastQuality({
+        ...validQuality,
+        dataCompleteness: { validHours, expectedHours, ratio },
+      }),
+    ).toThrow(ContractError);
+  });
+
+  it('aceita diferença de floating point dentro do epsilon', () => {
+    const ratio = 3 / 16 + 5e-13;
+    expect(
+      parseForecastQuality({
+        ...validQuality,
+        dataCompleteness: { validHours: 3, expectedHours: 16, ratio },
+      }).dataCompleteness.ratio,
+    ).toBe(ratio);
+  });
+
   it('rejeita item disponível sem quality', () => {
     expect(() =>
       parseRankingForecast({
