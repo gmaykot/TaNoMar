@@ -11,7 +11,8 @@ public sealed class FishingWindPreferenceTests
     {
         var forecast = Forecast(
             Hour("06:00", "Leste"),
-            Hour("07:00", "Oeste"));
+            Hour("07:00", "Oeste"),
+            Hour("08:00", "Norte"));
 
         var east = FishingWindPreference.Apply(forecast, 90, 90, "praia_aberta");
         var west = FishingWindPreference.Apply(forecast, 270, 90, "praia_aberta");
@@ -19,6 +20,40 @@ public sealed class FishingWindPreferenceTests
         Assert.Equal("06:00", east.BestHour?.Time);
         Assert.Equal("07:00", west.BestHour?.Time);
         Assert.Equal("mar", east.Hours.Single(item => item.Time == "06:00").WindOrigin);
+    }
+
+    [Fact]
+    public void Apply_does_not_resurrect_an_unavailable_hour()
+    {
+        var unavailable = Hour("06:00", "Leste") with
+        {
+            Score = null,
+            WindSpeedKmh = null,
+            ScoreAvailability = FishingScoreAvailability.Unavailable,
+            ScoreMissingReasons = ["wind_speed_missing"]
+        };
+        var forecast = Forecast(unavailable, Hour("07:00", "Oeste"));
+
+        var result = FishingWindPreference.Apply(forecast, 90, 90, "praia_aberta");
+        var preserved = result.Hours.Single(item => item.Time == "06:00");
+
+        Assert.Null(preserved.Score);
+        Assert.Equal(FishingScoreAvailability.Unavailable, preserved.ScoreAvailability);
+        Assert.Contains("wind_speed_missing", preserved.ScoreMissingReasons!);
+        Assert.DoesNotContain(result.BestHours, item => item.Time == "06:00");
+    }
+
+    [Fact]
+    public void Apply_makes_daily_score_unavailable_with_fewer_than_three_valid_hours()
+    {
+        var forecast = Forecast(Hour("06:00", "Leste"), Hour("07:00", "Oeste"));
+
+        var result = FishingWindPreference.Apply(forecast, 90, 90, "praia_aberta");
+
+        Assert.Null(result.Score);
+        Assert.Empty(result.BestHours);
+        Assert.Null(result.BestHour);
+        Assert.Equal(2, result.Hours.Count);
     }
 
     [Theory]

@@ -21,39 +21,39 @@ public sealed class FishingOceanCurrentTests
         {
             Hourly = new OpenMeteoHourly
             {
-                Time = ["2026-09-08T05:00", "2026-09-08T06:00"],
-                WindSpeed = [8, 8],
-                WindGusts = [10, 10],
-                WindDirection = [90, 90],
-                Precipitation = [0, 0],
-                PrecipitationProbability = [10, 10],
-                Temperature = [20, 20],
-                PressureMsl = [1012, 1012]
+                Time = ["2026-09-08T05:00", "2026-09-08T06:00", "2026-09-08T07:00"],
+                WindSpeed = [8, 8, 8],
+                WindGusts = [10, 10, 10],
+                WindDirection = [90, 90, 90],
+                Precipitation = [0, 0, 0],
+                PrecipitationProbability = [10, 10, 10],
+                Temperature = [20, 20, 20],
+                PressureMsl = [1012, 1012, 1012]
             }
         };
         var gfs = new OpenMeteoResponse
         {
             Hourly = new OpenMeteoHourly
             {
-                Time = ["2026-09-08T05:00", "2026-09-08T06:00"],
-                Precipitation = [0, 0],
-                PrecipitationProbability = [8, 8]
+                Time = ["2026-09-08T05:00", "2026-09-08T06:00", "2026-09-08T07:00"],
+                Precipitation = [0, 0, 0],
+                PrecipitationProbability = [8, 8, 8]
             }
         };
         var marine = new OpenMeteoResponse
         {
             Hourly = new OpenMeteoHourly
             {
-                Time = ["2026-09-08T05:00", "2026-09-08T06:00"],
-                WaveHeight = [0.8, 0.8],
-                WaveDirection = [90, 90],
-                WavePeriod = [8, 8],
-                SwellHeight = [0.5, 0.5],
-                SwellDirection = [90, 90],
-                SwellPeriod = [7, 7],
-                WaterTemperature = [18, 18],
-                OceanCurrentVelocity = [1.25, null],
-                OceanCurrentDirection = [225, null]
+                Time = ["2026-09-08T05:00", "2026-09-08T06:00", "2026-09-08T07:00"],
+                WaveHeight = [0.8, 0.8, 0.8],
+                WaveDirection = [90, 90, 90],
+                WavePeriod = [8, 8, 8],
+                SwellHeight = [0.5, 0.5, 0.5],
+                SwellDirection = [90, 90, 90],
+                SwellPeriod = [7, 7, 7],
+                WaterTemperature = [18, 18, 18],
+                OceanCurrentVelocity = [1.25, null, 0.75],
+                OceanCurrentDirection = [225, null, 180]
             }
         };
 

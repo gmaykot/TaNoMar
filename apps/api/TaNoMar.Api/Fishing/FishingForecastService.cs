@@ -104,13 +104,13 @@ internal sealed class FishingForecastService
             results.Add(cached.Forecast);
         }
 
-        return new FishingForecast(
+        return FishingForecastAvailability.FilterRanking(new FishingForecast(
             now,
             targetDate,
             results.OrderByDescending(result => result.Score).ToList(),
             errors,
             dataUpdatedAt.Count > 0 ? dataUpdatedAt.Min() : null,
-            hasStaleData);
+            hasStaleData));
     }
 
     public DateOnly Today()
@@ -360,18 +360,22 @@ internal sealed class FishingForecastService
             var gfsIndex = gfsIndexes.GetValueOrDefault(timestamp, -1);
             var marineIndex = marineIndexes.GetValueOrDefault(timestamp, -1);
 
-            var speed = ValueAt(weather.Hourly.WindSpeed, index);
-            var gust = ValueAt(weather.Hourly.WindGusts, index);
-            var windDirection = ValueAt(weather.Hourly.WindDirection, index);
-            var rainBestMm = ValueAt(weather.Hourly.Precipitation, index);
-            var rainBestProbability = ValueAt(weather.Hourly.PrecipitationProbability, index);
-            var rainGfsMm = ValueAt(gfsRain.Hourly.Precipitation, gfsIndex);
-            var rainGfsProbability = ValueAt(gfsRain.Hourly.PrecipitationProbability, gfsIndex);
-            var rainProbability = Math.Max(rainBestProbability, rainGfsProbability);
-            var rainMm = Math.Max(rainBestMm, rainGfsMm);
-            var waveHeight = ValueAt(marine.Hourly.WaveHeight, marineIndex);
+            var speed = ValueAtOrNull(weather.Hourly.WindSpeed, index);
+            var gust = ValueAtOrNull(weather.Hourly.WindGusts, index);
+            var windDirection = ValueAtOrNull(weather.Hourly.WindDirection, index);
+            var rainBestMm = ValueAtOrNull(weather.Hourly.Precipitation, index);
+            var rainBestProbability = ValueAtOrNull(weather.Hourly.PrecipitationProbability, index);
+            var rainGfsMm = ValueAtOrNull(gfsRain.Hourly.Precipitation, gfsIndex);
+            var rainGfsProbability = ValueAtOrNull(gfsRain.Hourly.PrecipitationProbability, gfsIndex);
+            double? rainProbability = rainBestProbability is not null && rainGfsProbability is not null
+                ? Math.Max(rainBestProbability.Value, rainGfsProbability.Value)
+                : null;
+            double? rainMm = rainBestMm is not null && rainGfsMm is not null
+                ? Math.Max(rainBestMm.Value, rainGfsMm.Value)
+                : null;
+            var waveHeight = ValueAtOrNull(marine.Hourly.WaveHeight, marineIndex);
             var waveDirection = ValueAt(marine.Hourly.WaveDirection, marineIndex);
-            var wavePeriod = ValueAt(marine.Hourly.WavePeriod, marineIndex);
+            var wavePeriod = ValueAtOrNull(marine.Hourly.WavePeriod, marineIndex);
             var swellHeight = ValueAt(marine.Hourly.SwellHeight, marineIndex);
             var swellDirection = ValueAt(marine.Hourly.SwellDirection, marineIndex);
             var swellPeriod = ValueAt(marine.Hourly.SwellPeriod, marineIndex);
@@ -382,53 +386,61 @@ internal sealed class FishingForecastService
             var oceanCurrentDirection = ValueAtOrNull(marine.Hourly.OceanCurrentDirection, marineIndex);
             var pressure = ValueAt(weather.Hourly.PressureMsl, index);
 
-            var score = FishingScoreCalculator.Calculate(
+            var scoreResult = FishingScoreCalculator.Evaluate(
                 speed,
                 gust,
                 windDirection,
                 location.SeaOrientationDegrees,
                 waveHeight,
                 wavePeriod,
-                rainProbability,
-                rainMm,
+                rainBestProbability,
+                rainGfsProbability,
+                rainBestMm,
+                rainGfsMm,
                 hour,
-                location.Profile);
+                location.Profile,
+                gfsIndex >= 0,
+                marineIndex >= 0);
 
             rows.Add(new FishingHourForecast(
                 $"{hour:00}:00",
-                score,
-                Round(speed, 1),
-                Round(gust, 1),
-                CompassDirection(windDirection),
-                Round(rainMm, 1),
+                scoreResult.Score,
+                RoundOrNull(speed, 1),
+                RoundOrNull(gust, 1),
+                CompassDirectionOrEmpty(windDirection),
+                RoundOrNull(rainMm, 1),
                 Round(airTemperature, 1),
                 Round(waterTemperature, 1),
-                Convert.ToInt32(Math.Round(rainProbability, MidpointRounding.ToEven)),
-                Convert.ToInt32(Math.Round(rainBestProbability, MidpointRounding.ToEven)),
-                Convert.ToInt32(Math.Round(rainGfsProbability, MidpointRounding.ToEven)),
-                Round(waveHeight, 2),
-                Round(wavePeriod, 1),
+                ToIntOrNull(rainProbability),
+                ToIntOrNull(rainBestProbability),
+                ToIntOrNull(rainGfsProbability),
+                RoundOrNull(waveHeight, 2),
+                RoundOrNull(wavePeriod, 1),
                 Round(swellHeight, 2),
                 Round(swellPeriod, 1),
                 CompassDirection(waveDirection),
                 CompassDirection(swellDirection),
                 seaLevel is null ? null : Round(seaLevel.Value, 2),
                 Round(pressure, 0),
-                FishingScoreCalculator.WindOrigin(windDirection, location.SeaOrientationDegrees),
+                windDirection is null ? string.Empty : FishingScoreCalculator.WindOrigin(windDirection.Value, location.SeaOrientationDegrees),
                 windDirection,
                 oceanCurrentVelocity,
-                oceanCurrentDirection));
+                oceanCurrentDirection,
+                scoreResult.Availability,
+                scoreResult.MissingReasons));
         }
 
-        var bestHours = rows
-            .Where(row => int.Parse(row.Time.AsSpan(0, 2)) is >= 5 and <= 20)
+        var dailyCandidates = rows
+            .Where(row => row.Score is not null && int.Parse(row.Time.AsSpan(0, 2)) is >= 5 and <= 20)
             .OrderByDescending(row => row.Score)
             .ThenBy(row => row.Time, StringComparer.Ordinal)
             .Take(3)
             .ToList();
-        var locationScore = bestHours.Count > 0
-            ? Round(bestHours.Average(row => row.Score), 1)
-            : 0.0;
+        var dailyScoreAvailable = dailyCandidates.Count == 3;
+        var bestHours = dailyScoreAvailable ? dailyCandidates : [];
+        double? locationScore = dailyScoreAvailable
+            ? Round(dailyCandidates.Average(row => row.Score!.Value), 1)
+            : null;
 
         return new FishingLocationForecast(
             location.Id,
@@ -453,9 +465,18 @@ internal sealed class FishingForecastService
     private static double Round(double value, int digits)
         => Math.Round(value, digits, MidpointRounding.ToEven);
 
+    private static double? RoundOrNull(double? value, int digits)
+        => value is null ? null : Round(value.Value, digits);
+
+    private static int? ToIntOrNull(double? value)
+        => value is null ? null : Convert.ToInt32(Math.Round(value.Value, MidpointRounding.ToEven));
+
     private static string CompassDirection(double degrees)
     {
         string[] names = ["Norte", "Nordeste", "Leste", "Sudeste", "Sul", "Sudoeste", "Oeste", "Noroeste"];
         return names[(int)Math.Floor((degrees + 22.5) / 45) % 8];
     }
+
+    private static string CompassDirectionOrEmpty(double? degrees)
+        => degrees is null ? string.Empty : CompassDirection(degrees.Value);
 }

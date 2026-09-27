@@ -113,6 +113,32 @@ public sealed class FishingForecastCacheTests
     }
 
     [Fact]
+    public async Task Roundtrip_preserves_unavailable_daily_score_as_null()
+    {
+        using var harness = new CacheHarness();
+        var date = new DateOnly(2026, 9, 9);
+        var unavailable = Forecast("insufficient", date) with
+        {
+            Score = null,
+            BestHours = [],
+            BestHour = null
+        };
+        await harness.SeedSnapshotAsync(
+            "insufficient",
+            date,
+            unavailable,
+            DateTimeOffset.UtcNow.AddMinutes(-1),
+            DateTimeOffset.UtcNow.AddHours(23));
+
+        var cached = await harness.Cache.TryGetAvailableAsync("insufficient", date, CancellationToken.None);
+
+        Assert.NotNull(cached);
+        Assert.Null(cached.Forecast.Score);
+        Assert.Empty(cached.Forecast.BestHours);
+        Assert.Null(cached.Forecast.BestHour);
+    }
+
+    [Fact]
     public async Task Invalidate_removes_memory_and_snapshots_and_bumps_generation()
     {
         using var harness = new CacheHarness();

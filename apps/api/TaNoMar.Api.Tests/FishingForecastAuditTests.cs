@@ -67,50 +67,50 @@ public sealed class FishingForecastAuditTests
     public void Compares_normalized_values_with_the_three_external_sources()
     {
         var location = Location();
-        var hour = Hour("05:00", 7.8);
+        var hours = new[] { Hour("05:00", 7.8), Hour("06:00", 7.8), Hour("07:00", 7.8) };
         var forecast = new FishingLocationForecast(
             location.Id,
             location.Name,
             new DateOnly(2026, 9, 8),
             7.8,
-            [hour],
-            hour,
-            [hour]);
+            hours,
+            hours[0],
+            hours);
         var weather = new OpenMeteoResponse
         {
             Hourly = new OpenMeteoHourly
             {
-                Time = ["2026-09-08T05:00"],
-                WindSpeed = [8],
-                WindGusts = [12],
-                WindDirection = [90],
-                Precipitation = [0],
-                PrecipitationProbability = [10],
-                Temperature = [20],
-                PressureMsl = [1012]
+                Time = ["2026-09-08T05:00", "2026-09-08T06:00", "2026-09-08T07:00"],
+                WindSpeed = [8, 8, 8],
+                WindGusts = [12, 12, 12],
+                WindDirection = [90, 90, 90],
+                Precipitation = [0, 0, 0],
+                PrecipitationProbability = [10, 10, 10],
+                Temperature = [20, 20, 20],
+                PressureMsl = [1012, 1012, 1012]
             }
         };
         var gfsRain = new OpenMeteoResponse
         {
             Hourly = new OpenMeteoHourly
             {
-                Time = ["2026-09-08T05:00"],
-                Precipitation = [0],
-                PrecipitationProbability = [8]
+                Time = ["2026-09-08T05:00", "2026-09-08T06:00", "2026-09-08T07:00"],
+                Precipitation = [0, 0, 0],
+                PrecipitationProbability = [8, 8, 8]
             }
         };
         var marine = new OpenMeteoResponse
         {
             Hourly = new OpenMeteoHourly
             {
-                Time = ["2026-09-08T05:00"],
-                WaveHeight = [0.8],
-                WaveDirection = [90],
-                WavePeriod = [8],
-                SwellHeight = [0.5],
-                SwellDirection = [90],
-                SwellPeriod = [7],
-                WaterTemperature = [18]
+                Time = ["2026-09-08T05:00", "2026-09-08T06:00", "2026-09-08T07:00"],
+                WaveHeight = [0.8, 0.8, 0.8],
+                WaveDirection = [90, 90, 90],
+                WavePeriod = [8, 8, 8],
+                SwellHeight = [0.5, 0.5, 0.5],
+                SwellDirection = [90, 90, 90],
+                SwellPeriod = [7, 7, 7],
+                WaterTemperature = [18, 18, 18]
             }
         };
 
@@ -122,7 +122,7 @@ public sealed class FishingForecastAuditTests
         Assert.True(report.Passed);
         Assert.True(report.RawSourceComparisonAvailable);
         Assert.Empty(report.Findings);
-        var source = report.Hours.Single().Sources!;
+        var source = report.Hours.Single(item => item.Time == "05:00").Sources!;
         Assert.Equal(7.8, source.CalculatedScore);
         Assert.Equal(8, source.Weather.WindSpeedKmh);
         Assert.Equal(0.8, source.Marine.WaveMeters);

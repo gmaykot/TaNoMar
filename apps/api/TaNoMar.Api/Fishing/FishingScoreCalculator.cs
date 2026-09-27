@@ -2,6 +2,56 @@ namespace TaNoMar.Api.Fishing;
 
 internal static class FishingScoreCalculator
 {
+    public static FishingScoreResult Evaluate(
+        double? speed,
+        double? gust,
+        double? windFrom,
+        double? seaOrientation,
+        double? waveHeight,
+        double? wavePeriod,
+        double? weatherRainProbability,
+        double? gfsRainProbability,
+        double? weatherRainMm,
+        double? gfsRainMm,
+        int hour,
+        string profile,
+        bool gfsTimelineMatched = true,
+        bool marineTimelineMatched = true)
+    {
+        var missingReasons = new List<string>();
+        AddMissing(speed, "wind_speed_missing", missingReasons);
+        AddMissing(windFrom, "wind_direction_missing", missingReasons);
+        AddMissing(gust, "wind_gust_missing", missingReasons);
+        AddMissing(weatherRainProbability, "weather_rain_probability_missing", missingReasons);
+        AddMissing(gfsRainProbability, "gfs_rain_probability_missing", missingReasons);
+        AddMissing(weatherRainMm, "weather_rain_amount_missing", missingReasons);
+        AddMissing(gfsRainMm, "gfs_rain_amount_missing", missingReasons);
+        AddMissing(waveHeight, "wave_height_missing", missingReasons);
+        AddMissing(wavePeriod, "wave_period_missing", missingReasons);
+        if (!gfsTimelineMatched) missingReasons.Add("gfs_timeline_mismatch");
+        if (!marineTimelineMatched) missingReasons.Add("marine_timeline_mismatch");
+
+        if (missingReasons.Count > 0)
+            return new FishingScoreResult(null, FishingScoreAvailability.Unavailable, missingReasons);
+
+        var rainProbability = Math.Max(weatherRainProbability!.Value, gfsRainProbability!.Value);
+        var rainMm = Math.Max(weatherRainMm!.Value, gfsRainMm!.Value);
+        return new FishingScoreResult(
+            Calculate(
+                speed!.Value,
+                gust!.Value,
+                windFrom!.Value,
+                seaOrientation,
+                waveHeight!.Value,
+                wavePeriod!.Value,
+                rainProbability,
+                rainMm,
+                hour,
+                profile),
+            FishingScoreAvailability.Available,
+            []);
+    }
+
     public static double Calculate(
         double speed,
         double gust,
@@ -159,5 +209,10 @@ internal static class FishingScoreCalculator
         if (hour is >= 9 and <= 11) return 8.0;
         if (hour is >= 12 and <= 15) return 6.5;
         return 5.5;
+    }
+
+    private static void AddMissing(double? value, string reason, List<string> missingReasons)
+    {
+        if (value is null) missingReasons.Add(reason);
     }
 }

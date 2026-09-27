@@ -45,7 +45,7 @@ public sealed record FishingLocationForecast(
     string Id,
     string Location,
     DateOnly Date,
-    double Score,
+    double? Score,
     IReadOnlyList<FishingHourForecast> BestHours,
     FishingHourForecast? BestHour,
     IReadOnlyList<FishingHourForecast> Hours,
@@ -59,18 +59,18 @@ public sealed record FishingTideExtreme(string Time, string Type, double HeightM
 
 public sealed record FishingHourForecast(
     string Time,
-    double Score,
-    double WindSpeedKmh,
-    double WindGustKmh,
+    double? Score,
+    double? WindSpeedKmh,
+    double? WindGustKmh,
     string WindDirection,
-    double RainMm,
+    double? RainMm,
     double AirTemperatureC,
     double WaterTemperatureC,
-    int RainProbability,
-    int RainProbabilityBestMatch,
-    int RainProbabilityGfs,
-    double WaveMeters,
-    double WavePeriodSeconds,
+    int? RainProbability,
+    int? RainProbabilityBestMatch,
+    int? RainProbabilityGfs,
+    double? WaveMeters,
+    double? WavePeriodSeconds,
     double SwellMeters,
     double SwellPeriodSeconds,
     string WaveDirection,
@@ -80,7 +80,20 @@ public sealed record FishingHourForecast(
     string WindOrigin = "",
     double? WindDirectionDegrees = null,
     double? OceanCurrentVelocityKmh = null,
-    double? OceanCurrentDirectionDegrees = null);
+    double? OceanCurrentDirectionDegrees = null,
+    FishingScoreAvailability ScoreAvailability = FishingScoreAvailability.Available,
+    IReadOnlyList<string>? ScoreMissingReasons = null);
+
+public enum FishingScoreAvailability
+{
+    Available,
+    Unavailable
+}
+
+public sealed record FishingScoreResult(
+    double? Score,
+    FishingScoreAvailability Availability,
+    IReadOnlyList<string> MissingReasons);
 
 public sealed record FishingForecastError(string Location, string Error);
 

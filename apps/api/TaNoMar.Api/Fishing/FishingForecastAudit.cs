@@ -41,16 +41,17 @@ internal static class FishingForecastAudit
             CheckRanges(findings, hour);
         }
 
-        if (!double.IsFinite(forecast.Score) || forecast.Score is < 0 or > 10)
+        if (forecast.Score is not null && (!double.IsFinite(forecast.Score.Value) || forecast.Score is < 0 or > 10))
             Add(findings, "error", "score", "Nota do local fora do intervalo 0–10.");
 
-        var expectedBest = hours
-            .Where(hour => int.TryParse(hour.Time.AsSpan(0, Math.Min(2, hour.Time.Length)), out var value) && value is >= 5 and <= 20)
+        var dailyCandidates = hours
+            .Where(hour => hour.Score is not null && int.TryParse(hour.Time.AsSpan(0, Math.Min(2, hour.Time.Length)), out var value) && value is >= 5 and <= 20)
             .OrderByDescending(hour => hour.Score)
             .ThenBy(hour => hour.Time, StringComparer.Ordinal)
             .Take(3)
             .Select(hour => hour.Time)
             .ToArray();
+        var expectedBest = dailyCandidates.Length == 3 ? dailyCandidates : [];
         var actualBest = (forecast.BestHours ?? []).Select(hour => hour.Time).ToArray();
         if (!expectedBest.SequenceEqual(actualBest, StringComparer.Ordinal))
             Add(findings, "error", "bestHours", "Melhores horas não correspondem às três maiores notas entre 05h e 20h.");
@@ -58,12 +59,12 @@ internal static class FishingForecastAudit
         if (forecast.BestHour is not null && (actualBest.Length == 0 || forecast.BestHour.Time != actualBest[0]))
             Add(findings, "error", "bestHour", "BestHour não corresponde à primeira melhor hora.");
 
-        var expectedScore = expectedBest.Length == 0
-            ? 0.0
-            : Math.Round(
-                hours.Where(hour => expectedBest.Contains(hour.Time, StringComparer.Ordinal)).Average(hour => hour.Score),
+        double? expectedScore = expectedBest.Length == 3
+            ? Math.Round(
+                hours.Where(hour => expectedBest.Contains(hour.Time, StringComparer.Ordinal)).Average(hour => hour.Score!.Value),
                 1,
-                MidpointRounding.ToEven);
+                MidpointRounding.ToEven)
+            : null;
         if (forecast.Score != expectedScore)
             Add(findings, "error", "score", $"Nota agregada divergente. Esperado {expectedScore:0.0}, encontrado {forecast.Score:0.0}.");
 
@@ -144,33 +145,35 @@ internal static class FishingForecastAudit
             || !marineIndexes.TryGetValue(timestamp, out var marineIndex))
             return null;
 
-        var speed = ValueAt(sources.Weather.Hourly.WindSpeed, weatherIndex);
-        var gust = ValueAt(sources.Weather.Hourly.WindGusts, weatherIndex);
-        var windDirection = ValueAt(sources.Weather.Hourly.WindDirection, weatherIndex);
-        var rainBestMm = ValueAt(sources.Weather.Hourly.Precipitation, weatherIndex);
-        var rainBestProbability = ValueAt(sources.Weather.Hourly.PrecipitationProbability, weatherIndex);
-        var rainGfsMm = ValueAt(sources.GfsRain.Hourly.Precipitation, gfsIndex);
-        var rainGfsProbability = ValueAt(sources.GfsRain.Hourly.PrecipitationProbability, gfsIndex);
-        var waveHeight = ValueAt(sources.Marine.Hourly.WaveHeight, marineIndex);
+        var speed = NullableValueAt(sources.Weather.Hourly.WindSpeed, weatherIndex);
+        var gust = NullableValueAt(sources.Weather.Hourly.WindGusts, weatherIndex);
+        var windDirection = NullableValueAt(sources.Weather.Hourly.WindDirection, weatherIndex);
+        var rainBestMm = NullableValueAt(sources.Weather.Hourly.Precipitation, weatherIndex);
+        var rainBestProbability = NullableValueAt(sources.Weather.Hourly.PrecipitationProbability, weatherIndex);
+        var rainGfsMm = NullableValueAt(sources.GfsRain.Hourly.Precipitation, gfsIndex);
+        var rainGfsProbability = NullableValueAt(sources.GfsRain.Hourly.PrecipitationProbability, gfsIndex);
+        var waveHeight = NullableValueAt(sources.Marine.Hourly.WaveHeight, marineIndex);
         var waveDirection = ValueAt(sources.Marine.Hourly.WaveDirection, marineIndex);
-        var wavePeriod = ValueAt(sources.Marine.Hourly.WavePeriod, marineIndex);
+        var wavePeriod = NullableValueAt(sources.Marine.Hourly.WavePeriod, marineIndex);
         var swellHeight = ValueAt(sources.Marine.Hourly.SwellHeight, marineIndex);
         var swellDirection = ValueAt(sources.Marine.Hourly.SwellDirection, marineIndex);
         var swellPeriod = ValueAt(sources.Marine.Hourly.SwellPeriod, marineIndex);
         var hourNumber = int.TryParse(hour.Time.AsSpan(0, Math.Min(2, hour.Time.Length)), out var parsedHour)
             ? parsedHour
             : 0;
-        var sourceScore = FishingScoreCalculator.Calculate(
+        var sourceScore = FishingScoreCalculator.Evaluate(
             speed,
             gust,
             windDirection,
             location.SeaOrientationDegrees,
             waveHeight,
             wavePeriod,
-            Math.Max(rainBestProbability, rainGfsProbability),
-            Math.Max(rainBestMm, rainGfsMm),
+            rainBestProbability,
+            rainGfsProbability,
+            rainBestMm,
+            rainGfsMm,
             hourNumber,
-            location.Profile);
+            location.Profile).Score;
 
         return new FishingForecastAuditSourcesView(
             sourceScore,
@@ -258,18 +261,22 @@ internal static class FishingForecastAudit
                 continue;
             }
 
-            var speed = ValueAt(sources.Weather.Hourly.WindSpeed, weatherIndex);
-            var gust = ValueAt(sources.Weather.Hourly.WindGusts, weatherIndex);
-            var windDirection = ValueAt(sources.Weather.Hourly.WindDirection, weatherIndex);
-            var rainBestMm = ValueAt(sources.Weather.Hourly.Precipitation, weatherIndex);
-            var rainBestProbability = ValueAt(sources.Weather.Hourly.PrecipitationProbability, weatherIndex);
-            var rainGfsMm = ValueAt(sources.GfsRain.Hourly.Precipitation, gfsIndex);
-            var rainGfsProbability = ValueAt(sources.GfsRain.Hourly.PrecipitationProbability, gfsIndex);
-            var rainProbability = Math.Max(rainBestProbability, rainGfsProbability);
-            var rainMm = Math.Max(rainBestMm, rainGfsMm);
-            var waveHeight = ValueAt(sources.Marine.Hourly.WaveHeight, marineIndex);
+            var speed = NullableValueAt(sources.Weather.Hourly.WindSpeed, weatherIndex);
+            var gust = NullableValueAt(sources.Weather.Hourly.WindGusts, weatherIndex);
+            var windDirection = NullableValueAt(sources.Weather.Hourly.WindDirection, weatherIndex);
+            var rainBestMm = NullableValueAt(sources.Weather.Hourly.Precipitation, weatherIndex);
+            var rainBestProbability = NullableValueAt(sources.Weather.Hourly.PrecipitationProbability, weatherIndex);
+            var rainGfsMm = NullableValueAt(sources.GfsRain.Hourly.Precipitation, gfsIndex);
+            var rainGfsProbability = NullableValueAt(sources.GfsRain.Hourly.PrecipitationProbability, gfsIndex);
+            double? rainProbability = rainBestProbability is not null && rainGfsProbability is not null
+                ? Math.Max(rainBestProbability.Value, rainGfsProbability.Value)
+                : null;
+            double? rainMm = rainBestMm is not null && rainGfsMm is not null
+                ? Math.Max(rainBestMm.Value, rainGfsMm.Value)
+                : null;
+            var waveHeight = NullableValueAt(sources.Marine.Hourly.WaveHeight, marineIndex);
             var waveDirection = ValueAt(sources.Marine.Hourly.WaveDirection, marineIndex);
-            var wavePeriod = ValueAt(sources.Marine.Hourly.WavePeriod, marineIndex);
+            var wavePeriod = NullableValueAt(sources.Marine.Hourly.WavePeriod, marineIndex);
             var swellHeight = ValueAt(sources.Marine.Hourly.SwellHeight, marineIndex);
             var swellDirection = ValueAt(sources.Marine.Hourly.SwellDirection, marineIndex);
             var swellPeriod = ValueAt(sources.Marine.Hourly.SwellPeriod, marineIndex);
@@ -277,30 +284,32 @@ internal static class FishingForecastAudit
             var waterTemperature = ValueAt(sources.Marine.Hourly.WaterTemperature, marineIndex);
             var pressure = ValueAt(sources.Weather.Hourly.PressureMsl, weatherIndex);
             var hourNumber = int.Parse(hour.Time.AsSpan(0, 2), CultureInfo.InvariantCulture);
-            var sourceScore = FishingScoreCalculator.Calculate(
+            var sourceScore = FishingScoreCalculator.Evaluate(
                 speed,
                 gust,
                 windDirection,
                 location.SeaOrientationDegrees,
                 waveHeight,
                 wavePeriod,
-                rainProbability,
-                rainMm,
+                rainBestProbability,
+                rainGfsProbability,
+                rainBestMm,
+                rainGfsMm,
                 hourNumber,
-                location.Profile);
+                location.Profile).Score;
 
             Compare(findings, hour, "score", hour.Score, sourceScore);
-            Compare(findings, hour, "windSpeedKmh", hour.WindSpeedKmh, Round(speed, 1));
-            Compare(findings, hour, "windGustKmh", hour.WindGustKmh, Round(gust, 1));
-            Compare(findings, hour, "windDirection", hour.WindDirection, CompassDirection(windDirection));
-            Compare(findings, hour, "rainMm", hour.RainMm, Round(rainMm, 1));
-            Compare(findings, hour, "rainProbability", hour.RainProbability, ToInt(rainProbability));
-            Compare(findings, hour, "rainProbabilityBestMatch", hour.RainProbabilityBestMatch, ToInt(rainBestProbability));
-            Compare(findings, hour, "rainProbabilityGfs", hour.RainProbabilityGfs, ToInt(rainGfsProbability));
+            Compare(findings, hour, "windSpeedKmh", hour.WindSpeedKmh, RoundOrNull(speed, 1));
+            Compare(findings, hour, "windGustKmh", hour.WindGustKmh, RoundOrNull(gust, 1));
+            Compare(findings, hour, "windDirection", hour.WindDirection, CompassDirectionOrEmpty(windDirection));
+            Compare(findings, hour, "rainMm", hour.RainMm, RoundOrNull(rainMm, 1));
+            Compare(findings, hour, "rainProbability", hour.RainProbability, ToIntOrNull(rainProbability));
+            Compare(findings, hour, "rainProbabilityBestMatch", hour.RainProbabilityBestMatch, ToIntOrNull(rainBestProbability));
+            Compare(findings, hour, "rainProbabilityGfs", hour.RainProbabilityGfs, ToIntOrNull(rainGfsProbability));
             Compare(findings, hour, "airTemperatureC", hour.AirTemperatureC, Round(airTemperature, 1));
             Compare(findings, hour, "waterTemperatureC", hour.WaterTemperatureC, Round(waterTemperature, 1));
-            Compare(findings, hour, "waveMeters", hour.WaveMeters, Round(waveHeight, 2));
-            Compare(findings, hour, "wavePeriodSeconds", hour.WavePeriodSeconds, Round(wavePeriod, 1));
+            Compare(findings, hour, "waveMeters", hour.WaveMeters, RoundOrNull(waveHeight, 2));
+            Compare(findings, hour, "wavePeriodSeconds", hour.WavePeriodSeconds, RoundOrNull(wavePeriod, 1));
             Compare(findings, hour, "swellMeters", hour.SwellMeters, Round(swellHeight, 2));
             Compare(findings, hour, "swellPeriodSeconds", hour.SwellPeriodSeconds, Round(swellPeriod, 1));
             Compare(findings, hour, "waveDirection", hour.WaveDirection, CompassDirection(waveDirection));
@@ -350,8 +359,8 @@ internal static class FishingForecastAudit
         List<FishingForecastAuditFinding> findings,
         FishingHourForecast hour,
         string field,
-        double actual,
-        double expected)
+        double? actual,
+        double? expected)
     {
         if (actual != expected)
             Add(findings, "error", $"hours[{hour.Time}].{field}", $"Valor normalizado divergente. Esperado {expected}, encontrado {actual}.");
@@ -377,8 +386,14 @@ internal static class FishingForecastAudit
     private static int ToInt(double value)
         => Convert.ToInt32(Math.Round(value, MidpointRounding.ToEven));
 
+    private static int? ToIntOrNull(double? value)
+        => value is null ? null : ToInt(value.Value);
+
     private static double Round(double value, int digits)
         => Math.Round(value, digits, MidpointRounding.ToEven);
+
+    private static double? RoundOrNull(double? value, int digits)
+        => value is null ? null : Round(value.Value, digits);
 
     private static string CompassDirection(double degrees)
     {
@@ -388,6 +403,9 @@ internal static class FishingForecastAudit
 
     private static string? CompassDirectionOrNull(double? degrees)
         => degrees is null ? null : CompassDirection(degrees.Value);
+
+    private static string CompassDirectionOrEmpty(double? degrees)
+        => degrees is null ? string.Empty : CompassDirection(degrees.Value);
 
     private static void CheckFinite(List<FishingForecastAuditFinding> findings, FishingHourForecast hour)
     {
@@ -409,7 +427,7 @@ internal static class FishingForecastAudit
         FishingHourForecast hour,
         string field)
     {
-        var value = field switch
+        double? value = field switch
         {
             nameof(hour.Score) => hour.Score,
             nameof(hour.WindSpeedKmh) => hour.WindSpeedKmh,
@@ -424,7 +442,7 @@ internal static class FishingForecastAudit
             nameof(hour.PressureHpa) => hour.PressureHpa,
             _ => 0
         };
-        if (!double.IsFinite(value))
+        if (value is not null && !double.IsFinite(value.Value))
             Add(findings, "error", $"hours[{hour.Time}].{field}", "Valor não finito.");
     }
 
@@ -465,18 +483,18 @@ internal sealed record FishingForecastAuditHour(
     FishingForecastAuditSourcesView? Sources);
 
 internal sealed record FishingForecastAuditNormalized(
-    double Score,
-    double WindSpeedKmh,
-    double WindGustKmh,
+    double? Score,
+    double? WindSpeedKmh,
+    double? WindGustKmh,
     string WindDirection,
-    double RainMm,
-    int RainProbability,
-    int RainProbabilityBestMatch,
-    int RainProbabilityGfs,
+    double? RainMm,
+    int? RainProbability,
+    int? RainProbabilityBestMatch,
+    int? RainProbabilityGfs,
     double AirTemperatureC,
     double WaterTemperatureC,
-    double WaveMeters,
-    double WavePeriodSeconds,
+    double? WaveMeters,
+    double? WavePeriodSeconds,
     double SwellMeters,
     double SwellPeriodSeconds,
     string WaveDirection,
@@ -488,7 +506,7 @@ internal sealed record FishingForecastAuditNormalized(
     string? OceanCurrentDirection);
 
 internal sealed record FishingForecastAuditSourcesView(
-    double CalculatedScore,
+    double? CalculatedScore,
     FishingForecastAuditWeather Weather,
     FishingForecastAuditGfsRain GfsRain,
     FishingForecastAuditMarine Marine);

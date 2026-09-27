@@ -67,12 +67,7 @@ internal sealed class ForecastAlertWorker(
                     idealWindSettings.TryGetValue((alert.UserId, alert.FishingSpotId), out var idealWindDirection);
                     forecast = FishingWindPreference.Apply(forecast, idealWindDirection, spot.SeaOrientationDegrees, spot.Profile);
                 }
-                var targetForecast = alert.TargetHour is null
-                    ? null
-                    : forecast?.Hours.FirstOrDefault(hour =>
-                        hour.Time.StartsWith($"{alert.TargetHour:00}:", StringComparison.Ordinal));
-                if (alert.TargetHour is not null && targetForecast is null) continue;
-                var evaluatedScore = targetForecast?.Score ?? forecast?.Score;
+                var evaluatedScore = ScoreForAlert(forecast, alert.TargetHour);
                 if (forecast is null || evaluatedScore is null || evaluatedScore < alert.MinimumScore) continue;
 
                 var title = $"Boa janela em {spot.Name}";
@@ -95,5 +90,13 @@ internal sealed class ForecastAlertWorker(
         {
             logger.LogWarning(exception, "Falha ao avaliar alertas de previsão.");
         }
+    }
+
+    internal static double? ScoreForAlert(FishingLocationForecast? forecast, int? targetHour)
+    {
+        if (forecast is null || !FishingForecastAvailability.IsDailyScoreAvailable(forecast)) return null;
+        if (targetHour is null) return forecast.Score;
+        return forecast.Hours.FirstOrDefault(hour =>
+            hour.Time.StartsWith($"{targetHour:00}:", StringComparison.Ordinal))?.Score;
     }
 }

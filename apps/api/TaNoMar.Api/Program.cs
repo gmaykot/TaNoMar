@@ -1345,7 +1345,7 @@ api.MapGet("/fishing-spots/{id}/forecast", async (string id, ClaimsPrincipal pri
     {
         var forecast = await fishing.GetAsync(day, cancellationToken, user.Id, onlySpot);
         forecasts.Add(forecast);
-        var filtered = forecast with { Ranking = forecast.Ranking.Where(item => item.Id == spot.Slug).Select(item => FishingWindPreference.Apply(item, idealWindDirection, spot.SeaOrientationDegrees, spot.Profile)).ToList() };
+        var filtered = FishingForecastAvailability.FilterRanking(forecast with { Ranking = forecast.Ranking.Where(item => item.Id == spot.Slug).Select(item => FishingWindPreference.Apply(item, idealWindDirection, spot.SeaOrientationDegrees, spot.Profile)).ToList() });
         result.Add(ForecastDayDto(filtered, plan.CanMarine, plan.BestHoursMode, OwnerSpotIds([spot], user), SpotVisibilities([spot]), includeSelectableHours: true));
     }
     return Results.Ok(new { spotId = spot.Slug, refresh = ForecastRefreshDto(forecasts, forecastQueue.Snapshot(onlySpot)), days = result });
@@ -1930,14 +1930,14 @@ static async Task RemoveSpotDependentsAsync(TaNoMarDbContext db, Guid spotId, Ca
 static FishingForecast ApplyIdealWindSettings(FishingForecast forecast, IEnumerable<FishingSpot> spots, IReadOnlyDictionary<Guid, int?> settings)
 {
     var bySlug = spots.ToDictionary(spot => spot.Slug, StringComparer.Ordinal);
-    return forecast with
+    return FishingForecastAvailability.FilterRanking(forecast with
     {
         Ranking = forecast.Ranking.Select(item =>
         {
             if (!bySlug.TryGetValue(item.Id, out var spot) || !settings.TryGetValue(spot.Id, out var idealWindDirection)) return item;
             return FishingWindPreference.Apply(item, idealWindDirection, spot.SeaOrientationDegrees, spot.Profile);
         }).OrderByDescending(item => item.Score).ToList()
-    };
+    });
 }
 static async Task<HashSet<Guid>> VisibleWebcamSpotIdsAsync(TaNoMarDbContext db, CancellationToken cancellationToken)
 {
@@ -2079,7 +2079,7 @@ static Dictionary<string, string> SpotVisibilities(IEnumerable<FishingSpot> spot
     spots.ToDictionary(spot => spot.Slug, spot => spot.Visibility, StringComparer.Ordinal);
 static Task<HashSet<string>> OwnerSpotSlugsAsync(TaNoMarDbContext db, Guid userId, CancellationToken cancellationToken) =>
     db.FishingSpots.AsNoTracking().Where(spot => spot.OwnerUserId == userId).Select(spot => spot.Slug).ToHashSetAsync(StringComparer.Ordinal, cancellationToken);
-static object ForecastDayDto(FishingForecast forecast, bool paid, string bestHoursMode, HashSet<string>? ownerSpotIds = null, IReadOnlyDictionary<string, string>? visibilities = null, bool includeSelectableHours = false) => new { date = forecast.Date, ranking = forecast.Ranking.Select(item => ForecastItemDto(item, paid, bestHoursMode, ownerSpotIds, visibilities, includeSelectableHours)).ToList(), unavailableSpotIds = forecast.Errors.Select(error => error.Location).ToList() };
+static object ForecastDayDto(FishingForecast forecast, bool paid, string bestHoursMode, HashSet<string>? ownerSpotIds = null, IReadOnlyDictionary<string, string>? visibilities = null, bool includeSelectableHours = false) => new { date = forecast.Date, ranking = forecast.Ranking.Select(item => ForecastItemDto(item, paid, bestHoursMode, ownerSpotIds, visibilities, includeSelectableHours)).ToList(), unavailableSpotIds = forecast.Errors.Select(error => error.Location).Distinct(StringComparer.Ordinal).ToList() };
 static object ForecastRefreshDto(IEnumerable<FishingForecast> forecasts, ForecastRefreshSnapshot snapshot)
 {
     var items = forecasts.ToList();
@@ -2128,24 +2128,26 @@ static object MarineDto(string spotId, DateOnly date, FishingLocationForecast fo
 static object MarineSeries(
     IReadOnlyList<FishingHourForecast> hours,
     FishingHourForecast? reference,
-    Func<FishingHourForecast, double> selector,
+    Func<FishingHourForecast, double?> selector,
     string unit,
     int digits,
     Func<FishingHourForecast, string?>? direction = null,
     Func<FishingHourForecast, string?>? detail = null)
 {
     object Available(object value) => new { state = "available", value };
-    if (reference is null || hours.Count == 0)
+    var availableHours = hours.Where(hour => selector(hour) is not null).ToList();
+    reference = reference is not null && selector(reference) is not null ? reference : availableHours.FirstOrDefault();
+    if (reference is null || availableHours.Count == 0)
         return Available(new { current = "n/d", range = "n/d", points = Array.Empty<object>() });
-    var values = hours.Select(selector).ToList();
-    var current = selector(reference);
+    var values = availableHours.Select(hour => selector(hour)!.Value).ToList();
+    var current = selector(reference)!.Value;
     return Available(new
     {
         current = $"{FormatPt(current, $"0.{new string('0', digits)}")} {unit}".Trim(),
         range = $"{FormatPt(values.Min(), $"0.{new string('0', digits)}")}–{FormatPt(values.Max(), $"0.{new string('0', digits)}")} {unit}".Trim(),
         direction = direction?.Invoke(reference),
         detail = detail?.Invoke(reference),
-        points = hours.Select(hour => new { time = hour.Time, value = Math.Round(selector(hour), digits, MidpointRounding.ToEven) }).ToList()
+        points = availableHours.Select(hour => new { time = hour.Time, value = Math.Round(selector(hour)!.Value, digits, MidpointRounding.ToEven) }).ToList()
     });
 }
 static object TideFromForecast(FishingLocationForecast forecast, DateOnly date, DateOnly today)
@@ -2229,11 +2231,14 @@ static object TideTable(
 }
 static object ForecastItemDto(FishingLocationForecast item, bool paid, string bestHoursMode, HashSet<string>? ownerSpotIds = null, IReadOnlyDictionary<string, string>? visibilities = null, bool includeSelectableHours = false)
 {
+    if (!FishingForecastAvailability.IsDailyScoreAvailable(item))
+        throw new InvalidOperationException("An unavailable daily score cannot be mapped to the public DTO.");
     var hour = item.BestHour;
     var bestHours = item.BestHours.Take(PlanRules.BestHourCount(bestHoursMode) ?? 3).ToArray();
     object Available(object value) => new { state = "available", value };
     object Locked() => new { state = "locked", reason = "plan_required", requiredPlan = PlanRules.RequiredPlanLabel };
-    var classification = ForecastHourWindowDto.Classification(item.Score);
+    var score = item.Score!.Value;
+    var classification = ForecastHourWindowDto.Classification(score);
     var highlights = ForecastHourWindowDto.Highlights(hour);
     var windOrigin = string.IsNullOrEmpty(hour?.WindOrigin) ? null : hour.WindOrigin;
     return new
@@ -2242,23 +2247,23 @@ static object ForecastItemDto(FishingLocationForecast item, bool paid, string be
         spotName = item.Location,
         isOwner = ownerSpotIds is not null && ownerSpotIds.Contains(item.Id),
         visibility = visibilities is not null && visibilities.TryGetValue(item.Id, out var visibilityValue) ? visibilityValue : "official",
-        score = Available(item.Score),
+        score = Available(score),
         classification = Available(classification),
         bestHours = Available(bestHours.Select(best => best.Time).ToArray()),
         bestHourWindows = Available(bestHours.Select(best => ForecastHourWindowDto.Create(best, paid)).ToArray()),
         selectableHourWindows = includeSelectableHours && PlanRules.CanSelectAnyHour(bestHoursMode)
-            ? Available(item.Hours.Select(item => ForecastHourWindowDto.Create(item, paid)).ToArray())
+            ? Available(item.Hours.Where(candidate => candidate.Score is not null).Select(candidate => ForecastHourWindowDto.Create(candidate, paid)).ToArray())
             : null,
         metricsHour = hour?.Time,
         windOrigin,
         highlights,
-        wind = Available(hour is null ? "n/d" : $"{FormatPt(hour.WindSpeedKmh, "0.#")} km/h {hour.WindDirection}"),
-        gusts = Available(hour is null ? "n/d" : FormatMeasure(hour.WindGustKmh, "0.#", "km/h")),
-        waves = paid ? Available(hour is null ? "n/d" : FormatMeasure(hour.WaveMeters, "0.00", "m")) : Locked(),
+        wind = Available(hour?.WindSpeedKmh is not double windSpeed ? "n/d" : $"{FormatPt(windSpeed, "0.#")} km/h {hour.WindDirection}"),
+        gusts = Available(hour?.WindGustKmh is not double windGust ? "n/d" : FormatMeasure(windGust, "0.#", "km/h")),
+        waves = paid ? Available(hour?.WaveMeters is not double waveMeters ? "n/d" : FormatMeasure(waveMeters, "0.00", "m")) : Locked(),
         waveDirection = string.IsNullOrEmpty(hour?.WaveDirection) ? null : hour.WaveDirection,
-        wavePeriod = paid ? Available(hour is null ? "n/d" : FormatMeasure(hour.WavePeriodSeconds, "0.#", "s")) : Locked(),
+        wavePeriod = paid ? Available(hour?.WavePeriodSeconds is not double wavePeriod ? "n/d" : FormatMeasure(wavePeriod, "0.#", "s")) : Locked(),
         swell = paid ? Available(hour is null ? "n/d" : FormatMeasure(hour.SwellMeters, "0.00", "m")) : Locked(),
-        rain = Available(hour is null ? "n/d" : $"{FormatPt(hour.RainMm, "0.#")} mm ({hour.RainProbability}%)"),
+        rain = Available(hour?.RainMm is not double rainMm || hour.RainProbability is not int rainProbability ? "n/d" : $"{FormatPt(rainMm, "0.#")} mm ({rainProbability}%)"),
         airTemperature = Available(hour is null ? "n/d" : FormatMeasure(hour.AirTemperatureC, "0.#", "°C")),
         waterTemperature = paid ? Available(hour is null ? "n/d" : FormatMeasure(hour.WaterTemperatureC, "0.#", "°C")) : Locked(),
         pressure = paid ? Available(hour is null ? "n/d" : FormatMeasure(hour.PressureHpa, "0", "hPa")) : Locked()

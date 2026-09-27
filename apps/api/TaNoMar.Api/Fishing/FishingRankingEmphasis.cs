@@ -34,15 +34,16 @@ internal static class FishingRankingEmphasis
         IReadOnlyList<FishingLocationForecast> ranking,
         string? emphasis)
     {
+        var available = ranking.Where(FishingForecastAvailability.IsDailyScoreAvailable).ToList();
         return emphasis switch
         {
-            Wind => Finish(OrderWind(ranking, more: false)),
-            WindMore => Finish(OrderWind(ranking, more: true)),
-            Rain => Finish(OrderRain(ranking, more: false)),
-            RainMore => Finish(OrderRain(ranking, more: true)),
-            Waves => Finish(OrderWaves(ranking, more: true)),
-            WavesLess => Finish(OrderWaves(ranking, more: false)),
-            _ => ranking
+            Wind => Finish(OrderWind(available, more: false)),
+            WindMore => Finish(OrderWind(available, more: true)),
+            Rain => Finish(OrderRain(available, more: false)),
+            RainMore => Finish(OrderRain(available, more: true)),
+            Waves => Finish(OrderWaves(available, more: true)),
+            WavesLess => Finish(OrderWaves(available, more: false)),
+            _ => available
         };
     }
 
@@ -50,34 +51,31 @@ internal static class FishingRankingEmphasis
         IReadOnlyList<FishingLocationForecast> ranking,
         bool more)
     {
-        var ordered = ranking.OrderBy(MissingBestHour);
         return more
-            ? ordered.ThenByDescending(item => item.BestHour?.WindSpeedKmh ?? 0)
-            : ordered.ThenBy(item => item.BestHour?.WindSpeedKmh ?? 0);
+            ? ranking.OrderByDescending(item => item.BestHour!.WindSpeedKmh!.Value)
+            : ranking.OrderBy(item => item.BestHour!.WindSpeedKmh!.Value);
     }
 
     private static IOrderedEnumerable<FishingLocationForecast> OrderRain(
         IReadOnlyList<FishingLocationForecast> ranking,
         bool more)
     {
-        var ordered = ranking.OrderBy(MissingBestHour);
         return more
-            ? ordered
-                .ThenByDescending(item => item.BestHour?.RainMm ?? 0)
-                .ThenByDescending(item => item.BestHour?.RainProbability ?? 0)
-            : ordered
-                .ThenBy(item => item.BestHour?.RainMm ?? 0)
-                .ThenBy(item => item.BestHour?.RainProbability ?? 0);
+            ? ranking
+                .OrderByDescending(item => item.BestHour!.RainMm!.Value)
+                .ThenByDescending(item => item.BestHour!.RainProbability!.Value)
+            : ranking
+                .OrderBy(item => item.BestHour!.RainMm!.Value)
+                .ThenBy(item => item.BestHour!.RainProbability!.Value);
     }
 
     private static IOrderedEnumerable<FishingLocationForecast> OrderWaves(
         IReadOnlyList<FishingLocationForecast> ranking,
         bool more)
     {
-        var ordered = ranking.OrderBy(MissingBestHour);
         return more
-            ? ordered.ThenByDescending(item => item.BestHour?.WaveMeters ?? 0)
-            : ordered.ThenBy(item => item.BestHour?.WaveMeters ?? 0);
+            ? ranking.OrderByDescending(item => item.BestHour!.WaveMeters!.Value)
+            : ranking.OrderBy(item => item.BestHour!.WaveMeters!.Value);
     }
 
     private static IReadOnlyList<FishingLocationForecast> Finish(
@@ -86,6 +84,4 @@ internal static class FishingRankingEmphasis
             .ThenByDescending(item => item.Score)
             .ThenBy(item => item.Location, StringComparer.OrdinalIgnoreCase)
             .ToList();
-
-    private static bool MissingBestHour(FishingLocationForecast item) => item.BestHour is null;
 }

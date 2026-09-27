@@ -140,6 +140,25 @@ public sealed class FishingScoreCalculatorTests
     }
 
     [Fact]
+    public void Evaluate_accepts_real_zero_values_and_preserves_calculate_parity()
+    {
+        var result = FishingScoreCalculator.Evaluate(0, 0, 270, 90, 0, 0, 0, 0, 0, 0, 6, "praia_aberta");
+
+        Assert.Equal(FishingScoreAvailability.Available, result.Availability);
+        Assert.Equal(Calculate(speed: 0, gust: 0, windFrom: 270, waveHeight: 0, wavePeriod: 0, rainProbability: 0, rainMm: 0), result.Score);
+        Assert.Empty(result.MissingReasons);
+    }
+
+    [Fact]
+    public void Evaluate_keeps_missing_sea_orientation_as_neutral_not_unavailable()
+    {
+        var result = FishingScoreCalculator.Evaluate(8, 0, 270, null, 0.8, 8, 0, 0, 0, 0, 6, "praia_aberta");
+
+        Assert.Equal(FishingScoreAvailability.Available, result.Availability);
+        Assert.Equal(Calculate(seaOrientation: null), result.Score);
+    }
+
+    [Fact]
     public void Daily_score_uses_only_05_to_20_orders_ties_by_time_and_averages_three()
     {
         var forecast = FishingForecastService.BuildForecast(
@@ -160,6 +179,71 @@ public sealed class FishingScoreCalculatorTests
         Assert.Equal(9.7, forecast.Score);
         Assert.Equal(6, forecast.Hours.Count);
         Assert.DoesNotContain(forecast.BestHours, item => item.Time is "04:00" or "21:00");
+    }
+
+    [Fact]
+    public void Exactly_three_valid_hours_produce_their_current_daily_average()
+    {
+        string[] hours = ["05:00", "06:00", "07:00"];
+        var forecast = FishingForecastService.BuildForecast(
+            new FishingLocation { Id = "daily-three", Name = "Daily Three", SeaOrientationDegrees = 90, Profile = "praia_aberta" },
+            new DateOnly(2026, 9, 27),
+            CompleteWeather(hours, [0, 0.5, 2]),
+            CompleteRain(hours),
+            CompleteMarine(hours));
+
+        var expected = Math.Round(forecast.Hours.Average(hour => hour.Score!.Value), 1, MidpointRounding.ToEven);
+        Assert.Equal(expected, forecast.Score);
+        Assert.Equal(3, forecast.BestHours.Count);
+        Assert.NotNull(forecast.BestHour);
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(1)]
+    [InlineData(0)]
+    public void Daily_score_is_unavailable_with_fewer_than_three_valid_hours(int hourCount)
+    {
+        var hours = Enumerable.Range(5, hourCount).Select(hour => $"{hour:00}:00").ToArray();
+        var forecast = FishingForecastService.BuildForecast(
+            new FishingLocation { Id = "daily", Name = "Daily", SeaOrientationDegrees = 90, Profile = "praia_aberta" },
+            new DateOnly(2026, 9, 27),
+            CompleteWeather(hours, Enumerable.Repeat<double?>(0, hourCount).ToArray()),
+            CompleteRain(hours),
+            CompleteMarine(hours));
+
+        Assert.Null(forecast.Score);
+        Assert.Empty(forecast.BestHours);
+        Assert.Null(forecast.BestHour);
+        Assert.Equal(hourCount, forecast.Hours.Count);
+    }
+
+    [Fact]
+    public void Three_real_zero_hour_scores_produce_an_available_zero_daily_score()
+    {
+        string[] hours = ["05:00", "06:00", "07:00"];
+        var weather = CompleteWeather(hours, [12, 12, 12]);
+        Replace(weather.Hourly.WindSpeed, 36, 3);
+        Replace(weather.Hourly.WindDirection, 90, 3);
+        Replace(weather.Hourly.WindGusts, 50, 3);
+        Replace(weather.Hourly.PrecipitationProbability, 100, 3);
+        var gfs = CompleteRain(hours);
+        Replace(gfs.Hourly.Precipitation, 12, 3);
+        Replace(gfs.Hourly.PrecipitationProbability, 100, 3);
+        var marine = CompleteMarine(hours);
+        Replace(marine.Hourly.WaveHeight, 3, 3);
+        Replace(marine.Hourly.WavePeriod, 15, 3);
+
+        var forecast = FishingForecastService.BuildForecast(
+            new FishingLocation { Id = "daily-zero", Name = "Daily Zero", SeaOrientationDegrees = 90, Profile = "praia_aberta" },
+            new DateOnly(2026, 9, 27),
+            weather,
+            gfs,
+            marine);
+
+        Assert.Equal(0, forecast.Score);
+        Assert.Equal(3, forecast.BestHours.Count);
+        Assert.All(forecast.BestHours, hour => Assert.Equal(0, hour.Score));
     }
 
     private static OpenMeteoResponse CompleteWeather(IReadOnlyList<string> hours, IReadOnlyList<double?> rain)
@@ -207,6 +291,12 @@ public sealed class FishingScoreCalculatorTests
 
     private static List<string> ToIso(IReadOnlyList<string> hours)
         => hours.Select(hour => $"2026-09-27T{hour}").ToList();
+
+    private static void Replace(List<double?> values, double value, int count)
+    {
+        values.Clear();
+        values.AddRange(Enumerable.Repeat<double?>(value, count));
+    }
 
     private static double Calculate(
         double speed = 8,
