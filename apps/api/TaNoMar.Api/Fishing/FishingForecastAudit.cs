@@ -120,7 +120,10 @@ internal static class FishingForecastAudit
                 hour.WaveDirection,
                 hour.SwellDirection,
                 hour.SeaLevelHeightMsl,
-                hour.PressureHpa),
+                hour.PressureHpa,
+                hour.OceanCurrentVelocityKmh,
+                hour.OceanCurrentDirectionDegrees,
+                CompassDirectionOrNull(hour.OceanCurrentDirectionDegrees)),
             sources is null
                 ? null
                 : BuildSourceValues(location, forecast, hour, sources, weatherIndexes!, gfsIndexes!, marineIndexes!))).ToList();
@@ -189,7 +192,10 @@ internal static class FishingForecastAudit
                 NullableValueAt(sources.Marine.Hourly.SwellHeight, marineIndex),
                 NullableValueAt(sources.Marine.Hourly.SwellDirection, marineIndex),
                 NullableValueAt(sources.Marine.Hourly.SwellPeriod, marineIndex),
-                NullableValueAt(sources.Marine.Hourly.WaterTemperature, marineIndex)));
+                NullableValueAt(sources.Marine.Hourly.WaterTemperature, marineIndex),
+                NullableValueAt(sources.Marine.Hourly.OceanCurrentVelocity, marineIndex),
+                NullableValueAt(sources.Marine.Hourly.OceanCurrentDirection, marineIndex),
+                CompassDirectionOrNull(NullableValueAt(sources.Marine.Hourly.OceanCurrentDirection, marineIndex))));
     }
 
     private static void CompareSources(
@@ -380,6 +386,9 @@ internal static class FishingForecastAudit
         return names[(int)Math.Floor((degrees + 22.5) / 45) % 8];
     }
 
+    private static string? CompassDirectionOrNull(double? degrees)
+        => degrees is null ? null : CompassDirection(degrees.Value);
+
     private static void CheckFinite(List<FishingForecastAuditFinding> findings, FishingHourForecast hour)
     {
         CheckFinite(findings, hour, nameof(hour.Score));
@@ -473,7 +482,10 @@ internal sealed record FishingForecastAuditNormalized(
     string WaveDirection,
     string SwellDirection,
     double? SeaLevelHeightMsl,
-    double PressureHpa);
+    double PressureHpa,
+    double? OceanCurrentVelocityKmh,
+    double? OceanCurrentDirectionDegrees,
+    string? OceanCurrentDirection);
 
 internal sealed record FishingForecastAuditSourcesView(
     double CalculatedScore,
@@ -501,7 +513,10 @@ internal sealed record FishingForecastAuditMarine(
     double? SwellMeters,
     double? SwellDirectionDegrees,
     double? SwellPeriodSeconds,
-    double? WaterTemperatureC);
+    double? WaterTemperatureC,
+    double? OceanCurrentVelocityKmh,
+    double? OceanCurrentDirectionDegrees,
+    string? OceanCurrentDirection);
 
 internal sealed record FishingForecastAuditSources(
     OpenMeteoResponse Weather,

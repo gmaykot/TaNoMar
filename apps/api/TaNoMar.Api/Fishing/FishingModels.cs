@@ -78,7 +78,9 @@ public sealed record FishingHourForecast(
     double? SeaLevelHeightMsl,
     double PressureHpa,
     string WindOrigin = "",
-    double? WindDirectionDegrees = null);
+    double? WindDirectionDegrees = null,
+    double? OceanCurrentVelocityKmh = null,
+    double? OceanCurrentDirectionDegrees = null);
 
 public sealed record FishingForecastError(string Location, string Error);
 

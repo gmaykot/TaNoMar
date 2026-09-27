@@ -41,7 +41,7 @@ internal sealed class OpenMeteoClient(
             location,
             timezone,
             forecastDays,
-            "wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature,sea_level_height_msl",
+            "wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction",
             cancellationToken);
 
     public Task<IReadOnlyList<OpenMeteoResponse>> GetWeatherBatchAsync(
@@ -86,7 +86,7 @@ internal sealed class OpenMeteoClient(
             locations,
             timezone,
             forecastDays,
-            "wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature,sea_level_height_msl",
+            "wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction",
             cancellationToken);
 
     private async Task<OpenMeteoResponse> GetAsync(
@@ -245,4 +245,12 @@ internal sealed class OpenMeteoHourly
 
     [JsonPropertyName("sea_surface_temperature")]
     public List<double?> WaterTemperature { get; init; } = [];
+
+    // Open-Meteo Marine API returns ocean current velocity in km/h by default and
+    // direction in degrees. These remain nullable because the API may omit them.
+    [JsonPropertyName("ocean_current_velocity")]
+    public List<double?> OceanCurrentVelocity { get; init; } = [];
+
+    [JsonPropertyName("ocean_current_direction")]
+    public List<double?> OceanCurrentDirection { get; init; } = [];
 }

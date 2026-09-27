@@ -339,7 +339,7 @@ internal sealed class FishingForecastService
     private static bool HasTide(FishingLocationForecast forecast)
         => forecast.TideExtremes is { Count: > 0 } || forecast.TidePoints is { Count: > 0 };
 
-    private static FishingLocationForecast BuildForecast(
+    internal static FishingLocationForecast BuildForecast(
         FishingLocation location,
         DateOnly targetDate,
         OpenMeteoResponse weather,
@@ -378,6 +378,8 @@ internal sealed class FishingForecastService
             var airTemperature = ValueAt(weather.Hourly.Temperature, index);
             var waterTemperature = ValueAt(marine.Hourly.WaterTemperature, marineIndex);
             var seaLevel = ValueAtOrNull(marine.Hourly.SeaLevelHeightMsl, marineIndex);
+            var oceanCurrentVelocity = ValueAtOrNull(marine.Hourly.OceanCurrentVelocity, marineIndex);
+            var oceanCurrentDirection = ValueAtOrNull(marine.Hourly.OceanCurrentDirection, marineIndex);
             var pressure = ValueAt(weather.Hourly.PressureMsl, index);
 
             var score = FishingScoreCalculator.Calculate(
@@ -413,7 +415,9 @@ internal sealed class FishingForecastService
                 seaLevel is null ? null : Round(seaLevel.Value, 2),
                 Round(pressure, 0),
                 FishingScoreCalculator.WindOrigin(windDirection, location.SeaOrientationDegrees),
-                windDirection));
+                windDirection,
+                oceanCurrentVelocity,
+                oceanCurrentDirection));
         }
 
         var bestHours = rows
