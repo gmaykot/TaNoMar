@@ -40,9 +40,10 @@ function readBoolean(value: unknown) {
 }
 
 function parseMetric<T>(value: unknown, readValue: (input: unknown) => T | null, label: string) {
-  if (!isRecord(value) || (value.state !== 'available' && value.state !== 'locked')) {
+  if (!isRecord(value) || (value.state !== 'available' && value.state !== 'locked' && value.state !== 'unavailable')) {
     throw new ContractError(`Métrica ${label} inválida.`);
   }
+  if (value.state === 'unavailable') return { state: 'unavailable' as const };
   if (value.state === 'locked') {
     return {
       state: 'locked' as const,

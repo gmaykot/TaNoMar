@@ -179,8 +179,8 @@ export function RankingPage() {
           }
           return (
             <FeedbackState
-              title="Nenhum local nas previsões"
-              description="Habilite locais na lista para compará-los aqui."
+              title={day.unavailableSpotIds?.length ? 'Previsão indisponível' : 'Nenhum local nas previsões'}
+              description={day.unavailableSpotIds?.length ? `${day.unavailableSpotIds.length} locais sem previsão disponível.` : 'Habilite locais na lista para compará-los aqui.'}
               action={<Link to="/locais?filtro=previsoes">Escolher locais</Link>}
             />
           );

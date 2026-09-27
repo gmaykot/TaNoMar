@@ -72,7 +72,7 @@ describe('RankingPage', () => {
     getForecast.mockResolvedValue(forecastFixture);
     getLocations.mockReset();
     getLocations.mockResolvedValue(locationsFixture);
-    localStorage.removeItem('tanomar.offline-forecast.v1');
+    localStorage.removeItem('tanomar.offline-forecast.v2');
   });
 
   it('reordena o ranking quando a ênfase muda', async () => {
@@ -374,7 +374,7 @@ describe('RankingPage', () => {
   it('usa a previsão salva offline quando a API falha', async () => {
     getForecast.mockRejectedValue(new Error('offline'));
     localStorage.setItem(
-      'tanomar.offline-forecast.v1',
+      'tanomar.offline-forecast.v2',
       JSON.stringify({ forecast: forecastFixture }),
     );
     renderWithProviders(<RankingPage />, ['/ranking']);
@@ -386,7 +386,7 @@ describe('RankingPage', () => {
   it('usa a previsão salva offline enquanto a API ainda não responde', async () => {
     getForecast.mockImplementation(() => new Promise(() => undefined));
     localStorage.setItem(
-      'tanomar.offline-forecast.v1',
+      'tanomar.offline-forecast.v2',
       JSON.stringify({ forecast: forecastFixture }),
     );
     renderWithProviders(<RankingPage />, ['/ranking']);
@@ -399,7 +399,7 @@ describe('RankingPage', () => {
     authState.planCode = 'free';
     getForecast.mockRejectedValue(new Error('offline'));
     localStorage.setItem(
-      'tanomar.offline-forecast.v1',
+      'tanomar.offline-forecast.v2',
       JSON.stringify({ forecast: forecastFixture }),
     );
     renderWithProviders(<RankingPage />, ['/ranking']);

@@ -10,6 +10,7 @@ import {
 describe('offlineForecast', () => {
   afterEach(() => {
     clearOfflineForecast();
+    localStorage.removeItem('tanomar.offline-forecast.v1');
   });
 
   it('grava e lê a previsão salva', () => {
@@ -51,5 +52,18 @@ describe('offlineForecast', () => {
         isPending: false,
       }),
     ).toBe(false);
+  });
+
+  it('ignora a cópia legada v1 e não a migra', () => {
+    localStorage.setItem('tanomar.offline-forecast.v1', JSON.stringify({ forecast: forecastFixture }));
+    expect(readOfflineForecast()).toBeNull();
+    expect(localStorage.getItem('tanomar.offline-forecast.v2')).toBeNull();
+  });
+
+  it('descarta JSON v2 inválido ou corrompido', () => {
+    localStorage.setItem('tanomar.offline-forecast.v2', '{corrompido');
+    expect(readOfflineForecast()).toBeNull();
+    localStorage.setItem('tanomar.offline-forecast.v2', JSON.stringify({ forecast: { days: [] } }));
+    expect(readOfflineForecast()).toBeNull();
   });
 });

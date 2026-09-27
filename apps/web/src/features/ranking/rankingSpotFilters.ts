@@ -68,7 +68,7 @@ export function filterRankingBySpot(
   }
 
   return items.filter((item) => {
-    if (filters.minimumScore !== null && item.score < filters.minimumScore) return false;
+    if (filters.minimumScore !== null && (item.score === null || item.score < filters.minimumScore)) return false;
     const location = locationsById.get(item.locationId);
     if (description && !matchesDescription(item, location, description)) return false;
     if (!needsCatalog) return true;

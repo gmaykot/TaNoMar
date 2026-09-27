@@ -108,12 +108,16 @@ export function HomePage() {
           title={
             data?.refresh?.state === 'preparing'
               ? 'Preparando previsões'
-              : 'Nenhum local nas previsões'
+              : data?.days.some((day) => (day.unavailableSpotIds?.length ?? 0) > 0)
+                ? 'Previsão indisponível'
+                : 'Nenhum local nas previsões'
           }
           description={
             data?.refresh?.state === 'preparing'
               ? 'Os locais aparecerão assim que os primeiros dados forem processados.'
-              : 'Habilite locais na lista para ver a previsão aqui.'
+              : data?.days.some((day) => (day.unavailableSpotIds?.length ?? 0) > 0)
+                ? 'Não há dados suficientes para calcular as melhores condições neste período.'
+                : 'Habilite locais na lista para ver a previsão aqui.'
           }
           action={
             data?.refresh?.state === 'preparing' ? undefined : (

@@ -179,6 +179,9 @@ function mapMetric(
       locked: true,
     };
   }
+  if (metric.state === 'unavailable') {
+    return { key, label, value: 'Previsão indisponível', unavailable: true };
+  }
   return { key, label, value: metric.value, detail };
 }
 
@@ -195,6 +198,7 @@ export function mapForecastItem(item: WireForecastItem): ForecastRankingItem {
     locationId: item.spotId,
     locationName: item.spotName,
     score: requireAvailable(item.score, 'Nota'),
+    availability: 'available',
     isOwner: item.isOwner,
     isFavorite: false,
     visibility: mapVisibility(item.visibility),
@@ -230,6 +234,7 @@ export function mapForecastDay(day: WireForecastDay, now = new Date()): Forecast
     label: labels.label,
     shortLabel: labels.shortLabel,
     ranking: day.ranking.map(mapForecastItem),
+    unavailableSpotIds: day.unavailableSpotIds,
   };
 }
 
@@ -292,6 +297,16 @@ function mapMarineSeries(
       range: metric.requiredPlan,
       points: [],
       locked: true,
+    };
+  }
+  if (metric.state === 'unavailable') {
+    return {
+      key,
+      label,
+      current: 'Previsão indisponível',
+      range: '—',
+      points: [],
+      unavailable: true,
     };
   }
   return {
@@ -367,8 +382,7 @@ export function mapLocationForecast(
     refresh: wire.refresh ?? freshRefresh,
     days: wire.days.flatMap((day) => {
       const mapped = mapForecastDay(day, now);
-      const forecast = mapped.ranking[0];
-      if (!forecast) return [];
+      const forecast = mapped.ranking[0] ?? unavailableForecastItem(location);
       return [
         {
           date: mapped.date,
@@ -378,5 +392,27 @@ export function mapLocationForecast(
         },
       ];
     }),
+  };
+}
+
+function unavailableForecastItem(location: FishingLocation): ForecastRankingItem {
+  return {
+    locationId: location.id,
+    locationName: location.name,
+    score: null,
+    classification: undefined,
+    availability: 'unavailable',
+    isOwner: location.isOwner,
+    isFavorite: location.isFavorite,
+    visibility: location.visibility,
+    bestWindow: '—',
+    bestHours: [],
+    hourWindows: [],
+    selectableHourWindows: [],
+    scoreBreakdown: '',
+    metricsHour: null,
+    windOrigin: null,
+    highlights: [],
+    metrics: [],
   };
 }

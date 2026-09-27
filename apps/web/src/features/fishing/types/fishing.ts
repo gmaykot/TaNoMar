@@ -28,6 +28,7 @@ export interface FishingMetric {
   value: string;
   detail?: string;
   locked?: boolean;
+  unavailable?: boolean;
 }
 
 export type ForecastRankingEmphasis =
@@ -48,8 +49,9 @@ export interface ForecastHourWindow {
 export interface ForecastRankingItem {
   locationId: string;
   locationName: string;
-  score: number;
-  classification: FishingClassification;
+  score: number | null;
+  classification?: FishingClassification;
+  availability?: 'available' | 'unavailable';
   bestWindow: string;
   bestHours: string[];
   hourWindows: ForecastHourWindow[];
@@ -70,6 +72,7 @@ export interface ForecastDay {
   label: string;
   shortLabel: string;
   ranking: ForecastRankingItem[];
+  unavailableSpotIds?: string[];
 }
 
 export interface ForecastRefresh {

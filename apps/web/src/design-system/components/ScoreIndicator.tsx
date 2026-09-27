@@ -6,12 +6,21 @@ import { formatDecimal } from '@/shared/utils/formatNumber';
 import styles from './components.module.css';
 
 interface ScoreIndicatorProps {
-  score: number;
-  classification: FishingClassification;
+  score: number | null;
+  classification?: FishingClassification;
   size?: 'small' | 'large' | 'compact';
 }
 
 export function ScoreIndicator({ score, classification, size = 'large' }: ScoreIndicatorProps) {
+  if (score === null || classification === undefined) {
+    return (
+      <div className={`${styles.score} ${styles[size]}`} aria-label="Previsão indisponível">
+        <div className={styles.scoreInner}>
+          <strong>Previsão indisponível</strong>
+        </div>
+      </div>
+    );
+  }
   const percentage = Math.max(0, Math.min(100, score * 10));
   return (
     <div

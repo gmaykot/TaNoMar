@@ -35,6 +35,7 @@ export function ForecastRecommendation({
     .filter((hour, index, all) => all.indexOf(hour) === index)
     .sort((left, right) => left.localeCompare(right));
   const referenceHour = forecast.metricsHour ?? hours[0] ?? null;
+  const scoreAvailable = forecast.score !== null;
 
   if (variant === 'summary')
     return (
@@ -52,7 +53,7 @@ export function ForecastRecommendation({
             </span>
             <p className={styles.heroPrefix}>{showFishingScore ? 'Melhor escolha' : 'Destaque'}</p>
           </div>
-          {showFishingScore ? <Badge classification={forecast.classification} /> : null}
+          {showFishingScore && scoreAvailable ? <Badge classification={forecast.classification!} /> : null}
         </div>
         <div className={styles.summaryMain}>
           <div>
@@ -82,8 +83,9 @@ export function ForecastRecommendation({
       </div>
       <div className={styles.heroTopline}>
         <span className={styles.heroLabel}>{dayLabel}</span>
-        {showFishingScore ? <Badge classification={forecast.classification} /> : null}
+        {showFishingScore && scoreAvailable ? <Badge classification={forecast.classification!} /> : null}
       </div>
+      {!scoreAvailable ? <p className={styles.unavailableCopy}>Previsão indisponível</p> : null}
       <div className={styles.summaryMain}>
         <div>
           <h2 id={`recommendation-${forecast.locationId}`}>
@@ -139,7 +141,7 @@ export function ForecastRecommendation({
           </select>
         </label>
       ) : null}
-      {showFishingScore ? (
+      {showFishingScore && scoreAvailable ? (
         <details className={styles.scoreExplanation}>
           <summary>
             <Info size={16} aria-hidden="true" /> Entenda a nota

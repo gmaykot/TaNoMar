@@ -87,8 +87,8 @@ function RankingListView({
                 visibility={item.visibility}
                 isFavorite={item.isFavorite}
               />
-              {showFishingScore ? (
-                <Badge className={styles.itemBadge} classification={item.classification} />
+              {showFishingScore && item.score !== null ? (
+                <Badge className={styles.itemBadge} classification={item.classification!} />
               ) : null}
               <div className={styles.summary}>
                 <span className={styles.position} aria-label={`${index + startAt}º lugar`}>
@@ -124,7 +124,7 @@ function RankingListView({
                     </p>
                   ) : null}
                 </div>
-                {showFishingScore ? (
+                {showFishingScore && item.score !== null ? (
                   <ScoreIndicator
                     score={item.score}
                     classification={item.classification}

@@ -136,7 +136,7 @@ describe('HomePage', () => {
     forecastState.error = false;
     forecastState.pending = false;
     forecastState.lockMarine = false;
-    localStorage.removeItem('tanomar.offline-forecast.v1');
+    localStorage.removeItem('tanomar.offline-forecast.v2');
   });
 
   it('mostra o acesso ao pré-cadastro de parceiro mesmo com a vitrine desligada', async () => {
@@ -182,10 +182,10 @@ describe('HomePage', () => {
     await user.click(screen.getByRole('button', { name: /Salvar para usar offline/ }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Salvar para usar offline?' });
-    expect(localStorage.getItem('tanomar.offline-forecast.v1')).toBeNull();
+    expect(localStorage.getItem('tanomar.offline-forecast.v2')).toBeNull();
     await user.click(within(dialog).getByRole('button', { name: 'Salvar offline' }));
 
-    expect(localStorage.getItem('tanomar.offline-forecast.v1')).toContain('"forecast"');
+    expect(localStorage.getItem('tanomar.offline-forecast.v2')).toContain('"forecast"');
     expect(
       screen.getByRole('button', { name: /Previsão salva neste aparelho/ }),
     ).toBeInTheDocument();
@@ -204,7 +204,7 @@ describe('HomePage', () => {
   it('usa a previsão salva offline para o Premium quando a API falha', async () => {
     forecastState.error = true;
     localStorage.setItem(
-      'tanomar.offline-forecast.v1',
+      'tanomar.offline-forecast.v2',
       JSON.stringify({ forecast: forecastFixture }),
     );
     renderWithProviders(<HomePage />);
@@ -216,7 +216,7 @@ describe('HomePage', () => {
   it('usa a previsão salva offline para o Premium enquanto a API ainda não responde', async () => {
     forecastState.pending = true;
     localStorage.setItem(
-      'tanomar.offline-forecast.v1',
+      'tanomar.offline-forecast.v2',
       JSON.stringify({ forecast: forecastFixture }),
     );
     renderWithProviders(<HomePage />);
@@ -229,7 +229,7 @@ describe('HomePage', () => {
     authState.planCode = 'free';
     forecastState.error = true;
     localStorage.setItem(
-      'tanomar.offline-forecast.v1',
+      'tanomar.offline-forecast.v2',
       JSON.stringify({ forecast: forecastFixture }),
     );
     renderWithProviders(<HomePage />);

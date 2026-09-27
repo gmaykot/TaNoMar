@@ -15,7 +15,7 @@ export interface WireUnavailableMetric {
   state: 'unavailable';
 }
 
-export type WireMetric<T> = WireAvailableMetric<T> | WireLockedMetric;
+export type WireMetric<T> = WireAvailableMetric<T> | WireLockedMetric | WireUnavailableMetric;
 export type WireOptionalMetric<T> = WireMetric<T> | WireUnavailableMetric;
 
 export interface WireMarinePoint {
