@@ -5,43 +5,46 @@ import { ApiError } from '@/shared/api/errors';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { AccountPage } from './AccountPage';
 
-const { logout, cancelSubscription, deleteCurrentUser, authState } = vi.hoisted(() => ({
-  logout: vi.fn(),
-  cancelSubscription: vi.fn(),
-  deleteCurrentUser: vi.fn(),
-  authState: {
-    maxPersonalSpots: 10,
-    maxFavorites: 20,
-    role: 'User',
-    showPartners: false,
-    billing: undefined as
-      | {
-          status:
-            | 'active'
-            | 'pending'
-            | 'inactive'
-            | 'past_due'
-            | 'canceled'
-            | 'cancel_pending'
-            | 'cancel_action_required';
-          planCode: string | null;
-          cycle: 'MONTHLY' | 'YEARLY' | null;
-          catalogMonthlyPrice: number | null;
-          catalogAnnualPrice: number | null;
-          contractedPrice: number | null;
-          renewalPrice: number | null;
-          discountPercent: number;
-          renewsAt: string | null;
-          accessUntil: string | null;
-          cancelAtPeriodEnd: boolean;
-          enabled: boolean;
-        }
-      | undefined,
-  },
-}));
+const { logout, cancelSubscription, deleteCurrentUser, prepareCurrentUserDeletion, authState } =
+  vi.hoisted(() => ({
+    logout: vi.fn(),
+    cancelSubscription: vi.fn(),
+    deleteCurrentUser: vi.fn(),
+    prepareCurrentUserDeletion: vi.fn(),
+    authState: {
+      maxPersonalSpots: 10,
+      maxFavorites: 20,
+      role: 'User',
+      showPartners: false,
+      billing: undefined as
+        | {
+            status:
+              | 'active'
+              | 'pending'
+              | 'inactive'
+              | 'past_due'
+              | 'canceled'
+              | 'cancel_pending'
+              | 'cancel_action_required';
+            planCode: string | null;
+            cycle: 'MONTHLY' | 'YEARLY' | null;
+            catalogMonthlyPrice: number | null;
+            catalogAnnualPrice: number | null;
+            contractedPrice: number | null;
+            renewalPrice: number | null;
+            discountPercent: number;
+            renewsAt: string | null;
+            accessUntil: string | null;
+            cancelAtPeriodEnd: boolean;
+            enabled: boolean;
+          }
+        | undefined,
+    },
+  }));
 
 vi.mock('@/features/auth/services/authService', () => ({
   deleteCurrentUser: (...args: unknown[]) => deleteCurrentUser(...args),
+  prepareCurrentUserDeletion: (...args: unknown[]) => prepareCurrentUserDeletion(...args),
 }));
 
 vi.mock('@/features/billing/services/billingService', () => ({
@@ -99,7 +102,19 @@ describe('AccountPage', () => {
     logout.mockClear();
     cancelSubscription.mockReset();
     deleteCurrentUser.mockReset();
-    deleteCurrentUser.mockResolvedValue({ status: 'completed', detail: 'Conta excluída.' });
+    prepareCurrentUserDeletion.mockReset();
+    prepareCurrentUserDeletion.mockResolvedValue({
+      protocol: 'test-protocol-abcdefghijklmnopqrstuvwxyz123456',
+      statusUrl: '/excluir-conta#protocolo=test-protocol-abcdefghijklmnopqrstuvwxyz123456',
+      supportChannel: 'privacidade@tanomar.app',
+    });
+    deleteCurrentUser.mockResolvedValue({
+      status: 'completed',
+      detail: 'Conta excluída.',
+      protocol: 'test-protocol-abcdefghijklmnopqrstuvwxyz123456',
+      statusUrl: '/excluir-conta#protocolo=test-protocol-abcdefghijklmnopqrstuvwxyz123456',
+      supportChannel: 'privacidade@tanomar.app',
+    });
   });
 
   it('funciona como central da conta e chama logout', async () => {
@@ -157,7 +172,10 @@ describe('AccountPage', () => {
     await user.click(screen.getByRole('button', { name: 'Excluir conta' }));
     const dialog = screen.getByRole('dialog', { name: 'Excluir conta?' });
     expect(within(dialog).getByText(/cancelamento ficará pendente/)).toBeInTheDocument();
-    await user.click(within(dialog).getByRole('button', { name: 'Excluir conta' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Gerar protocolo' }));
+    expect(await screen.findByText(/Guarde o protocolo/)).toBeInTheDocument();
+    expect(deleteCurrentUser).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Excluir conta agora' }));
     expect(deleteCurrentUser).toHaveBeenCalledTimes(1);
     expect(await screen.findByRole('status')).toHaveTextContent('Conta excluída.');
     expect(logout).not.toHaveBeenCalled();
@@ -169,6 +187,9 @@ describe('AccountPage', () => {
     deleteCurrentUser.mockResolvedValue({
       status: 'cancellation_pending',
       detail: 'Os dados da conta foram excluídos. O encerramento da recorrência está pendente.',
+      protocol: 'test-protocol-abcdefghijklmnopqrstuvwxyz123456',
+      statusUrl: '/excluir-conta#protocolo=test-protocol-abcdefghijklmnopqrstuvwxyz123456',
+      supportChannel: 'privacidade@tanomar.app',
     });
     const user = userEvent.setup();
     renderWithProviders(<AccountPage />);
@@ -176,17 +197,19 @@ describe('AccountPage', () => {
     await user.click(screen.getByRole('button', { name: 'Excluir conta' }));
     await user.click(
       within(screen.getByRole('dialog', { name: 'Excluir conta?' })).getByRole('button', {
-        name: 'Excluir conta',
+        name: 'Gerar protocolo',
       }),
     );
+    await user.click(await screen.findByRole('button', { name: 'Excluir conta agora' }));
 
     expect(await screen.findByRole('status')).toHaveTextContent(/recorrência está pendente/);
-    expect(screen.getByRole('status')).toHaveTextContent(/ainda está em acompanhamento/);
+    expect(screen.getByRole('status')).toHaveTextContent(/Acompanhe em/);
+    expect(screen.getByRole('status')).toHaveTextContent(/privacidade@tanomar.app/);
     expect(logout).not.toHaveBeenCalled();
   });
 
   it('mantém a sessão quando a exclusão é recusada pela API', async () => {
-    deleteCurrentUser.mockRejectedValue(
+    prepareCurrentUserDeletion.mockRejectedValue(
       new ApiError(
         409,
         'A conta inicial do bootstrap não pode ser excluída.',
@@ -199,7 +222,7 @@ describe('AccountPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Excluir conta' }));
     const dialog = screen.getByRole('dialog', { name: 'Excluir conta?' });
-    await user.click(within(dialog).getByRole('button', { name: 'Excluir conta' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Gerar protocolo' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'A conta inicial do bootstrap não pode ser excluída.',
     );

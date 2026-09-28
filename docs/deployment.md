@@ -26,6 +26,12 @@ Coolify
 
 O PostgreSQL é **sempre externo**. O repositório não provisiona banco — configure `ConnectionStrings__Default` apontando para o serviço gerenciado.
 
+### Ordem segura da migration de cancelamento
+
+A API executa `Database.MigrateAsync()` antes de `app.RunAsync()`, portanto os hosted services — inclusive o worker de cancelamento — só iniciam depois da migration concluir. Para o primeiro rollout de `AddBillingCancellationLifecycle`, use uma única réplica/migrador até a migration terminar; falha de migration deve impedir a nova instância de receber tráfego. Depois disso, múltiplas réplicas são seguras para a fila porque o claim/lease é atômico no PostgreSQL.
+
+A migration já commitada `20260927214652_AddBillingCancellationLifecycle` permanece intacta. A migration incremental `20260928120942_AddBillingCancellationOperations` adiciona recibos, lease e o backfill seguro de upgrades pagos. O caminho foi testado tanto desde a migration anterior a B1 (aplicando as duas em sequência) quanto com `20260927214652` já registrada; não remova nem renomeie nenhuma delas.
+
 ### Por que web e API no mesmo container?
 
 - **Mesma origem** — evita CORS; cookies de refresh funcionam sem proxy extra.

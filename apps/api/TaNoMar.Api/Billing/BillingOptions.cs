@@ -10,6 +10,9 @@ public sealed class BillingOptions
     public const int CancellationMaxAutomaticAttempts = 5;
     public const int CancellationActionRetryHours = 24;
     public const int CancellationConfirmationRetentionDays = 180;
+    public const int CancellationLeaseMinutes = 5;
+    public const int AccountDeletionPreparationHours = 24;
+    public const string SupportEmail = "privacidade@tanomar.app";
 
     public string AsaasApiKey { get; set; } = string.Empty;
     public string AsaasBaseUrl { get; set; } = "https://api.asaas.com/v3";

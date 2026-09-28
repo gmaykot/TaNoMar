@@ -24,6 +24,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
     public DbSet<BillingCustomer> BillingCustomers => Set<BillingCustomer>();
     public DbSet<BillingSubscription> BillingSubscriptions => Set<BillingSubscription>();
     public DbSet<BillingCancellation> BillingCancellations => Set<BillingCancellation>();
+    public DbSet<AccountDeletionReceipt> AccountDeletionReceipts => Set<AccountDeletionReceipt>();
     public DbSet<BillingWebhookEvent> BillingWebhookEvents => Set<BillingWebhookEvent>();
     public DbSet<FishingSpotWebcam> FishingSpotWebcams => Set<FishingSpotWebcam>();
     public DbSet<WorkerConfiguration> WorkerConfigurations => Set<WorkerConfiguration>();
@@ -54,7 +55,10 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
         modelBuilder.Entity<BillingSubscription>().HasIndex(item => item.AsaasSubscriptionId);
         modelBuilder.Entity<BillingCancellation>().HasIndex(item => item.AsaasSubscriptionId).IsUnique();
         modelBuilder.Entity<BillingCancellation>().HasIndex(item => new { item.Status, item.NextAttemptAt });
+        modelBuilder.Entity<BillingCancellation>().HasIndex(item => item.LeaseExpiresAt);
         modelBuilder.Entity<BillingCancellation>().Property(item => item.ConcurrencyToken).IsConcurrencyToken();
+        modelBuilder.Entity<AccountDeletionReceipt>().HasIndex(item => item.ProtocolHash).IsUnique();
+        modelBuilder.Entity<AccountDeletionReceipt>().HasIndex(item => item.RetainUntil);
         modelBuilder.Entity<BillingWebhookEvent>().HasIndex(item => item.AsaasEventId).IsUnique();
         modelBuilder.Entity<FishingSpotWebcam>().HasIndex(item => item.FishingSpotId).IsUnique().HasFilter("\"IsActive\" = TRUE");
         modelBuilder.Entity<FishingSpotWebcam>().HasIndex(item => new { item.FishingSpotId, item.Provider, item.ExternalId }).IsUnique();
@@ -506,7 +510,23 @@ public sealed class BillingCancellation
     public DateTimeOffset? ActionRequiredAt { get; set; }
     public DateTimeOffset? RetainUntil { get; set; }
     public DateTimeOffset? NotificationSentAt { get; set; }
+    public Guid? AccountDeletionReceiptId { get; set; }
+    public Guid? LeaseOwner { get; set; }
+    public DateTimeOffset? LeaseExpiresAt { get; set; }
     public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class AccountDeletionReceipt
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? UserId { get; set; }
+    public string ProtocolHash { get; set; } = string.Empty;
+    public string Status { get; set; } = "prepared";
+    public int RemoteSubscriptionCount { get; set; }
+    public DateTimeOffset? AccountDeletedAt { get; set; }
+    public DateTimeOffset? RetainUntil { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

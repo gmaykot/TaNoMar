@@ -207,8 +207,28 @@ export async function getCurrentUser() {
   return parseAuthUser(await apiRequest('/me'));
 }
 
-export async function deleteCurrentUser() {
-  const value = await apiRequest('/me', { method: 'DELETE' });
+export interface AccountDeletionPreparation {
+  protocol: string;
+  statusUrl: string;
+  supportChannel: string;
+}
+
+export async function prepareCurrentUserDeletion(): Promise<AccountDeletionPreparation> {
+  const value = await apiRequest('/me/deletion-request', { method: 'POST' });
+  if (!isRecord(value)) throw new ContractError('Resposta de protocolo inválida.');
+  const protocol = readString(value.protocol);
+  const statusUrl = readString(value.statusUrl);
+  const supportChannel = readString(value.supportChannel);
+  if (!protocol || !statusUrl || !supportChannel)
+    throw new ContractError('Resposta de protocolo incompleta.');
+  return { protocol, statusUrl, supportChannel };
+}
+
+export async function deleteCurrentUser(protocol: string) {
+  const value = await apiRequest('/me', {
+    method: 'DELETE',
+    body: JSON.stringify({ protocol }),
+  });
   if (!isRecord(value)) throw new ContractError('Resposta de exclusão inválida.');
   const status = readString(value.status);
   const detail = readString(value.detail);
@@ -218,5 +238,34 @@ export async function deleteCurrentUser() {
   ) {
     throw new ContractError('Resposta de exclusão incompleta.');
   }
-  return { status, detail };
+  const responseProtocol = readString(value.protocol);
+  const statusUrl = readString(value.statusUrl);
+  const supportChannel = readString(value.supportChannel);
+  if (!responseProtocol || !statusUrl || !supportChannel)
+    throw new ContractError('Resposta de exclusão sem protocolo.');
+  return { status, detail, protocol: responseProtocol, statusUrl, supportChannel };
+}
+
+export async function getAccountDeletionStatus(protocol: string) {
+  const value = await apiRequest('/public/account-deletions/status', {
+    method: 'POST',
+    body: JSON.stringify({ protocol }),
+    skipAuth: true,
+    skipRefresh: true,
+  });
+  if (!isRecord(value)) throw new ContractError('Resposta de acompanhamento inválida.');
+  const status = readString(value.status);
+  const updatedAt = readString(value.updatedAt);
+  const supportChannel = readString(value.supportChannel);
+  if (
+    (status !== 'prepared' &&
+      status !== 'completed' &&
+      status !== 'cancellation_pending' &&
+      status !== 'action_required') ||
+    !updatedAt ||
+    !supportChannel
+  ) {
+    throw new ContractError('Resposta de acompanhamento incompleta.');
+  }
+  return { status, updatedAt, supportChannel };
 }

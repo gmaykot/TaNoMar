@@ -232,8 +232,13 @@ Cancelar **para a renovação**. O valor do período já pago não volta. Não e
 4. Após resposta perdida, consulta `GET /v3/subscriptions?deletedOnly=true` e só confirma se encontrar o mesmo ID removido. Um `404` isolado não é tratado como sucesso.
 5. **Não** chama `POST /v3/payments/{id}/refund`.
 6. Só após confirmação grava `CancelAtPeriodEnd = true`, `Status = canceled`, mantém `CurrentPeriodEnd` e envia os avisos de cancelamento.
-7. `pending` é repetido em background a cada 5 minutos. Após 5 tentativas sem confirmação vira `action_required`, gera alerta no log e continua uma reconciliação diária; o usuário ainda pode tentar imediatamente com o mesmo endpoint.
-8. Idempotência: há um registro único por `AsaasSubscriptionId`, tentativas simultâneas são serializadas e o webhook `SUBSCRIPTION_DELETED` pode confirmar a solicitação sem duplicar o aviso.
+7. `pending` é repetido em background a cada 5 minutos. Após 5 tentativas sem confirmação vira `action_required` e continua uma reconciliação diária; o admin também enxerga e pode repetir a operação pelos endpoints operacionais.
+8. Idempotência: há um registro único por `AsaasSubscriptionId`. Antes da chamada remota, o worker toma um claim/lease atômico de 5 minutos no PostgreSQL; outro processo só pode retomar após a liberação ou expiração. O webhook `SUBSCRIPTION_DELETED` pode confirmar a solicitação durante o lease sem duplicar o aviso.
+9. Um cancelamento `confirmed` é terminal para o mesmo `AsaasSubscriptionId`: webhooks antigos de criação/pagamento e a reconciliação de checkout não reativam a recorrência.
+
+IDs atuais já marcados localmente como cancelados entram no backfill original como candidatos `pending`. A migration incremental só inclui `PreviousAsaasSubscriptionId` quando o checkout substituto tem ID remoto novo, `PeriodStart`, `CurrentPeriodEnd` e estado de período pago; checkout pendente, expirado sem pagamento ou abandonado não autoriza cancelar a assinatura anterior. Ausência em `deletedOnly` nunca confirma remoção.
+
+No upgrade, `SUBSCRIPTION_CREATED` apenas vincula o ID remoto novo e ajusta o valor das renovações futuras; nunca encerra a assinatura anterior. Somente a confirmação financeira (`CHECKOUT_PAID`, `PAYMENT_CONFIRMED`, `PAYMENT_RECEIVED` ou reconciliação paga) persiste `BillingCancellation(reason = upgrade_replacement)` antes de qualquer `DELETE`. Checkout criado, pendente, recusado, expirado ou abandonado preserva a recorrência válida anterior. Timeout ou resposta perdida após a confirmação deixam o ID antigo em `pending` para o mesmo worker reconciliável.
 
 No vencimento, um worker rebaixa para `free` e notifica. `GET /me` também aplica o vencimento se o worker ainda não rodou.
 
@@ -272,8 +277,16 @@ Quatro tabelas de cobrança. `Users.PlanCode` não some: continua o que a previs
 - `AsaasSubscriptionId` único, motivo, estado e contador/timestamps das tentativas
 - código de falha categórico, sem corpo retornado pelo Asaas
 - confirmação, prazo de retenção e marca de aviso
+- dono e expiração do lease distribuído no PostgreSQL
 
-Registros pendentes ou que exigem ação ficam somente enquanto necessários para impedir nova cobrança. Após confirmação, `RetainUntil` é 180 dias; o worker os elimina ao vencer esse prazo. Nome, e-mail, CPF, checkout e valores não são copiados para esta tabela.
+**AccountDeletionReceipt** — recibo técnico sem dados pessoais exibíveis.
+
+- hash SHA-256 de um protocolo aleatório de 256 bits; o protocolo em claro só é mostrado ao solicitante
+- estado mínimo (`prepared`, `cancellation_pending`, `action_required` ou `completed`) e datas
+- vínculo temporário com `UserId` somente até a exclusão; depois o campo fica nulo
+- sem ID Asaas, plano, valor, nome, e-mail ou CPF
+
+Registros pendentes ou que exigem ação ficam somente enquanto necessários para impedir nova cobrança. Preparações não concluídas expiram em 24 horas. Após a confirmação de todos os cancelamentos, `BillingCancellation` e o recibo têm retenção de 180 dias para conciliação e atendimento; o worker os elimina ao vencer. Nome, e-mail, CPF, checkout e valores não são copiados para essas tabelas.
 
 **BillingWebhookEvent**
 
@@ -303,6 +316,8 @@ Token próprio em `asaas-access-token`, **diferente** da API key. Sem token vál
 | `PAYMENT_REFUNDED` / `PAYMENT_CHARGEBACK_REQUESTED` | Rebaixa na hora |
 
 Não promover só com `PAYMENT_CREATED`. `PAYMENT_RECEIVED` é liquidação: se `PAYMENT_CONFIRMED` não chegou, ainda assim libera o plano.
+
+Exceção terminal: se o mesmo `AsaasSubscriptionId` já tem `BillingCancellation.status = confirmed`, `CHECKOUT_PAID`, `PAYMENT_CONFIRMED`, `PAYMENT_RECEIVED` e `SUBSCRIPTION_CREATED` antigos são aceitos/idempotidos, mas não alteram a assinatura local nem o plano.
 
 Checkout `pending_checkout` também é reconciliado no `GET /me` e no worker: a API consulta o Asaas e ativa se a cobrança já estiver `CONFIRMED` ou `RECEIVED`. O `successUrl` continua só UX. O aviso “Nova solicitação de plano” sai na criação do checkout. O aviso “Pagamento de plano confirmado” sai na primeira ativação (webhook ou reconciliação), pelos canais e-mail/WhatsApp configurados; renovação de assinatura já ativa não repete.
 
@@ -342,7 +357,9 @@ Vocabulário: na interface, **Arrais**, **Mestre** e **Capitão**. “Assinatura
 - Número do cartão não transita no container nem no service worker.
 - Endpoints autenticados de billing não entram no cache PWA.
 - CPF é dado de pagamento: mínimo necessário, sem logar no `audit.jsonl`.
+- `POST /me/deletion-request` grava **somente** o recibo e devolve o protocolo; não cria `BillingCancellation`, não arma o worker e não chama o Asaas. `DELETE /me` recebe `{ protocol }` no corpo e somente então persiste/ativa os cancelamentos. Se a resposta se perder, `/excluir-conta#protocolo=…` consulta `POST /public/account-deletions/status` com `{ protocol }` no corpo. Fragmentos não chegam ao servidor; o caminho é constante, a resposta usa `no-store`/`Referrer-Policy: no-referrer` e traz somente estado, atualização e canal `privacidade@tanomar.app`, com limite de 5 consultas/minuto por IP.
 - `DELETE /me` e a exclusão pelo admin apagam conta, CPF e demais dados locais elimináveis. O registro mínimo `BillingCancellation` não contém nome, e-mail nem CPF e sobrevive enquanto o encerramento remoto estiver pendente; confirmado, é eliminado após 180 dias. A resposta diferencia `completed`, `cancellation_pending` e `action_required`.
+- `GET /admin/billing/cancellations` lista apenas trabalho pendente/`action_required`, com ID remoto, idade e código de falha categórico. `POST /admin/billing/cancellations/{id}/retry` toma o mesmo lease e repete com segurança. Ambos exigem sessão e role Admin.
 - Sandbox primeiro. Produção só com conta Asaas aprovada para cartão.
 - Sem fila extra: persistir evento e aplicar o plano no request do webhook.
 

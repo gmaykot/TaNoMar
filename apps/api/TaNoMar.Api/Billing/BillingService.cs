@@ -173,9 +173,24 @@ internal sealed class BillingService(
         return Results.Ok(new { checkoutId = created.Id, checkoutUrl = created.Link, expiresAt = pending.ExpiresAt });
     }
 
+    public async Task<AccountDeletionPreparation> PrepareAccountDeletionAsync(
+        Guid userId,
+        CancellationToken cancellationToken)
+        => await cancellations.PrepareAccountDeletionAsync(userId, cancellationToken);
+
+    public Task<AccountDeletionPreparation?> ResolveAccountDeletionPreparationAsync(
+        Guid userId,
+        string protocol,
+        CancellationToken cancellationToken) =>
+        cancellations.ResolvePreparationAsync(userId, protocol, cancellationToken);
+
+    public Task MarkAccountDeletedAsync(Guid receiptId, CancellationToken cancellationToken) =>
+        cancellations.MarkAccountDeletedAsync(receiptId, cancellationToken);
+
     public async Task<AccountDeletionBillingResult> StopRecurringForDeletedUserAsync(
         Guid userId,
         bool requestedByAdmin,
+        Guid receiptId,
         CancellationToken cancellationToken)
     {
         var subscriptions = await db.BillingSubscriptions
@@ -185,6 +200,7 @@ internal sealed class BillingService(
             userId,
             subscriptions,
             requestedByAdmin ? BillingCancellationReason.AdminAccountDeletion : BillingCancellationReason.AccountDeletion,
+            receiptId,
             cancellationToken);
         foreach (var request in requests)
             await cancellations.AttemptAsync(request.Id, manualRetry: true, cancellationToken);
@@ -264,17 +280,23 @@ internal sealed class BillingService(
         var eventName = ReadString(payload, "event");
         if (string.IsNullOrWhiteSpace(eventId) || string.IsNullOrWhiteSpace(eventName))
             return Results.BadRequest();
-        if (await db.BillingWebhookEvents.AnyAsync(item => item.AsaasEventId == eventId, cancellationToken))
+        var webhookEvent = await db.BillingWebhookEvents
+            .SingleOrDefaultAsync(item => item.AsaasEventId == eventId, cancellationToken);
+        if (webhookEvent?.ProcessedAt is not null)
             return Results.Ok();
-        db.BillingWebhookEvents.Add(new BillingWebhookEvent
+        if (webhookEvent is null)
         {
-            AsaasEventId = eventId,
-            Event = eventName,
-            ProcessedAt = DateTimeOffset.UtcNow
-        });
+            webhookEvent = new BillingWebhookEvent
+            {
+                AsaasEventId = eventId,
+                Event = eventName
+            };
+            db.BillingWebhookEvents.Add(webhookEvent);
+        }
         try
         {
             await ApplyEventAsync(eventName, payload, cancellationToken);
+            webhookEvent.ProcessedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
         }
         catch (Exception exception)
@@ -536,6 +558,16 @@ internal sealed class BillingService(
             await UpsertCustomerAsync(user.Id, customerId, cancellationToken);
         var cancellationRequest = await cancellations.FindAsync(subscriptionId, cancellationToken);
 
+        if (cancellationRequest?.Status == BillingCancellationStatus.Confirmed
+            && eventName is "CHECKOUT_PAID" or "PAYMENT_CONFIRMED" or "PAYMENT_RECEIVED" or "SUBSCRIPTION_CREATED")
+        {
+            logger.LogInformation(
+                "Webhook Asaas {Event} ignorado para assinatura com cancelamento confirmado {SubscriptionId}.",
+                eventName,
+                subscriptionId);
+            return;
+        }
+
         switch (eventName)
         {
             case "CHECKOUT_CANCELED":
@@ -551,9 +583,6 @@ internal sealed class BillingService(
                     item.AsaasSubscriptionId = subscriptionId;
                 if (item.PriceCents != item.RecurringPriceCents && !string.IsNullOrWhiteSpace(item.AsaasSubscriptionId))
                     await asaas.UpdateSubscriptionValueAsync(item.AsaasSubscriptionId, BillingPricing.Reais(item.RecurringPriceCents), false, cancellationToken);
-                if (!string.IsNullOrWhiteSpace(item.PreviousAsaasSubscriptionId)
-                    && item.PreviousAsaasSubscriptionId != item.AsaasSubscriptionId)
-                    await asaas.CancelSubscriptionAsync(item.PreviousAsaasSubscriptionId, cancellationToken);
                 item.UpdatedAt = DateTimeOffset.UtcNow;
                 break;
             case "CHECKOUT_PAID":
@@ -614,6 +643,17 @@ internal sealed class BillingService(
 
     private async Task ActivateAsync(User user, BillingSubscription item, string? subscriptionId, CancellationToken cancellationToken)
     {
+        var effectiveSubscriptionId = string.IsNullOrWhiteSpace(subscriptionId)
+            ? item.AsaasSubscriptionId
+            : subscriptionId;
+        var confirmedCancellation = await cancellations.FindAsync(effectiveSubscriptionId, cancellationToken);
+        if (confirmedCancellation?.Status == BillingCancellationStatus.Confirmed)
+        {
+            logger.LogInformation(
+                "Ativação ignorada para assinatura com cancelamento confirmado {SubscriptionId}.",
+                effectiveSubscriptionId);
+            return;
+        }
         var firstPayment = item.Status != BillingPricing.Active;
         var previousPlanCode = user.PlanCode;
         if (!string.IsNullOrWhiteSpace(subscriptionId))
@@ -631,7 +671,13 @@ internal sealed class BillingService(
         foreach (var old in previous)
         {
             if (!string.IsNullOrWhiteSpace(old.AsaasSubscriptionId) && old.AsaasSubscriptionId != item.AsaasSubscriptionId)
-                await asaas.CancelSubscriptionAsync(old.AsaasSubscriptionId, cancellationToken);
+                await cancellations.RequestAsync(
+                    user.Id,
+                    old,
+                    old.AsaasSubscriptionId,
+                    BillingCancellationReason.UpgradeReplacement,
+                    manualRetry: true,
+                    cancellationToken);
             old.Status = BillingPricing.Expired;
             old.UpdatedAt = now;
         }
@@ -680,7 +726,11 @@ internal sealed class BillingService(
         }
         if (!string.IsNullOrWhiteSpace(subscriptionId))
         {
-            var bySubscription = await db.BillingSubscriptions.SingleOrDefaultAsync(item => item.AsaasSubscriptionId == subscriptionId, cancellationToken);
+            var bySubscription = await db.BillingSubscriptions
+                .Where(item => item.AsaasSubscriptionId == subscriptionId)
+                .OrderByDescending(item => item.UpdatedAt)
+                .ThenByDescending(item => item.CreatedAt)
+                .FirstOrDefaultAsync(cancellationToken);
             if (bySubscription is not null) return bySubscription;
         }
         if (!string.IsNullOrWhiteSpace(externalReference))

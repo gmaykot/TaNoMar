@@ -1,4 +1,6 @@
-using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using TaNoMar.Api.Data;
 
@@ -16,15 +18,41 @@ internal static class BillingCancellationReason
     public const string UserRequest = "user_request";
     public const string AccountDeletion = "account_deletion";
     public const string AdminAccountDeletion = "admin_account_deletion";
+    public const string UpgradeReplacement = "upgrade_replacement";
     public const string LegacyReconciliation = "legacy_reconciliation";
 }
+
+internal static class AccountDeletionStatus
+{
+    public const string Prepared = "prepared";
+    public const string Completed = "completed";
+    public const string Pending = "cancellation_pending";
+    public const string ActionRequired = "action_required";
+}
+
+internal sealed record AccountDeletionPreparation(
+    Guid ReceiptId,
+    string Protocol,
+    int RemoteSubscriptionCount);
+
+internal sealed record AccountDeletionPublicStatus(string Status, DateTimeOffset UpdatedAt);
+
+internal sealed record BillingCancellationOperation(
+    Guid Id,
+    string AsaasSubscriptionId,
+    string Status,
+    TimeSpan Age,
+    int AttemptCount,
+    string? LastFailureCode,
+    DateTimeOffset? LastAttemptAt,
+    DateTimeOffset? NextAttemptAt);
 
 internal sealed class BillingCancellationService(
     TaNoMarDbContext db,
     IAsaasClient asaas,
     ILogger<BillingCancellationService> logger)
 {
-    private static readonly ConcurrentDictionary<string, SemaphoreSlim> Gates = new(StringComparer.Ordinal);
+    private readonly Guid leaseOwner = Guid.NewGuid();
 
     public async Task<BillingCancellation> RequestAsync(
         Guid userId,
@@ -34,14 +62,54 @@ internal sealed class BillingCancellationService(
         bool manualRetry,
         CancellationToken cancellationToken)
     {
-        var request = await EnsureAsync(userId, subscription?.Id, asaasSubscriptionId, reason, cancellationToken);
+        var request = await EnsureAsync(userId, subscription?.Id, asaasSubscriptionId, reason, null, cancellationToken);
         return await AttemptAsync(request.Id, manualRetry, cancellationToken);
+    }
+
+    public async Task<AccountDeletionPreparation> PrepareAccountDeletionAsync(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var protocol = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+        var receipt = new AccountDeletionReceipt
+        {
+            UserId = userId,
+            ProtocolHash = HashProtocol(protocol),
+            Status = AccountDeletionStatus.Prepared,
+            RetainUntil = now.AddHours(BillingOptions.AccountDeletionPreparationHours),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.AccountDeletionReceipts.Add(receipt);
+        await db.SaveChangesAsync(cancellationToken);
+        return new AccountDeletionPreparation(receipt.Id, protocol, 0);
+    }
+
+    public async Task<AccountDeletionPreparation?> ResolvePreparationAsync(
+        Guid userId,
+        string protocol,
+        CancellationToken cancellationToken)
+    {
+        if (!IsValidProtocol(protocol)) return null;
+        var hash = HashProtocol(protocol);
+        var now = DateTimeOffset.UtcNow;
+        var receipt = await db.AccountDeletionReceipts.SingleOrDefaultAsync(
+            item => item.ProtocolHash == hash
+                && item.UserId == userId
+                && item.AccountDeletedAt == null
+                && (item.RetainUntil == null || item.RetainUntil > now),
+            cancellationToken);
+        return receipt is null
+            ? null
+            : new AccountDeletionPreparation(receipt.Id, protocol, receipt.RemoteSubscriptionCount);
     }
 
     public async Task<List<BillingCancellation>> EnsureAccountDeletionRequestsAsync(
         Guid userId,
         IReadOnlyCollection<BillingSubscription> subscriptions,
         string reason,
+        Guid? receiptId,
         CancellationToken cancellationToken)
     {
         var requests = new List<BillingCancellation>();
@@ -52,21 +120,24 @@ internal sealed class BillingCancellationService(
                 .Select(value => value!)
                 .Distinct(StringComparer.Ordinal);
             foreach (var remoteId in remoteIds)
-                requests.Add(await EnsureAsync(userId, subscription.Id, remoteId, reason, cancellationToken));
+                requests.Add(await EnsureAsync(userId, subscription.Id, remoteId, reason, receiptId, cancellationToken));
         }
         return requests.DistinctBy(item => item.AsaasSubscriptionId, StringComparer.Ordinal).ToList();
     }
 
     public async Task<BillingCancellation> AttemptAsync(Guid requestId, bool manualRetry, CancellationToken cancellationToken)
     {
-        var request = await db.BillingCancellations.SingleAsync(item => item.Id == requestId, cancellationToken);
-        if (request.Status == BillingCancellationStatus.Confirmed)
-            return request;
+        var snapshot = await db.BillingCancellations.AsNoTracking()
+            .SingleAsync(item => item.Id == requestId, cancellationToken);
+        if (snapshot.Status == BillingCancellationStatus.Confirmed)
+            return snapshot;
 
-        var gate = Gates.GetOrAdd(request.AsaasSubscriptionId, _ => new SemaphoreSlim(1, 1));
-        await gate.WaitAsync(cancellationToken);
+        if (!await TryClaimAsync(requestId, cancellationToken))
+            return await db.BillingCancellations.AsNoTracking().SingleAsync(item => item.Id == requestId, cancellationToken);
+
         try
         {
+            var request = await db.BillingCancellations.SingleAsync(item => item.Id == requestId, cancellationToken);
             await db.Entry(request).ReloadAsync(cancellationToken);
             if (request.Status == BillingCancellationStatus.Confirmed)
                 return request;
@@ -89,12 +160,16 @@ internal sealed class BillingCancellationService(
             await db.Entry(request).ReloadAsync(cancellationToken);
             if (request.Status == BillingCancellationStatus.Confirmed)
                 return request;
+            if (request.LeaseOwner != leaseOwner)
+                return request;
 
             var now = DateTimeOffset.UtcNow;
             request.AttemptCount += 1;
             request.LastAttemptAt = now;
             request.UpdatedAt = now;
             request.ConcurrencyToken = Guid.NewGuid();
+            request.LeaseOwner = null;
+            request.LeaseExpiresAt = null;
             switch (outcome)
             {
                 case AsaasCancellationOutcome.Confirmed:
@@ -128,34 +203,82 @@ internal sealed class BillingCancellationService(
             catch (DbUpdateConcurrencyException)
             {
                 await db.Entry(request).ReloadAsync(cancellationToken);
+                return request;
             }
+            await UpdateReceiptAsync(request.AccountDeletionReceiptId, cancellationToken);
             return request;
         }
         finally
         {
-            gate.Release();
+            await ReleaseLeaseAsync(requestId, cancellationToken);
         }
     }
 
     public async Task ConfirmFromWebhookAsync(string asaasSubscriptionId, CancellationToken cancellationToken)
     {
         var request = await db.BillingCancellations
-            .SingleOrDefaultAsync(item => item.AsaasSubscriptionId == asaasSubscriptionId, cancellationToken);
+            .Where(item => item.AsaasSubscriptionId == asaasSubscriptionId)
+            .OrderByDescending(item => item.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
         if (request is null || request.Status == BillingCancellationStatus.Confirmed)
             return;
         var now = DateTimeOffset.UtcNow;
         Confirm(request, now);
+        request.LeaseOwner = null;
+        request.LeaseExpiresAt = null;
         request.ConcurrencyToken = Guid.NewGuid();
         await MarkLocalSubscriptionCanceledAsync(asaasSubscriptionId, now, cancellationToken);
+        await UpdateReceiptAsync(request.AccountDeletionReceiptId, cancellationToken, saveChanges: false);
     }
 
     public Task<BillingCancellation?> FindAsync(string? asaasSubscriptionId, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(asaasSubscriptionId))
             return Task.FromResult<BillingCancellation?>(null);
-        return db.BillingCancellations.SingleOrDefaultAsync(
-            item => item.AsaasSubscriptionId == asaasSubscriptionId,
-            cancellationToken);
+        return db.BillingCancellations
+            .Where(item => item.AsaasSubscriptionId == asaasSubscriptionId)
+            .OrderByDescending(item => item.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<BillingCancellationOperation>> ListOperationsAsync(CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var rows = await db.BillingCancellations.AsNoTracking()
+            .Where(item => item.Status == BillingCancellationStatus.Pending
+                || item.Status == BillingCancellationStatus.ActionRequired)
+            .OrderByDescending(item => item.Status == BillingCancellationStatus.ActionRequired)
+            .ThenBy(item => item.CreatedAt)
+            .Take(200)
+            .ToListAsync(cancellationToken);
+        return rows.Select(item => new BillingCancellationOperation(
+            item.Id,
+            item.AsaasSubscriptionId,
+            item.Status,
+            now - item.CreatedAt,
+            item.AttemptCount,
+            SanitizeFailureCode(item.LastFailureCode),
+            item.LastAttemptAt,
+            item.NextAttemptAt)).ToList();
+    }
+
+    public async Task<AccountDeletionPublicStatus?> GetPublicStatusAsync(string protocol, CancellationToken cancellationToken)
+    {
+        if (!IsValidProtocol(protocol)) return null;
+        var hash = HashProtocol(protocol);
+        return await db.AccountDeletionReceipts.AsNoTracking()
+            .Where(item => item.ProtocolHash == hash
+                && (item.RetainUntil == null || item.RetainUntil > DateTimeOffset.UtcNow))
+            .Select(item => new AccountDeletionPublicStatus(item.Status, item.UpdatedAt))
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task MarkAccountDeletedAsync(Guid receiptId, CancellationToken cancellationToken)
+    {
+        var receipt = await db.AccountDeletionReceipts.SingleAsync(item => item.Id == receiptId, cancellationToken);
+        receipt.AccountDeletedAt = DateTimeOffset.UtcNow;
+        receipt.UserId = null;
+        await UpdateReceiptAsync(receiptId, cancellationToken);
     }
 
     public async Task ProcessDueAsync(CancellationToken cancellationToken)
@@ -164,7 +287,8 @@ internal sealed class BillingCancellationService(
         var dueIds = await db.BillingCancellations.AsNoTracking()
             .Where(item => (item.Status == BillingCancellationStatus.Pending
                     || item.Status == BillingCancellationStatus.ActionRequired)
-                && (item.NextAttemptAt == null || item.NextAttemptAt <= now))
+                && (item.NextAttemptAt == null || item.NextAttemptAt <= now)
+                && (item.LeaseExpiresAt == null || item.LeaseExpiresAt <= now))
             .OrderBy(item => item.NextAttemptAt)
             .Select(item => item.Id)
             .Take(50)
@@ -177,6 +301,61 @@ internal sealed class BillingCancellationService(
                 && item.RetainUntil != null
                 && item.RetainUntil <= now)
             .ExecuteDeleteAsync(cancellationToken);
+        await db.AccountDeletionReceipts
+            .Where(item => item.RetainUntil != null && item.RetainUntil <= now)
+            .ExecuteDeleteAsync(cancellationToken);
+    }
+
+    private async Task<bool> TryClaimAsync(Guid requestId, CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var expiresAt = now.AddMinutes(BillingOptions.CancellationLeaseMinutes);
+        if (db.Database.IsRelational())
+        {
+            var affected = await db.BillingCancellations
+                .Where(item => item.Id == requestId
+                    && item.Status != BillingCancellationStatus.Confirmed
+                    && (item.LeaseExpiresAt == null || item.LeaseExpiresAt <= now || item.LeaseOwner == leaseOwner))
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(item => item.LeaseOwner, leaseOwner)
+                    .SetProperty(item => item.LeaseExpiresAt, expiresAt), cancellationToken);
+            return affected == 1;
+        }
+
+        var request = await db.BillingCancellations.SingleAsync(item => item.Id == requestId, cancellationToken);
+        if (request.Status == BillingCancellationStatus.Confirmed
+            || (request.LeaseExpiresAt > now && request.LeaseOwner != leaseOwner))
+            return false;
+        request.LeaseOwner = leaseOwner;
+        request.LeaseExpiresAt = expiresAt;
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    private async Task ReleaseLeaseAsync(Guid requestId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (db.Database.IsRelational())
+            {
+                await db.BillingCancellations
+                    .Where(item => item.Id == requestId && item.LeaseOwner == leaseOwner)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(item => item.LeaseOwner, (Guid?)null)
+                        .SetProperty(item => item.LeaseExpiresAt, (DateTimeOffset?)null), cancellationToken);
+                return;
+            }
+            var request = await db.BillingCancellations.SingleOrDefaultAsync(
+                item => item.Id == requestId && item.LeaseOwner == leaseOwner, cancellationToken);
+            if (request is null) return;
+            request.LeaseOwner = null;
+            request.LeaseExpiresAt = null;
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // O lease expira e outro worker retoma após reinício/interrupção.
+        }
     }
 
     private async Task<BillingCancellation> EnsureAsync(
@@ -184,15 +363,19 @@ internal sealed class BillingCancellationService(
         Guid? subscriptionId,
         string asaasSubscriptionId,
         string reason,
+        Guid? receiptId,
         CancellationToken cancellationToken)
     {
         var existing = await db.BillingCancellations
-            .SingleOrDefaultAsync(item => item.AsaasSubscriptionId == asaasSubscriptionId, cancellationToken);
+            .Where(item => item.AsaasSubscriptionId == asaasSubscriptionId)
+            .OrderByDescending(item => item.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
         if (existing is not null)
         {
             if (reason is BillingCancellationReason.AccountDeletion or BillingCancellationReason.AdminAccountDeletion)
             {
                 existing.Reason = reason;
+                existing.AccountDeletionReceiptId = receiptId;
                 existing.UpdatedAt = DateTimeOffset.UtcNow;
                 existing.ConcurrencyToken = Guid.NewGuid();
                 await db.SaveChangesAsync(cancellationToken);
@@ -204,6 +387,7 @@ internal sealed class BillingCancellationService(
         {
             UserId = userId,
             BillingSubscriptionId = subscriptionId,
+            AccountDeletionReceiptId = receiptId,
             AsaasSubscriptionId = asaasSubscriptionId,
             Reason = reason,
             Status = BillingCancellationStatus.Pending,
@@ -221,19 +405,62 @@ internal sealed class BillingCancellationService(
         {
             db.Entry(created).State = EntityState.Detached;
             return await db.BillingCancellations
-                .SingleAsync(item => item.AsaasSubscriptionId == asaasSubscriptionId, cancellationToken);
+                .Where(item => item.AsaasSubscriptionId == asaasSubscriptionId)
+                .OrderByDescending(item => item.CreatedAt)
+                .FirstAsync(cancellationToken);
         }
+    }
+
+    private async Task UpdateReceiptAsync(
+        Guid? receiptId,
+        CancellationToken cancellationToken,
+        bool saveChanges = true)
+    {
+        if (receiptId is null) return;
+        var receipt = await db.AccountDeletionReceipts.SingleOrDefaultAsync(item => item.Id == receiptId, cancellationToken);
+        if (receipt is null) return;
+        var linkedCancellations = await db.BillingCancellations
+            .Where(item => item.AccountDeletionReceiptId == receiptId)
+            .ToListAsync(cancellationToken);
+        var statuses = linkedCancellations.Select(item => item.Status).ToList();
+        receipt.RemoteSubscriptionCount = statuses.Count;
+        var now = DateTimeOffset.UtcNow;
+        receipt.UpdatedAt = now;
+        if (receipt.AccountDeletedAt is null)
+        {
+            receipt.Status = AccountDeletionStatus.Prepared;
+            receipt.RetainUntil = now.AddHours(BillingOptions.AccountDeletionPreparationHours);
+        }
+        else if (statuses.Exists(status => status == BillingCancellationStatus.ActionRequired))
+        {
+            receipt.Status = AccountDeletionStatus.ActionRequired;
+            receipt.RetainUntil = null;
+        }
+        else if (statuses.Exists(status => status != BillingCancellationStatus.Confirmed))
+        {
+            receipt.Status = AccountDeletionStatus.Pending;
+            receipt.RetainUntil = null;
+        }
+        else
+        {
+            receipt.Status = AccountDeletionStatus.Completed;
+            receipt.RetainUntil = now.AddDays(BillingOptions.CancellationConfirmationRetentionDays);
+        }
+        if (saveChanges)
+            await db.SaveChangesAsync(cancellationToken);
     }
 
     private async Task MarkLocalSubscriptionCanceledAsync(string asaasSubscriptionId, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        var subscription = await db.BillingSubscriptions
-            .SingleOrDefaultAsync(item => item.AsaasSubscriptionId == asaasSubscriptionId, cancellationToken);
-        if (subscription is null)
-            return;
-        subscription.Status = BillingPricing.Canceled;
-        subscription.CancelAtPeriodEnd = true;
-        subscription.UpdatedAt = now;
+        var subscriptions = await db.BillingSubscriptions
+            .Where(item => item.AsaasSubscriptionId == asaasSubscriptionId)
+            .ToListAsync(cancellationToken);
+        foreach (var subscription in subscriptions)
+        {
+            subscription.Status = BillingPricing.Canceled;
+            subscription.CancelAtPeriodEnd = true;
+            subscription.UpdatedAt = now;
+        }
     }
 
     private static void Confirm(BillingCancellation request, DateTimeOffset now)
@@ -254,4 +481,17 @@ internal sealed class BillingCancellationService(
         request.ActionRequiredAt = now;
         request.NextAttemptAt = now.AddHours(BillingOptions.CancellationActionRetryHours);
     }
+
+    private static bool IsValidProtocol(string? protocol) =>
+        !string.IsNullOrWhiteSpace(protocol) && protocol.Length is >= 40 and <= 64;
+
+    private static string HashProtocol(string protocol) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(protocol)));
+
+    private static string? SanitizeFailureCode(string? code) => code switch
+    {
+        "asaas_rejected" or "retry_limit" or "asaas_unconfirmed" => code,
+        null => null,
+        _ => "internal_error"
+    };
 }

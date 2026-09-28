@@ -213,6 +213,7 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("community", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "anonymous", _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     options.AddPolicy("places", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "anonymous", _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     options.AddPolicy("webcams", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "anonymous", _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    options.AddPolicy("cancellation-status", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "anonymous", _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 
 var app = builder.Build();
@@ -356,7 +357,21 @@ api.MapGet("/me", async (ClaimsPrincipal principal, TaNoMarDbContext db, Billing
     return Results.Ok(await UserDtoAsync(user, db, billing, cancellationToken));
 }).RequireAuthorization();
 
-api.MapDelete("/me", async (ClaimsPrincipal principal, TaNoMarDbContext db, BillingService billing, FishingForecastCache cache, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, HttpContext context, CancellationToken cancellationToken) =>
+api.MapPost("/me/deletion-request", async (ClaimsPrincipal principal, TaNoMarDbContext db, BillingService billing, CancellationToken cancellationToken) =>
+{
+    var user = await CurrentUserAsync(principal, db, cancellationToken);
+    if (user is null) return Results.Unauthorized();
+    var preparation = await billing.PrepareAccountDeletionAsync(user.Id, cancellationToken);
+    return Results.Ok(new
+    {
+        protocol = preparation.Protocol,
+        status = AccountDeletionStatus.Prepared,
+        statusUrl = $"/excluir-conta#protocolo={Uri.EscapeDataString(preparation.Protocol)}",
+        supportChannel = BillingOptions.SupportEmail
+    });
+}).RequireAuthorization().RequireRateLimiting("cancellation-status");
+
+api.MapDelete("/me", async (AccountDeletionProtocolRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, BillingService billing, FishingForecastCache cache, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, HttpContext context, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
@@ -364,8 +379,14 @@ api.MapDelete("/me", async (ClaimsPrincipal principal, TaNoMarDbContext db, Bill
         return Results.Conflict(new { code = "bootstrap_locked", detail = "A conta inicial do bootstrap não pode ser excluída." });
     if (SpotRules.IsAdmin(user) && await db.Users.CountAsync(item => item.Role == "Admin" && item.Id != user.Id, cancellationToken) == 0)
         return Results.Conflict(new { code = "last_admin", detail = "Mantenha pelo menos um admin ativo." });
-    var billingResult = await billing.StopRecurringForDeletedUserAsync(user.Id, requestedByAdmin: false, cancellationToken);
+    var preparation = await billing.ResolveAccountDeletionPreparationAsync(user.Id, request.Protocol, cancellationToken);
+    if (preparation is null)
+        return Results.BadRequest(new { code = "invalid_deletion_protocol", detail = "O protocolo de exclusão é inválido ou expirou." });
+    var billingResult = await billing.StopRecurringForDeletedUserAsync(user.Id, requestedByAdmin: false, preparation.ReceiptId, cancellationToken);
+    await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+    await billing.MarkAccountDeletedAsync(preparation.ReceiptId, cancellationToken);
     await RemoveUserAccountAsync(db, cache, user, cancellationToken);
+    await transaction.CommitAsync(cancellationToken);
     context.Response.Cookies.Delete(TaNoMarOptions.RefreshCookieName, new CookieOptions { HttpOnly = true, Secure = !app.Environment.IsDevelopment(), SameSite = SameSiteMode.Lax, Path = "/api/v1/auth" });
     var detail = billingResult.Status switch
     {
@@ -374,7 +395,15 @@ api.MapDelete("/me", async (ClaimsPrincipal principal, TaNoMarDbContext db, Bill
         _ => "Os dados da conta foram excluídos. O encerramento da recorrência está pendente e será tentado novamente automaticamente."
     };
     return Results.Json(
-        new { status = billingResult.Status, billingResult.RemoteSubscriptionCount, detail },
+        new
+        {
+            status = billingResult.Status,
+            billingResult.RemoteSubscriptionCount,
+            detail,
+            protocol = preparation.Protocol,
+            statusUrl = $"/excluir-conta#protocolo={Uri.EscapeDataString(preparation.Protocol)}",
+            supportChannel = BillingOptions.SupportEmail
+        },
         statusCode: billingResult.Status == "completed" ? 200 : 202);
 }).RequireAuthorization();
 
@@ -762,6 +791,43 @@ api.MapGet("/admin/dashboard", async (ClaimsPrincipal principal, TaNoMarDbContex
     return Results.Ok(await AdminDashboard.SnapshotAsync(db, DateTimeOffset.UtcNow, cancellationToken));
 }).RequireAuthorization();
 
+api.MapGet("/admin/billing/cancellations", async (ClaimsPrincipal principal, TaNoMarDbContext db, BillingCancellationService cancellations, CancellationToken cancellationToken) =>
+{
+    var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
+    if (failure is not null) return failure;
+    var rows = await cancellations.ListOperationsAsync(cancellationToken);
+    return Results.Ok(rows.Select(item => new
+    {
+        item.Id,
+        item.AsaasSubscriptionId,
+        item.Status,
+        ageHours = Math.Round(item.Age.TotalHours, 1),
+        item.AttemptCount,
+        item.LastFailureCode,
+        item.LastAttemptAt,
+        item.NextAttemptAt
+    }));
+}).RequireAuthorization();
+
+api.MapPost("/admin/billing/cancellations/{id:guid}/retry", async (Guid id, ClaimsPrincipal principal, TaNoMarDbContext db, BillingCancellationService cancellations, CancellationToken cancellationToken) =>
+{
+    var (_, failure) = await AdminActorAsync(principal, db, cancellationToken);
+    if (failure is not null) return failure;
+    var exists = await db.BillingCancellations.AnyAsync(item => item.Id == id, cancellationToken);
+    if (!exists) return Results.NotFound();
+    var result = await cancellations.AttemptAsync(id, manualRetry: true, cancellationToken);
+    return Results.Json(new
+    {
+        result.Id,
+        result.AsaasSubscriptionId,
+        result.Status,
+        result.AttemptCount,
+        lastFailureCode = result.LastFailureCode is "asaas_rejected" or "retry_limit" or "asaas_unconfirmed"
+            ? result.LastFailureCode
+            : result.LastFailureCode is null ? null : "internal_error"
+    }, statusCode: result.Status == BillingCancellationStatus.Confirmed ? 200 : 202);
+}).RequireAuthorization().RequireRateLimiting("cancellation-status");
+
 api.MapGet("/admin/users", async (ClaimsPrincipal principal, TaNoMarDbContext db, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, CancellationToken cancellationToken) =>
 {
     var (actor, failure) = await AdminActorAsync(principal, db, cancellationToken);
@@ -967,10 +1033,21 @@ api.MapDelete("/admin/users/{id:guid}", async (Guid id, ClaimsPrincipal principa
         return Results.Conflict(new { code = "bootstrap_locked", detail = "A conta inicial do bootstrap não pode ser excluída." });
     if (SpotRules.IsAdmin(target) && await db.Users.CountAsync(item => item.Role == "Admin" && item.Id != target.Id, cancellationToken) == 0)
         return Results.Conflict(new { code = "last_admin", detail = "Mantenha pelo menos um admin ativo." });
-    var billingResult = await billing.StopRecurringForDeletedUserAsync(target.Id, requestedByAdmin: true, cancellationToken);
+    var preparation = await billing.PrepareAccountDeletionAsync(target.Id, cancellationToken);
+    var billingResult = await billing.StopRecurringForDeletedUserAsync(target.Id, requestedByAdmin: true, preparation.ReceiptId, cancellationToken);
+    await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+    await billing.MarkAccountDeletedAsync(preparation.ReceiptId, cancellationToken);
     await RemoveUserAccountAsync(db, cache, target, cancellationToken);
+    await transaction.CommitAsync(cancellationToken);
     return Results.Json(
-        new { status = billingResult.Status, billingResult.RemoteSubscriptionCount },
+        new
+        {
+            status = billingResult.Status,
+            billingResult.RemoteSubscriptionCount,
+            protocol = preparation.Protocol,
+            statusUrl = $"/excluir-conta#protocolo={Uri.EscapeDataString(preparation.Protocol)}",
+            supportChannel = BillingOptions.SupportEmail
+        },
         statusCode: billingResult.Status == "completed" ? 200 : 202);
 }).RequireAuthorization();
 
@@ -1626,6 +1703,21 @@ api.MapDelete("/notifications/{id:guid}", async (Guid id, ClaimsPrincipal princi
     hub.Publish(user.Id, await HasUnreadAsync(db, user.Id, cancellationToken));
     return Results.NoContent();
 }).RequireAuthorization();
+
+api.MapPost("/public/account-deletions/status", async (AccountDeletionProtocolRequest request, BillingCancellationService cancellations, HttpContext context, CancellationToken cancellationToken) =>
+{
+    context.Response.Headers.CacheControl = "no-store";
+    context.Response.Headers["Referrer-Policy"] = "no-referrer";
+    var status = await cancellations.GetPublicStatusAsync(request.Protocol, cancellationToken);
+    return status is null
+        ? Results.NotFound(new { detail = "Protocolo não encontrado ou expirado." })
+        : Results.Ok(new
+        {
+            status = status.Status,
+            updatedAt = status.UpdatedAt,
+            supportChannel = BillingOptions.SupportEmail
+        });
+}).RequireRateLimiting("cancellation-status");
 
 api.MapGet("/public/offline-forecast", async (FishingForecastService fishing, HttpContext context, CancellationToken cancellationToken) =>
 {
@@ -2415,6 +2507,7 @@ static void ReplacePartnerOffers(TaNoMarDbContext db, Guid partnerId, PartnerOff
 }
 
 record BillingCheckoutRequest(string? PlanCode, string? Cycle);
+record AccountDeletionProtocolRequest(string Protocol);
 record GoogleLoginRequest(string Credential);
 record PreferencesRequest(string? Region, string? WindUnit, bool? ForecastNotifications, string? Focus, string[]? VisibleMetrics);
 record ForecastAlertRequest(string SpotId, double MinimumScore, int LeadHours, int? TargetHour = null, bool IsActive = true);
