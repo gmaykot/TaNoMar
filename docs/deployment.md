@@ -4,7 +4,7 @@ Guia de implantação em produção. O desenvolvimento local **não usa Docker**
 
 ## Modelo de deploy
 
-PWA e API continuam no **mesmo container** e na **mesma origem**. O adapter Baileys sobe em um segundo container, somente na rede interna do compose; não há serviço `web` separado nem nginx dedicado.
+PWA e API continuam no **mesmo container** e na **mesma origem**. O adapter Baileys e o monitor agora sobem em uma stack independente em `services/docker-compose.yml`; o Compose principal não inicia nenhum dos dois.
 
 ```text
 Coolify
@@ -19,9 +19,9 @@ Coolify
         │           ├── /app           → início autenticado do PWA
         │           ├── /ranking, …    → SPA (React Router)
         │           └── /api/v1/*      → endpoints da API
-        └── serviço tanomar-whatsapp
-              ├── Node.js + Baileys na porta interna 3000
-              └── /data/session → volume persistente
+  services/docker-compose.yml (stack independente)
+        ├── tanomar-whatsapp (rede privada, porta 3000 não publicada)
+        └── tanomar-monitor (rede privada + health/status)
 ```
 
 O PostgreSQL é **sempre externo**. O repositório não provisiona banco — configure `ConnectionStrings__Default` apontando para o serviço gerenciado.
@@ -44,7 +44,8 @@ Alterações no frontend exigem **rebuild da imagem inteira** (web + API). Isso 
 
 | Arquivo | Função |
 | --- | --- |
-| `docker-compose.yml` | Orquestra a aplicação e o adapter WhatsApp no Coolify |
+| `docker-compose.yml` | Orquestra somente a aplicação principal no Coolify |
+| `services/docker-compose.yml` | Orquestra WhatsApp + Monitor no Coolify, separadamente |
 | `apps/api/TaNoMar.Api/Dockerfile` | Build multi-stage (web + API) |
 | `services/tanomar-whatsapp/Dockerfile` | Build do adapter Node.js + Baileys |
 | `.env.example` | Template de variáveis para validação local |
@@ -55,7 +56,7 @@ Alterações no frontend exigem **rebuild da imagem inteira** (web + API). Isso 
 1. Crie um recurso **Docker Compose** apontando para este repositório.
 2. Defina o caminho do compose: `docker-compose.yml` (raiz).
 3. Configure as variáveis de ambiente (ver tabela abaixo).
-4. Preserve `tanomar-data` para o log de auditoria e `tanomar-whatsapp-data` para a autenticação do WhatsApp.
+4. Preserve `tanomar-data` para o log de auditoria. A sessão do WhatsApp é preservada na stack `services` pelo volume explícito `tanomar_tanomar-whatsapp-data`.
 5. Configure domínio e HTTPS no proxy do Coolify (porta interna do container **8080**). A porta publicada no host padrão é **8082** (`TANOMAR_PORT`), para não colidir com outro serviço na 8080.
 
 ### Domínio raiz, www e URL canônica
@@ -74,7 +75,7 @@ A landing define o domínio raiz como canônico: ao abrir por `www`, o `canonica
 | `GOOGLE_CLIENT_ID` | runtime: `TaNoMar__GoogleClientId` | Validação server-side do token Google |
 | `JWT_KEY` | runtime: `TaNoMar__JwtKey` | Assinatura dos access tokens JWT |
 | `ConnectionStrings__Default` | runtime | Connection string do PostgreSQL externo |
-| `WHATSAPP_API_KEY` | API e `tanomar-whatsapp` | Token interno longo, igual nos dois containers; obrigatório no compose. |
+| `WHATSAPP_API_KEY` | API principal | Token usado para acessar o WhatsApp remoto; configure o mesmo valor na stack `services`. |
 
 ### Variáveis opcionais
 
@@ -110,7 +111,7 @@ A landing define o domínio raiz como canônico: ao abrir por `www`, o `canonica
 | `RESEND_FROM_NAME` | `Resend:FromName` | Nome do remetente (padrão `TáNoMar`). |
 | `RESEND_NOTIFICATION_EMAIL` | `Resend:NotificationEmail` | Destinatário dos avisos de novo usuário, solicitação, pagamento, alteração de plano e renovação cancelada. Se omitido, usa `BOOTSTRAP_ADMIN_EMAIL`. |
 | `WHATSAPP_ENABLED` | `WhatsApp:Enabled` | Habilita o canal na API. Padrão `false`; a tela Admin ainda exige ativação e destino. |
-| `WHATSAPP_INSTANCE_NAME` | adapter Node | Nome do aparelho em produção, padrão `TaNoMar`. O adapter local usa `TaNoMar-Local` e sessão própria; não copie a pasta de sessão entre ambientes. |
+| `WHATSAPP_BASE_URL` | `WhatsApp:BaseUrl` | URL acessível pela API principal. Não use `http://tanomar-whatsapp:3000` fora da network privada da stack `services`. |
 
 A vitrine de parceiros não usa mais variável de ambiente. O admin liga ou desliga em `/admin/parceiros`; o valor fica em `PlatformSettings`.
 
@@ -122,13 +123,13 @@ O preço da assinatura não usa variável de ambiente: o admin edita `Plans.Mont
 
 O volume `tanomar-data` monta em `/var/lib/tanomar` e guarda o log de auditoria (`/var/lib/tanomar/audit.jsonl`). Sem o volume, a auditoria some a cada redeploy.
 
-O volume `tanomar-whatsapp-data` monta em `/data` no adapter. A sessão fica em `/data/session`; com o volume preservado, restart e redeploy não exigem novo QR Code. Desconectar pela tela Admin encerra a sessão e limpa essa pasta intencionalmente.
+O volume `tanomar_tanomar-whatsapp-data` monta em `/data` no adapter da stack `services`. A sessão fica em `/data/session`; com o volume preservado, restart e redeploy não exigem novo QR Code. Desconectar pela tela Admin encerra a sessão e limpa essa pasta intencionalmente. Veja o procedimento de migração em [services/README.md](../services/README.md).
 
 O cache de previsão fica em memória no processo da API e em snapshots no PostgreSQL (`FishingForecastSnapshots`). `Fishing:CacheHours` é o TTL normal; `Fishing:MaxStaleHours` limita o fallback exibido durante atualização ou falha externa. Misses e entradas velhas entram numa fila interna deduplicada: a requisição responde com dados disponíveis e o frontend acompanha `refresh`. O worker agrupa coordenadas, consulta Weather, GFS e Marine em paralelo e grava os oito dias em lote; a tábua é completada por outra fila e não atrasa a previsão principal. O `FishingForecastWarmupWorker` reidrata a memória a partir de `FishingForecastSnapshots` e só enfileira oficiais e compartilhados aprovados que estejam ausentes ou velhos (`Fishing:WarmupIntervalHours`). Snapshot fresco sem tábua vai só para a fila de maré. Cadastro, aprovação, reativação e mudanças dos dados que afetam a previsão também enfileiram o local sem aguardar rede externa. Desligue o agendamento periódico com `Fishing__WarmupEnabled=false`.
 
 ## Healthcheck
 
-O container principal expõe `GET /api/health`. O adapter expõe `GET /health` somente na rede interna. O compose verifica os dois.
+O container principal expõe `GET /api/health`. O adapter expõe `GET /health` somente na rede privada da stack `services`; o monitor expõe `GET /health/live` e `GET /health/ready` conforme a configuração de porta dessa stack.
 
 ```bash
 curl --fail --silent http://127.0.0.1:8080/api/health
@@ -145,6 +146,16 @@ cp .env.example .env
 docker compose config
 docker compose build
 docker compose up
+```
+
+Para a stack isolada de WhatsApp + Monitor:
+
+```bash
+cd services
+cp .env.example .env
+docker compose config
+docker compose build
+docker compose up -d
 ```
 
 Acesse `http://127.0.0.1:8082` (porta padrão publicada no host). O healthcheck e o proxy do Coolify usam a porta interna `8080`.

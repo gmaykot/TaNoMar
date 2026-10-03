@@ -49,7 +49,7 @@ Namespaces, assembly e tipos técnicos usam `TaNoMar.Api`. Identificadores de ru
 
 Localmente, web e API são processos independentes: Vite executa o React em HTTP (`--host`) com proxy de `/api` para `http://127.0.0.1:5000`, e sobe HTTPS extra na porta seguinte para o PWA instalar no celular via `<ip>.nip.io`. `dotnet run` executa a API com `ASPNETCORE_ENVIRONMENT=Development`. Docker não participa do desenvolvimento local. A API recebe `ConnectionStrings__Default` pelo ambiente e conecta a um PostgreSQL externo; o repositório não provisiona banco.
 
-Quando habilitado, `services/tanomar-whatsapp` executa separadamente e recebe somente chamadas internas autenticadas da API. Baileys e suas credenciais não entram na API nem no frontend; `IWhatsAppGateway` mantém o adapter substituível.
+Quando habilitado, `services/tanomar-whatsapp` executa na stack independente `services/docker-compose.yml` e recebe somente chamadas HTTP autenticadas. Baileys e suas credenciais não entram na API nem no frontend; `IWhatsAppGateway` mantém o adapter substituível. A API recebe `WhatsApp__BaseUrl`/`WHATSAPP_BASE_URL` para acessar o serviço, inclusive quando ele estiver em outra VPS.
 
 A sessão usa Google Sign-In. O access token fica só em memória; o refresh token segue no cookie HttpOnly `tanomar_refresh`. No celular, o usuário pode exigir biometria (WebAuthn: Face ID, Touch ID ou digital) neste aparelho antes de restaurar a sessão; a opção fica em Conta e não altera o cookie nem o login Google. Endpoints autenticados não entram no cache do service worker.
 
@@ -57,6 +57,6 @@ Cobrança da assinatura: Checkout hospedado do Asaas, só cartão, Arrais/Mestre
 
 ## Produção
 
-Em produção, o Coolify usa `docker-compose.yml`. O container principal usa `apps/api/TaNoMar.Api/Dockerfile`: compila o web, copia para `wwwroot/` e serve a PWA junto com `/api/v1`. O adapter usa `services/tanomar-whatsapp/Dockerfile`, fica somente na rede interna e persiste a sessão em volume próprio. O PostgreSQL continua externo.
+Em produção, o Coolify usa `docker-compose.yml` para a aplicação principal e `services/docker-compose.yml` para WhatsApp + Monitor. O container principal usa `apps/api/TaNoMar.Api/Dockerfile`: compila o web, copia para `wwwroot/` e serve a PWA junto com `/api/v1`. O adapter fica somente na network privada da stack de services e persiste a sessão em volume próprio. O PostgreSQL continua externo.
 
 Detalhes de configuração, variáveis e troubleshooting: [deployment.md](deployment.md).

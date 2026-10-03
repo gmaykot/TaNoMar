@@ -33,6 +33,7 @@ export class BaileysConnection implements WhatsAppConnection {
   private reconnectAttempt = 0;
   private lastStatusCode: number | undefined;
   private manualLogout = false;
+  private shuttingDown = false;
   private readonly chats = new Map<string, string>();
   private readonly contacts = new Map<string, Contact>();
   private readonly groupMetadata = new Map<string, GroupMetadata>();
@@ -48,6 +49,7 @@ export class BaileysConnection implements WhatsAppConnection {
   }
 
   async start(instanceName?: string): Promise<void> {
+    if (this.shuttingDown) return;
     if (instanceName?.trim()) this.instanceName = instanceName.trim();
     if (this.currentStatus === 'connected' || this.connecting) return this.connecting ?? Promise.resolve();
     this.manualLogout = false;
@@ -140,13 +142,27 @@ export class BaileysConnection implements WhatsAppConnection {
     return items;
   }
 
-  async send(destinationId: string, message: string): Promise<void> {
+  async send(destinationId: string, message: string): Promise<string> {
     this.requireConnected();
     const jid = await this.resolveDestination(destinationId);
     const sent = await this.socket!.sendMessage(jid, { text: message });
     if (!sent?.key?.id) throw new Error('O WhatsApp não confirmou o envio da mensagem.');
     this.outgoing.set(sent.key.id, { conversation: message });
     this.logger.info('WhatsApp notification sent');
+    return sent.key.id;
+  }
+
+  async shutdown(): Promise<void> {
+    this.shuttingDown = true;
+    this.manualLogout = true;
+    this.clearReconnectTimer();
+    const socket = this.socket;
+    this.socket = undefined;
+    if (socket) socket.end(undefined);
+    this.currentStatus = 'disconnected';
+    this.currentQr = null;
+    this.phoneNumber = null;
+    this.logger.info('WhatsApp connection stopped');
   }
 
   private async openSocket(): Promise<void> {
@@ -286,7 +302,7 @@ export class BaileysConnection implements WhatsAppConnection {
   }
 
   private scheduleReconnect(): void {
-    if (this.manualLogout || this.reconnectTimer) return;
+    if (this.shuttingDown || this.manualLogout || this.reconnectTimer) return;
     this.reconnectAttempt += 1;
     const delay = reconnectDelayMs(this.reconnectAttempt, this.lastStatusCode);
     this.reconnectTimer = setTimeout(() => {

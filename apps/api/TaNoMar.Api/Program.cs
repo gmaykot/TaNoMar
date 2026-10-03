@@ -262,6 +262,34 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok", at = DateTimeOffset.UtcNow }));
+app.MapGet("/api/health/live", () => Results.Ok(new { status = "ok", at = DateTimeOffset.UtcNow }));
+app.MapGet("/api/health/ready", async (TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        return await db.Database.CanConnectAsync(cancellationToken)
+            ? Results.Ok(new { status = "ready", at = DateTimeOffset.UtcNow })
+            : Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+    }
+    catch (Exception exception) when (exception is InvalidOperationException or DbUpdateException or System.Data.Common.DbException)
+    {
+        return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+    }
+});
+app.MapGet("/health/live", () => Results.Ok(new { status = "ok", at = DateTimeOffset.UtcNow }));
+app.MapGet("/health/ready", async (TaNoMarDbContext db, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        return await db.Database.CanConnectAsync(cancellationToken)
+            ? Results.Ok(new { status = "ready", at = DateTimeOffset.UtcNow })
+            : Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+    }
+    catch (Exception exception) when (exception is InvalidOperationException or DbUpdateException or System.Data.Common.DbException)
+    {
+        return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+    }
+});
 
 var api = app.MapGroup("/api/v1");
 WebcamEndpoints.Map(api);

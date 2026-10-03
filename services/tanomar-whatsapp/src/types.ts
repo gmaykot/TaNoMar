@@ -20,5 +20,6 @@ export interface WhatsAppConnection {
   qrDataUrl(): Promise<string | null>;
   listPersonalChats(): Promise<Destination[]>;
   listGroups(): Promise<Destination[]>;
-  send(destinationId: string, message: string): Promise<void>;
+  send(destinationId: string, message: string): Promise<string>;
+  shutdown(): Promise<void>;
 }

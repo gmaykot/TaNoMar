@@ -12,7 +12,9 @@ apps/
 └── api/
     └── TaNoMar.Api/        # ASP.NET Core + EF Core + PostgreSQL
 services/
-└── tanomar-whatsapp/       # Adapter Node.js + Baileys, somente rede interna
+├── tanomar-whatsapp/       # Adapter Node.js + Baileys
+├── tanomar-monitor/        # Monitor HTTP + SQLite
+└── docker-compose.yml      # Stack isolada WhatsApp + Monitor
 docs/                       # Arquitetura, contratos, deploy e decisões
 ```
 

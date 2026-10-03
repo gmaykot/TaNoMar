@@ -1,9 +1,14 @@
 import { timingSafeEqual } from 'node:crypto';
-import express, { type NextFunction, type Request, type Response } from 'express';
+import express, { type ErrorRequestHandler, type NextFunction, type Request, type Response } from 'express';
 import type { WhatsAppConnection } from './types.js';
 
-export function createApp(connection: WhatsAppConnection, internalApiKey: string) {
+export interface AppOptions {
+  sendTimeoutSeconds?: number;
+}
+
+export function createApp(connection: WhatsAppConnection, internalApiKey: string, options: AppOptions = {}) {
   const app = express();
+  const sendTimeoutMs = Math.max(1, (options.sendTimeoutSeconds ?? 20) * 1000);
   app.use(express.json({ limit: '32kb' }));
 
   app.get('/health', (_request, response) => response.json({ status: 'ok' }));
@@ -44,21 +49,33 @@ export function createApp(connection: WhatsAppConnection, internalApiKey: string
     if (!isDestination(destinationId) || !message)
       return response.status(400).json({ code: 'invalid_message', detail: 'Destino e mensagem são obrigatórios.' });
     try {
-      await connection.send(destinationId, message);
+      const messageId = await withTimeout(
+        connection.send(destinationId, message),
+        sendTimeoutMs,
+      );
+      return response.json({ detail: 'Mensagem enviada.', messageId });
     } catch (error) {
       if (error instanceof Error && /próprio número|não foi encontrado/.test(error.message))
         return response.status(400).json({ code: 'invalid_destination', detail: error.message });
+      if (error instanceof RequestTimeoutError)
+        return response.status(504).json({ code: error.code, detail: 'O WhatsApp não confirmou o envio dentro do tempo limite.' });
       throw error;
     }
-    response.json({ detail: 'Mensagem enviada.' });
   });
 
-  app.use((_error: unknown, _request: Request, response: Response, _next: NextFunction) => {
+  app.use(((error: unknown, _request: Request, response: Response, _next: NextFunction) => {
+    if (isBodyParseError(error)) {
+      const tooLarge = error.statusCode === 413;
+      return response.status(tooLarge ? 413 : 400).json({
+        code: tooLarge ? 'payload_too_large' : 'invalid_json',
+        detail: tooLarge ? 'O corpo da requisição excede o limite permitido.' : 'JSON inválido.',
+      });
+    }
     response.status(503).json({
       code: 'whatsapp_unavailable',
       detail: 'Serviço WhatsApp indisponível.',
     });
-  });
+  }) satisfies ErrorRequestHandler);
 
   return app;
 }
@@ -77,4 +94,30 @@ function readInstanceName(request: Request): string | undefined {
 
 function isDestination(value: string): boolean {
   return value.endsWith('@s.whatsapp.net') || value.endsWith('@g.us') || value.endsWith('@lid');
+}
+
+class RequestTimeoutError extends Error {
+  readonly code = 'send_timeout';
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new RequestTimeoutError()), timeoutMs);
+        timer.unref();
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+function isBodyParseError(error: unknown): error is { type?: string; statusCode?: number } {
+  return typeof error === 'object' && error !== null
+    && ('body' in error || 'type' in error)
+    && (((error as { type?: string }).type === 'entity.parse.failed')
+      || ((error as { statusCode?: number }).statusCode === 413));
 }

@@ -1,0 +1,76 @@
+services:
+  tanomar-whatsapp:
+    build:
+      context: ..
+      dockerfile: services/tanomar-whatsapp/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PORT: 3000
+      INTERNAL_API_KEY: ${WHATSAPP_API_KEY:?Defina WHATSAPP_API_KEY}
+      SESSION_PATH: /data/session
+      INSTANCE_NAME: ${WHATSAPP_INSTANCE_NAME:-TaNoMar}
+      SEND_TIMEOUT_SECONDS: ${WHATSAPP_ADAPTER_SEND_TIMEOUT_SECONDS:-20}
+    volumes:
+      - tanomar-whatsapp-data:/data
+    networks:
+      - tanomar-services
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  tanomar-monitor:
+    build:
+      context: ..
+      dockerfile: services/tanomar-monitor/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      Monitoring__IntervalSeconds: ${MONITOR_INTERVAL_SECONDS:-60}
+      Monitoring__FailureThreshold: ${MONITOR_FAILURE_THRESHOLD:-3}
+      Monitoring__RecoveryThreshold: ${MONITOR_RECOVERY_THRESHOLD:-2}
+      Monitoring__HttpTimeoutSeconds: ${MONITOR_HTTP_TIMEOUT_SECONDS:-10}
+      WhatsApp__BaseUrl: http://tanomar-whatsapp:3000
+      WhatsApp__StatusTimeoutSeconds: ${WHATSAPP_STATUS_TIMEOUT_SECONDS:-5}
+      WhatsApp__SendTimeoutSeconds: ${WHATSAPP_SEND_TIMEOUT_SECONDS:-15}
+      Alerts__RetryEnabled: ${ALERT_RETRY_ENABLED:-true}
+      Alerts__RetryIntervalSeconds: ${ALERT_RETRY_INTERVAL_SECONDS:-300}
+      Alerts__MaxRetryAttempts: ${ALERT_MAX_RETRY_ATTEMPTS:-3}
+      TANOMAR_WEB_URL: ${TANOMAR_WEB_URL:?Defina TANOMAR_WEB_URL}
+      TANOMAR_WEB_EXPECTED_CONTENT: ${TANOMAR_WEB_EXPECTED_CONTENT:-TaNoMar}
+      TANOMAR_API_URL: ${TANOMAR_API_URL:?Defina TANOMAR_API_URL}
+      WHATSAPP_API_KEY: ${WHATSAPP_API_KEY:?Defina WHATSAPP_API_KEY}
+      WHATSAPP_DESTINATION_ID: ${WHATSAPP_DESTINATION_ID:?Defina WHATSAPP_DESTINATION_ID}
+      Monitoring__DatabasePath: /app/data/tanomar-monitor.db
+    depends_on:
+      - tanomar-whatsapp
+    ports:
+      - "${MONITOR_BIND_ADDRESS:-127.0.0.1}:${MONITOR_PORT:-8081}:8080"
+    volumes:
+      - tanomar-monitor-data:/app/data
+    networks:
+      - tanomar-services
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/health/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+networks:
+  tanomar-services:
+    driver: bridge
+
+volumes:
+  tanomar-whatsapp-data:
+    name: tanomar_tanomar-whatsapp-data
+  tanomar-monitor-data:
+    name: tanomar-monitor_tanomar-monitor-data

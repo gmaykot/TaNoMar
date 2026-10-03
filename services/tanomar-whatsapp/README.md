@@ -36,16 +36,21 @@ Depois entre como Admin em `/admin/integracoes/whatsapp`, clique em **Conectar W
 | `SESSION_PATH` | `/data/session` | Pasta das credenciais persistentes do Baileys. |
 | `INSTANCE_NAME` | `TaNoMar` | Nome do aparelho no WhatsApp. Local: `TaNoMar-Local`. Produção: `TaNoMar`. |
 | `LOG_LEVEL` | `info` | Nível dos logs do adapter. |
+| `SEND_TIMEOUT_SECONDS` | `20` | Tempo máximo da requisição `/send`, entre 1 e 300 segundos. O compose expõe como `WHATSAPP_ADAPTER_SEND_TIMEOUT_SECONDS`. |
 
 O serviço expõe `GET /health` sem autenticação apenas para healthcheck. `/status`, `/qr`, `/chats`, `/groups`, `/connect`, `/reconnect`, `/logout` e `/send` exigem o token interno.
 
+`GET /health` significa somente que o processo HTTP está vivo; não representa uma sessão conectada. A sessão real está em `/status`. Um envio aceito retorna `messageId`; o endpoint não promete idempotência nem faz retry automático, portanto uma repetição após timeout pode duplicar a mensagem.
+
 ## Sessão e restart
 
-No `docker-compose.yml`, `tanomar-whatsapp-data` monta `/data`. As credenciais ficam em `/data/session` e sobrevivem a restart e novo deploy do container. A pasta é ignorada pelo Git e nunca deve ser copiada para o repositório.
+Em `services/docker-compose.yml`, o volume explícito `tanomar_tanomar-whatsapp-data` monta `/data`. As credenciais ficam em `/data/session` e sobrevivem a restart e novo deploy do container. A pasta é ignorada pelo Git e nunca deve ser copiada para o repositório.
 
-Para desconectar normalmente, use o botão **Desconectar** no Admin. Ele encerra a sessão e apaga somente `SESSION_PATH`. Para reset manual, pare o serviço, apague o conteúdo do volume `tanomar-whatsapp-data` no Coolify e suba novamente; será necessário ler outro QR Code.
+Para desconectar normalmente, use o botão **Desconectar** no Admin. Ele encerra a sessão e apaga somente `SESSION_PATH`. Para reset manual, pare o serviço, apague o conteúdo do volume `tanomar_tanomar-whatsapp-data` no Coolify e suba novamente; será necessário ler outro QR Code.
 
 Quedas temporárias (`515` restart required, timeout, perda de socket) reconectam sozinhas com backoff. Logout, sessão inválida ou o mesmo arquivo de sessão aberto em dois processos exigem novo QR. O adapter não baixa o histórico completo das conversas — só precisa de destinos para o Admin.
+
+Em `SIGTERM`/`SIGINT`, o adapter cancela o agendamento de reconexão, fecha o socket e encerra o servidor HTTP sem apagar a sessão persistida. O Docker usa esse encerramento gracioso durante deploy/restart.
 
 Local e produção podem usar o mesmo número ao mesmo tempo, desde que cada um tenha sessão própria e um QR próprio. O WhatsApp aceita vários aparelhos conectados. O que não funciona é copiar `data/session` (ou o volume do Coolify) de um ambiente para o outro: os dois passam a ser o mesmo aparelho e se expulsam. No celular, em Aparelhos conectados, devem aparecer nomes distintos (`TaNoMar` e `TaNoMar-Local`).
 
