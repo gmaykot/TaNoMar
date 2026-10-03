@@ -1,7 +1,8 @@
 services:
   tanomar-whatsapp:
     build:
-      context: ..
+      # Coolify uses the repository root as the Compose project directory.
+      context: .
       dockerfile: services/tanomar-whatsapp/Dockerfile
     restart: unless-stopped
     env_file:
@@ -26,7 +27,7 @@ services:
 
   tanomar-monitor:
     build:
-      context: ..
+      context: .
       dockerfile: services/tanomar-monitor/Dockerfile
     restart: unless-stopped
     env_file:
