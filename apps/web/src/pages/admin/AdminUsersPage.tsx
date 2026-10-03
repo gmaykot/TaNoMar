@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeft, Users } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { showSaveConfirmation } from '@/app/layout/saveConfirmationEvents';
 import { ConfirmDrawer } from '@/design-system/components/ConfirmDrawer';
@@ -98,7 +98,8 @@ export function AdminUsersPage() {
   const enabledPlanCodes = catalog.isSuccess
     ? new Set(catalog.data.filter((plan) => plan.enabled).map((plan) => plan.code))
     : null;
-  const [search, setSearch] = useState('');
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(() => searchParams.get('busca') ?? '');
   const [filter, setFilter] = useState<Filter>('all');
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [errorById, setErrorById] = useState<Record<string, string>>({});

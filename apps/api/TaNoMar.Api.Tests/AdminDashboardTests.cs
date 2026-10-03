@@ -55,7 +55,28 @@ public sealed class AdminDashboardTests
         db.Users.AddRange(
             new User { Name = "Ana", Email = "ana@example.com", GoogleSubject = "ana", Role = "Admin", PlanCode = "premium", CreatedAt = now.AddDays(-2) },
             new User { Name = "Beto", Email = "beto@example.com", GoogleSubject = "beto", Role = "User", PlanCode = "free", IsActive = false, CreatedAt = now.AddDays(-40) },
-            new User { Name = "Cida", Email = "cida@example.com", GoogleSubject = "cida", Role = "User", PlanCode = "arrais", CreatedAt = now.AddDays(-20) });
+            new User
+            {
+                Name = "Cida",
+                Email = "cida@example.com",
+                GoogleSubject = "cida",
+                Role = "User",
+                PlanCode = "arrais",
+                CreatedAt = now.AddDays(-20),
+                ConcurrentUseAt = now.AddHours(-1),
+                ConcurrentUseLabels = "Chrome no Android e Safari no iPhone"
+            },
+            new User
+            {
+                Name = "Duda",
+                Email = "duda@example.com",
+                GoogleSubject = "duda",
+                Role = "User",
+                PlanCode = "capitao",
+                CreatedAt = now.AddDays(-3),
+                ConcurrentUseAt = now.AddDays(-12),
+                ConcurrentUseLabels = "Safari no iPhone e Chrome no Windows"
+            });
         db.FishingSpotWebcams.Add(new FishingSpotWebcam
         {
             FishingSpotId = official.Id,
@@ -115,13 +136,13 @@ public sealed class AdminDashboardTests
 
         var snapshot = await AdminDashboard.SnapshotAsync(db, now, CancellationToken.None);
 
-        Assert.Equal(3, snapshot.Users.Total);
-        Assert.Equal(2, snapshot.Users.Active);
+        Assert.Equal(4, snapshot.Users.Total);
+        Assert.Equal(3, snapshot.Users.Active);
         Assert.Equal(1, snapshot.Users.Blocked);
         Assert.Equal(1, snapshot.Users.Admins);
-        Assert.Equal(2, snapshot.Users.Paid);
-        Assert.Equal(1, snapshot.Users.NewLast7Days);
-        Assert.Equal(2, snapshot.Users.NewLast30Days);
+        Assert.Equal(3, snapshot.Users.Paid);
+        Assert.Equal(2, snapshot.Users.NewLast7Days);
+        Assert.Equal(3, snapshot.Users.NewLast30Days);
         Assert.Equal(1, snapshot.Users.ByPlan.Single(item => item.Code == "free").Count);
         Assert.Equal(1, snapshot.Users.ByPlan.Single(item => item.Code == "arrais").Count);
         Assert.Equal(1, snapshot.Users.ByPlan.Single(item => item.Code == "premium").Count);
@@ -148,6 +169,11 @@ public sealed class AdminDashboardTests
         Assert.Equal(1, snapshot.Partners.Published);
         Assert.Equal(1, snapshot.Partners.Unpublished);
         Assert.Equal(1, snapshot.Partners.Featured);
+        var concurrent = Assert.Single(snapshot.Attention.ConcurrentUses);
+        Assert.Equal("Cida", concurrent.Name);
+        Assert.Equal("cida@example.com", concurrent.Email);
+        Assert.Equal("Arrais", concurrent.PlanName);
+        Assert.Equal("Chrome no Android e Safari no iPhone", concurrent.Labels);
     }
 
     private static TaNoMarDbContext CreateDb()

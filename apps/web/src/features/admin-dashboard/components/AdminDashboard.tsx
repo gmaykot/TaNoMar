@@ -5,7 +5,11 @@ import { FeedbackState } from '@/design-system/components/FeedbackState';
 import { formatBrlFromCents } from '@/features/subscription/subscriptionPlans';
 import { regionLabel } from '@/features/locations/regions';
 import { routes } from '@/shared/constants/routes';
-import type { AdminDashboardCount, AdminDashboardSnapshot } from '../types/adminDashboard';
+import type {
+  AdminDashboardConcurrentUse,
+  AdminDashboardCount,
+  AdminDashboardSnapshot,
+} from '../types/adminDashboard';
 import styles from './adminDashboard.module.css';
 
 interface AdminDashboardProps {
@@ -20,6 +24,18 @@ function formatCount(value: number) {
 
 function quantity(value: number, singular: string, plural: string) {
   return `${formatCount(value)} ${value === 1 ? singular : plural}`;
+}
+
+function formatWhen(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
 }
 
 function share(count: number, total: number) {
@@ -54,6 +70,21 @@ function HeroKpi({
     </Link>
   ) : (
     <div className={className}>{body}</div>
+  );
+}
+
+function ConcurrentUseLink({ item }: { item: AdminDashboardConcurrentUse }) {
+  return (
+    <Link
+      className={styles.attentionItem}
+      to={`${routes.adminUsers}?busca=${encodeURIComponent(item.email)}`}
+    >
+      <strong>{item.name}</strong>
+      <span>
+        {item.planName} · {formatWhen(item.at)}
+      </span>
+      <small>{item.labels}</small>
+    </Link>
   );
 }
 
@@ -107,7 +138,7 @@ export function AdminDashboard({ snapshot, pending, error }: AdminDashboardProps
     );
   }
 
-  const { users, spots, billing, engagement, partners } = snapshot;
+  const { users, spots, billing, engagement, partners, attention } = snapshot;
   const updated = new Date(snapshot.generatedAt);
   const notices: Array<{ to: string; text: string; danger?: boolean }> = [];
   if (spots.sharedPending > 0) {
@@ -135,19 +166,40 @@ export function AdminDashboard({ snapshot, pending, error }: AdminDashboardProps
       <p className={styles.updated}>
         Atualizado em {Number.isNaN(updated.getTime()) ? '—' : updated.toLocaleString('pt-BR')}
       </p>
-      {notices.length ? (
-        <div className={styles.notices} aria-label="O que pede atenção">
-          {notices.map((notice) => (
-            <Link
-              key={notice.to + notice.text}
-              className={`${styles.notice} ${notice.danger ? styles.noticeDanger : ''}`}
-              to={notice.to}
-            >
-              {notice.text}
-            </Link>
-          ))}
+      <Card as="section" className={styles.attention} aria-labelledby="dashboard-attention">
+        <div className={styles.sectionHeader}>
+          <h2 id="dashboard-attention">Atenção</h2>
         </div>
-      ) : null}
+        <p className={styles.quiet}>Uso simultâneo dos últimos 7 dias e filas que pedem ação.</p>
+        {notices.length === 0 && attention.concurrentUses.length === 0 ? (
+          <p className={styles.quiet}>Nada pede atenção agora.</p>
+        ) : (
+          <>
+            {notices.length ? (
+              <div className={styles.notices}>
+                {notices.map((notice) => (
+                  <Link
+                    key={notice.to + notice.text}
+                    className={`${styles.notice} ${notice.danger ? styles.noticeDanger : ''}`}
+                    to={notice.to}
+                  >
+                    {notice.text}
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+            {attention.concurrentUses.length ? (
+              <ul className={styles.attentionList}>
+                {attention.concurrentUses.map((item) => (
+                  <li key={item.userId}>
+                    <ConcurrentUseLink item={item} />
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </>
+        )}
+      </Card>
       <div className={styles.hero} aria-label="Indicadores principais">
         <HeroKpi
           label="Contas ativas"

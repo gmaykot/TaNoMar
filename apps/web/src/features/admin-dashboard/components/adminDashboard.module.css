@@ -36,6 +36,7 @@
 .kpi span,
 .kpiLink span,
 .section h2,
+.attention h2,
 .notice strong {
   color: var(--color-sea-700);
   font-size: 0.68rem;
@@ -71,6 +72,41 @@
       )
       padding-box,
     var(--color-warning) border-box;
+}
+
+.attention {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+}
+
+.attentionList {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attentionItem {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  color: var(--color-ocean-950);
+  background: var(--color-warning-soft);
+  text-decoration: none;
+}
+
+.attentionItem strong {
+  font-weight: 750;
+}
+
+.attentionItem span,
+.attentionItem small,
+.quiet {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
 }
 
 .notices {
@@ -115,7 +151,8 @@
   gap: var(--space-2);
 }
 
-.section h2 {
+.section h2,
+.attention h2 {
   margin: 0;
 }
 

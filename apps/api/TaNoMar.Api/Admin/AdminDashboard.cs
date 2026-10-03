@@ -75,11 +75,35 @@ internal static class AdminDashboard
             .CountAsync(item => item.CreatedAt >= last7Days, cancellationToken);
         var reportsLast30Days = await db.CommunityReports.AsNoTracking()
             .CountAsync(item => item.CreatedAt >= last30Days, cancellationToken);
+        var concurrentRows = await db.Users.AsNoTracking()
+            .Where(item => item.ConcurrentUseAt != null && item.ConcurrentUseAt >= last7Days)
+            .OrderByDescending(item => item.ConcurrentUseAt)
+            .Take(20)
+            .Select(item => new
+            {
+                item.Id,
+                item.Name,
+                item.Email,
+                item.PlanCode,
+                item.ConcurrentUseAt,
+                item.ConcurrentUseLabels
+            })
+            .ToListAsync(cancellationToken);
 
         var webcamSet = webcamSpotIds.ToHashSet();
         var official = spots.Where(item => item.Visibility == "official").ToList();
         var byPlan = plans
             .Select(plan => new AdminDashboardCount(plan.Code, plan.Name, users.Count(item => item.PlanCode == plan.Code)))
+            .ToList();
+        var planNames = plans.ToDictionary(item => item.Code, item => item.Name, StringComparer.OrdinalIgnoreCase);
+        var concurrentUses = concurrentRows
+            .Select(item => new AdminDashboardConcurrentUse(
+                item.Id,
+                item.Name,
+                item.Email,
+                planNames.GetValueOrDefault(item.PlanCode) ?? item.PlanCode,
+                item.ConcurrentUseAt!.Value,
+                string.IsNullOrWhiteSpace(item.ConcurrentUseLabels) ? "dois acessos" : item.ConcurrentUseLabels))
             .ToList();
         var knownRegions = official
             .GroupBy(item => item.Region)
@@ -141,7 +165,8 @@ internal static class AdminDashboard
             new AdminDashboardPartners(
                 partners.Count(item => item.IsPublished),
                 partners.Count(item => !item.IsPublished),
-                partners.Count(item => item.IsFeatured)));
+                partners.Count(item => item.IsFeatured)),
+            new AdminDashboardAttention(concurrentUses));
     }
 }
 
@@ -151,7 +176,18 @@ internal sealed record AdminDashboardSnapshot(
     AdminDashboardSpots Spots,
     AdminDashboardBilling Billing,
     AdminDashboardEngagement Engagement,
-    AdminDashboardPartners Partners);
+    AdminDashboardPartners Partners,
+    AdminDashboardAttention Attention);
+
+internal sealed record AdminDashboardAttention(IReadOnlyList<AdminDashboardConcurrentUse> ConcurrentUses);
+
+internal sealed record AdminDashboardConcurrentUse(
+    Guid UserId,
+    string Name,
+    string Email,
+    string PlanName,
+    DateTimeOffset At,
+    string Labels);
 
 internal sealed record AdminDashboardUsers(
     int Total,

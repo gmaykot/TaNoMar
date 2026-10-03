@@ -58,6 +58,18 @@ export const dashboardSample = {
     unpublished: 1,
     featured: 1,
   },
+  attention: {
+    concurrentUses: [
+      {
+        userId: '7a4c1e87-3184-4fd6-8b38-4a6d0e0b0003',
+        name: 'Cida Souza',
+        email: 'cida@example.com',
+        planName: 'Arrais',
+        at: '2026-09-10T21:00:00+00:00',
+        labels: 'Chrome no Android e Safari no iPhone',
+      },
+    ],
+  },
 };
 
 describe('parseAdminDashboard', () => {
