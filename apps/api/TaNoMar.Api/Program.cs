@@ -371,7 +371,7 @@ api.MapPost("/me/deletion-request", async (ClaimsPrincipal principal, TaNoMarDbC
     });
 }).RequireAuthorization().RequireRateLimiting("cancellation-status");
 
-api.MapDelete("/me", async (AccountDeletionProtocolRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, BillingService billing, FishingForecastCache cache, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, HttpContext context, CancellationToken cancellationToken) =>
+api.MapDelete("/me", async ([FromBody] AccountDeletionProtocolRequest request, ClaimsPrincipal principal, TaNoMarDbContext db, BillingService billing, FishingForecastCache cache, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, HttpContext context, CancellationToken cancellationToken) =>
 {
     var user = await CurrentUserAsync(principal, db, cancellationToken);
     if (user is null) return Results.Unauthorized();
