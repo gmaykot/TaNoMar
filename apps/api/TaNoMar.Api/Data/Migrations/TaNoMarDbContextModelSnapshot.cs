@@ -1026,11 +1026,23 @@ namespace TaNoMar.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ClientLabel")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("LastSeenAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTimeOffset?>("RevokedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
@@ -1044,6 +1056,8 @@ namespace TaNoMar.Api.Data.Migrations
                     b.HasIndex("TokenHash")
                         .IsUnique();
 
+                    b.HasIndex("UserId");
+
                     b.ToTable("RefreshTokens");
                 });
 
@@ -1055,6 +1069,15 @@ namespace TaNoMar.Api.Data.Migrations
 
                     b.Property<int>("AccessCount")
                         .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("ConcurrentUseAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ConcurrentUseLabels")
+                        .HasColumnType("text");
+
+                    b.Property<DateOnly?>("ConcurrentUseNotifiedOn")
+                        .HasColumnType("date");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1162,6 +1185,9 @@ namespace TaNoMar.Api.Data.Migrations
                     b.Property<bool>("NotifyByEmail")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("NotifyConcurrentUse")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("NotifyNewUser")
                         .HasColumnType("boolean");
 
@@ -1192,6 +1218,7 @@ namespace TaNoMar.Api.Data.Migrations
                             Enabled = false,
                             InstanceName = "TaNoMar",
                             NotifyByEmail = true,
+                            NotifyConcurrentUse = false,
                             NotifyNewUser = true,
                             NotifyPlanChanged = true,
                             NotifyPlanPaid = true,

@@ -15,6 +15,8 @@ export interface AdminUser {
   createdAt: string;
   accessCount: number;
   lastAccessAt: string | null;
+  concurrentUseAt: string | null;
+  concurrentUseLabels: string | null;
   isSelf: boolean;
   protection: AdminProtection | null;
   canChangePlan: boolean;

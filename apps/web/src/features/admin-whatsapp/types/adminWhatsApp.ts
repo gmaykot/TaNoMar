@@ -13,6 +13,7 @@ export interface WhatsAppIntegration {
   notifyPlanPaid: boolean;
   notifyPlanChanged: boolean;
   notifyRenewalCanceled: boolean;
+  notifyConcurrentUse: boolean;
   createdAt: string;
   updatedAt: string;
   status: {
@@ -45,4 +46,5 @@ export interface WhatsAppSettingsUpdate {
   notifyPlanPaid: boolean;
   notifyPlanChanged: boolean;
   notifyRenewalCanceled: boolean;
+  notifyConcurrentUse: boolean;
 }

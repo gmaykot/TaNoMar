@@ -37,6 +37,7 @@ public sealed class TaNoMarDbContext(DbContextOptions<TaNoMarDbContext> options)
         modelBuilder.Entity<FishingSpot>().HasIndex(spot => spot.Slug).IsUnique();
         modelBuilder.Entity<Plan>().HasIndex(plan => plan.Code).IsUnique();
         modelBuilder.Entity<RefreshToken>().HasIndex(token => token.TokenHash).IsUnique();
+        modelBuilder.Entity<RefreshToken>().HasIndex(token => token.UserId);
         modelBuilder.Entity<UserPreference>().HasIndex(item => item.UserId).IsUnique();
         modelBuilder.Entity<FavoriteSpot>().HasIndex(item => new { item.UserId, item.FishingSpotId }).IsUnique();
         modelBuilder.Entity<EnabledSpot>().HasIndex(item => new { item.UserId, item.FishingSpotId }).IsUnique();
@@ -214,13 +215,20 @@ public sealed class User
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public int AccessCount { get; set; }
     public DateTimeOffset? LastAccessAt { get; set; }
+    public DateTimeOffset? ConcurrentUseAt { get; set; }
+    public string? ConcurrentUseLabels { get; set; }
+    public DateOnly? ConcurrentUseNotifiedOn { get; set; }
 }
 
 public sealed class RefreshToken
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid UserId { get; set; }
+    public Guid SessionId { get; set; }
     public string TokenHash { get; set; } = string.Empty;
+    public string? ClientLabel { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? LastSeenAt { get; set; }
     public DateTimeOffset ExpiresAt { get; set; }
     public DateTimeOffset? RevokedAt { get; set; }
 }
@@ -444,6 +452,7 @@ public sealed class WhatsAppSettings
     public bool NotifyPlanPaid { get; set; } = true;
     public bool NotifyPlanChanged { get; set; } = true;
     public bool NotifyRenewalCanceled { get; set; } = true;
+    public bool NotifyConcurrentUse { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }

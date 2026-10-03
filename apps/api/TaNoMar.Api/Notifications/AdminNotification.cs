@@ -7,7 +7,8 @@ internal enum AdminNotificationKind
     PartnerRequested,
     PlanPaid,
     UserPlanChanged,
-    RenewalCanceled
+    RenewalCanceled,
+    ConcurrentUse
 }
 
 internal sealed record AdminNotification(
@@ -24,7 +25,8 @@ internal sealed record AdminNotification(
     string? PartnerName = null,
     string? PartnerCategory = null,
     string? PartnerCity = null,
-    string? PartnerWhatsApp = null);
+    string? PartnerWhatsApp = null,
+    string? SessionLabels = null);
 
 
 internal sealed record AdminNotificationContent(
@@ -88,5 +90,12 @@ internal interface IAdminNotificationService
         string plan,
         string cycle,
         DateTimeOffset? accessUntil,
+        DateTimeOffset occurredAt);
+
+    void NotifyConcurrentUse(
+        string name,
+        string email,
+        string plan,
+        string sessionLabels,
         DateTimeOffset occurredAt);
 }

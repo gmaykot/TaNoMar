@@ -15,6 +15,7 @@ internal sealed class AdminNotificationFormatter : IAdminNotificationFormatter
         AdminNotificationKind.PlanPaid => PlanPaid(notification),
         AdminNotificationKind.UserPlanChanged => UserPlanChanged(notification),
         AdminNotificationKind.RenewalCanceled => RenewalCanceled(notification),
+        AdminNotificationKind.ConcurrentUse => ConcurrentUse(notification),
         _ => throw new ArgumentOutOfRangeException(nameof(notification))
     };
 
@@ -87,6 +88,18 @@ internal sealed class AdminNotificationFormatter : IAdminNotificationFormatter
             "Renovação cancelada no TáNoMar",
             $"Um usuário cancelou a renovação no TáNoMar.\n\nNome: {notification.UserName}\nE-mail: {notification.UserEmail}\nPlano: {notification.CurrentPlan}\nCiclo: {cycle}\nAcesso até: {accessUntil}\nData: {date}",
             $"💳 TaNoMar\n\nRenovação cancelada\n\nUsuário: {notification.UserName}\nE-mail: {notification.UserEmail}\n\nPlano: {notification.CurrentPlan}\nCiclo: {cycle}\nAcesso até: {accessUntil}\n\nData: {date}");
+    }
+
+    private static AdminNotificationContent ConcurrentUse(AdminNotification notification)
+    {
+        var date = LocalDate(notification.OccurredAt);
+        var labels = string.IsNullOrWhiteSpace(notification.SessionLabels)
+            ? "navegadores diferentes"
+            : notification.SessionLabels;
+        return new AdminNotificationContent(
+            "Uso simultâneo no TáNoMar",
+            $"A mesma conta teve dois acessos na última meia hora.\n\nNome: {notification.UserName}\nE-mail: {notification.UserEmail}\nPlano: {notification.CurrentPlan}\nAcessos: {labels}\nData: {date}",
+            $"🎣 TaNoMar\n\nUso simultâneo\n\n{notification.UserName} ({notification.UserEmail}), plano {notification.CurrentPlan}. Dois acessos na última meia hora: {labels}.");
     }
 
     private static string LocalDate(DateTimeOffset value) =>

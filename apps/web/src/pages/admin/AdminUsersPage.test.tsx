@@ -18,6 +18,8 @@ const { setAdminUserPlan, setAdminUserActive, setAdminUserRole, deleteAdminUser 
         createdAt: '2026-09-05T12:00:00+00:00',
         accessCount: 2,
         lastAccessAt: '2026-09-24T15:00:00+00:00',
+        concurrentUseAt: null,
+        concurrentUseLabels: null,
         isSelf: false,
         protection: null,
         canChangePlan: true,
@@ -38,6 +40,8 @@ const { setAdminUserPlan, setAdminUserActive, setAdminUserRole, deleteAdminUser 
         createdAt: '2026-09-04T12:00:00+00:00',
         accessCount: 5,
         lastAccessAt: '2026-09-20T18:30:00+00:00',
+        concurrentUseAt: null,
+        concurrentUseLabels: null,
         isSelf: false,
         protection: null,
         canChangePlan: true,
@@ -58,6 +62,8 @@ const { setAdminUserPlan, setAdminUserActive, setAdminUserRole, deleteAdminUser 
         createdAt: '2026-09-03T12:00:00+00:00',
         accessCount: 1,
         lastAccessAt: '2026-09-03T12:00:00+00:00',
+        concurrentUseAt: null,
+        concurrentUseLabels: null,
         isSelf: false,
         protection: null,
         canChangePlan: true,
@@ -86,6 +92,8 @@ vi.mock('@/features/admin-users/services/adminUsersService', () => ({
         createdAt: '2026-09-01T12:00:00+00:00',
         accessCount: 4,
         lastAccessAt: '2026-09-24T23:10:00+00:00',
+        concurrentUseAt: null,
+        concurrentUseLabels: null,
         isSelf: true,
         protection: 'bootstrap',
         canChangePlan: true,
@@ -104,6 +112,8 @@ vi.mock('@/features/admin-users/services/adminUsersService', () => ({
         createdAt: '2026-09-04T12:00:00+00:00',
         accessCount: 5,
         lastAccessAt: '2026-09-20T18:30:00+00:00',
+        concurrentUseAt: '2026-09-20T18:40:00+00:00',
+        concurrentUseLabels: 'Chrome no Android e Safari no iPhone',
         isSelf: false,
         protection: null,
         canChangePlan: true,
@@ -122,6 +132,8 @@ vi.mock('@/features/admin-users/services/adminUsersService', () => ({
         createdAt: '2026-09-03T12:00:00+00:00',
         accessCount: 1,
         lastAccessAt: '2026-09-03T12:00:00+00:00',
+        concurrentUseAt: null,
+        concurrentUseLabels: null,
         isSelf: false,
         protection: null,
         canChangePlan: true,
@@ -170,6 +182,7 @@ describe('AdminUsersPage', () => {
     expect(screen.getByText('Ana Costa')).toBeInTheDocument();
     expect(screen.getByText('Conta inicial')).toBeInTheDocument();
     expect(screen.getByText('Beto Lima')).toBeInTheDocument();
+    expect(screen.getByText(/Chrome no Android e Safari no iPhone/)).toBeInTheDocument();
 
     await user.type(screen.getByRole('searchbox', { name: 'Buscar usuários' }), 'beto');
     expect(screen.getByText('1 conta encontrada')).toBeInTheDocument();
