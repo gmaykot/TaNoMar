@@ -55,6 +55,19 @@ export interface AdminDashboardPartners {
   featured: number;
 }
 
+export interface AdminDashboardConcurrentUse {
+  userId: string;
+  name: string;
+  email: string;
+  planName: string;
+  at: string;
+  labels: string;
+}
+
+export interface AdminDashboardAttention {
+  concurrentUses: AdminDashboardConcurrentUse[];
+}
+
 export interface AdminDashboardSnapshot {
   generatedAt: string;
   users: AdminDashboardUsers;
@@ -62,4 +75,5 @@ export interface AdminDashboardSnapshot {
   billing: AdminDashboardBilling;
   engagement: AdminDashboardEngagement;
   partners: AdminDashboardPartners;
+  attention: AdminDashboardAttention;
 }

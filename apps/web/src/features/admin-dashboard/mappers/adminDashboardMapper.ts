@@ -1,6 +1,8 @@
 import { ContractError } from '@/shared/api/errors';
 import type {
+  AdminDashboardAttention,
   AdminDashboardBilling,
+  AdminDashboardConcurrentUse,
   AdminDashboardCount,
   AdminDashboardEngagement,
   AdminDashboardPartners,
@@ -171,6 +173,27 @@ function parseEngagement(value: unknown): AdminDashboardEngagement {
   };
 }
 
+function parseConcurrentUse(value: unknown): AdminDashboardConcurrentUse {
+  if (!isRecord(value)) throw new ContractError('Uso simultâneo do dashboard inválido.');
+  const userId = readString(value.userId);
+  const name = readString(value.name);
+  const email = readString(value.email);
+  const planName = readString(value.planName);
+  const at = readString(value.at);
+  const labels = readString(value.labels);
+  if (!userId || !name || !email || !planName || !at || !labels) {
+    throw new ContractError('Uso simultâneo do dashboard incompleto.');
+  }
+  return { userId, name, email, planName, at, labels };
+}
+
+function parseAttention(value: unknown): AdminDashboardAttention {
+  if (!isRecord(value) || !Array.isArray(value.concurrentUses)) {
+    throw new ContractError('Fila de atenção inválida.');
+  }
+  return { concurrentUses: value.concurrentUses.map(parseConcurrentUse) };
+}
+
 function parsePartners(value: unknown): AdminDashboardPartners {
   if (!isRecord(value)) throw new ContractError('KPIs de parceiros inválidos.');
   const published = readInteger(value.published);
@@ -193,5 +216,6 @@ export function parseAdminDashboard(value: unknown): AdminDashboardSnapshot {
     billing: parseBilling(value.billing),
     engagement: parseEngagement(value.engagement),
     partners: parsePartners(value.partners),
+    attention: parseAttention(value.attention),
   };
 }

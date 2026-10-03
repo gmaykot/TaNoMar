@@ -174,6 +174,14 @@ describe('AdminUsersPage', () => {
     deleteAdminUser.mockClear();
   });
 
+  it('abre a busca vinda do painel de atenção', async () => {
+    renderWithProviders(<AdminUsersPage />, ['/admin/usuarios?busca=beto']);
+
+    expect(await screen.findByText('1 conta encontrada')).toBeInTheDocument();
+    expect(screen.getByText('Beto Lima')).toBeInTheDocument();
+    expect(screen.queryByText('Ana Costa')).not.toBeInTheDocument();
+  });
+
   it('lista contas e filtra por nome sem acento', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AdminUsersPage />);

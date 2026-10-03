@@ -31,10 +31,33 @@ describe('AdminDashboard', () => {
       'href',
       '/admin/usuarios',
     );
+    expect(screen.getByRole('heading', { name: 'Atenção' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Cida Souza/ })).toHaveAttribute(
+      'href',
+      '/admin/usuarios?busca=cida%40example.com',
+    );
+    expect(screen.getByText('Chrome no Android e Safari no iPhone')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Usuários' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Locais' })).toBeInTheDocument();
     expect(screen.getByText('Norte')).toBeInTheDocument();
     expect(screen.getByText('Sul')).toBeInTheDocument();
+  });
+
+  it('mostra o painel vazio quando nada pede atenção', () => {
+    renderWithProviders(
+      <AdminDashboard
+        snapshot={parseAdminDashboard({
+          ...dashboardSample,
+          spots: { ...dashboardSample.spots, sharedPending: 0, officialWithoutCoordinates: 0 },
+          billing: { ...dashboardSample.billing, pastDue: 0 },
+          attention: { concurrentUses: [] },
+        })}
+        pending={false}
+        error={false}
+      />,
+    );
+
+    expect(screen.getByText('Nada pede atenção agora.')).toBeInTheDocument();
   });
 
   it('mostra carregamento e erro sem inventar números', () => {
