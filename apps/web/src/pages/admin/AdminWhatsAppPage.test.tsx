@@ -21,6 +21,7 @@ const integration = {
   notifyPlanPaid: true,
   notifyPlanChanged: true,
   notifyRenewalCanceled: true,
+  notifyConcurrentUse: false,
   createdAt: '2026-09-10T12:00:00Z',
   updatedAt: '2026-09-10T12:00:00Z',
   status: {
@@ -65,6 +66,7 @@ describe('AdminWhatsAppPage', () => {
     expect(screen.getByText('Pagamento de plano confirmado')).toBeInTheDocument();
     expect(screen.getByText('Plano de usuário alterado')).toBeInTheDocument();
     expect(screen.getByText('Renovação cancelada')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Uso simultâneo de conta' })).not.toBeChecked();
 
     await user.click(screen.getByRole('button', { name: 'Salvar configuração' }));
     expect(updateWhatsAppIntegration).toHaveBeenCalledWith(
@@ -77,6 +79,7 @@ describe('AdminWhatsAppPage', () => {
         notifyPlanPaid: true,
         notifyPlanChanged: true,
         notifyRenewalCanceled: true,
+        notifyConcurrentUse: false,
       }),
     );
 

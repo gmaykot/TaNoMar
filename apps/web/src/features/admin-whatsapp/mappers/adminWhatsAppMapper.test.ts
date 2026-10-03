@@ -17,6 +17,7 @@ describe('adminWhatsAppMapper', () => {
         notifyPlanPaid: true,
         notifyPlanChanged: true,
         notifyRenewalCanceled: true,
+        notifyConcurrentUse: false,
         createdAt: '2026-09-10T12:00:00Z',
         updatedAt: '2026-09-10T12:00:00Z',
         status: {

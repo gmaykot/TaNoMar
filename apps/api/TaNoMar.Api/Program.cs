@@ -323,8 +323,10 @@ api.MapPost("/auth/google", async (GoogleLoginRequest request, TaNoMarDbContext 
     if (!user.IsActive) return Results.Forbid();
     var totalUsers = created ? await db.Users.CountAsync(cancellationToken) + 1 : 0;
     var refresh = tokens.CreateRefreshToken();
-    db.RefreshTokens.Add(new RefreshToken { UserId = user.Id, TokenHash = tokens.HashRefreshToken(refresh), ExpiresAt = DateTimeOffset.UtcNow.AddDays(options.Value.RefreshTokenDays) });
+    var sessionId = Guid.NewGuid();
+    db.RefreshTokens.Add(NewRefreshToken(user.Id, sessionId, tokens.HashRefreshToken(refresh), DateTimeOffset.UtcNow.AddDays(options.Value.RefreshTokenDays), RequestClientLabel(context)));
     await db.SaveChangesAsync(cancellationToken);
+    await ConcurrentSessionMonitor.ObserveAsync(db, adminNotifications, user, sessionId, cancellationToken);
     if (created)
         adminNotifications.NotifyNewUserRegistered(
             user.Name,
@@ -335,7 +337,7 @@ api.MapPost("/auth/google", async (GoogleLoginRequest request, TaNoMarDbContext 
     return Results.Ok(new { accessToken = tokens.IssueAccessToken(user) });
 });
 
-api.MapPost("/auth/refresh", async (TaNoMarDbContext db, AuthTokenService tokens, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, HttpContext context, CancellationToken cancellationToken) =>
+api.MapPost("/auth/refresh", async (TaNoMarDbContext db, AuthTokenService tokens, IAdminNotificationService adminNotifications, Microsoft.Extensions.Options.IOptions<TaNoMarOptions> options, HttpContext context, CancellationToken cancellationToken) =>
 {
     var raw = context.Request.Cookies[TaNoMarOptions.RefreshCookieName];
     if (string.IsNullOrWhiteSpace(raw)) return Results.Unauthorized();
@@ -345,8 +347,10 @@ api.MapPost("/auth/refresh", async (TaNoMarDbContext db, AuthTokenService tokens
     if (user is null || !user.IsActive) return Results.Unauthorized();
     token.RevokedAt = DateTimeOffset.UtcNow;
     var replacement = tokens.CreateRefreshToken();
-    db.RefreshTokens.Add(new RefreshToken { UserId = user.Id, TokenHash = tokens.HashRefreshToken(replacement), ExpiresAt = DateTimeOffset.UtcNow.AddDays(options.Value.RefreshTokenDays) });
+    var sessionId = token.SessionId == Guid.Empty ? Guid.NewGuid() : token.SessionId;
+    db.RefreshTokens.Add(NewRefreshToken(user.Id, sessionId, tokens.HashRefreshToken(replacement), DateTimeOffset.UtcNow.AddDays(options.Value.RefreshTokenDays), RequestClientLabel(context, token.ClientLabel)));
     await db.SaveChangesAsync(cancellationToken);
+    await ConcurrentSessionMonitor.ObserveAsync(db, adminNotifications, user, sessionId, cancellationToken);
     SetRefreshCookie(context, replacement, app.Environment.IsDevelopment());
     return Results.Ok(new { accessToken = tokens.IssueAccessToken(user) });
 });
@@ -1791,6 +1795,8 @@ static object AdminUserDto(User item, Plan plan, User actor, TaNoMarOptions opti
         createdAt = item.CreatedAt,
         accessCount = item.AccessCount,
         lastAccessAt = item.LastAccessAt,
+        concurrentUseAt = item.ConcurrentUseAt,
+        concurrentUseLabels = item.ConcurrentUseLabels,
         isSelf = item.Id == actor.Id,
         protection,
         canChangePlan = true,
@@ -1833,6 +1839,22 @@ static bool MatchesBootstrapAdmin(string? email, string? googleSubject, TaNoMarO
     (!string.IsNullOrWhiteSpace(options.BootstrapAdminGoogleSubject) && googleSubject == options.BootstrapAdminGoogleSubject)
     || (!string.IsNullOrWhiteSpace(options.BootstrapAdminEmail) && string.Equals(email, options.BootstrapAdminEmail, StringComparison.OrdinalIgnoreCase));
 static void SetRefreshCookie(HttpContext context, string value, bool development) => context.Response.Cookies.Append(TaNoMarOptions.RefreshCookieName, value, new CookieOptions { HttpOnly = true, Secure = !development, SameSite = SameSiteMode.Lax, MaxAge = TimeSpan.FromDays(30), Path = "/api/v1/auth" });
+static RefreshToken NewRefreshToken(Guid userId, Guid sessionId, string tokenHash, DateTimeOffset expiresAt, string clientLabel) =>
+    new()
+    {
+        UserId = userId,
+        SessionId = sessionId,
+        TokenHash = tokenHash,
+        ExpiresAt = expiresAt,
+        CreatedAt = DateTimeOffset.UtcNow,
+        LastSeenAt = DateTimeOffset.UtcNow,
+        ClientLabel = clientLabel
+    };
+static string RequestClientLabel(HttpContext context, string? previous = null)
+{
+    var described = ClientLabel.Describe(context.Request.Headers.UserAgent.ToString());
+    return described == "Navegador desconhecido" && !string.IsNullOrWhiteSpace(previous) ? previous : described;
+}
 static async Task<User?> CurrentUserAsync(ClaimsPrincipal principal, TaNoMarDbContext db, CancellationToken cancellationToken) { var id = principal.FindFirstValue(ClaimTypes.NameIdentifier); return Guid.TryParse(id, out var userId) ? await db.Users.SingleOrDefaultAsync(user => user.Id == userId, cancellationToken) : null; }
 static bool IsSameSaoPauloDay(DateTimeOffset left, DateTimeOffset right)
 {

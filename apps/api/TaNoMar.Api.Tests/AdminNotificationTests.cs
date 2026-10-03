@@ -76,6 +76,23 @@ public sealed class AdminNotificationTests
     }
 
     [Fact]
+    public void Formatter_describes_concurrent_use_without_closing_the_account()
+    {
+        var content = new AdminNotificationFormatter().Format(new AdminNotification(
+            AdminNotificationKind.ConcurrentUse,
+            "Ana Souza",
+            "ana@example.com",
+            new DateTimeOffset(2026, 10, 3, 15, 0, 0, TimeSpan.Zero),
+            CurrentPlan: "Capitão",
+            SessionLabels: "Chrome no Android e Safari no iPhone"));
+
+        Assert.Equal("Uso simultâneo no TáNoMar", content.EmailSubject);
+        Assert.Contains("Ana Souza (ana@example.com), plano Capitão", content.WhatsAppText);
+        Assert.Contains("Chrome no Android e Safari no iPhone", content.WhatsAppText);
+        Assert.Contains("última meia hora", content.WhatsAppText);
+    }
+
+    [Fact]
     public void Formatter_includes_partner_application_details()
     {
         var content = new AdminNotificationFormatter().Format(new AdminNotification(
@@ -194,6 +211,13 @@ public sealed class AdminNotificationTests
             CurrentPlan: "Mestre",
             Cycle: "MONTHLY",
             AccessUntil: DateTimeOffset.UtcNow.AddMonths(1)), CancellationToken.None);
+        await channel.SendAsync(new AdminNotification(
+            AdminNotificationKind.ConcurrentUse,
+            "Ana Souza",
+            "ana@example.com",
+            DateTimeOffset.UtcNow,
+            CurrentPlan: "Capitão",
+            SessionLabels: "Chrome no Android e Safari no iPhone"), CancellationToken.None);
 
         var sent = Assert.Single(gateway.Sent);
         Assert.Equal("120363000000@g.us", sent.DestinationId);

@@ -36,6 +36,9 @@ export function parseAdminUser(value: unknown): AdminUser {
   const createdAt = readString(value.createdAt);
   const accessCount = readCount(value.accessCount);
   const lastAccessAt = value.lastAccessAt === null ? null : readString(value.lastAccessAt);
+  const concurrentUseAt = value.concurrentUseAt === null ? null : readString(value.concurrentUseAt);
+  const concurrentUseLabels =
+    value.concurrentUseLabels === null ? null : readString(value.concurrentUseLabels);
   const isSelf = readBoolean(value.isSelf);
   const canChangePlan = readBoolean(value.canChangePlan);
   const canDeactivate = readBoolean(value.canDeactivate);
@@ -52,6 +55,8 @@ export function parseAdminUser(value: unknown): AdminUser {
     !createdAt ||
     accessCount === null ||
     lastAccessAt === undefined ||
+    concurrentUseAt === undefined ||
+    concurrentUseLabels === undefined ||
     isSelf === null ||
     canChangePlan === null ||
     canDeactivate === null ||
@@ -72,6 +77,8 @@ export function parseAdminUser(value: unknown): AdminUser {
     createdAt,
     accessCount,
     lastAccessAt,
+    concurrentUseAt,
+    concurrentUseLabels,
     isSelf,
     protection: parseProtection(value.protection),
     canChangePlan,

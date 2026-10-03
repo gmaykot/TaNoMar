@@ -51,6 +51,7 @@ export function parseWhatsAppIntegration(value: unknown): WhatsAppIntegration {
     typeof value.notifyPlanPaid !== 'boolean' ||
     typeof value.notifyPlanChanged !== 'boolean' ||
     typeof value.notifyRenewalCanceled !== 'boolean' ||
+    typeof value.notifyConcurrentUse !== 'boolean' ||
     typeof value.createdAt !== 'string' ||
     typeof value.updatedAt !== 'string' ||
     phoneNumber === undefined ||
@@ -71,6 +72,7 @@ export function parseWhatsAppIntegration(value: unknown): WhatsAppIntegration {
     notifyPlanPaid: value.notifyPlanPaid,
     notifyPlanChanged: value.notifyPlanChanged,
     notifyRenewalCanceled: value.notifyRenewalCanceled,
+    notifyConcurrentUse: value.notifyConcurrentUse,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
     status: { state, phoneNumber, lastConnectedAt, error },

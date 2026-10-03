@@ -126,6 +126,15 @@ export function AdminUserCard({
                 <dt>Último acesso</dt>
                 <dd>{user.lastAccessAt ? formatLogin(user.lastAccessAt) : 'Ainda não acessou'}</dd>
               </div>
+              {user.concurrentUseAt ? (
+                <div>
+                  <dt>Uso simultâneo</dt>
+                  <dd>
+                    {formatLogin(user.concurrentUseAt)}
+                    {user.concurrentUseLabels ? ` · ${user.concurrentUseLabels}` : ''}
+                  </dd>
+                </div>
+              ) : null}
             </dl>
           </div>
         </div>

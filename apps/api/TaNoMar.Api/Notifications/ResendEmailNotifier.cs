@@ -42,7 +42,8 @@ internal sealed class ResendEmailNotifier(
             || notification.Kind == AdminNotificationKind.PartnerRequested && !settings.NotifyPlanRequested
             || notification.Kind == AdminNotificationKind.PlanPaid && !settings.NotifyPlanPaid
             || notification.Kind == AdminNotificationKind.UserPlanChanged && !settings.NotifyPlanChanged
-            || notification.Kind == AdminNotificationKind.RenewalCanceled && !settings.NotifyRenewalCanceled)
+            || notification.Kind == AdminNotificationKind.RenewalCanceled && !settings.NotifyRenewalCanceled
+            || notification.Kind == AdminNotificationKind.ConcurrentUse && !settings.NotifyConcurrentUse)
             return;
 
         var content = formatter.Format(notification);

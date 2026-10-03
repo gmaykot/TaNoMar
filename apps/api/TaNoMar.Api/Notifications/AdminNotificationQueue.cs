@@ -103,6 +103,20 @@ internal sealed class AdminNotificationQueue : IAdminNotificationService
             CurrentPlan: plan,
             Cycle: cycle,
             AccessUntil: accessUntil));
+
+    public void NotifyConcurrentUse(
+        string name,
+        string email,
+        string plan,
+        string sessionLabels,
+        DateTimeOffset occurredAt) =>
+        _notifications.Writer.TryWrite(new AdminNotification(
+            AdminNotificationKind.ConcurrentUse,
+            name,
+            email,
+            occurredAt,
+            CurrentPlan: plan,
+            SessionLabels: sessionLabels));
 }
 
 internal sealed class AdminNotificationWorker(

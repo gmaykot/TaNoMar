@@ -13,6 +13,8 @@ const sample = {
   createdAt: '2026-09-05T12:00:00+00:00',
   accessCount: 3,
   lastAccessAt: '2026-09-24T23:10:00+00:00',
+  concurrentUseAt: '2026-09-24T23:40:00+00:00',
+  concurrentUseLabels: 'Chrome no Android e Safari no iPhone',
   isSelf: false,
   protection: null,
   canChangePlan: true,
@@ -29,6 +31,8 @@ describe('parseAdminUser', () => {
       plan: { code: 'free', name: 'Free' },
       accessCount: 3,
       lastAccessAt: '2026-09-24T23:10:00+00:00',
+      concurrentUseAt: '2026-09-24T23:40:00+00:00',
+      concurrentUseLabels: 'Chrome no Android e Safari no iPhone',
       canChangePlan: true,
     });
   });

@@ -64,6 +64,7 @@ function WhatsAppSettingsForm({ integration }: { integration: WhatsAppIntegratio
   const [notifyRenewalCanceled, setNotifyRenewalCanceled] = useState(
     integration.notifyRenewalCanceled,
   );
+  const [notifyConcurrentUse, setNotifyConcurrentUse] = useState(integration.notifyConcurrentUse);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const personalChats = destinations.data?.personal ?? [];
   const groups = destinations.data?.groups ?? [];
@@ -86,6 +87,7 @@ function WhatsAppSettingsForm({ integration }: { integration: WhatsAppIntegratio
           notifyPlanPaid,
           notifyPlanChanged,
           notifyRenewalCanceled,
+          notifyConcurrentUse,
         });
       }
 
@@ -107,6 +109,7 @@ function WhatsAppSettingsForm({ integration }: { integration: WhatsAppIntegratio
         notifyPlanPaid,
         notifyPlanChanged,
         notifyRenewalCanceled,
+        notifyConcurrentUse,
       });
     },
     onSuccess: async () => {
@@ -331,6 +334,14 @@ function WhatsAppSettingsForm({ integration }: { integration: WhatsAppIntegratio
                 onChange={(event) => setNotifyRenewalCanceled(event.target.checked)}
               />
               <span>Renovação cancelada</span>
+            </label>
+            <label className={formStyles.choice}>
+              <input
+                type="checkbox"
+                checked={notifyConcurrentUse}
+                onChange={(event) => setNotifyConcurrentUse(event.target.checked)}
+              />
+              <span>Uso simultâneo de conta</span>
             </label>
           </fieldset>
           {save.isError ? (
