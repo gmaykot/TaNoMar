@@ -41,10 +41,12 @@ services:
       Resend__FromName: ${RESEND_FROM_NAME:-TáNoMar}
       Resend__NotificationEmail: ${RESEND_NOTIFICATION_EMAIL:-}
       WhatsApp__Enabled: ${WHATSAPP_ENABLED:-false}
-      # Na stack principal, use uma URL acessível pela API. Para WhatsApp remoto,
-      # configure WHATSAPP_BASE_URL com HTTPS/VPN/reverse proxy no ambiente de deploy.
-      WhatsApp__BaseUrl: ${WHATSAPP_BASE_URL:-http://127.0.0.1:3000}
+      # Mesma VPS: http://tanomar-whatsapp:3000 na rede tanomar-link.
+      # Outra VPS: WHATSAPP_BASE_URL com HTTPS, VPN ou reverse proxy.
+      WhatsApp__BaseUrl: ${WHATSAPP_BASE_URL:-http://tanomar-whatsapp:3000}
       WhatsApp__ApiKey: ${WHATSAPP_API_KEY:?Defina WHATSAPP_API_KEY}
+    networks:
+      - tanomar-link
     ports:
       - "${TANOMAR_BIND_ADDRESS:-127.0.0.1}:${TANOMAR_PORT:-8082}:8080"
     volumes:
@@ -56,6 +58,12 @@ services:
       retries: 3
       start_period: 15s
     restart: unless-stopped
+
+networks:
+  # Mesma rede do WhatsApp. Crie uma vez no servidor: docker network create tanomar-link
+  tanomar-link:
+    external: true
+    name: tanomar-link
 
 volumes:
   tanomar-data:

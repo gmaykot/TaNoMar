@@ -111,7 +111,7 @@ A landing define o domínio raiz como canônico: ao abrir por `www`, o `canonica
 | `RESEND_FROM_NAME` | `Resend:FromName` | Nome do remetente (padrão `TáNoMar`). |
 | `RESEND_NOTIFICATION_EMAIL` | `Resend:NotificationEmail` | Destinatário dos avisos de novo usuário, solicitação, pagamento, alteração de plano e renovação cancelada. Se omitido, usa `BOOTSTRAP_ADMIN_EMAIL`. |
 | `WHATSAPP_ENABLED` | `WhatsApp:Enabled` | Habilita o canal na API. Padrão `false`; a tela Admin ainda exige ativação e destino. |
-| `WHATSAPP_BASE_URL` | `WhatsApp:BaseUrl` | URL acessível pela API principal. Não use `http://tanomar-whatsapp:3000` fora da network privada da stack `services`. |
+| `WHATSAPP_BASE_URL` | `WhatsApp:BaseUrl` | Padrão `http://tanomar-whatsapp:3000` na rede `tanomar-link`. Em outra VPS, use HTTPS, VPN ou reverse proxy. |
 
 A vitrine de parceiros não usa mais variável de ambiente. O admin liga ou desliga em `/admin/parceiros`; o valor fica em `PlatformSettings`.
 

@@ -57,12 +57,15 @@ O monitor não depende do estado conectado do WhatsApp para ficar Ready. O `/sta
 
 ## API principal
 
-A API principal não inicia mais o container WhatsApp. Ela já aceita `WhatsApp__BaseUrl`/`WHATSAPP_BASE_URL` e `WhatsApp__ApiKey`/`WHATSAPP_API_KEY`. Na stack principal, configure `WHATSAPP_BASE_URL` com um endereço acessível pela API:
+A API principal não inicia mais o container WhatsApp. Ela já aceita `WhatsApp__BaseUrl`/`WHATSAPP_BASE_URL` e `WhatsApp__ApiKey`/`WHATSAPP_API_KEY`.
 
-- mesma VPS: endereço publicado por reverse proxy ou outra rota controlada;
-- VPS diferente: HTTPS por reverse proxy, VPN, Cloudflare Access/Tunnel ou firewall com origem restrita.
+Na mesma VPS, os dois Compose entram na rede externa `tanomar-link`. Crie essa rede uma vez antes do deploy:
 
-Não use `http://tanomar-whatsapp:3000` na API principal quando os Compose estiverem separados: esse hostname só existe na network privada desta stack.
+```powershell
+docker network create tanomar-link
+```
+
+Com a rede criada, o padrão da API é `http://tanomar-whatsapp:3000`. A porta 3000 continua sem publicação no host. Em outra VPS, defina `WHATSAPP_BASE_URL` com HTTPS, VPN ou reverse proxy.
 
 ## Deploy independente
 
@@ -75,4 +78,4 @@ cd ..
 docker compose up -d
 ```
 
-Ela não inicia `tanomar-whatsapp` nem `tanomar-monitor`. Para subir ambas localmente, inicie cada Compose em seu diretório e configure `WHATSAPP_BASE_URL` da API para um endpoint alcançável; não há network Docker compartilhada automaticamente.
+Ela não inicia `tanomar-whatsapp` nem `tanomar-monitor`. Para subir as duas, crie `tanomar-link`, suba `services/docker-compose.yml` e depois o Compose da raiz.
